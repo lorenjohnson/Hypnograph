@@ -27,7 +27,7 @@ struct SingleLayerPreviewView: NSViewRepresentable {
     func makeNSView(context: Context) -> AVPlayerView {
         let view = AVPlayerView()
         view.controlsStyle = .none          // no play bar / buttons
-        view.videoGravity = .resizeAspect
+        view.videoGravity = .resizeAspectFill
         return view
     }
 
@@ -133,6 +133,49 @@ struct SingleLayerPreviewView: NSViewRepresentable {
     }
 }
 
+fileprivate extension View {
+    /// Small per-blend-mode exposure/contrast tweaks so
+    /// Screen/Overlay/Multiply don't blow out or crush.
+    func hypnoBlendPrep(for modeName: String) -> some View {
+        switch modeName.lowercased() {
+        case "screen":
+            // Screen tends to over-brighten → darken a touch, pop contrast
+            return AnyView(
+                self
+                    .brightness(-0.15)
+                    .contrast(1.05)
+            )
+
+        case "overlay":
+            // Overlay can get a bit heavy → lift mids slightly
+            return AnyView(
+                self
+                    .brightness(0.1)
+                    .contrast(0.98)
+            )
+
+        case "multiply":
+            // Multiply often too dark → lift mids more noticeably
+            return AnyView(
+                self
+                    .brightness(0.1)
+                    .contrast(1.02)
+            )
+
+        case "softlight", "soft_light", "soft-light":
+            // Soft light: tiny midtone lift
+            return AnyView(
+                self
+                    .brightness(0.03)
+            )
+
+        default:
+            // Modes that don't obviously benefit: leave untouched
+            return AnyView(self)
+        }
+    }
+}
+
 struct MultiLayerPreviewView: View {
     let layers: [HypnogramLayer]
     let currentLayerIndex: Int
@@ -157,6 +200,9 @@ struct MultiLayerPreviewView: View {
                     layer: layer,
                     isActive: index == currentLayerIndex,
                     currentTime: $currentLayerTime
+                )
+                .hypnoBlendPrep(
+                    for: layer.blendMode.name
                 )
                 .blendMode(blendModeForLayer(at: index,
                                              layer: layer,
