@@ -56,8 +56,13 @@ struct SingleLayerPreviewView: NSViewRepresentable {
             c.isActive = isActive
             nsView.player = player
 
+            // --- PREVIEW PLAYBACK RATE (change this constant) ---
+            // 1.0 = normal, 0.5 = half speed, 0.25 = quarter speed, 2.0 = double
+            // Float.random(in: (0.4...1.0) )
+            let previewRate: Float = 0.8
+
             player.seek(to: start)
-            player.play()
+            player.playImmediately(atRate: previewRate)
 
             // Loop on end.
             c.endObserverToken = NotificationCenter.default.addObserver(
@@ -67,7 +72,7 @@ struct SingleLayerPreviewView: NSViewRepresentable {
             ) { [weak player] _ in
                 guard let p = player else { return }
                 p.seek(to: start)
-                p.play()
+                p.playImmediately(atRate: previewRate)   // use same rate on loop
             }
 
             // If this layer is active, add a time observer.
@@ -135,7 +140,7 @@ struct MultiLayerPreviewView: View {
     let outputSize: CGSize
 
     var body: some View {
-        ZStack {
+        let content = ZStack {
             // Solid background so the base of the stack has something to composite against
             Color.black
 
@@ -158,8 +163,13 @@ struct MultiLayerPreviewView: View {
                                              firstEdgeMode: firstEdgeBlendMode))
             }
         }
-        .aspectRatio(outputSize.width / outputSize.height, contentMode: .fit)
-        .focusable(false)
+        
+        return content
+            .compositingGroup()
+//            .blur(radius: CGFloat(Float.random(in: 0.0...2.0)))
+            .overlay(vignetteOverlay)
+            .aspectRatio(outputSize.width / outputSize.height, contentMode: .fit)
+            .focusable(false)
     }
 
     /// Decide which SwiftUI blend mode to use for each layer index.
@@ -210,5 +220,21 @@ struct MultiLayerPreviewView: View {
             // so we fall back to .normal for those.
             return .normal
         }
+    }
+    
+    // Vignette overlay (unchanged from before, or tweak to taste)
+    private var vignetteOverlay: some View {
+        RadialGradient(
+            gradient: Gradient(colors: [
+                Color.black.opacity(0.0),
+                Color.black.opacity(0.2),
+                Color.black.opacity(1.0)
+            ]),
+            center: .center,
+            startRadius: 0,
+            endRadius: 1000
+        )
+        .blendMode(.darken)
+        .allowsHitTesting(false)
     }
 }

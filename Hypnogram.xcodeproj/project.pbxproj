@@ -18,7 +18,6 @@
 		042F99422EC8A8EC006D4CDE /* AVRenderBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042F99412EC8A8EC006D4CDE /* AVRenderBackend.swift */; };
 		042F99442EC8C2DA006D4CDE /* VideoCompositionInstruction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042F99432EC8C2DA006D4CDE /* VideoCompositionInstruction.swift */; };
 		042F99462EC90121006D4CDE /* ClipLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042F99452EC90121006D4CDE /* ClipLibrary.swift */; };
-		042F99482EC91403006D4CDE /* hypnogram-settings.json in Resources */ = {isa = PBXBuildFile; fileRef = 042F99472EC91403006D4CDE /* hypnogram-settings.json */; };
 		04594FF52EC9B0B10012F009 /* hypnogram-default-settings.json in Resources */ = {isa = PBXBuildFile; fileRef = 04594FF42EC9B0A00012F009 /* hypnogram-default-settings.json */; };
 		04594FF72EC9B1740012F009 /* AppSettingsPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04594FF62EC9B1740012F009 /* AppSettingsPaths.swift */; };
 /* End PBXBuildFile section */
@@ -55,7 +54,6 @@
 		042F99412EC8A8EC006D4CDE /* AVRenderBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVRenderBackend.swift; sourceTree = "<group>"; };
 		042F99432EC8C2DA006D4CDE /* VideoCompositionInstruction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoCompositionInstruction.swift; sourceTree = "<group>"; };
 		042F99452EC90121006D4CDE /* ClipLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipLibrary.swift; sourceTree = "<group>"; };
-		042F99472EC91403006D4CDE /* hypnogram-settings.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "hypnogram-settings.json"; sourceTree = "<group>"; };
 		04594FF42EC9B0A00012F009 /* hypnogram-default-settings.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "hypnogram-default-settings.json"; sourceTree = "<group>"; };
 		04594FF62EC9B1740012F009 /* AppSettingsPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsPaths.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -74,6 +72,14 @@
 		042F991F2EC8990C006D4CDE /* HypnogramUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = HypnogramUITests;
+			sourceTree = "<group>";
+		};
+		04594FF82EC9FDF30012F009 /* Support */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+				hypnograph = text.script.sh;
+			};
+			path = Support;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -106,8 +112,8 @@
 		042F98F82EC8990A006D4CDE = {
 			isa = PBXGroup;
 			children = (
+				04594FF82EC9FDF30012F009 /* Support */,
 				04594FF42EC9B0A00012F009 /* hypnogram-default-settings.json */,
-				042F99472EC91403006D4CDE /* hypnogram-settings.json */,
 				042F99362EC89C73006D4CDE /* HypnogramUI */,
 				042F992F2EC89960006D4CDE /* HypnogramCore */,
 				042F99032EC8990B006D4CDE /* Hypnogram */,
@@ -170,6 +176,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				042F99032EC8990B006D4CDE /* Hypnogram */,
+				04594FF82EC9FDF30012F009 /* Support */,
 			);
 			name = Hypnogram;
 			packageProductDependencies = (
@@ -273,7 +280,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				042F99482EC91403006D4CDE /* hypnogram-settings.json in Resources */,
 				04594FF52EC9B0B10012F009 /* hypnogram-default-settings.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

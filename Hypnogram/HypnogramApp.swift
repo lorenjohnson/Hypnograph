@@ -1,6 +1,35 @@
 import SwiftUI
 import AppKit
 
+extension NSWindow {
+    func makeHypnogramBorderless(on screen: NSScreen) {
+        let frame = screen.visibleFrame
+
+        // Remove title bar & traffic lights
+        styleMask.remove(.titled)
+        styleMask.remove(.closable)
+        styleMask.remove(.miniaturizable)
+        styleMask.remove(.resizable)   // optional: keep if you want manual resize
+
+        // Ensure we don't participate in macOS fullscreen Spaces
+        collectionBehavior = [.fullScreenNone, .canJoinAllSpaces]
+
+        titleVisibility = .hidden
+        titlebarAppearsTransparent = true
+
+        standardWindowButton(.closeButton)?.isHidden = true
+        standardWindowButton(.miniaturizeButton)?.isHidden = true
+        standardWindowButton(.zoomButton)?.isHidden = true
+
+        isOpaque = true
+        backgroundColor = .black
+        level = .normal      // or .statusBar if you want it above everything
+
+        setFrame(frame, display: true, animate: false)
+        isMovable = false
+    }
+}
+
 @main
 struct HypnogramApp: App {
     @StateObject private var viewModel: ViewModel
@@ -43,7 +72,6 @@ struct HypnogramApp: App {
             )
         }
 
-        // Expand ~
         let outputPath = (settings.outputFolder as NSString).expandingTildeInPath
         let outputURL = URL(fileURLWithPath: outputPath, isDirectory: true)
 
@@ -66,11 +94,17 @@ struct HypnogramApp: App {
         WindowGroup {
             ContentView(viewModel: viewModel, renderQueue: renderQueue)
                 .onAppear {
-                    // Start fullscreen to feel like an instrument.
-                    NSApp.windows.first?.toggleFullScreen(nil)
+                    DispatchQueue.main.async {
+                        guard let window = NSApp.windows.first else { return }
+
+                        let screens = NSScreen.screens
+                        // Prefer external monitor if present
+                        let targetScreen = (screens.count > 1 ? screens[1] : screens[0])
+
+                        window.makeHypnogramBorderless(on: targetScreen)
+                    }
                 }
         }
-        //  The hidden buttons in ContentView are enough to drive everything.
         .commands {
             CommandMenu("Hypnogram Controls") {
                 Button("Next Candidate") {
@@ -92,7 +126,6 @@ struct HypnogramApp: App {
                     viewModel.renderCurrentHypnogram()
                 }
                 .keyboardShortcut("r", modifiers: [])
-
 
                 Button("Back") {
                     viewModel.handleEscape()
@@ -137,6 +170,10 @@ struct HypnogramApp: App {
                     viewModel.toggleHUD()
                 }
                 .keyboardShortcut("h", modifiers: [])
+
+                Button("Install hypnograph command") {
+                    AppSettingsPaths.installHypnographCLI()
+                }
 
                 Button("Show Settings Folder") {
                     AppSettingsPaths.showSettingsFolderInFinder()

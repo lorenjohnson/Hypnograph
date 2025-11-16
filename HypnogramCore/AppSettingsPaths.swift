@@ -31,6 +31,81 @@ enum AppSettingsPaths {
         return appDir
     }
 
+    /// ~/Library/Application Support/Hypnogram/Tools
+   static var toolsDirectory: URL {
+       let url = appSupportDirectory.appendingPathComponent("Tools", isDirectory: true)
+       let fm = FileManager.default
+       if !fm.fileExists(atPath: url.path) {
+           try? fm.createDirectory(at: url, withIntermediateDirectories: true, attributes: nil)
+       }
+       return url
+   }
+
+    /// Install the bundled "hypnograph" script into the Tools dir,
+    /// make it executable, create a ~/bin symlink, and reveal it.
+    static func installHypnographCLI() {
+        let fm = FileManager.default
+
+        // 1) Locate bundled script in the app bundle
+        guard let bundledURL = Bundle.main.url(
+            forResource: "hypnograph",
+            withExtension: nil
+        ) else {
+            print("⚠️ Could not find bundled hypnograph script in app bundle")
+            return
+        }
+
+        // 2) Copy into ~/Library/Application Support/Hypnogram/Tools/hypnograph
+        let destination = toolsDirectory.appendingPathComponent("hypnograph")
+
+        do {
+            if fm.fileExists(atPath: destination.path) {
+                try fm.removeItem(at: destination)
+            }
+            try fm.copyItem(at: bundledURL, to: destination)
+
+            // Make it executable
+            var attrs = try fm.attributesOfItem(atPath: destination.path)
+            if let perms = attrs[.posixPermissions] as? NSNumber {
+                let newPerms = perms.intValue | 0o111 // add execute bits
+                try fm.setAttributes([.posixPermissions: newPerms], ofItemAtPath: destination.path)
+            } else {
+                try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: destination.path)
+            }
+
+            print("Installed hypnograph at \(destination.path)")
+        } catch {
+            print("Failed to install hypnograph: \(error)")
+            return
+        }
+
+        // 3) Ensure ~/bin exists
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser
+        let binDir = homeDir.appendingPathComponent("bin", isDirectory: true)
+        if !fm.fileExists(atPath: binDir.path) {
+            do {
+                try fm.createDirectory(at: binDir, withIntermediateDirectories: true, attributes: nil)
+            } catch {
+                print("Failed to create ~/bin: \(error)")
+            }
+        }
+
+        // 4) Create symlink: ~/bin/hypnograph → .../Application Support/Hypnogram/Tools/hypnograph
+        let symlinkURL = binDir.appendingPathComponent("hypnograph")
+        do {
+            if fm.fileExists(atPath: symlinkURL.path) {
+                try fm.removeItem(at: symlinkURL)
+            }
+            try fm.createSymbolicLink(at: symlinkURL, withDestinationURL: destination)
+            print("Created symlink \(symlinkURL.path) → \(destination.path)")
+        } catch {
+            print("Failed to create symlink in ~/bin: \(error)")
+        }
+
+        // 5) Show the script (or symlink) in Finder so the user can see where it lives
+        NSWorkspace.shared.activateFileViewerSelecting([destination])
+    }
+
     /// ~/Library/Application Support/Hypnogram/hypnogram-settings.json
     static var defaultConfigURL: URL {
         appSupportDirectory.appendingPathComponent("hypnogram-settings.json")

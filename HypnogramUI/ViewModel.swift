@@ -21,7 +21,9 @@ final class ViewModel: ObservableObject {
     @Published var isHUDVisible: Bool = false
 
     let renderQueue: RenderQueue
-    private let settings: Settings
+
+    private var settings: Settings
+
     private var autoPrimeTimer: Timer?
 
     init(settings: Settings, renderQueue: RenderQueue) {
@@ -34,6 +36,7 @@ final class ViewModel: ObservableObject {
             scheduleAutoPrimeTimer()
         }
     }
+
     // MARK: - Intents driven by key commands
 
     /// N: advance to the next random candidate for the current layer.
@@ -88,7 +91,22 @@ final class ViewModel: ObservableObject {
         objectWillChange.send()
     }
 
+    /// Space: generate a completely new auto-primed set.
+    /// Now also reloads settings from disk so new sources / config are picked up.
     func newAutoPrimeSet() {
+        // 1) Try to reload settings from the canonical config file.
+        do {
+            let url = AppSettingsPaths.defaultConfigURL
+            let newSettings = try SettingsLoader.load(from: url)
+            self.settings = newSettings
+            self.state = HypnogramState(settings: newSettings)
+            print("🔄 Reloaded settings from \(url.path)")
+        } catch {
+            // If reload fails, keep old settings/state and log.
+            print("⚠️ Failed to reload settings; keeping existing settings. Error: \(error)")
+        }
+
+        // 2) Normal behavior: treat this like user interaction + re-prime.
         noteUserInteraction()
         autoPrimeNow()
     }
@@ -206,8 +224,10 @@ final class ViewModel: ObservableObject {
         }
 
         autoPrimeTimer?.invalidate()
-        autoPrimeTimer = Timer.scheduledTimer(withTimeInterval: settings.autoPrimeTimeout,
-                                              repeats: false) { [weak self] _ in
+        autoPrimeTimer = Timer.scheduledTimer(
+            withTimeInterval: settings.autoPrimeTimeout,
+            repeats: false
+        ) { [weak self] _ in
             guard let self else { return }
             self.autoPrimeNow()
             self.scheduleAutoPrimeTimer()

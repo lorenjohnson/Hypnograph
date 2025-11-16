@@ -9,31 +9,54 @@ final class FolderMediaLibrary: ClipLibrary {
         loadFiles(from: settings.sourceFolders)
     }
 
-    private func loadFiles(from folders: [String]) {
+    private func loadFiles(from sources: [String]) {
         let fileManager = FileManager.default
         var results: [VideoFile] = []
 
-        for folder in folders {
-            let folderURL = URL(fileURLWithPath: folder, isDirectory: true)
+        let allowedExtensions = ["mp4", "mov", "m4v", "webm"]
 
-            guard let enumerator = fileManager.enumerator(
-                at: folderURL,
-                includingPropertiesForKeys: nil
-            ) else { continue }
+        for path in sources {
+            let url = URL(fileURLWithPath: path)
 
-            for case let fileURL as URL in enumerator {
-                var isDirectory: ObjCBool = false
-                if fileManager.fileExists(atPath: fileURL.path, isDirectory: &isDirectory),
-                   isDirectory.boolValue { continue }
+            var isDirectory: ObjCBool = false
+            guard fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory) else {
+                continue
+            }
 
-                let ext = fileURL.pathExtension.lowercased()
-                guard ["mp4", "mov", "m4v", "webm"].contains(ext) else { continue }
+            if isDirectory.boolValue {
+                // Directory case: recurse like before
+                guard let enumerator = fileManager.enumerator(
+                    at: url,
+                    includingPropertiesForKeys: nil
+                ) else { continue }
 
-                let asset = AVAsset(url: fileURL)
+                for case let fileURL as URL in enumerator {
+                    var isDir: ObjCBool = false
+                    if fileManager.fileExists(atPath: fileURL.path, isDirectory: &isDir),
+                       isDir.boolValue {
+                        continue
+                    }
+
+                    let ext = fileURL.pathExtension.lowercased()
+                    guard allowedExtensions.contains(ext) else { continue }
+
+                    let asset = AVAsset(url: fileURL)
+                    let duration = asset.duration
+
+                    if duration.isValid, duration.seconds > 0 {
+                        results.append(VideoFile(url: fileURL, duration: duration))
+                    }
+                }
+            } else {
+                // Single-file case: treat it as one video file if extension matches
+                let ext = url.pathExtension.lowercased()
+                guard allowedExtensions.contains(ext) else { continue }
+
+                let asset = AVAsset(url: url)
                 let duration = asset.duration
 
                 if duration.isValid, duration.seconds > 0 {
-                    results.append(VideoFile(url: fileURL, duration: duration))
+                    results.append(VideoFile(url: url, duration: duration))
                 }
             }
         }

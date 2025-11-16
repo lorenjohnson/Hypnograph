@@ -227,9 +227,11 @@ final class HypnogramState: ObservableObject {
             }
 
             if !blendModes.isEmpty {
-                layerBlendIndices[i] = 0
+                // layerBlendIndices[i] = 0
                 // layerBlendIndices[i] = Int.random(in: 0..<2)
-                // layerBlendIndices[i] = Int.random(in: 0..<blendModes.count)
+                layerBlendIndices[i] = (Double.random(in: 0...1) < 0.8)
+                    ? 0
+                    : Int.random(in: 1..<blendModes.count)
             }
         }
 

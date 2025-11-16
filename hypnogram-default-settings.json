@@ -11,9 +11,7 @@
     "softlight",
     "multiply",
     "darken",
-    "lighten",
-    "difference",
-    "exclusion"
+    "lighten"
   ],
   "outputSeconds": 60,
   "outputWidth": 1920,

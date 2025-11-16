@@ -7,6 +7,10 @@ struct ContentView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
+            // Solid black backing for the entire window
+            Color.black
+                .ignoresSafeArea()
+
             // Live multi-layer preview: selected layers + current candidate.
             MultiLayerPreviewView(
                 layers: viewModel.previewLayers,
@@ -68,5 +72,7 @@ struct ContentView: View {
                 .padding()
             }
         }
+        // extra safety: whole scene black
+        .background(Color.black)
     }
 }
