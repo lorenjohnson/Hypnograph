@@ -14,38 +14,41 @@ struct ContentView: View {
                 currentLayerTime: Binding(
                     get: { viewModel.currentCandidateStartOverride },
                     set: { viewModel.currentCandidateStartOverride = $0 }
-                )
+                ),
+                outputSize: viewModel.outputSize
             )
             .ignoresSafeArea()
 
             // HUD
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Hypnogram")
-                    .font(.headline)
-                    .padding(.bottom, 8)
-
-                if renderQueue.activeJobs > 0 {
-                    Text("In queue: \(renderQueue.activeJobs)")
-                        .font(.subheadline)
+            if viewModel.isHUDVisible {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Hypnogram")
+                        .font(.headline)
                         .padding(.bottom, 8)
-                } else {
-                    Text("In queue: 0")
+
+                    if renderQueue.activeJobs > 0 {
+                        Text("In queue: \(renderQueue.activeJobs)")
+                            .font(.subheadline)
+                            .padding(.bottom, 8)
+                    } else {
+                        Text("In queue: 0")
+                            .font(.caption)
+                            .padding(.bottom, 8)
+                    }
+
+                    Text("Layer \(viewModel.currentLayerIndex + 1) of \(viewModel.maxLayers)")
                         .font(.caption)
-                        .padding(.bottom, 8)
+
+                    Text("Blend mode: \(viewModel.currentBlendModeName)")
+                        .font(.caption)
+
+                    Text("N = Next Candidate • Return = Accept Candidate • M = Blend Mode • R = Render Hypnogram • Delete = Back")
+                        .font(.caption)
+                        .padding(.top, 8)
                 }
-
-                Text("Layer \(viewModel.currentLayerIndex + 1) of \(viewModel.maxLayers)")
-                    .font(.caption)
-
-                Text("Blend mode: \(viewModel.currentBlendModeName)")
-                    .font(.caption)
-
-                Text("N = Next Candidate • Return = Accept Candidate • M = Blend Mode • R = Render Hypnogram • Delete = Back")
-                    .font(.caption)
-                    .padding(.top, 8)
+                .foregroundColor(.white)
+                .padding()
             }
-            .foregroundColor(.white)
-            .padding()
         }
     }
 }

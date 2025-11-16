@@ -12,11 +12,13 @@
 		042F993A2EC89E88006D4CDE /* RenderQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042F99352EC89C4C006D4CDE /* RenderQueue.swift */; };
 		042F993B2EC89ED2006D4CDE /* HypnogramConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042F99312EC89B77006D4CDE /* HypnogramConfig.swift */; };
 		042F993C2EC89EDB006D4CDE /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042F99302EC89B3B006D4CDE /* Models.swift */; };
-		042F993D2EC89EDB006D4CDE /* MediaLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042F99322EC89BBD006D4CDE /* MediaLibrary.swift */; };
+		042F993D2EC89EDB006D4CDE /* FolderMediaLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042F99322EC89BBD006D4CDE /* FolderMediaLibrary.swift */; };
 		042F993E2EC89EDB006D4CDE /* RenderBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042F99342EC89C29006D4CDE /* RenderBackend.swift */; };
 		042F99402EC8A2F3006D4CDE /* VideoPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042F993F2EC8A2F3006D4CDE /* VideoPreviewView.swift */; };
 		042F99422EC8A8EC006D4CDE /* AVRenderBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042F99412EC8A8EC006D4CDE /* AVRenderBackend.swift */; };
 		042F99442EC8C2DA006D4CDE /* HypnogramVideoCompositionInstruction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042F99432EC8C2DA006D4CDE /* HypnogramVideoCompositionInstruction.swift */; };
+		042F99462EC90121006D4CDE /* ClipLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042F99452EC90121006D4CDE /* ClipLibrary.swift */; };
+		042F99482EC91403006D4CDE /* hypnogram-config.json in Resources */ = {isa = PBXBuildFile; fileRef = 042F99472EC91403006D4CDE /* hypnogram-config.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -42,7 +44,7 @@
 		042F991C2EC8990C006D4CDE /* HypnogramUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnogramUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		042F99302EC89B3B006D4CDE /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		042F99312EC89B77006D4CDE /* HypnogramConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HypnogramConfig.swift; sourceTree = "<group>"; };
-		042F99322EC89BBD006D4CDE /* MediaLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaLibrary.swift; sourceTree = "<group>"; };
+		042F99322EC89BBD006D4CDE /* FolderMediaLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderMediaLibrary.swift; sourceTree = "<group>"; };
 		042F99332EC89BF7006D4CDE /* HypnogramState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HypnogramState.swift; sourceTree = "<group>"; };
 		042F99342EC89C29006D4CDE /* RenderBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderBackend.swift; sourceTree = "<group>"; };
 		042F99352EC89C4C006D4CDE /* RenderQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderQueue.swift; sourceTree = "<group>"; };
@@ -50,6 +52,8 @@
 		042F993F2EC8A2F3006D4CDE /* VideoPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPreviewView.swift; sourceTree = "<group>"; };
 		042F99412EC8A8EC006D4CDE /* AVRenderBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVRenderBackend.swift; sourceTree = "<group>"; };
 		042F99432EC8C2DA006D4CDE /* HypnogramVideoCompositionInstruction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HypnogramVideoCompositionInstruction.swift; sourceTree = "<group>"; };
+		042F99452EC90121006D4CDE /* ClipLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipLibrary.swift; sourceTree = "<group>"; };
+		042F99472EC91403006D4CDE /* hypnogram-config.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "hypnogram-config.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -98,6 +102,7 @@
 		042F98F82EC8990A006D4CDE = {
 			isa = PBXGroup;
 			children = (
+				042F99472EC91403006D4CDE /* hypnogram-config.json */,
 				042F99362EC89C73006D4CDE /* HypnogramUI */,
 				042F992F2EC89960006D4CDE /* HypnogramCore */,
 				042F99032EC8990B006D4CDE /* Hypnogram */,
@@ -120,12 +125,13 @@
 		042F992F2EC89960006D4CDE /* HypnogramCore */ = {
 			isa = PBXGroup;
 			children = (
+				042F99452EC90121006D4CDE /* ClipLibrary.swift */,
 				042F99432EC8C2DA006D4CDE /* HypnogramVideoCompositionInstruction.swift */,
 				042F99412EC8A8EC006D4CDE /* AVRenderBackend.swift */,
 				042F99352EC89C4C006D4CDE /* RenderQueue.swift */,
 				042F99342EC89C29006D4CDE /* RenderBackend.swift */,
 				042F99332EC89BF7006D4CDE /* HypnogramState.swift */,
-				042F99322EC89BBD006D4CDE /* MediaLibrary.swift */,
+				042F99322EC89BBD006D4CDE /* FolderMediaLibrary.swift */,
 				042F99312EC89B77006D4CDE /* HypnogramConfig.swift */,
 				042F99302EC89B3B006D4CDE /* Models.swift */,
 			);
@@ -261,6 +267,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				042F99482EC91403006D4CDE /* hypnogram-config.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -288,9 +295,10 @@
 				042F993A2EC89E88006D4CDE /* RenderQueue.swift in Sources */,
 				042F99392EC89E7F006D4CDE /* HypnogramState.swift in Sources */,
 				042F99382EC89E73006D4CDE /* HypnogramViewModel.swift in Sources */,
+				042F99462EC90121006D4CDE /* ClipLibrary.swift in Sources */,
 				042F993C2EC89EDB006D4CDE /* Models.swift in Sources */,
 				042F99422EC8A8EC006D4CDE /* AVRenderBackend.swift in Sources */,
-				042F993D2EC89EDB006D4CDE /* MediaLibrary.swift in Sources */,
+				042F993D2EC89EDB006D4CDE /* FolderMediaLibrary.swift in Sources */,
 				042F993E2EC89EDB006D4CDE /* RenderBackend.swift in Sources */,
 				042F993B2EC89ED2006D4CDE /* HypnogramConfig.swift in Sources */,
 				042F99402EC8A2F3006D4CDE /* VideoPreviewView.swift in Sources */,

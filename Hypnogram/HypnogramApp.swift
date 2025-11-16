@@ -8,7 +8,7 @@ struct HypnogramApp: App {
 
     init() {
         // TODO: adjust this path to wherever you put your config JSON.
-        let configURL = URL(fileURLWithPath: "/Users/lorenjohnson/dev/artdev/hypnogram-config.json")
+        let configURL = URL(fileURLWithPath: "/Users/lorenjohnson/dev/artdev/Hypnogram/hypnogram-config.json")
 
         let config: HypnogramConfig
         do {
@@ -18,18 +18,25 @@ struct HypnogramApp: App {
             // Fallback config so the app still runs if the file is missing/broken.
             print("Failed to load config from \(configURL.path): \(error)")
             config = HypnogramConfig(
-                sourceFolders: ["/Users/loren/Movies/hypnogram_sources"],
-                clipLengthSeconds: 30,
-                maxLayers: 3,
+                autoPrime: true,
                 blendModes: ["multiply", "softlight", "overlay"],
-                outputFolder: "/Users/loren/Movies/hypnogram_renders"
+                maxLayers: 3,
+                outputFolder: "/Users/loren/Movies/hypnogram_renders",
+                outputHeight: 1920,
+                outputSeconds: 30,
+                outputWidth: 1080,
+                sourceFolders: ["/Users/loren/Movies/hypnogram_sources"]
             )
         }
 
         let outputURL = URL(fileURLWithPath: config.outputFolder, isDirectory: true)
 
         // Use native AVFoundation backend:
-        let backend = AVRenderBackend(outputFolder: outputURL)
+        let backend = AVRenderBackend(
+            outputFolder: outputURL,
+            outputWidth: config.outputWidth,
+            outputHeight: config.outputHeight
+        )
 
         // (Optional: keep JSON backend around for debugging)
         // let backend = JSONRecipeBackend(outputFolder: outputURL)
@@ -57,6 +64,11 @@ struct HypnogramApp: App {
         //  The hidden buttons in ContentView are enough to drive everything.
         .commands {
             CommandMenu("Hypnogram Controls") {
+                Button("Toggle HUD") {
+                    viewModel.toggleHUD()
+                }
+                .keyboardShortcut("h", modifiers: [])
+
                 Button("Next Candidate") {
                     viewModel.nextCandidate()
                 }
@@ -83,6 +95,31 @@ struct HypnogramApp: App {
                     viewModel.handleEscape()
                 }
                 .keyboardShortcut(.delete, modifiers: [])
+                
+                Button("Randomize Layer 1") {
+                    viewModel.randomizeLayer(index: 0)
+                }
+                .keyboardShortcut("1", modifiers: [])
+
+                Button("Randomize Layer 2") {
+                    viewModel.randomizeLayer(index: 1)
+                }
+                .keyboardShortcut("2", modifiers: [])
+
+                Button("Randomize Layer 3") {
+                    viewModel.randomizeLayer(index: 2)
+                }
+                .keyboardShortcut("3", modifiers: [])
+
+                Button("Randomize Layer 4") {
+                    viewModel.randomizeLayer(index: 3)
+                }
+                .keyboardShortcut("4", modifiers: [])
+
+                Button("Randomize Layer 5") {
+                    viewModel.randomizeLayer(index: 4)
+                }
+                .keyboardShortcut("5", modifiers: [])
             }
         }
     }

@@ -39,6 +39,8 @@ final class HypnogramVideoCompositionInstruction: NSObject, AVVideoCompositionIn
 }
 
 /// Custom compositor that blends multiple video tracks using CoreImage.
+/// Each source frame is aspect-fit into the render size (like AVPlayerView.resizeAspect),
+/// then blended using the requested CoreImage blend filters.
 final class HypnogramVideoCompositor: NSObject, AVVideoCompositing {
 
     private let renderContextQueue = DispatchQueue(label: "HypnogramVideoCompositor.renderContextQueue")
@@ -46,7 +48,6 @@ final class HypnogramVideoCompositor: NSObject, AVVideoCompositing {
     private var renderContext: AVVideoCompositionRenderContext?
     private let ciContext = CIContext(options: nil)
 
-    // We work with 32BGRA buffers.
     var sourcePixelBufferAttributes: [String : Any]? {
         [
             kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)
@@ -59,9 +60,7 @@ final class HypnogramVideoCompositor: NSObject, AVVideoCompositing {
         ]
     }
 
-    var supportsWideColorSourceFrames: Bool {
-        return false
-    }
+    var supportsWideColorSourceFrames: Bool { false }
 
     func renderContextChanged(_ newRenderContext: AVVideoCompositionRenderContext) {
         renderContextQueue.sync {
@@ -93,15 +92,15 @@ final class HypnogramVideoCompositor: NSObject, AVVideoCompositing {
                 return
             }
 
+            let targetSize = renderContext.size
             let trackIDs = instruction.layerTrackIDs
             let modes = instruction.blendModes
 
-            // Base layer: first track.
+            // Base layer
             guard
                 let firstTrackID = trackIDs.first,
                 let firstBuffer = request.sourceFrame(byTrackID: firstTrackID)
             else {
-                // No frames? Output a blank buffer.
                 guard let blank = renderContext.newPixelBuffer() else {
                     let error = NSError(
                         domain: "HypnogramVideoCompositor",
@@ -115,7 +114,9 @@ final class HypnogramVideoCompositor: NSObject, AVVideoCompositing {
                 return
             }
 
-            var outputImage = CIImage(cvPixelBuffer: firstBuffer)
+            // Scale base image to FILL the target size, cropping center.
+            let baseImage = CIImage(cvPixelBuffer: firstBuffer)
+            var outputImage = self.resizedToFill(baseImage, targetSize: targetSize)
 
             // Blend each additional track onto the base.
             for (index, trackID) in trackIDs.dropFirst().enumerated() {
@@ -123,13 +124,14 @@ final class HypnogramVideoCompositor: NSObject, AVVideoCompositing {
                     continue
                 }
 
-                let topImage = CIImage(cvPixelBuffer: buffer)
-                // Each layer has a blend mode name in the same order.
+                let rawTopImage = CIImage(cvPixelBuffer: buffer)
+                let topImage = self.resizedToFill(rawTopImage, targetSize: targetSize)
+
                 let modeName: String
                 if index + 1 < modes.count {
                     modeName = modes[index + 1]
                 } else {
-                    modeName = modes.last ?? "normal"
+                    modeName = modes.last ?? "CISourceOverCompositing"
                 }
 
                 outputImage = self.composite(bottom: outputImage, top: topImage, modeName: modeName)
@@ -152,32 +154,13 @@ final class HypnogramVideoCompositor: NSObject, AVVideoCompositing {
 
     func cancelAllPendingVideoCompositionRequests() {
         renderingQueue.sync {
-            // Just drain the queue.
+            // just drain
         }
     }
 
     private func composite(bottom: CIImage, top: CIImage, modeName: String) -> CIImage {
-        let name = modeName.lowercased()
-        let filterName: String
-
-        switch name {
-        case "multiply":
-            filterName = "CIMultiplyCompositing"
-        case "overlay":
-            filterName = "CIOverlayBlendMode"
-        case "screen":
-            filterName = "CIScreenBlendMode"
-        case "softlight", "soft_light", "soft-light":
-            filterName = "CISoftLightBlendMode"
-        case "darken":
-            filterName = "CIDarkenBlendMode"
-        case "lighten":
-            filterName = "CILightenBlendMode"
-        default:
-            filterName = "CISourceOverCompositing"
-        }
-
-        guard let filter = CIFilter(name: filterName) else {
+        guard let filter = CIFilter(name: modeName) else {
+            print("HypnogramVideoCompositor: unknown blend filter '\(modeName)', falling back to source-over")
             return top.composited(over: bottom)
         }
 
@@ -185,5 +168,40 @@ final class HypnogramVideoCompositor: NSObject, AVVideoCompositing {
         filter.setValue(bottom, forKey: kCIInputBackgroundImageKey)
 
         return filter.outputImage ?? top.composited(over: bottom)
+    }
+
+    /// Scale `image` to completely fill `targetSize`, then crop center.
+    private func resizedToFill(_ image: CIImage, targetSize: CGSize) -> CIImage {
+        let extent = image.extent
+        guard extent.width > 0, extent.height > 0 else {
+            return image
+        }
+
+        let scale = max(
+            targetSize.width  / extent.width,
+            targetSize.height / extent.height
+        )
+
+        let scaled = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+
+        let x = (scaled.extent.width  - targetSize.width)  / 2.0
+        let y = (scaled.extent.height - targetSize.height) / 2.0
+        let cropRect = CGRect(x: x, y: y, width: targetSize.width, height: targetSize.height)
+
+        return scaled.cropped(to: cropRect)
+    }
+}
+
+private extension CIContext {
+    /// Convenience: clear a pixel buffer to transparent black.
+    func clear(_ pixelBuffer: CVPixelBuffer) {
+        CVPixelBufferLockBaseAddress(pixelBuffer, [])
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
+
+        if let base = CVPixelBufferGetBaseAddress(pixelBuffer) {
+            let height = CVPixelBufferGetHeight(pixelBuffer)
+            let bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer)
+            memset(base, 0, height * bytesPerRow)
+        }
     }
 }
