@@ -1,0 +1,68 @@
+//
+//  RenderQueue.swift
+//  Hypnogram
+//
+//  Created by Loren Johnson on 15.11.25.
+//
+
+
+import Foundation
+
+/// Manages a queue of rendering jobs for Hypnogram.
+/// Wraps a RenderBackend and keeps track of active jobs.
+///
+/// This also supports the "quit when all renders are done" behavior:
+/// - Call `requestTerminateWhenDone()` when the user presses Esc.
+/// - When `activeJobs` reaches 0, `onAllJobsFinished` is invoked.
+final class RenderQueue: ObservableObject {
+    private let backend: RenderBackend
+
+    /// Number of currently active jobs (being processed by the backend).
+    @Published private(set) var activeJobs: Int = 0
+
+    /// If true, we should terminate the app when activeJobs reaches 0.
+    private var pendingTerminate: Bool = false
+
+    /// Called on the main thread when all jobs are finished
+    /// and `requestTerminateWhenDone()` had been called.
+    var onAllJobsFinished: (() -> Void)?
+
+    init(backend: RenderBackend) {
+        self.backend = backend
+    }
+
+    /// Enqueue a new HypnogramRecipe for rendering.
+    func enqueue(recipe: HypnogramRecipe) {
+        activeJobs += 1
+
+        backend.enqueue(recipe: recipe) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.activeJobs -= 1
+
+                // You can add logging here if desired:
+                switch result {
+                case .success(let url):
+                    print("Render job finished: \(url.path)")
+                case .failure(let error):
+                    print("Render job failed: \(error.localizedDescription)")
+                }
+
+                // If we had requested termination and there are no more jobs,
+                // trigger the callback so the app can terminate.
+                if self.activeJobs == 0, self.pendingTerminate {
+                    self.onAllJobsFinished?()
+                }
+            }
+        }
+    }
+
+    /// Signal that the app should terminate when the queue empties.
+    /// If there are no active jobs right now, this will trigger immediately.
+    func requestTerminateWhenDone() {
+        pendingTerminate = true
+        if activeJobs == 0 {
+            onAllJobsFinished?()
+        }
+    }
+}
