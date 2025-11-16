@@ -1,5 +1,5 @@
 //
-//  HypnogramVideoCompositionInstruction.swift
+//  VideoCompositionInstruction.swift
 //  Hypnogram
 //
 //  Created by Loren Johnson on 15.11.25.
@@ -14,7 +14,7 @@ import CoreMedia
 /// Instruction describing how to composite a single segment:
 /// - which track IDs to use as layers
 /// - which blend modes (one per layer, same order)
-final class HypnogramVideoCompositionInstruction: NSObject, AVVideoCompositionInstructionProtocol {
+final class VideoCompositionInstruction: NSObject, AVVideoCompositionInstructionProtocol {
     var timeRange: CMTimeRange
     var enablePostProcessing: Bool = false
     var containsTweening: Bool = false
@@ -71,7 +71,7 @@ final class HypnogramVideoCompositor: NSObject, AVVideoCompositing {
     func startRequest(_ request: AVAsynchronousVideoCompositionRequest) {
         renderingQueue.async {
             guard
-                let instruction = request.videoCompositionInstruction as? HypnogramVideoCompositionInstruction
+                let instruction = request.videoCompositionInstruction as? VideoCompositionInstruction
             else {
                 let error = NSError(
                     domain: "HypnogramVideoCompositor",

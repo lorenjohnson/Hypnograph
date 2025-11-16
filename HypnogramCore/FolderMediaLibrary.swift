@@ -5,8 +5,8 @@ import CoreMedia
 final class FolderMediaLibrary: ClipLibrary {
     private(set) var files: [VideoFile] = []
 
-    init(config: HypnogramConfig) {
-        loadFiles(from: config.sourceFolders)
+    init(settings: Settings) {
+        loadFiles(from: settings.sourceFolders)
     }
 
     private func loadFiles(from folders: [String]) {

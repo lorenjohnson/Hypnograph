@@ -22,7 +22,7 @@ import CoreMedia
 /// - M: cycleBlendModeForCurrentLayer()
 /// - R: currentRecipe() + resetForNextHypnogram()
 final class HypnogramState: ObservableObject {
-    let config: HypnogramConfig
+    let settings: Settings
     let library: ClipLibrary
     let blendModes: [BlendMode]
     
@@ -38,13 +38,13 @@ final class HypnogramState: ObservableObject {
     /// For each layer, index into `blendModes` determining its mode.
     @Published private(set) var layerBlendIndices: [Int]
 
-    init(config: HypnogramConfig) {
-        self.config = config
-        self.library = FolderMediaLibrary(config: config)
-        self.blendModes = config.blendModes.map { BlendMode(name: $0) }
+    init(settings: Settings) {
+        self.settings = settings
+        self.library = FolderMediaLibrary(settings: settings)
+        self.blendModes = settings.blendModes.map { BlendMode(name: $0) }
         self.currentLayer = 0
 
-        let layers = max(1, config.maxLayers)
+        let layers = max(1, settings.maxLayers)
         self.candidateClips = Array(repeating: nil, count: layers)
         self.selectedClips  = Array(repeating: nil, count: layers)
         self.layerBlendIndices = Array(repeating: 0, count: layers)
@@ -67,7 +67,7 @@ final class HypnogramState: ObservableObject {
     /// SPACE: Get a new random candidate for the current layer.
     @discardableResult
     func nextCandidateForCurrentLayer() -> VideoClip? {
-        guard let clip = library.randomClip(clipLength: config.outputSeconds) else {
+        guard let clip = library.randomClip(clipLength: settings.outputSeconds) else {
             return nil
         }
         candidateClips[currentLayer] = clip
@@ -194,7 +194,7 @@ final class HypnogramState: ObservableObject {
         guard !layers.isEmpty else { return nil }
 
         let duration = CMTime(
-            seconds: config.outputSeconds,
+            seconds: settings.outputSeconds,
             preferredTimescale: 600
         )
 
@@ -221,7 +221,7 @@ final class HypnogramState: ObservableObject {
 
         // Fill first clampedCount layers with random clips + random blend modes.
         for i in 0..<clampedCount {
-            if let clip = library.randomClip(clipLength: config.outputSeconds) {
+            if let clip = library.randomClip(clipLength: settings.outputSeconds) {
                 candidateClips[i] = clip
                 selectedClips[i]  = clip
             }

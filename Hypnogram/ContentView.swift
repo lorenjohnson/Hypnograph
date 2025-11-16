@@ -2,7 +2,7 @@ import SwiftUI
 import AVFoundation
 
 struct ContentView: View {
-    @ObservedObject var viewModel: HypnogramViewModel
+    @ObservedObject var viewModel: ViewModel
     @ObservedObject var renderQueue: RenderQueue
 
     var body: some View {
@@ -27,11 +27,11 @@ struct ContentView: View {
                         .padding(.bottom, 8)
 
                     if renderQueue.activeJobs > 0 {
-                        Text("In queue: \(renderQueue.activeJobs)")
+                        Text("Queue: \(renderQueue.activeJobs)")
                             .font(.subheadline)
                             .padding(.bottom, 8)
                     } else {
-                        Text("In queue: 0")
+                        Text("Queue: 0")
                             .font(.caption)
                             .padding(.bottom, 8)
                     }
@@ -41,10 +41,28 @@ struct ContentView: View {
 
                     Text("Blend mode: \(viewModel.currentBlendModeName)")
                         .font(.caption)
+                        .padding(.bottom, 16)
 
-                    Text("N = Next Candidate • Return = Accept Candidate • M = Blend Mode • R = Render Hypnogram • Delete = Back")
+                    Text("Space = New Set")
                         .font(.caption)
-                        .padding(.top, 8)
+                    Text("N = Next Candidate this layer")
+                        .font(.caption)
+                    Text("1-5 Next Candidate per layer X")
+                        .font(.caption)
+                    Text("Delete = Back a layer")
+                        .font(.caption)
+                    Text("Return = Accept Candidate")
+                        .font(.caption)
+                    Text("R = Render Hypnogram")
+                        .font(.caption)
+                    Text("M = Blend Mode")
+                        .font(.caption)
+                    Text("E = Toggle Global Effect")
+                        .font(.caption)
+                        .padding(.bottom, 16)
+
+                    Text("Shift-Cmd-S = Show Settings Folder")
+                        .font(.caption)
                 }
                 .foregroundColor(.white)
                 .padding()

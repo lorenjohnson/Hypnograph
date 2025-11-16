@@ -3,56 +3,65 @@ import AppKit
 
 @main
 struct HypnogramApp: App {
-    @StateObject private var viewModel: HypnogramViewModel
+    @StateObject private var viewModel: ViewModel
     @StateObject private var renderQueue: RenderQueue
 
     init() {
-        // TODO: adjust this path to wherever you put your config JSON.
-        let configURL = URL(fileURLWithPath: "/Users/lorenjohnson/dev/artdev/Hypnogram/hypnogram-config.json")
+        // Ensure user settings file exists (copy from bundle if missing)
+        AppSettingsPaths.ensureDefaultConfigFileExists()
 
-        let config: HypnogramConfig
+        // Always load from Application Support
+        let settingsURL = AppSettingsPaths.defaultConfigURL
+
+        let settings: Settings
         do {
-            config = try ConfigLoader.load(from: configURL)
-            print("Loaded HypnogramConfig from \(configURL.path)")
+            settings = try SettingsLoader.load(from: settingsURL)
+            print("Loaded settings from \(settingsURL.path)")
         } catch {
-            // Fallback config so the app still runs if the file is missing/broken.
-            print("Failed to load config from \(configURL.path): \(error)")
-            config = HypnogramConfig(
+            // Absolutely minimal fallback
+            print("⚠️ Failed to load settings, using emergency fallback: \(error)")
+
+            settings = Settings(
                 autoPrime: true,
-                blendModes: ["multiply", "softlight", "overlay"],
+                autoPrimeTimeout: 30,
+                blendModes: [
+                    "screen",
+                    "overlay",
+                    "softlight",
+                    "multiply",
+                    "darken",
+                    "lighten",
+                    "difference",
+                    "exclusion"
+                ],
                 maxLayers: 3,
-                outputFolder: "/Users/loren/Movies/hypnogram_renders",
-                outputHeight: 1920,
+                outputFolder: "~/Movies/Hypnogram/Renders",
+                outputHeight: 1080,
                 outputSeconds: 30,
-                outputWidth: 1080,
-                sourceFolders: ["/Users/loren/Movies/hypnogram_sources"]
+                outputWidth: 1920,
+                sourceFolders: [ "~/Movies/Hypnogram/Sources" ]
             )
         }
 
-        let outputURL = URL(fileURLWithPath: config.outputFolder, isDirectory: true)
+        // Expand ~
+        let outputPath = (settings.outputFolder as NSString).expandingTildeInPath
+        let outputURL = URL(fileURLWithPath: outputPath, isDirectory: true)
 
-        // Use native AVFoundation backend:
         let backend = AVRenderBackend(
             outputFolder: outputURL,
-            outputWidth: config.outputWidth,
-            outputHeight: config.outputHeight
+            outputWidth: settings.outputWidth,
+            outputHeight: settings.outputHeight
         )
 
-        // (Optional: keep JSON backend around for debugging)
-        // let backend = JSONRecipeBackend(outputFolder: outputURL)
-
         let queue = RenderQueue(backend: backend)
-        let vm = HypnogramViewModel(config: config, renderQueue: queue)
+        let vm = ViewModel(settings: settings, renderQueue: queue)
 
         _renderQueue = StateObject(wrappedValue: queue)
         _viewModel = StateObject(wrappedValue: vm)
 
-        // When all queued renders are finished (after Esc), terminate the app.
-        queue.onAllJobsFinished = {
-            NSApp.terminate(nil)
-        }
+        queue.onAllJobsFinished = { NSApp.terminate(nil) }
     }
-
+    
     var body: some Scene {
         WindowGroup {
             ContentView(viewModel: viewModel, renderQueue: renderQueue)
@@ -64,11 +73,6 @@ struct HypnogramApp: App {
         //  The hidden buttons in ContentView are enough to drive everything.
         .commands {
             CommandMenu("Hypnogram Controls") {
-                Button("Toggle HUD") {
-                    viewModel.toggleHUD()
-                }
-                .keyboardShortcut("h", modifiers: [])
-
                 Button("Next Candidate") {
                     viewModel.nextCandidate()
                 }
@@ -89,13 +93,19 @@ struct HypnogramApp: App {
                 }
                 .keyboardShortcut("r", modifiers: [])
 
-                Divider()
 
                 Button("Back") {
                     viewModel.handleEscape()
                 }
                 .keyboardShortcut(.delete, modifiers: [])
-                
+
+                Divider()
+
+                Button("New AutoPrime Set") {
+                    viewModel.newAutoPrimeSet()
+                }
+                .keyboardShortcut(.space, modifiers: [])                
+
                 Button("Randomize Layer 1") {
                     viewModel.randomizeLayer(index: 0)
                 }
@@ -120,6 +130,18 @@ struct HypnogramApp: App {
                     viewModel.randomizeLayer(index: 4)
                 }
                 .keyboardShortcut("5", modifiers: [])
+
+                Divider()
+
+                Button("Toggle HUD") {
+                    viewModel.toggleHUD()
+                }
+                .keyboardShortcut("h", modifiers: [])
+
+                Button("Show Settings Folder") {
+                    AppSettingsPaths.showSettingsFolderInFinder()
+                }
+                .keyboardShortcut("s", modifiers: [.command, .shift])
             }
         }
     }

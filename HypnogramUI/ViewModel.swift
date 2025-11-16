@@ -1,5 +1,5 @@
 //
-//  HypnogramViewModel.swift
+//  ViewModel.swift
 //  Hypnogram
 //
 //  Created by Loren Johnson on 15.11.25.
@@ -15,21 +15,21 @@ import CoreGraphics
 /// - Owns a HypnogramState (selection logic)
 /// - Owns a RenderQueue (render jobs)
 /// - Exposes simple intent methods for key commands (N, Return, M, R, Delete).
-final class HypnogramViewModel: ObservableObject {
+final class ViewModel: ObservableObject {
     @Published private(set) var state: HypnogramState
     @Published var currentCandidateStartOverride: CMTime?
-    @Published var isHUDVisible: Bool = true
+    @Published var isHUDVisible: Bool = false
 
     let renderQueue: RenderQueue
-    private let config: HypnogramConfig
+    private let settings: Settings
     private var autoPrimeTimer: Timer?
 
-    init(config: HypnogramConfig, renderQueue: RenderQueue) {
-        self.config = config
-        self.state = HypnogramState(config: config)
+    init(settings: Settings, renderQueue: RenderQueue) {
+        self.settings = settings
+        self.state = HypnogramState(settings: settings)
         self.renderQueue = renderQueue
 
-        if config.autoPrime {
+        if settings.autoPrime {
             autoPrimeNow()          // pre-roll a stack as if the user had selected layers
             scheduleAutoPrimeTimer()
         }
@@ -80,12 +80,17 @@ final class HypnogramViewModel: ObservableObject {
 
         state.resetForNextHypnogram()
 
-        if config.autoPrime {
+        if settings.autoPrime {
             autoPrimeNow()
         }
 
         currentCandidateStartOverride = nil
         objectWillChange.send()
+    }
+
+    func newAutoPrimeSet() {
+        noteUserInteraction()
+        autoPrimeNow()
     }
 
     func toggleHUD() {
@@ -100,7 +105,7 @@ final class HypnogramViewModel: ObservableObject {
         state.currentLayer
     }
 
-    /// Maximum number of layers in this hypnogram (from config).
+    /// Maximum number of layers in this hypnogram (from settings).
     var maxLayers: Int {
         state.maxLayers
     }
@@ -111,7 +116,7 @@ final class HypnogramViewModel: ObservableObject {
     /// - if only height > 0 → derive width with 16:9 (width = height * 16/9)
     /// - if both are 0 → default 1920x1080
     var outputSize: CGSize {
-        let cfg = state.config
+        let cfg = state.settings
 
         let defaultW: CGFloat = 1920
         let defaultH: CGFloat = 1080
@@ -180,9 +185,9 @@ final class HypnogramViewModel: ObservableObject {
 
     /// Create a new random stack of layers, as if the user had manually chosen them.
     private func autoPrimeNow() {
-        guard config.maxLayers > 0 else { return }
+        guard settings.maxLayers > 0 else { return }
 
-        let total = config.maxLayers
+        let total = settings.maxLayers
         // 2..maxLayers normally; fall back to 1 if maxLayers == 1.
         let minLayers = min(2, total)
         let activeCount = Int.random(in: minLayers...total)
@@ -194,14 +199,14 @@ final class HypnogramViewModel: ObservableObject {
 
     /// (Re)schedule inactivity timeout to auto-prime again.
     private func scheduleAutoPrimeTimer() {
-        guard config.autoPrime, config.autoPrimeTimeout > 0 else {
+        guard settings.autoPrime, settings.autoPrimeTimeout > 0 else {
             autoPrimeTimer?.invalidate()
             autoPrimeTimer = nil
             return
         }
 
         autoPrimeTimer?.invalidate()
-        autoPrimeTimer = Timer.scheduledTimer(withTimeInterval: config.autoPrimeTimeout,
+        autoPrimeTimer = Timer.scheduledTimer(withTimeInterval: settings.autoPrimeTimeout,
                                               repeats: false) { [weak self] _ in
             guard let self else { return }
             self.autoPrimeNow()

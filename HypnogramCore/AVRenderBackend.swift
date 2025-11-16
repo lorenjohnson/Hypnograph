@@ -247,7 +247,7 @@ final class AVRenderBackend: RenderBackend {
         print("AVRenderBackend: using \(videoTrackIDs.count) video track(s), duration \(targetSeconds)s")
 
         // 4. Video composition + custom compositor
-        let instruction = HypnogramVideoCompositionInstruction(
+        let instruction = VideoCompositionInstruction(
             timeRange: CMTimeRange(start: .zero, duration: targetDuration),
             layerTrackIDs: videoTrackIDs,
             blendModes: blendModes
