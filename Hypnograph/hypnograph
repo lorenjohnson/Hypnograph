@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SETTINGS="$HOME/Library/Application Support/Hypnograph/hypnogram-settings.json"
+SETTINGS="$HOME/Library/Application Support/Hypnograph/hypnograph-settings.json"
 
 usage() {
   echo "Usage:" >&2

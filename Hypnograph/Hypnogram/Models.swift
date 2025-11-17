@@ -1,6 +1,6 @@
 //
 //  VideoFile.swift
-//  Hypnograph
+//  Hypnogram
 //
 //  Created by Loren Johnson on 15.11.25.
 //
@@ -11,17 +11,29 @@ import CoreMedia
 // MARK: - Core Data Models
 
 /// A single video file on disk that we can select clips from.
-struct VideoFile: Identifiable {
-    let id = UUID()
-    let url: URL
-    let duration: CMTime
+public struct VideoFile: Identifiable {
+    public let id: UUID
+    public let url: URL
+    public let duration: CMTime
+
+    public init(id: UUID = UUID(), url: URL, duration: CMTime) {
+        self.id = id
+        self.url = url
+        self.duration = duration
+    }
 }
 
 /// A specific slice (start + length) from a VideoFile.
-struct VideoClip {
-    let file: VideoFile
-    let startTime: CMTime
-    let duration: CMTime
+public struct VideoClip {
+    public let file: VideoFile
+    public let startTime: CMTime
+    public let duration: CMTime
+
+    public init(file: VideoFile, startTime: CMTime, duration: CMTime) {
+        self.file = file
+        self.startTime = startTime
+        self.duration = duration
+    }
 }
 
 /// Represents a blend mode (Multiply, SoftLight, Overlay, etc.)
@@ -29,23 +41,27 @@ struct VideoClip {
 /// derive both:
 /// - a stable key/name ("multiply") for UI / JSON
 /// - the CoreImage filter name (e.g. "CIMultiplyBlendMode") for rendering
-struct BlendMode {
+public struct BlendMode {
     /// Simple key from settings, e.g. "multiply", "softlight", "overlay".
-    let key: String
+    public let key: String
 
     /// Convenience init to keep existing `BlendMode(name: ...)` calls working.
-    init(name: String) {
+    public init(name: String) {
         self.key = name
     }
 
+    /// Optional direct key-based init if you ever need it.
+    public init(key: String) {
+        self.key = key
+    }
+
     /// Name used everywhere else (UI label, JSON, etc.).
-    var name: String {
+    public var name: String {
         key
     }
 
     /// CoreImage filter name for this blend mode.
-    /// These are the CI blend filters, e.g. "CIMultiplyBlendMode".
-    var ciFilterName: String {
+    public var ciFilterName: String {
         switch key.lowercased() {
         case "multiply":
             return "CIMultiplyBlendMode"
@@ -85,14 +101,24 @@ struct BlendMode {
 }
 
 /// One layer of a hypnogram: a clip + its blend mode.
-struct HypnogramLayer {
-    let clip: VideoClip
-    let blendMode: BlendMode
+public struct HypnogramLayer {
+    public let clip: VideoClip
+    public let blendMode: BlendMode
+
+    public init(clip: VideoClip, blendMode: BlendMode) {
+        self.clip = clip
+        self.blendMode = blendMode
+    }
 }
 
 /// A complete “hypnogram” recipe: ordered layers of clip + blend mode
 /// plus the target render duration for the composition.
-struct HypnogramRecipe {
-    let layers: [HypnogramLayer]
-    let targetDuration: CMTime
+public struct HypnogramRecipe {
+    public let layers: [HypnogramLayer]
+    public let targetDuration: CMTime
+
+    public init(layers: [HypnogramLayer], targetDuration: CMTime) {
+        self.layers = layers
+        self.targetDuration = targetDuration
+    }
 }

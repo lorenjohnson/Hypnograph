@@ -37,10 +37,10 @@ struct HypnographApp: App {
 
     init() {
         // Ensure user settings file exists (copy from bundle if missing)
-        AppSettingsPaths.ensureDefaultSettingsFileExists()
+        Environment.ensureDefaultSettingsFileExists()
 
         // Always load from Application Support
-        let settingsURL = AppSettingsPaths.defaultSettingsURL
+        let settingsURL = Environment.defaultSettingsURL
 
         let settings: Settings
         do {
@@ -75,14 +75,14 @@ struct HypnographApp: App {
         let outputPath = (settings.outputFolder as NSString).expandingTildeInPath
         let outputURL = URL(fileURLWithPath: outputPath, isDirectory: true)
 
-        let backend = AVRenderBackend(
+        let backend = AVFoundationRenderer(
             outputFolder: outputURL,
             outputWidth: settings.outputWidth,
             outputHeight: settings.outputHeight
         )
 
-        let queue = RenderQueue(backend: backend)
-        let vm = ViewModel(settings: settings, renderQueue: queue)
+        let queue = RenderQueue(renderer: backend)
+        let vm    = ViewModel(settings: settings, renderQueue: queue)
 
         _renderQueue = StateObject(wrappedValue: queue)
         _viewModel = StateObject(wrappedValue: vm)
@@ -172,11 +172,11 @@ struct HypnographApp: App {
                 .keyboardShortcut("h", modifiers: [])
 
                 Button("Install hypnograph command") {
-                    AppSettingsPaths.installHypnographCLI()
+                    Environment.installCLI()
                 }
 
                 Button("Show Settings Folder") {
-                    AppSettingsPaths.showSettingsFolderInFinder()
+                    Environment.showSettingsFolderInFinder()
                 }
                 .keyboardShortcut("s", modifiers: [.command, .shift])
             }

@@ -20,28 +20,28 @@ import CoreMedia
 /// - Space: nextCandidateForCurrentLayer()
 /// - Return: acceptCandidateForCurrentLayer()
 /// - M: cycleBlendModeForCurrentLayer()
-/// - R: currentRecipe() + resetForNextHypnogram()
-final class HypnogramSession: ObservableObject {
-    let settings: Settings
-    let library: ClipLibrary
-    let blendModes: [BlendMode]
+/// - R: layersForRender() + resetForNextHypnogram()
+public final class Session: ObservableObject {
+    public let settings: Settings
+    public let blendModes: [BlendMode]
+    let library: VideoSourcesLibrary
     
     /// Index of the layer currently being chosen [0 ..< maxLayers]
-    @Published private(set) var currentLayer: Int = 0
+    @Published public private(set) var currentLayer: Int = 0
 
     /// For each layer, the current candidate clip (Space cycles this).
-    @Published private(set) var candidateClips: [VideoClip?]
+    @Published public private(set) var candidateClips: [VideoClip?]
 
     /// For each layer, the accepted clip (after Return is pressed).
-    @Published private(set) var selectedClips: [VideoClip?]
+    @Published public private(set) var selectedClips: [VideoClip?]
     
     /// For each layer, index into `blendModes` determining its mode.
-    @Published private(set) var layerBlendIndices: [Int]
+    @Published public private(set) var layerBlendIndices: [Int]
 
-    init(settings: Settings) {
+    public init(settings: Settings) {
         self.settings = settings
-        self.library = FolderMediaLibrary(settings: settings)
-        self.blendModes = settings.blendModes.map { BlendMode(name: $0) }
+        self.library = VideoSourcesLibrary(sourceFolders: settings.sourceFolders)
+        self.blendModes = settings.blendModes.map { BlendMode(key: $0) }
         self.currentLayer = 0
 
         let layers = max(1, settings.maxLayers)
@@ -52,12 +52,12 @@ final class HypnogramSession: ObservableObject {
         _ = nextCandidateForCurrentLayer()
     }
 
-    var maxLayers: Int {
+    public var maxLayers: Int {
         candidateClips.count
     }
     
     /// The blend mode currently selected for the active layer.
-    var currentBlendMode: BlendMode {
+    public var currentBlendMode: BlendMode {
         let idx = layerBlendIndices[currentLayer]
         return blendModes[idx]
     }
@@ -66,7 +66,7 @@ final class HypnogramSession: ObservableObject {
     
     /// SPACE: Get a new random candidate for the current layer.
     @discardableResult
-    func nextCandidateForCurrentLayer() -> VideoClip? {
+    public func nextCandidateForCurrentLayer() -> VideoClip? {
         guard let clip = library.randomClip(clipLength: settings.outputSeconds) else {
             return nil
         }
@@ -77,7 +77,7 @@ final class HypnogramSession: ObservableObject {
     /// RETURN: Accept the current candidate for this layer,
     /// optionally overriding its start time with a custom playhead time,
     /// and move to the next layer if there is one.
-    func acceptCandidateForCurrentLayer(usingStartTime customStart: CMTime? = nil) {
+    public func acceptCandidateForCurrentLayer(usingStartTime customStart: CMTime? = nil) {
         guard let candidate = candidateClips[currentLayer] else { return }
 
         let finalClip: VideoClip
@@ -123,7 +123,7 @@ final class HypnogramSession: ObservableObject {
     
     /// Randomize the clip (and optionally blend) for a specific layer.
     /// Used by keys 1, 2, 3 etc.
-    func randomizeLayer(_ index: Int, randomizeBlend: Bool = false) {
+    public func randomizeLayer(_ index: Int, randomizeBlend: Bool = false) {
         guard index >= 0 && index < maxLayers else { return }
 
         currentLayer = index
@@ -136,7 +136,7 @@ final class HypnogramSession: ObservableObject {
     
     /// M: Cycle the blend mode for the *current* layer.
     /// On layer 0, do nothing (base layer has no meaningful blend visually).
-    func cycleBlendModeForCurrentLayer() {
+    public func cycleBlendModeForCurrentLayer() {
         guard !blendModes.isEmpty else { return }
 
         // Disable changing on the first layer to avoid confusing "black screen" behavior.
@@ -153,7 +153,7 @@ final class HypnogramSession: ObservableObject {
     /// - The layer we are leaving is cleared (no candidate, no selected, blend reset).
     /// - `currentLayer` moves down by 1.
     /// - The new current layer gets its selected clip (if any) as candidate so you can tweak it.
-    func goBackOneLayer() {
+    public func goBackOneLayer() {
         // Nothing to drop if we're already at the base layer.
         guard currentLayer > 0 else { return }
 
@@ -178,7 +178,7 @@ final class HypnogramSession: ObservableObject {
     /// Layers above the current one are ignored.
     ///
     /// Returns nil only if *no* clips are present at all.
-    func currentRecipe() -> HypnogramRecipe? {
+    public func layersForRender() -> HypnogramRecipe? {
         var layers: [HypnogramLayer] = []
 
         for layerIndex in 0..<maxLayers {
@@ -205,7 +205,7 @@ final class HypnogramSession: ObservableObject {
     /// clear the rest, and position the cursor on the top-most active layer.
     ///
     /// This is deliberately dumb and stateless: callers decide *when* and *how many*.
-    func primeRandomLayers(activeLayerCount: Int) {
+    public func primeRandomLayers(activeLayerCount: Int) {
         let totalLayers = maxLayers
         guard totalLayers > 0 else {
             currentLayer = 0
@@ -241,7 +241,7 @@ final class HypnogramSession: ObservableObject {
 
     /// After enqueuing a recipe for render, call this to start a fresh one.
     /// This does *not* auto-prime; higher layers (ViewModel) decide that.
-    func resetForNextHypnogram() {
+    public func resetForNextHypnogram() {
         let layers = maxLayers
 
         selectedClips     = Array(repeating: nil, count: layers)
@@ -255,7 +255,7 @@ final class HypnogramSession: ObservableObject {
     /// Build a list of layers for live preview:
     /// - For every layer, use candidate if present, otherwise selected.
     /// - Ignore layers that have neither.
-    func previewLayers() -> [HypnogramLayer] {
+    public func layersForPreview() -> [HypnogramLayer] {
         var result: [HypnogramLayer] = []
 
         for index in 0..<maxLayers {

@@ -191,7 +191,7 @@ struct MultiLayerPreviewView: View {
                 // If we have at least 2 layers, the "edge" between 1 and 2
                 // is controlled by layer 2's blend mode.
                 guard layers.count > 1 else { return nil }
-                let modeName = layers[1].blendMode.name
+                let modeName = layers[1].blendMode.key
                 return swiftUIBlendMode(for: modeName)
             }()
 
@@ -202,7 +202,7 @@ struct MultiLayerPreviewView: View {
                     currentTime: $currentLayerTime
                 )
                 .hypnoBlendPrep(
-                    for: layer.blendMode.name
+                    for: layer.blendMode.key
                 )
                 .blendMode(blendModeForLayer(at: index,
                                              layer: layer,
@@ -239,11 +239,11 @@ struct MultiLayerPreviewView: View {
         } else if index == 1 {
             // Second layer: same story – its mode is the one defining the
             // interaction between layer 1 and 2.
-            return firstEdgeMode ?? swiftUIBlendMode(for: layer.blendMode.name)
+            return firstEdgeMode ?? swiftUIBlendMode(for: layer.blendMode.key)
         } else {
             // Layers 3+ use their own configured blend mode relative to the
             // already-composited stack beneath.
-            return swiftUIBlendMode(for: layer.blendMode.name)
+            return swiftUIBlendMode(for: layer.blendMode.key)
         }
     }
 
@@ -268,7 +268,6 @@ struct MultiLayerPreviewView: View {
         }
     }
     
-    // Vignette overlay (unchanged from before, or tweak to taste)
     private var vignetteOverlay: some View {
         RadialGradient(
             gradient: Gradient(colors: [

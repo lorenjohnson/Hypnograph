@@ -1,5 +1,5 @@
 //
-//  VideoCompositionInstruction.swift
+//  LayeredVideoCompositionInstruction.swift
 //  Hypnogram
 //
 //  Created by Loren Johnson on 15.11.25.
@@ -13,19 +13,19 @@ import CoreMedia
 /// Instruction describing how to composite a single segment:
 /// - which track IDs to use as layers
 /// - which blend modes (one per layer, same order)
-final class VideoCompositionInstruction: NSObject, AVVideoCompositionInstructionProtocol {
-    var timeRange: CMTimeRange
-    var enablePostProcessing: Bool = false
-    var containsTweening: Bool = false
+public final class LayeredVideoCompositionInstruction: NSObject, AVVideoCompositionInstructionProtocol {
+    public var timeRange: CMTimeRange
+    public var enablePostProcessing: Bool = false
+    public var containsTweening: Bool = false
 
     /// AVVideoCompositing wants this even when we do full custom compositing.
-    var requiredSourceTrackIDs: [NSValue]?
-    var passthroughTrackID: CMPersistentTrackID = kCMPersistentTrackID_Invalid
+    public var requiredSourceTrackIDs: [NSValue]?
+    public var passthroughTrackID: CMPersistentTrackID = kCMPersistentTrackID_Invalid
 
     let layerTrackIDs: [CMPersistentTrackID]
     let blendModes: [String]
 
-    init(timeRange: CMTimeRange,
+    public init(timeRange: CMTimeRange,
          layerTrackIDs: [CMPersistentTrackID],
          blendModes: [String]) {
         self.timeRange = timeRange
@@ -40,40 +40,40 @@ final class VideoCompositionInstruction: NSObject, AVVideoCompositionInstruction
 /// Custom compositor that blends multiple video tracks using CoreImage.
 /// Each source frame is aspect-fit into the render size (like AVPlayerView.resizeAspect),
 /// then blended using the requested CoreImage blend filters.
-final class HypnogramVideoCompositor: NSObject, AVVideoCompositing {
+public final class LayeredVideoComposition: NSObject, AVVideoCompositing {
 
-    private let renderContextQueue = DispatchQueue(label: "HypnogramVideoCompositor.renderContextQueue")
-    private let renderingQueue = DispatchQueue(label: "HypnogramVideoCompositor.renderingQueue")
+    private let renderContextQueue = DispatchQueue(label: "LayeredVideoComposition.renderContextQueue")
+    private let renderingQueue = DispatchQueue(label: "LayeredVideoComposition.renderingQueue")
     private var renderContext: AVVideoCompositionRenderContext?
     private let ciContext = CIContext(options: nil)
 
-    var sourcePixelBufferAttributes: [String : Any]? {
+    public var sourcePixelBufferAttributes: [String : Any]? {
         [
             kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)
         ]
     }
 
-    var requiredPixelBufferAttributesForRenderContext: [String : Any] {
+    public var requiredPixelBufferAttributesForRenderContext: [String : Any] {
         [
             kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)
         ]
     }
 
-    var supportsWideColorSourceFrames: Bool { false }
+    public var supportsWideColorSourceFrames: Bool { false }
 
-    func renderContextChanged(_ newRenderContext: AVVideoCompositionRenderContext) {
+    public func renderContextChanged(_ newRenderContext: AVVideoCompositionRenderContext) {
         renderContextQueue.sync {
             renderContext = newRenderContext
         }
     }
 
-    func startRequest(_ request: AVAsynchronousVideoCompositionRequest) {
+    public func startRequest(_ request: AVAsynchronousVideoCompositionRequest) {
         renderingQueue.async {
             guard
-                let instruction = request.videoCompositionInstruction as? VideoCompositionInstruction
+                let instruction = request.videoCompositionInstruction as? LayeredVideoCompositionInstruction
             else {
                 let error = NSError(
-                    domain: "HypnogramVideoCompositor",
+                    domain: "LayeredVideoComposition",
                     code: -1,
                     userInfo: [NSLocalizedDescriptionKey: "Unexpected instruction type"]
                 )
@@ -83,7 +83,7 @@ final class HypnogramVideoCompositor: NSObject, AVVideoCompositing {
 
             guard let renderContext = self.renderContext else {
                 let error = NSError(
-                    domain: "HypnogramVideoCompositor",
+                    domain: "LayeredVideoComposition",
                     code: -2,
                     userInfo: [NSLocalizedDescriptionKey: "No render context"]
                 )
@@ -102,7 +102,7 @@ final class HypnogramVideoCompositor: NSObject, AVVideoCompositing {
             else {
                 guard let blank = renderContext.newPixelBuffer() else {
                     let error = NSError(
-                        domain: "HypnogramVideoCompositor",
+                        domain: "LayeredVideoComposition",
                         code: -3,
                         userInfo: [NSLocalizedDescriptionKey: "Failed to allocate output buffer"]
                     )
@@ -138,7 +138,7 @@ final class HypnogramVideoCompositor: NSObject, AVVideoCompositing {
 
             guard let dstBuffer = renderContext.newPixelBuffer() else {
                 let error = NSError(
-                    domain: "HypnogramVideoCompositor",
+                    domain: "LayeredVideoComposition",
                     code: -4,
                     userInfo: [NSLocalizedDescriptionKey: "Failed to allocate destination buffer"]
                 )
@@ -151,7 +151,7 @@ final class HypnogramVideoCompositor: NSObject, AVVideoCompositing {
         }
     }
 
-    func cancelAllPendingVideoCompositionRequests() {
+    public func cancelAllPendingVideoCompositionRequests() {
         renderingQueue.sync {
             // just drain
         }
@@ -159,7 +159,7 @@ final class HypnogramVideoCompositor: NSObject, AVVideoCompositing {
 
     private func composite(bottom: CIImage, top: CIImage, modeName: String) -> CIImage {
         guard let filter = CIFilter(name: modeName) else {
-            print("HypnogramVideoCompositor: unknown blend filter '\(modeName)', falling back to source-over")
+            print("LayeredVideoComposition: unknown blend filter '\(modeName)', falling back to source-over")
             return top.composited(over: bottom)
         }
 

@@ -13,7 +13,7 @@ struct ContentView: View {
 
             // Live multi-layer preview: selected layers + current candidate.
             MultiLayerPreviewView(
-                layers: viewModel.previewLayers,
+                layers: viewModel.layersForPreview,
                 currentLayerIndex: viewModel.currentLayerIndex,
                 currentLayerTime: Binding(
                     get: { viewModel.currentCandidateStartOverride },

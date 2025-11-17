@@ -2,11 +2,11 @@ import Foundation
 import AVFoundation
 import CoreMedia
 
-final class FolderMediaLibrary: ClipLibrary {
-    private(set) var files: [VideoFile] = []
+public final class VideoSourcesLibrary {
+    public private(set) var files: [VideoFile] = []
 
-    init(settings: Settings) {
-        loadFiles(from: settings.sourceFolders)
+    public init(sourceFolders: [String]) {
+        loadFiles(from: sourceFolders)
     }
 
     private func loadFiles(from sources: [String]) {
@@ -64,7 +64,7 @@ final class FolderMediaLibrary: ClipLibrary {
         self.files = results
     }
 
-    func randomClip(clipLength: Double) -> VideoClip? {
+    public func randomClip(clipLength: Double) -> VideoClip? {
         guard let file = files.randomElement() else { return nil }
 
         let totalSeconds = file.duration.seconds
