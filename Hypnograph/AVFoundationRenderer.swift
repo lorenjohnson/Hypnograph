@@ -1,12 +1,16 @@
+//
+//  AVFoundationRenderer.swift
+//  Hypnograph
+//
+//  Created by Loren Johnson on 17.11.25.
+//
+
 import Foundation
 import AVFoundation
 import CoreMedia
+import CoreGraphics
 
-/// RenderBackend implementation that uses AVFoundation to render full Hypnographs:
-/// - one video track per layer (looped as needed to fill the target duration)
-/// - optional audio tracks per layer (also looped)
-/// - custom CoreImage compositor applying per-layer blend modes.
-final class AVRenderBackend: RenderBackend {
+final class AVFoundationRenderer: HypnogramRenderer {
     private let outputFolder: URL
     private let outputWidth: Int
     private let outputHeight: Int
@@ -63,11 +67,11 @@ final class AVRenderBackend: RenderBackend {
         // 1. Basic sanity check
         guard !recipe.layers.isEmpty else {
             let err = NSError(
-                domain: "AVRenderBackend",
+                domain: "AVFoundationRenderer",
                 code: 1,
                 userInfo: [NSLocalizedDescriptionKey: "Empty HypnogramRecipe"]
             )
-            print("AVRenderBackend: \(err)")
+            print("AVFoundationRenderer: \(err)")
             completion(.failure(err))
             return
         }
@@ -76,16 +80,16 @@ final class AVRenderBackend: RenderBackend {
         let targetSeconds = targetDuration.seconds
         guard targetSeconds > 0 else {
             let err = NSError(
-                domain: "AVRenderBackend",
+                domain: "AVFoundationRenderer",
                 code: 6,
                 userInfo: [NSLocalizedDescriptionKey: "Non-positive targetDuration in recipe"]
             )
-            print("AVRenderBackend: \(err)")
+            print("AVFoundationRenderer: \(err)")
             completion(.failure(err))
             return
         }
 
-        print("AVRenderBackend: rendering recipe with \(recipe.layers.count) layer(s), target duration \(targetSeconds)s")
+        print("AVFoundationRenderer: rendering recipe with \(recipe.layers.count) layer(s), target duration \(targetSeconds)s")
 
         let composition = AVMutableComposition()
 
@@ -114,14 +118,14 @@ final class AVRenderBackend: RenderBackend {
             let asset = AVAsset(url: clip.file.url)
 
             guard let srcVideoTrack = asset.tracks(withMediaType: .video).first else {
-                print("AVRenderBackend: layer \(index) has no video track; skipping")
+                print("AVFoundationRenderer: layer \(index) has no video track; skipping")
                 continue
             }
 
             let fileDuration = asset.duration
             let fileSeconds = fileDuration.seconds
             if fileSeconds <= 0 {
-                print("AVRenderBackend: layer \(index) has non-positive duration; skipping")
+                print("AVFoundationRenderer: layer \(index) has non-positive duration; skipping")
                 continue
             }
 
@@ -131,7 +135,7 @@ final class AVRenderBackend: RenderBackend {
                 withMediaType: .video,
                 preferredTrackID: trackID
             ) else {
-                print("AVRenderBackend: failed to add video track for layer \(index)")
+                print("AVFoundationRenderer: failed to add video track for layer \(index)")
                 continue
             }
 
@@ -173,7 +177,7 @@ final class AVRenderBackend: RenderBackend {
                     remainingSeconds -= segmentSeconds
                 }
             } catch {
-                print("AVRenderBackend: failed to insert video segments for layer \(index): \(error)")
+                print("AVFoundationRenderer: failed to insert video segments for layer \(index): \(error)")
                 continue
             }
 
@@ -222,46 +226,46 @@ final class AVRenderBackend: RenderBackend {
                             audioRemainingSeconds -= seg
                         }
                     } catch {
-                        print("AVRenderBackend: failed to insert audio segments for layer \(index): \(error)")
+                        print("AVFoundationRenderer: failed to insert audio segments for layer \(index): \(error)")
                     }
                 } else {
-                    print("AVRenderBackend: failed to add audio track for layer \(index)")
+                    print("AVFoundationRenderer: failed to add audio track for layer \(index)")
                 }
             } else {
-                print("AVRenderBackend: layer \(index) has no audio track; skipping audio")
+                print("AVFoundationRenderer: layer \(index) has no audio track; skipping audio")
             }
         }
 
         // 3. Validate content
         guard !videoTrackIDs.isEmpty else {
             let err = NSError(
-                domain: "AVRenderBackend",
+                domain: "AVFoundationRenderer",
                 code: 2,
                 userInfo: [NSLocalizedDescriptionKey: "No valid video content to render"]
             )
-            print("AVRenderBackend: \(err)")
+            print("AVFoundationRenderer: \(err)")
             completion(.failure(err))
             return
         }
 
-        print("AVRenderBackend: using \(videoTrackIDs.count) video track(s), duration \(targetSeconds)s")
+        print("AVFoundationRenderer: using \(videoTrackIDs.count) video track(s), duration \(targetSeconds)s")
 
         // 4. Video composition + custom compositor
-        let instruction = VideoCompositionInstruction(
+        let instruction = LayeredVideoCompositionInstruction(
             timeRange: CMTimeRange(start: .zero, duration: targetDuration),
             layerTrackIDs: videoTrackIDs,
             blendModes: blendModes
         )
 
         let videoComposition = AVMutableVideoComposition()
-        videoComposition.customVideoCompositorClass = HypnogramVideoCompositor.self
+        videoComposition.customVideoCompositorClass = LayeredVideoComposition.self
         videoComposition.renderSize = targetRenderSize
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
         videoComposition.instructions = [instruction]
 
         // 5. Audio mix
         let audioTracks = composition.tracks(withMediaType: .audio)
-        print("AVRenderBackend: composition has \(audioTracks.count) audio track(s)")
+        print("AVFoundationRenderer: composition has \(audioTracks.count) audio track(s)")
 
         var audioMix: AVAudioMix?
         if !audioTracks.isEmpty {
@@ -272,7 +276,7 @@ final class AVRenderBackend: RenderBackend {
                 let p = AVMutableAudioMixInputParameters(track: track)
                 p.setVolume(1.0, at: .zero)
                 params.append(p)
-                print("AVRenderBackend: audio track \(i) id=\(track.trackID) duration=\(track.timeRange.duration.seconds)s")
+                print("AVFoundationRenderer: audio track \(i) id=\(track.trackID) duration=\(track.timeRange.duration.seconds)s")
             }
 
             mix.inputParameters = params
@@ -287,7 +291,7 @@ final class AVRenderBackend: RenderBackend {
                 attributes: nil
             )
         } catch {
-            print("AVRenderBackend: failed to create output folder: \(error)")
+            print("AVFoundationRenderer: failed to create output folder: \(error)")
             completion(.failure(error))
             return
         }
@@ -305,11 +309,11 @@ final class AVRenderBackend: RenderBackend {
             presetName: AVAssetExportPresetHighestQuality
         ) else {
             let err = NSError(
-                domain: "AVRenderBackend",
+                domain: "AVFoundationRenderer",
                 code: 3,
                 userInfo: [NSLocalizedDescriptionKey: "Failed to create AVAssetExportSession"]
             )
-            print("AVRenderBackend: \(err)")
+            print("AVFoundationRenderer: \(err)")
             completion(.failure(err))
             return
         }
@@ -321,35 +325,35 @@ final class AVRenderBackend: RenderBackend {
 
         if let mix = audioMix {
             exportSession.audioMix = mix
-            print("AVRenderBackend: attached audio mix with \(mix.inputParameters.count) input(s)")
+            print("AVFoundationRenderer: attached audio mix with \(mix.inputParameters.count) input(s)")
         } else {
-            print("AVRenderBackend: no audio mix attached")
+            print("AVFoundationRenderer: no audio mix attached")
         }
 
-        print("AVRenderBackend: starting export to \(outputURL.path)")
+        print("AVFoundationRenderer: starting export to \(outputURL.path)")
 
         exportSession.exportAsynchronously {
             switch exportSession.status {
             case .completed:
-                print("AVRenderBackend: export completed → \(outputURL.path)")
+                print("AVFoundationRenderer: export completed → \(outputURL.path)")
                 completion(.success(outputURL))
 
             case .failed, .cancelled:
                 let error = exportSession.error ?? NSError(
-                    domain: "AVRenderBackend",
+                    domain: "AVFoundationRenderer",
                     code: 4,
                     userInfo: [NSLocalizedDescriptionKey: "Export failed or cancelled"]
                 )
-                print("AVRenderBackend: export failed/cancelled: \(error)")
+                print("AVFoundationRenderer: export failed/cancelled: \(error)")
                 completion(.failure(error))
 
             default:
                 let error = exportSession.error ?? NSError(
-                    domain: "AVRenderBackend",
+                    domain: "AVFoundationRenderer",
                     code: 5,
                     userInfo: [NSLocalizedDescriptionKey: "Unexpected export status: \(exportSession.status)"]
                 )
-                print("AVRenderBackend: unexpected export status: \(exportSession.status) (error: \(String(describing: exportSession.error)))")
+                print("AVFoundationRenderer: unexpected export status: \(exportSession.status) (error: \(String(describing: exportSession.error)))")
                 completion(.failure(error))
             }
         }

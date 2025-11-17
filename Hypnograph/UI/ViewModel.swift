@@ -16,7 +16,7 @@ import CoreGraphics
 /// - Owns a RenderQueue (render jobs)
 /// - Exposes simple intent methods for key commands (N, Return, M, R, Delete).
 final class ViewModel: ObservableObject {
-    @Published private(set) var currentSession: HypnogramSession
+    @Published private(set) var currentSession: Session
     @Published var currentCandidateStartOverride: CMTime?
     @Published var isHUDVisible: Bool = false
 
@@ -28,7 +28,7 @@ final class ViewModel: ObservableObject {
 
     init(settings: Settings, renderQueue: RenderQueue) {
         self.settings = settings
-        self.currentSession = HypnogramSession(settings: settings)
+        self.currentSession = Session(settings: settings)
         self.renderQueue = renderQueue
 
         if settings.autoPrime {
@@ -73,7 +73,7 @@ final class ViewModel: ObservableObject {
     func renderCurrentHypnogram() {
         noteUserInteraction()
 
-        guard let recipe = currentSession.currentRecipe() else {
+        guard let recipe = currentSession.layersForRender() else {
             print("renderCurrentHypnogram(): no renderable hypnogram (no selected clips).")
             return
         }
@@ -96,10 +96,10 @@ final class ViewModel: ObservableObject {
     func newAutoPrimeSet() {
         // 1) Try to reload settings from the canonical settings file.
         do {
-            let url = AppSettingsPaths.defaultSettingsURL
+            let url = Environment.defaultSettingsURL
             let newSettings = try SettingsLoader.load(from: url)
             self.settings = newSettings
-            self.currentSession = HypnogramSession(settings: newSettings)
+            self.currentSession = Session(settings: newSettings)
             print("🔄 Reloaded settings from \(url.path)")
         } catch {
             // If reload fails, keep old settings/session and log.
@@ -174,8 +174,8 @@ final class ViewModel: ObservableObject {
     }
 
     /// Layers (with clips + modes) to render in the live preview.
-    var previewLayers: [HypnogramLayer] {
-        currentSession.previewLayers()
+    var layersForPreview: [HypnogramLayer] {
+        currentSession.layersForPreview()
     }
 
     /// Delete: step back a layer if possible; on the first layer, this is your

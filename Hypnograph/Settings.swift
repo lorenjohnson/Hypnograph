@@ -3,42 +3,43 @@
 //  Hypnograph
 //
 //  Created by Loren Johnson on 15.11.25.
+//  Consolidated Settings
 //
 
 import Foundation
+import AppKit
 
 // -------------------------------------------------------------
 //  First stage: raw decoded JSON (no tilde expansion, no logic)
 // -------------------------------------------------------------
-struct SettingsParams: Codable {
-    var autoPrime: Bool
-    var autoPrimeTimeout: Double
-    var blendModes: [String]
-    var maxLayers: Int
-    var sourceFolders: [String]
-    var outputFolder: String
-    var outputHeight: Int
-    var outputSeconds: Double
-    var outputWidth: Int
+public struct SettingsParams: Codable {
+    public var autoPrime: Bool
+    public var autoPrimeTimeout: Double
+    public var blendModes: [String]
+    public var maxLayers: Int
+    public var sourceFolders: [String]
+    public var outputFolder: String
+    public var outputHeight: Int
+    public var outputSeconds: Double
+    public var outputWidth: Int
 }
 
 // -------------------------------------------------------------
 //  Normalized Settings used by the app everywhere
 // -------------------------------------------------------------
-struct Settings: Codable {
-
-    var autoPrime: Bool
-    var autoPrimeTimeout: Double
-    var blendModes: [String]
-    var maxLayers: Int
-    var sourceFolders: [String]
-    var outputFolder: String
-    var outputHeight: Int
-    var outputSeconds: Double
-    var outputWidth: Int
+public struct Settings: Codable {
+    public var autoPrime: Bool
+    public var autoPrimeTimeout: Double
+    public var blendModes: [String]
+    public var maxLayers: Int
+    public var sourceFolders: [String]
+    public var outputFolder: String
+    public var outputHeight: Int
+    public var outputSeconds: Double
+    public var outputWidth: Int
 
     // Main initializer with normalization
-    init(
+    public init(
         autoPrime: Bool,
         autoPrimeTimeout: Double = 120,
         blendModes: [String],
@@ -64,7 +65,7 @@ struct Settings: Codable {
     }
 
     // Convenience initializer for decoding normalized Settings
-    init(_ p: SettingsParams) {
+    public init(_ p: SettingsParams) {
         self.init(
             autoPrime: p.autoPrime,
             autoPrimeTimeout: p.autoPrimeTimeout,
@@ -82,8 +83,8 @@ struct Settings: Codable {
 // -------------------------------------------------------------
 //  Loader: JSON → SettingsParams → Settings
 // -------------------------------------------------------------
-enum SettingsLoader {
-    static func load(from url: URL) throws -> Settings {
+public enum SettingsLoader {
+    public static func load(from url: URL) throws -> Settings {
         let data = try Data(contentsOf: url)
         let params = try JSONDecoder().decode(SettingsParams.self, from: data)
         return Settings(params)   // always normalize
