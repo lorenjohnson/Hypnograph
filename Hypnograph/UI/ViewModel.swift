@@ -12,11 +12,11 @@ import CoreMedia
 import CoreGraphics
 
 /// ViewModel that bridges the SwiftUI layer with the Hypnograph core:
-/// - Owns a HypnographState (selection logic)
+/// - Owns a HypnogramSession (selection logic)
 /// - Owns a RenderQueue (render jobs)
 /// - Exposes simple intent methods for key commands (N, Return, M, R, Delete).
 final class ViewModel: ObservableObject {
-    @Published private(set) var state: HypnographState
+    @Published private(set) var currentSession: HypnogramSession
     @Published var currentCandidateStartOverride: CMTime?
     @Published var isHUDVisible: Bool = false
 
@@ -28,7 +28,7 @@ final class ViewModel: ObservableObject {
 
     init(settings: Settings, renderQueue: RenderQueue) {
         self.settings = settings
-        self.state = HypnographState(settings: settings)
+        self.currentSession = HypnogramSession(settings: settings)
         self.renderQueue = renderQueue
 
         if settings.autoPrime {
@@ -43,37 +43,37 @@ final class ViewModel: ObservableObject {
     func nextCandidate() {
         noteUserInteraction()
         currentCandidateStartOverride = nil
-        _ = state.nextCandidateForCurrentLayer()
+        _ = currentSession.nextCandidateForCurrentLayer()
         objectWillChange.send()
     }
 
     /// Return: accept the current candidate for this layer, possibly advancing to the next layer.
     func acceptCandidate() {
         noteUserInteraction()
-        state.acceptCandidateForCurrentLayer(usingStartTime: currentCandidateStartOverride)
+        currentSession.acceptCandidateForCurrentLayer(usingStartTime: currentCandidateStartOverride)
         currentCandidateStartOverride = nil
         objectWillChange.send()
     }
 
     func randomizeLayer(index: Int, randomizeBlend: Bool = false) {
         noteUserInteraction()
-        state.randomizeLayer(index, randomizeBlend: randomizeBlend)
+        currentSession.randomizeLayer(index, randomizeBlend: randomizeBlend)
         objectWillChange.send()
     }
 
     /// M: cycle the blend mode for the current layer.
     func cycleBlendMode() {
         noteUserInteraction()
-        state.cycleBlendModeForCurrentLayer()
+        currentSession.cycleBlendModeForCurrentLayer()
         objectWillChange.send()
     }
 
     /// R: if at least one layer has selected clips, enqueue a recipe for rendering
-    /// and reset the state for the next hypnogram.
+    /// and reset the session for the next hypnogram.
     func renderCurrentHypnogram() {
         noteUserInteraction()
 
-        guard let recipe = state.currentRecipe() else {
+        guard let recipe = currentSession.currentRecipe() else {
             print("renderCurrentHypnogram(): no renderable hypnogram (no selected clips).")
             return
         }
@@ -81,7 +81,7 @@ final class ViewModel: ObservableObject {
         print("renderCurrentHypnogram(): enqueuing recipe with \(recipe.layers.count) layer(s).")
         renderQueue.enqueue(recipe: recipe)
 
-        state.resetForNextHypnogram()
+        currentSession.resetForNextHypnogram()
 
         if settings.autoPrime {
             autoPrimeNow()
@@ -99,10 +99,10 @@ final class ViewModel: ObservableObject {
             let url = AppSettingsPaths.defaultSettingsURL
             let newSettings = try SettingsLoader.load(from: url)
             self.settings = newSettings
-            self.state = HypnographState(settings: newSettings)
+            self.currentSession = HypnogramSession(settings: newSettings)
             print("🔄 Reloaded settings from \(url.path)")
         } catch {
-            // If reload fails, keep old settings/state and log.
+            // If reload fails, keep old settings/session and log.
             print("⚠️ Failed to reload settings; keeping existing settings. Error: \(error)")
         }
 
@@ -120,12 +120,12 @@ final class ViewModel: ObservableObject {
 
     /// Which layer index is currently being chosen (0-based).
     var currentLayerIndex: Int {
-        state.currentLayer
+        currentSession.currentLayer
     }
 
     /// Maximum number of layers in this hypnogram (from settings).
     var maxLayers: Int {
-        state.maxLayers
+        currentSession.maxLayers
     }
 
     /// Output size used for preview, following the same rules as the renderer:
@@ -134,7 +134,7 @@ final class ViewModel: ObservableObject {
     /// - if only height > 0 → derive width with 16:9 (width = height * 16/9)
     /// - if both are 0 → default 1920x1080
     var outputSize: CGSize {
-        let cfg = state.settings
+        let cfg = currentSession.settings
 
         let defaultW: CGFloat = 1920
         let defaultH: CGFloat = 1080
@@ -163,19 +163,19 @@ final class ViewModel: ObservableObject {
 
     /// The *literal* blend mode name for the current layer (e.g. "CIMultiplyBlendMode").
     var currentBlendModeName: String {
-        state.currentBlendMode.name
+        currentSession.currentBlendMode.name
     }
 
     /// Current candidate clip for the active layer, if any.
     var currentCandidateClip: VideoClip? {
-        let idx = state.currentLayer
-        guard idx >= 0 && idx < state.candidateClips.count else { return nil }
-        return state.candidateClips[idx]
+        let idx = currentSession.currentLayer
+        guard idx >= 0 && idx < currentSession.candidateClips.count else { return nil }
+        return currentSession.candidateClips[idx]
     }
 
     /// Layers (with clips + modes) to render in the live preview.
     var previewLayers: [HypnogramLayer] {
-        state.previewLayers()
+        currentSession.previewLayers()
     }
 
     /// Delete: step back a layer if possible; on the first layer, this is your
@@ -183,9 +183,9 @@ final class ViewModel: ObservableObject {
     func handleEscape() {
         noteUserInteraction()
 
-        if state.currentLayer > 0 {
+        if currentSession.currentLayer > 0 {
             // Step back one layer, preserving its selection as candidate.
-            state.goBackOneLayer()
+            currentSession.goBackOneLayer()
             currentCandidateStartOverride = nil
             objectWillChange.send()
         } else {
@@ -210,7 +210,7 @@ final class ViewModel: ObservableObject {
         let minLayers = min(2, total)
         let activeCount = Int.random(in: minLayers...total)
 
-        state.primeRandomLayers(activeLayerCount: activeCount)
+        currentSession.primeRandomLayers(activeLayerCount: activeCount)
         currentCandidateStartOverride = nil
         objectWillChange.send()
     }

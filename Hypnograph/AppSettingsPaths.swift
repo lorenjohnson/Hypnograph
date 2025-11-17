@@ -65,7 +65,7 @@ enum AppSettingsPaths {
             try fm.copyItem(at: bundledURL, to: destination)
 
             // Make it executable
-            var attrs = try fm.attributesOfItem(atPath: destination.path)
+            let attrs = try fm.attributesOfItem(atPath: destination.path)
             if let perms = attrs[.posixPermissions] as? NSNumber {
                 let newPerms = perms.intValue | 0o111 // add execute bits
                 try fm.setAttributes([.posixPermissions: newPerms], ofItemAtPath: destination.path)
