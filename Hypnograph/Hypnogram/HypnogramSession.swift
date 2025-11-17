@@ -1,5 +1,5 @@
 //
-//  HypnographState.swift
+//  HypnogramSession.swift
 //  Hypnograph
 //
 //  Created by Loren Johnson on 15.11.25.
@@ -21,7 +21,7 @@ import CoreMedia
 /// - Return: acceptCandidateForCurrentLayer()
 /// - M: cycleBlendModeForCurrentLayer()
 /// - R: currentRecipe() + resetForNextHypnogram()
-final class HypnographState: ObservableObject {
+final class HypnogramSession: ObservableObject {
     let settings: Settings
     let library: ClipLibrary
     let blendModes: [BlendMode]
