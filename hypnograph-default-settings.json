@@ -2,7 +2,7 @@
   "autoPrime": true,
   "autoPrimeTimeout": 120,
   "sourceFolders": [
-    "~/Movies/Hypnogram/sources"
+    "~/Movies/Hypnograph/sources"
   ],
   "maxLayers": 5,
   "blendModes": [
@@ -16,5 +16,5 @@
   "outputSeconds": 60,
   "outputWidth": 1920,
   "outputHeight": 1080,
-  "outputFolder": "~/Movies/Hypnogram/renders"
+  "outputFolder": "~/Movies/Hypnograph/renders"
 }

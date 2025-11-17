@@ -1,10 +1,9 @@
 //
 //  VideoFile.swift
-//  Hypnogram
+//  Hypnograph
 //
 //  Created by Loren Johnson on 15.11.25.
 //
-
 
 import Foundation
 import CoreMedia
@@ -26,12 +25,12 @@ struct VideoClip {
 }
 
 /// Represents a blend mode (Multiply, SoftLight, Overlay, etc.)
-/// We take a simple name from config (e.g. "multiply") and can
+/// We take a simple name from settings (e.g. "multiply") and can
 /// derive both:
 /// - a stable key/name ("multiply") for UI / JSON
 /// - the CoreImage filter name (e.g. "CIMultiplyBlendMode") for rendering
 struct BlendMode {
-    /// Simple key from config, e.g. "multiply", "softlight", "overlay".
+    /// Simple key from settings, e.g. "multiply", "softlight", "overlay".
     let key: String
 
     /// Convenience init to keep existing `BlendMode(name: ...)` calls working.

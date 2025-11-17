@@ -11,12 +11,12 @@ import AVFoundation
 import CoreMedia
 import CoreGraphics
 
-/// ViewModel that bridges the SwiftUI layer with the Hypnogram core:
-/// - Owns a HypnogramState (selection logic)
+/// ViewModel that bridges the SwiftUI layer with the Hypnograph core:
+/// - Owns a HypnographState (selection logic)
 /// - Owns a RenderQueue (render jobs)
 /// - Exposes simple intent methods for key commands (N, Return, M, R, Delete).
 final class ViewModel: ObservableObject {
-    @Published private(set) var state: HypnogramState
+    @Published private(set) var state: HypnographState
     @Published var currentCandidateStartOverride: CMTime?
     @Published var isHUDVisible: Bool = false
 
@@ -28,7 +28,7 @@ final class ViewModel: ObservableObject {
 
     init(settings: Settings, renderQueue: RenderQueue) {
         self.settings = settings
-        self.state = HypnogramState(settings: settings)
+        self.state = HypnographState(settings: settings)
         self.renderQueue = renderQueue
 
         if settings.autoPrime {
@@ -92,14 +92,14 @@ final class ViewModel: ObservableObject {
     }
 
     /// Space: generate a completely new auto-primed set.
-    /// Now also reloads settings from disk so new sources / config are picked up.
+    /// Now also reloads settings from disk so new sources / settings are picked up.
     func newAutoPrimeSet() {
-        // 1) Try to reload settings from the canonical config file.
+        // 1) Try to reload settings from the canonical settings file.
         do {
-            let url = AppSettingsPaths.defaultConfigURL
+            let url = AppSettingsPaths.defaultSettingsURL
             let newSettings = try SettingsLoader.load(from: url)
             self.settings = newSettings
-            self.state = HypnogramState(settings: newSettings)
+            self.state = HypnographState(settings: newSettings)
             print("🔄 Reloaded settings from \(url.path)")
         } catch {
             // If reload fails, keep old settings/state and log.

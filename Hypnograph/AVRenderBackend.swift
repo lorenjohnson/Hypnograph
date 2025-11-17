@@ -2,7 +2,7 @@ import Foundation
 import AVFoundation
 import CoreMedia
 
-/// RenderBackend implementation that uses AVFoundation to render full Hypnograms:
+/// RenderBackend implementation that uses AVFoundation to render full Hypnographs:
 /// - one video track per layer (looped as needed to fill the target duration)
 /// - optional audio tracks per layer (also looped)
 /// - custom CoreImage compositor applying per-layer blend modes.
@@ -25,7 +25,7 @@ final class AVRenderBackend: RenderBackend {
         self.outputHeight = outputHeight
     }
 
-    /// Final render size based on config, with 16:9 default.
+    /// Final render size based on settings, with 16:9 default.
     private var targetRenderSize: CGSize {
         let defaultW: CGFloat = 1920
         let defaultH: CGFloat = 1080

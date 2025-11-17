@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONFIG="$HOME/Library/Application Support/Hypnogram/hypnogram-settings.json"
+SETTINGS="$HOME/Library/Application Support/Hypnograph/hypnogram-settings.json"
 
 usage() {
   echo "Usage:" >&2
@@ -21,12 +21,12 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-if [ ! -f "$CONFIG" ]; then
-  echo "Error: config file not found at: $CONFIG" >&2
+if [ ! -f "$SETTINGS" ]; then
+  echo "Error: settings file not found at: $SETTINGS" >&2
   exit 1
 fi
 
-tmp="${CONFIG}.tmp"
+tmp="${SETTINGS}.tmp"
 
 case "$cmd" in
   add-source)
@@ -40,7 +40,7 @@ case "$cmd" in
         full="$(cd "$(dirname "$full")" && pwd)/$(basename "$full")"
       fi
 
-      # Collapse $HOME to ~ for config readability
+      # Collapse $HOME to ~ for settings readability
       short="${full/#$HOME/~}"
 
       jq --arg p "$short" '
@@ -48,8 +48,8 @@ case "$cmd" in
           (.sourceFolders // []) + [$p]
           | unique
         )
-      ' "$CONFIG" > "$tmp"
-      mv "$tmp" "$CONFIG"
+      ' "$SETTINGS" > "$tmp"
+      mv "$tmp" "$SETTINGS"
     done
     ;;
 
@@ -58,18 +58,18 @@ case "$cmd" in
       usage
     fi
 
-    # Backup current config with timestamp
+    # Backup current settings with timestamp
     timestamp="$(date +%Y%m%d-%H%M%S)"
-    backup="${CONFIG}.${timestamp}.bak"
-    cp -p "$CONFIG" "$backup"
-    echo "Backed up config to: $backup"
+    backup="${SETTINGS}.${timestamp}.bak"
+    cp -p "$SETTINGS" "$backup"
+    echo "Backed up settings to: $backup"
 
     # Clear sourceFolders
     jq '
       .sourceFolders = []
-    ' "$CONFIG" > "$tmp"
-    mv "$tmp" "$CONFIG"
-    echo "Cleared sourceFolders in config."
+    ' "$SETTINGS" > "$tmp"
+    mv "$tmp" "$SETTINGS"
+    echo "Cleared sourceFolders in settings."
     ;;
 
   *)

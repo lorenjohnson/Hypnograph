@@ -1,13 +1,13 @@
 //
-//  HypnogramUITests.swift
-//  HypnogramUITests
+//  HypnographUITests.swift
+//  HypnographUITests
 //
 //  Created by Loren Johnson on 15.11.25.
 //
 
 import XCTest
 
-final class HypnogramUITests: XCTestCase {
+final class HypnographUITests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.

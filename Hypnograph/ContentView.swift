@@ -26,7 +26,7 @@ struct ContentView: View {
             // HUD
             if viewModel.isHUDVisible {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Hypnogram")
+                    Text("Hypnograph")
                         .font(.headline)
                         .padding(.bottom, 8)
 

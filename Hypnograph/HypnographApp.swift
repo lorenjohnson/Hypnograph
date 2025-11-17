@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 extension NSWindow {
-    func makeHypnogramBorderless(on screen: NSScreen) {
+    func makeHypnographBorderless(on screen: NSScreen) {
         let frame = screen.visibleFrame
 
         // Remove title bar & traffic lights
@@ -31,16 +31,16 @@ extension NSWindow {
 }
 
 @main
-struct HypnogramApp: App {
+struct HypnographApp: App {
     @StateObject private var viewModel: ViewModel
     @StateObject private var renderQueue: RenderQueue
 
     init() {
         // Ensure user settings file exists (copy from bundle if missing)
-        AppSettingsPaths.ensureDefaultConfigFileExists()
+        AppSettingsPaths.ensureDefaultSettingsFileExists()
 
         // Always load from Application Support
-        let settingsURL = AppSettingsPaths.defaultConfigURL
+        let settingsURL = AppSettingsPaths.defaultSettingsURL
 
         let settings: Settings
         do {
@@ -64,11 +64,11 @@ struct HypnogramApp: App {
                     "exclusion"
                 ],
                 maxLayers: 3,
-                outputFolder: "~/Movies/Hypnogram/Renders",
+                outputFolder: "~/Movies/Hypnograph/Renders",
                 outputHeight: 1080,
                 outputSeconds: 30,
                 outputWidth: 1920,
-                sourceFolders: [ "~/Movies/Hypnogram/Sources" ]
+                sourceFolders: [ "~/Movies/Hypnograph/Sources" ]
             )
         }
 
@@ -101,12 +101,12 @@ struct HypnogramApp: App {
                         // Prefer external monitor if present
                         let targetScreen = (screens.count > 1 ? screens[1] : screens[0])
 
-                        window.makeHypnogramBorderless(on: targetScreen)
+                        window.makeHypnographBorderless(on: targetScreen)
                     }
                 }
         }
         .commands {
-            CommandMenu("Hypnogram Controls") {
+            CommandMenu("Hypnograph Controls") {
                 Button("Next Candidate") {
                     viewModel.nextCandidate()
                 }

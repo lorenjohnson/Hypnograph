@@ -1,13 +1,13 @@
 //
-//  HypnogramUITestsLaunchTests.swift
-//  HypnogramUITests
+//  HypnographUITestsLaunchTests.swift
+//  HypnographUITests
 //
 //  Created by Loren Johnson on 15.11.25.
 //
 
 import XCTest
 
-final class HypnogramUITestsLaunchTests: XCTestCase {
+final class HypnographUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

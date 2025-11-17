@@ -1,6 +1,6 @@
 //
 //  ClipLibrary.swift
-//  Hypnogram
+//  Hypnograph
 //
 //  Created by Loren Johnson on 15.11.25.
 //

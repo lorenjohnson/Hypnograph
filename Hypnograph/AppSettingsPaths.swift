@@ -1,6 +1,6 @@
 //
 //  AppSettingsPaths.swift
-//  Hypnogram
+//  Hypnograph
 //
 //  Created by Loren Johnson on 16.11.25.
 //
@@ -12,9 +12,9 @@ import AppKit
 import Foundation
 
 enum AppSettingsPaths {
-    static let appFolderName = "Hypnogram"
+    static let appFolderName = "Hypnograph"
 
-    /// ~/Library/Application Support/Hypnogram
+    /// ~/Library/Application Support/Hypnograph
     static var appSupportDirectory: URL {
         let fm = FileManager.default
         let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -31,7 +31,7 @@ enum AppSettingsPaths {
         return appDir
     }
 
-    /// ~/Library/Application Support/Hypnogram/Tools
+    /// ~/Library/Application Support/Hypnograph/Tools
    static var toolsDirectory: URL {
        let url = appSupportDirectory.appendingPathComponent("Tools", isDirectory: true)
        let fm = FileManager.default
@@ -55,7 +55,7 @@ enum AppSettingsPaths {
             return
         }
 
-        // 2) Copy into ~/Library/Application Support/Hypnogram/Tools/hypnograph
+        // 2) Copy into ~/Library/Application Support/Hypnograph/Tools/hypnograph
         let destination = toolsDirectory.appendingPathComponent("hypnograph")
 
         do {
@@ -90,7 +90,7 @@ enum AppSettingsPaths {
             }
         }
 
-        // 4) Create symlink: ~/bin/hypnograph → .../Application Support/Hypnogram/Tools/hypnograph
+        // 4) Create symlink: ~/bin/hypnograph → .../Application Support/Hypnograph/Tools/hypnograph
         let symlinkURL = binDir.appendingPathComponent("hypnograph")
         do {
             if fm.fileExists(atPath: symlinkURL.path) {
@@ -106,31 +106,31 @@ enum AppSettingsPaths {
         NSWorkspace.shared.activateFileViewerSelecting([destination])
     }
 
-    /// ~/Library/Application Support/Hypnogram/hypnogram-settings.json
-    static var defaultConfigURL: URL {
-        appSupportDirectory.appendingPathComponent("hypnogram-settings.json")
+    /// ~/Library/Application Support/Hypnograph/hypnograph-settings.json
+    static var defaultSettingsURL: URL {
+        appSupportDirectory.appendingPathComponent("hypnograph-settings.json")
     }
 
-    /// If no config exists in Application Support, copy the bundled default JSON there.
-    static func ensureDefaultConfigFileExists() {
+    /// If no settings exists in Application Support, copy the bundled default JSON there.
+    static func ensureDefaultSettingsFileExists() {
         let fm = FileManager.default
-        let url = defaultConfigURL
+        let url = defaultSettingsURL
 
         guard !fm.fileExists(atPath: url.path) else { return }
 
         guard let bundledURL = Bundle.main.url(
-            forResource: "hypnogram-default-settings",
+            forResource: "hypnograph-default-settings",
             withExtension: "json"
         ) else {
-            print("⚠️ No bundled default config found; skipping creation.")
+            print("⚠️ No bundled default settings found; skipping creation.")
             return
         }
 
         do {
             try fm.copyItem(at: bundledURL, to: url)
-            print("Copied bundled default config to \(url.path)")
+            print("Copied bundled default settings to \(url.path)")
         } catch {
-            print("Failed to copy default config to \(url.path): \(error)")
+            print("Failed to copy default settings to \(url.path): \(error)")
         }
     }
 
