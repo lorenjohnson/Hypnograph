@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SETTINGS="$HOME/Library/Application Support/Hypnograph/hypnogram-settings.json"
+
+usage() {
+  echo "Usage:" >&2
+  echo "  hypnograph add-source <path> [<path>...]" >&2
+  echo "  hypnograph clear-sources" >&2
+  exit 1
+}
+
+if [ "$#" -lt 1 ]; then
+  usage
+fi
+
+cmd="$1"; shift
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "Error: jq is required but not installed." >&2
+  exit 1
+fi
+
+if [ ! -f "$SETTINGS" ]; then
+  echo "Error: settings file not found at: $SETTINGS" >&2
+  exit 1
+fi
+
+tmp="${SETTINGS}.tmp"
+
+case "$cmd" in
+  add-source)
+    if [ "$#" -lt 1 ]; then
+      usage
+    fi
+
+    for full in "$@"; do
+      # Normalize to absolute path
+      if [[ "$full" != /* ]]; then
+        full="$(cd "$(dirname "$full")" && pwd)/$(basename "$full")"
+      fi
+
+      # Collapse $HOME to ~ for settings readability
+      short="${full/#$HOME/~}"
+
+      jq --arg p "$short" '
+        .sourceFolders = (
+          (.sourceFolders // []) + [$p]
+          | unique
+        )
+      ' "$SETTINGS" > "$tmp"
+      mv "$tmp" "$SETTINGS"
+    done
+    ;;
+
+  clear-sources)
+    if [ "$#" -ne 0 ]; then
+      usage
+    fi
+
+    # Backup current settings with timestamp
+    timestamp="$(date +%Y%m%d-%H%M%S)"
+    backup="${SETTINGS}.${timestamp}.bak"
+    cp -p "$SETTINGS" "$backup"
+    echo "Backed up settings to: $backup"
+
+    # Clear sourceFolders
+    jq '
+      .sourceFolders = []
+    ' "$SETTINGS" > "$tmp"
+    mv "$tmp" "$SETTINGS"
+    echo "Cleared sourceFolders in settings."
+    ;;
+
+  *)
+    usage
+    ;;
+esac

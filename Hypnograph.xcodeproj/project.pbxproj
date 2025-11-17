@@ -6,10 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		04594FF52EC9B0B10012F009 /* hypnograph-default-settings.json in Resources */ = {isa = PBXBuildFile; fileRef = 04594FF42EC9B0A00012F009 /* hypnograph-default-settings.json */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXContainerItemProxy section */
 		042F99132EC8990C006D4CDE /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -31,7 +27,6 @@
 		042F99012EC8990B006D4CDE /* Hypnograph.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hypnograph.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		042F99122EC8990C006D4CDE /* HypnographTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnographTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		042F991C2EC8990C006D4CDE /* HypnographUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnographUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		04594FF42EC9B0A00012F009 /* hypnograph-default-settings.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "hypnograph-default-settings.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -48,14 +43,6 @@
 		042F991F2EC8990C006D4CDE /* HypnographUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = HypnographUITests;
-			sourceTree = "<group>";
-		};
-		04594FF82EC9FDF30012F009 /* Support */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			explicitFileTypes = {
-				hypnograph = text.script.sh;
-			};
-			path = Support;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -88,8 +75,6 @@
 		042F98F82EC8990A006D4CDE = {
 			isa = PBXGroup;
 			children = (
-				04594FF82EC9FDF30012F009 /* Support */,
-				04594FF42EC9B0A00012F009 /* hypnograph-default-settings.json */,
 				042F99032EC8990B006D4CDE /* Hypnograph */,
 				042F99152EC8990C006D4CDE /* HypnographTests */,
 				042F991F2EC8990C006D4CDE /* HypnographUITests */,
@@ -124,7 +109,6 @@
 			);
 			fileSystemSynchronizedGroups = (
 				042F99032EC8990B006D4CDE /* Hypnograph */,
-				04594FF82EC9FDF30012F009 /* Support */,
 			);
 			name = Hypnograph;
 			packageProductDependencies = (
@@ -228,7 +212,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				04594FF52EC9B0B10012F009 /* hypnograph-default-settings.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
