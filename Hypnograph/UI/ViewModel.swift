@@ -92,25 +92,24 @@ final class ViewModel: ObservableObject {
     }
 
     /// Space: generate a completely new auto-primed set.
-    /// Now also reloads settings from disk so new sources / settings are picked up.
     func newAutoPrimeSet() {
-        // 1) Try to reload settings from the canonical settings file.
+        noteUserInteraction()
+        autoPrimeNow()
+    }
+
+    // Reloads settings
+    func newSessionReloadingSettings() {
         do {
             let url = Environment.defaultSettingsURL
             let newSettings = try SettingsLoader.load(from: url)
             self.settings = newSettings
             self.currentSession = Session(settings: newSettings)
-            print("🔄 Reloaded settings from \(url.path)")
+           print("🔄 Reloaded settings from \(url.path)")
         } catch {
             // If reload fails, keep old settings/session and log.
             print("⚠️ Failed to reload settings; keeping existing settings. Error: \(error)")
         }
-
-        // 2) Normal behavior: treat this like user interaction + re-prime.
-        noteUserInteraction()
-        autoPrimeNow()
     }
-
     func toggleHUD() {
         isHUDVisible.toggle()
         objectWillChange.send()

@@ -171,6 +171,11 @@ struct HypnographApp: App {
                 }
                 .keyboardShortcut("h", modifiers: [])
 
+                Button("Restart Session, Reloading Settings from File") {
+                    viewModel.newSessionReloadingSettings()
+                }
+                .keyboardShortcut("r", modifiers: [.command])
+
                 Button("Install hypnograph command") {
                     Environment.installCLI()
                 }
