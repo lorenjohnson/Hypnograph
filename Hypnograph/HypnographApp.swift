@@ -2,14 +2,27 @@ import SwiftUI
 import AppKit
 
 extension NSWindow {
-    func makeHypnographBorderless(on screen: NSScreen) {
-        let frame = screen.visibleFrame
+    func makeHypnographBorderless(on screen: NSScreen, contentSize: CGSize) {
+        let visible = screen.visibleFrame
+
+        // Maintain the content aspect ratio, scaling down uniformly
+        // if either dimension would exceed the visible frame.
+        let scaleX = visible.width  / contentSize.width
+        let scaleY = visible.height / contentSize.height
+        let scale  = min(scaleX, scaleY, 1.0)
+
+        let width  = contentSize.width  * scale
+        let height = contentSize.height * scale
+
+        let originX = visible.midX - width  / 2.0
+        let originY = visible.midY - height / 2.0
+        let frame = NSRect(x: originX, y: originY, width: width, height: height)
 
         // Remove title bar & traffic lights
         styleMask.remove(.titled)
         styleMask.remove(.closable)
         styleMask.remove(.miniaturizable)
-        styleMask.remove(.resizable)   // optional: keep if you want manual resize
+        styleMask.remove(.resizable)   // keep if you want manual resize
 
         // Ensure we don't participate in macOS fullscreen Spaces
         collectionBehavior = [.fullScreenNone, .canJoinAllSpaces]
@@ -23,7 +36,7 @@ extension NSWindow {
 
         isOpaque = true
         backgroundColor = .black
-        level = .normal      // or .statusBar if you want it above everything
+        level = .normal
 
         setFrame(frame, display: true, animate: false)
         isMovable = false
@@ -101,16 +114,45 @@ struct HypnographApp: App {
                         // Prefer external monitor if present
                         let targetScreen = (screens.count > 1 ? screens[1] : screens[0])
 
-                        window.makeHypnographBorderless(on: targetScreen)
+                        window.makeHypnographBorderless(
+                            on: targetScreen,
+                            contentSize: viewModel.outputSize
+                        )
                     }
                 }
         }
         .commands {
-            CommandMenu("Hypnograph Controls") {
+
+            // --- FILE MENU MODIFICATIONS ---
+
+            // Remove “New Window” and the default “New” options
+            CommandGroup(replacing: .newItem) { }
+
+            // Add custom "New Hypnogram"
+            CommandGroup(after: .newItem) {
+                Button("New Hypnogram (random)") {
+                    viewModel.newAutoPrimeSet()
+                }
+                .keyboardShortcut("n", modifiers: [.command])
+            }
+
+            // Add custom Save behavior
+            CommandGroup(replacing: .saveItem) {
+                Button("Save Hypnogram") {
+                    viewModel.renderCurrentHypnogram()
+                }
+                .keyboardShortcut("s", modifiers: [.command])
+            }
+
+
+            // --- REMOVE VIEW MENU ---
+//            CommandGroup(replacing: .view) { }
+
+            CommandMenu("Current") {
                 Button("Next Candidate") {
                     viewModel.nextCandidate()
                 }
-                .keyboardShortcut("n", modifiers: [])
+                .keyboardShortcut(.space, modifiers: [])
 
                 Button("Accept Candidate") {
                     viewModel.acceptCandidate()
@@ -122,47 +164,40 @@ struct HypnographApp: App {
                 }
                 .keyboardShortcut("m", modifiers: [])
 
-                Button("Render Hypnogram") {
-                    viewModel.renderCurrentHypnogram()
-                }
-                .keyboardShortcut("r", modifiers: [])
+                Divider()
 
-                Button("Back") {
+                Button("Select Layer 1") {
+                    viewModel.selectLayer(index: 0)
+                }
+                .keyboardShortcut("1", modifiers: [])
+
+                Button("Select Layer 2") {
+                    viewModel.selectLayer(index: 1)
+                }
+                .keyboardShortcut("2", modifiers: [])
+
+                Button("Select Layer 3") {
+                    viewModel.selectLayer(index: 2)
+                }
+                .keyboardShortcut("3", modifiers: [])
+
+                Button("Select Layer 4") {
+                    viewModel.selectLayer(index: 3)
+                }
+                .keyboardShortcut("4", modifiers: [])
+
+                Button("Select Layer 5") {
+                    viewModel.selectLayer(index: 4)
+                }
+                .keyboardShortcut("5", modifiers: [])
+
+                Divider()
+
+                Button("Delete current layer") {
                     viewModel.handleEscape()
                 }
                 .keyboardShortcut(.delete, modifiers: [])
 
-                Divider()
-
-                Button("New AutoPrime Set") {
-                    viewModel.newAutoPrimeSet()
-                }
-                .keyboardShortcut(.space, modifiers: [])                
-
-                Button("Randomize Layer 1") {
-                    viewModel.randomizeLayer(index: 0)
-                }
-                .keyboardShortcut("1", modifiers: [])
-
-                Button("Randomize Layer 2") {
-                    viewModel.randomizeLayer(index: 1)
-                }
-                .keyboardShortcut("2", modifiers: [])
-
-                Button("Randomize Layer 3") {
-                    viewModel.randomizeLayer(index: 2)
-                }
-                .keyboardShortcut("3", modifiers: [])
-
-                Button("Randomize Layer 4") {
-                    viewModel.randomizeLayer(index: 3)
-                }
-                .keyboardShortcut("4", modifiers: [])
-
-                Button("Randomize Layer 5") {
-                    viewModel.randomizeLayer(index: 4)
-                }
-                .keyboardShortcut("5", modifiers: [])
 
                 Divider()
 

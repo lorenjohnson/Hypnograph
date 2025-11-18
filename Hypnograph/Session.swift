@@ -27,7 +27,7 @@ public final class Session: ObservableObject {
     let library: VideoSourcesLibrary
     
     /// Index of the layer currently being chosen [0 ..< maxLayers]
-    @Published public private(set) var currentLayer: Int = 0
+    @Published public public(set) var currentLayer: Int = 0
 
     /// For each layer, the current candidate clip (Space cycles this).
     @Published public private(set) var candidateClips: [VideoClip?]
@@ -132,19 +132,6 @@ public final class Session: ObservableObject {
             _ = nextCandidateForCurrentLayer()
         } else {
             // All layers have selected clips; ready to render.
-        }
-    }
-    
-    /// Randomize the clip (and optionally blend) for a specific layer.
-    /// Used by keys 1, 2, 3 etc.
-    public func randomizeLayer(_ index: Int, randomizeBlend: Bool = false) {
-        guard index >= 0 && index < maxLayers else { return }
-
-        currentLayer = index
-        _ = nextCandidateForCurrentLayer()
-
-        if randomizeBlend, !blendModes.isEmpty {
-            layerBlendIndices[index] = Int.random(in: 0..<blendModes.count)
         }
     }
     
