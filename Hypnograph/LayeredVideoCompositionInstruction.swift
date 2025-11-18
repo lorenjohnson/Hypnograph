@@ -1,6 +1,6 @@
 //
 //  LayeredVideoCompositionInstruction.swift
-//  Hypnogram
+//  Hypnograph
 //
 //  Created by Loren Johnson on 15.11.25.
 //
@@ -25,24 +25,21 @@ public final class LayeredVideoCompositionInstruction: NSObject, AVVideoComposit
 
     let layerTrackIDs: [CMPersistentTrackID]
     let blendModes: [String]
-    let layerTransforms: [CGAffineTransform]
 
     public init(
         layerTrackIDs: [CMPersistentTrackID],
         blendModes: [String],
-        transforms: [CGAffineTransform],
         timeRange: CMTimeRange
     ) {
         self.timeRange = timeRange
         self.layerTrackIDs = layerTrackIDs
         self.blendModes = blendModes
-        self.layerTransforms = transforms
         self.requiredSourceTrackIDs = layerTrackIDs.map { NSNumber(value: $0) }
     }
 }
 
 /// Custom compositor that blends multiple video tracks using CoreImage.
-/// Each source frame is aspect-fit into the render size (like AVPlayerView.resizeAspect),
+/// Each source frame is aspect-fill scaled into the render size,
 /// then blended using the requested CoreImage blend filters.
 public final class LayeredVideoComposition: NSObject, AVVideoCompositing {
 
@@ -110,22 +107,21 @@ public final class LayeredVideoComposition: NSObject, AVVideoCompositing {
             let dstRect    = CGRect(origin: .zero, size: targetSize)
             let trackIDs   = instruction.layerTrackIDs
             let modes      = instruction.blendModes
-            let transforms = instruction.layerTransforms
 
             // Gather CIImages for all available source frames in order.
             var images: [CIImage] = []
 
-            for (index, trackID) in trackIDs.enumerated() {
+            for trackID in trackIDs {
                 guard let buffer = request.sourceFrame(byTrackID: trackID) else {
                     continue
                 }
 
                 var image = CIImage(cvPixelBuffer: buffer)
 
-                // Apply the original track’s preferredTransform if we have one.
-                if index < transforms.count {
-                    image = image.transformed(by: transforms[index])
-                }
+                // Ask AVFoundation for the correct render transform for this track.
+                // This incorporates the track's preferredTransform and any composition transforms.
+                let transform = renderContext.renderTransform(for: trackID)
+                image = image.transformed(by: transform)
 
                 images.append(image)
             }
@@ -163,7 +159,6 @@ public final class LayeredVideoComposition: NSObject, AVVideoCompositing {
             }
 
             // Render CIImage → pixel buffer via CIContext (backed by Metal if available).
-            // Use explicit bounds matching the render size.
             self.ciContext.render(
                 outputImage,
                 to: dstBuffer,
