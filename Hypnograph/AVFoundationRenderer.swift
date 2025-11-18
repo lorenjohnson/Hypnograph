@@ -140,6 +140,9 @@ final class AVFoundationRenderer: HypnogramRenderer {
                 continue
             }
 
+            // Preserve original orientation
+            compVideoTrack.preferredTransform = srcVideoTrack.preferredTransform
+
             var insertTime: CMTime = .zero
             var remainingSeconds = targetSeconds
 

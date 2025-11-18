@@ -48,16 +48,27 @@ final class ViewModel: ObservableObject {
     }
 
     /// Return: accept the current candidate for this layer, possibly advancing to the next layer.
+    /// Return: accept the current candidate for this layer, possibly advancing to the next layer.
     func acceptCandidate() {
         noteUserInteraction()
-        currentSession.acceptCandidateForCurrentLayer(usingStartTime: currentCandidateStartOverride)
+
+        if let offset = currentCandidateStartOverride,
+           let candidate = currentCandidateClip {
+            // Preview time is relative to the clip's current startTime.
+            // Convert back to an absolute time in the source file.
+            let absoluteStart = CMTimeAdd(candidate.startTime, offset)
+            currentSession.acceptCandidateForCurrentLayer(usingStartTime: absoluteStart)
+        } else {
+            currentSession.acceptCandidateForCurrentLayer(usingStartTime: nil)
+        }
+
         currentCandidateStartOverride = nil
         objectWillChange.send()
     }
 
-    func randomizeLayer(index: Int, randomizeBlend: Bool = false) {
+    func selectLayer(index: Int) {
         noteUserInteraction()
-        currentSession.randomizeLayer(index, randomizeBlend: randomizeBlend)
+        currentSession.currentLayer = index
         objectWillChange.send()
     }
 

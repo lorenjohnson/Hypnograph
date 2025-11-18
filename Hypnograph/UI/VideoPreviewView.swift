@@ -1,23 +1,22 @@
 import SwiftUI
 import AVKit
 import AVFoundation
-import CoreImage
-import CoreImage.CIFilterBuiltins
 import CoreMedia
+import CoreGraphics
 
-/// One layer of the live preview: AVPlayerView with no chrome.
-/// If `isActive`, it reports its playhead time via `currentTime`.
-struct SingleLayerPreviewView: NSViewRepresentable {
-    let layer: HypnogramLayer
-    let isActive: Bool
-    @Binding var currentTime: CMTime?
+/// Single composited preview using the same AVFoundation + custom
+/// Core Image compositor as the final render.
+struct MultiLayerPreviewView: NSViewRepresentable {
+    let layers: [HypnogramLayer]
+    let currentLayerIndex: Int   // kept for future use if you want e.g. HUD
+    @Binding var currentLayerTime: CMTime?
+    let outputSize: CGSize
 
     class Coordinator {
         var player: AVPlayer?
         var timeObserverToken: Any?
         var endObserverToken: Any?
-        var clipID: String?
-        var isActive: Bool = false
+        var compositionID: String?
     }
 
     func makeCoordinator() -> Coordinator {
@@ -26,82 +25,209 @@ struct SingleLayerPreviewView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> AVPlayerView {
         let view = AVPlayerView()
-        view.controlsStyle = .none          // no play bar / buttons
+        view.controlsStyle = .none
         view.videoGravity = .resizeAspectFill
+        view.player = AVPlayer()
         return view
     }
 
     func updateNSView(_ nsView: AVPlayerView, context: Context) {
         let c = context.coordinator
-        let clip = layer.clip
 
-        // Identity for this clip instance (file + timing)
-        let newID = "\(clip.file.url.path)|\(clip.startTime.seconds)|\(clip.duration.seconds)"
+        // No layers → clear player and time.
+        guard !layers.isEmpty else {
+            Self.tearDown(coordinator: c, view: nsView)
+            currentLayerTime = nil
+            return
+        }
 
-        // If the clip changed, rebuild the player. Otherwise, just update active/inactive.
-        if c.clipID != newID || c.player == nil {
-            Self.tearDown(coordinator: c)
+        // Build a simple identity string so we only rebuild when layers change.
+        let newID = compositionIdentity(for: layers)
 
-            let item = AVPlayerItem(url: clip.file.url)
+        if newID != c.compositionID || c.player == nil {
+            // Rebuild composition + player item
+            guard let (item, _) = makePreviewItem(for: layers, renderSize: outputSize) else {
+                Self.tearDown(coordinator: c, view: nsView)
+                currentLayerTime = nil
+                return
+            }
 
-            // Limit playback to [start, start + duration]
-            let start = clip.startTime
-            let end = CMTimeAdd(clip.startTime, clip.duration)
-            item.forwardPlaybackEndTime = end
+            let player: AVPlayer
+            if let existing = c.player {
+                player = existing
+                player.replaceCurrentItem(with: item)
+            } else {
+                player = AVPlayer(playerItem: item)
+                c.player = player
+            }
 
-            let player = AVPlayer(playerItem: item)
-            player.actionAtItemEnd = .none
-            c.player = player
-            c.clipID = newID
-            c.isActive = isActive
             nsView.player = player
+            c.compositionID = newID
 
-            // --- PREVIEW PLAYBACK RATE (change this constant) ---
-            // 1.0 = normal, 0.5 = half speed, 0.25 = quarter speed, 2.0 = double
-            // Float.random(in: (0.4...1.0) )
-            let previewRate: Float = 0.8
+            // Remove any previous observers
+            if let token = c.timeObserverToken {
+                player.removeTimeObserver(token)
+                c.timeObserverToken = nil
+            }
+            if let token = c.endObserverToken {
+                NotificationCenter.default.removeObserver(token)
+                c.endObserverToken = nil
+            }
 
-            player.seek(to: start)
-            player.playImmediately(atRate: previewRate)
+            // Track preview time (composition-relative)
+            let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
+            c.timeObserverToken = player.addPeriodicTimeObserver(
+                forInterval: interval,
+                queue: .main
+            ) { time in
+                currentLayerTime = time
+            }
 
-            // Loop on end.
+            // Loop when reaching the end
             c.endObserverToken = NotificationCenter.default.addObserver(
                 forName: .AVPlayerItemDidPlayToEndTime,
                 object: item,
                 queue: .main
             ) { [weak player] _ in
                 guard let p = player else { return }
-                p.seek(to: start)
-                p.playImmediately(atRate: previewRate)   // use same rate on loop
+                p.seek(to: .zero)
+                p.playImmediately(atRate: 0.8)
             }
 
-            // If this layer is active, add a time observer.
-            if isActive {
-                addTimeObserver(for: player, coordinator: c)
-            }
+            // Start playback at preview rate (slightly slower than real time).
+            player.seek(to: .zero)
+            player.playImmediately(atRate: 0.8)
         } else {
-            // Same clip, just update active/inactive status.
-            if c.isActive != isActive {
-                c.isActive = isActive
-                if isActive, let player = c.player {
-                    addTimeObserver(for: player, coordinator: c)
-                } else if let token = c.timeObserverToken, let player = c.player {
-                    player.removeTimeObserver(token)
-                    c.timeObserverToken = nil
-                    // We intentionally do NOT pause here; the layer keeps looping visually.
-                }
-            }
+            // Same composition, just make sure it's playing.
+            c.player?.playImmediately(atRate: 0.8)
         }
     }
 
     static func dismantleNSView(_ nsView: AVPlayerView, coordinator: Coordinator) {
-        Self.tearDown(coordinator: coordinator)
-        nsView.player = nil
+        tearDown(coordinator: coordinator, view: nsView)
     }
 
-    private static func tearDown(coordinator c: Coordinator) {
-        if let token = c.timeObserverToken, let p = c.player {
-            p.removeTimeObserver(token)
+    // MARK: - Helpers
+
+    /// Build an identity string so we know when layers change.
+    private func compositionIdentity(for layers: [HypnogramLayer]) -> String {
+        layers.map { layer in
+            let url   = layer.clip.file.url.path
+            let start = layer.clip.startTime.seconds
+            let dur   = layer.clip.duration.seconds
+            let mode  = layer.blendMode.key
+            return "\(url)|\(start)|\(dur)|\(mode)"
+        }
+        .joined(separator: ";;")
+    }
+
+    /// Build an AVPlayerItem using AVMutableComposition + our custom
+    /// LayeredVideoComposition (Core Image compositor).
+    private func makePreviewItem(
+        for layers: [HypnogramLayer],
+        renderSize: CGSize
+    ) -> (AVPlayerItem, Double)? {
+        let composition = AVMutableComposition()
+
+        var videoTrackIDs: [CMPersistentTrackID] = []
+        var blendModes: [String] = []
+        var transforms: [CGAffineTransform] = []
+
+        // Use the shortest clip duration as preview duration so we don't run
+        // past the end of any track.
+        let minDurationSeconds = layers
+            .map { $0.clip.duration.seconds }
+            .filter { $0 > 0 }
+            .min() ?? 1.0
+
+        let targetDuration = CMTime(seconds: minDurationSeconds, preferredTimescale: 600)
+
+        func insertSegment(
+            from srcTrack: AVAssetTrack,
+            clip: VideoClip,
+            into compTrack: AVMutableCompositionTrack
+        ) throws {
+            let fileDuration = srcTrack.asset?.duration ?? .zero
+            let fileSeconds  = fileDuration.seconds
+
+            let requestedStart = clip.startTime.seconds
+            let startSeconds   = min(max(requestedStart, 0), max(fileSeconds - 0.0001, 0))
+            let maxAvailable   = max(0.0, fileSeconds - startSeconds)
+            let segSeconds     = min(clip.duration.seconds, maxAvailable, minDurationSeconds)
+
+            guard segSeconds > 0 else { return }
+
+            let start    = CMTime(seconds: startSeconds, preferredTimescale: 600)
+            let duration = CMTime(seconds: segSeconds,    preferredTimescale: 600)
+            let range    = CMTimeRange(start: start, duration: duration)
+
+            try compTrack.insertTimeRange(range, of: srcTrack, at: .zero)
+        }
+
+        for (index, layer) in layers.enumerated() {
+            let clip  = layer.clip
+            let asset = AVAsset(url: clip.file.url)
+
+            guard let srcVideoTrack = asset.tracks(withMediaType: .video).first else {
+                print("Preview: layer \(index) has no video track; skipping")
+                continue
+            }
+
+            let trackID = CMPersistentTrackID(index + 1)
+            guard let compVideoTrack = composition.addMutableTrack(
+                withMediaType: .video,
+                preferredTrackID: trackID
+            ) else {
+                print("Preview: failed to add video track for layer \(index)")
+                continue
+            }
+
+            do {
+                try insertSegment(from: srcVideoTrack, clip: clip, into: compVideoTrack)
+            } catch {
+                print("Preview: failed to insert segment for layer \(index): \(error)")
+                continue
+            }
+
+            videoTrackIDs.append(compVideoTrack.trackID)
+
+            if index == 0 {
+                blendModes.append("CISourceOverCompositing")
+            } else {
+                blendModes.append(layer.blendMode.ciFilterName)
+            }
+
+            // Capture the original track's orientation transform.
+            transforms.append(srcVideoTrack.preferredTransform)
+        }
+
+        guard !videoTrackIDs.isEmpty else {
+            print("Preview: no valid video tracks")
+            return nil
+        }
+
+        let instruction = LayeredVideoCompositionInstruction(
+            layerTrackIDs: videoTrackIDs,
+            blendModes: blendModes,
+            transforms: transforms,
+            timeRange: CMTimeRange(start: .zero, duration: targetDuration)
+        )
+
+        let videoComposition = AVMutableVideoComposition()
+        videoComposition.customVideoCompositorClass = LayeredVideoComposition.self
+        videoComposition.renderSize    = renderSize
+        videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
+        videoComposition.instructions  = [instruction]
+
+        let item = AVPlayerItem(asset: composition)
+        item.videoComposition = videoComposition
+
+        return (item, minDurationSeconds)
+    }
+
+    private static func tearDown(coordinator c: Coordinator, view: AVPlayerView) {
+        if let token = c.timeObserverToken, let player = c.player {
+            player.removeTimeObserver(token)
         }
         c.timeObserverToken = nil
 
@@ -112,174 +238,7 @@ struct SingleLayerPreviewView: NSViewRepresentable {
 
         c.player?.pause()
         c.player = nil
-        c.clipID = nil
-        c.isActive = false
-    }
-
-    private func addTimeObserver(for player: AVPlayer, coordinator c: Coordinator) {
-        // Clear any previous observer first.
-        if let token = c.timeObserverToken {
-            player.removeTimeObserver(token)
-            c.timeObserverToken = nil
-        }
-
-        let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
-        c.timeObserverToken = player.addPeriodicTimeObserver(
-            forInterval: interval,
-            queue: .main
-        ) { time in
-            currentTime = time
-        }
-    }
-}
-
-fileprivate extension View {
-    /// Small per-blend-mode exposure/contrast tweaks so
-    /// Screen/Overlay/Multiply don't blow out or crush.
-    func hypnoBlendPrep(for modeName: String) -> some View {
-        switch modeName.lowercased() {
-        case "screen":
-            // Screen tends to over-brighten → darken a touch, pop contrast
-            return AnyView(
-                self
-                    .brightness(-0.15)
-                    .contrast(1.05)
-            )
-
-        case "overlay":
-            // Overlay can get a bit heavy → lift mids slightly
-            return AnyView(
-                self
-                    .brightness(0.1)
-                    .contrast(0.98)
-            )
-
-        case "multiply":
-            // Multiply often too dark → lift mids more noticeably
-            return AnyView(
-                self
-                    .brightness(0.1)
-                    .contrast(1.02)
-            )
-
-        case "softlight", "soft_light", "soft-light":
-            // Soft light: tiny midtone lift
-            return AnyView(
-                self
-                    .brightness(0.03)
-            )
-
-        default:
-            // Modes that don't obviously benefit: leave untouched
-            return AnyView(self)
-        }
-    }
-}
-
-struct MultiLayerPreviewView: View {
-    let layers: [HypnogramLayer]
-    let currentLayerIndex: Int
-    @Binding var currentLayerTime: CMTime?
-    let outputSize: CGSize
-
-    var body: some View {
-        let content = ZStack {
-            // Solid background so the base of the stack has something to composite against
-            Color.black
-
-            let firstEdgeBlendMode: SwiftUI.BlendMode? = {
-                // If we have at least 2 layers, the "edge" between 1 and 2
-                // is controlled by layer 2's blend mode.
-                guard layers.count > 1 else { return nil }
-                let modeName = layers[1].blendMode.key
-                return swiftUIBlendMode(for: modeName)
-            }()
-
-            ForEach(Array(layers.enumerated()), id: \.offset) { index, layer in
-                SingleLayerPreviewView(
-                    layer: layer,
-                    isActive: index == currentLayerIndex,
-                    currentTime: $currentLayerTime
-                )
-                .hypnoBlendPrep(
-                    for: layer.blendMode.key
-                )
-                .blendMode(blendModeForLayer(at: index,
-                                             layer: layer,
-                                             firstEdgeMode: firstEdgeBlendMode))
-            }
-        }
-        
-        return content
-            .compositingGroup()
-//            .blur(radius: CGFloat(Float.random(in: 0.0...2.0)))
-            .overlay(vignetteOverlay)
-            .aspectRatio(outputSize.width / outputSize.height, contentMode: .fit)
-            .focusable(false)
-    }
-
-    /// Decide which SwiftUI blend mode to use for each layer index.
-    private func blendModeForLayer(
-        at index: Int,
-        layer: HypnogramLayer,
-        firstEdgeMode: SwiftUI.BlendMode?
-    ) -> SwiftUI.BlendMode {
-        // 0 layers is impossible here; if there's only 1 layer, no "edge" mode.
-        if layers.count == 1 {
-            // Just show the single layer normally.
-            return .normal
-        }
-
-        // We have 2+ layers:
-
-        if index == 0 {
-            // Base layer: when there is a second layer, we want layer 2's mode
-            // to "apply down" to layer 1 as well, so they feel like one paired blend.
-            return .normal
-        } else if index == 1 {
-            // Second layer: same story – its mode is the one defining the
-            // interaction between layer 1 and 2.
-            return firstEdgeMode ?? swiftUIBlendMode(for: layer.blendMode.key)
-        } else {
-            // Layers 3+ use their own configured blend mode relative to the
-            // already-composited stack beneath.
-            return swiftUIBlendMode(for: layer.blendMode.key)
-        }
-    }
-
-    private func swiftUIBlendMode(for name: String) -> SwiftUI.BlendMode {
-        switch name.lowercased() {
-        case "multiply":
-            return .multiply
-        case "overlay":
-            return .overlay
-        case "screen":
-            return .screen
-        case "softlight", "soft_light", "soft-light":
-            return .softLight
-        case "darken":
-            return .darken
-        case "lighten":
-            return .lighten
-        default:
-            // SwiftUI doesn’t expose `difference`, `exclusion`, etc.,
-            // so we fall back to .normal for those.
-            return .normal
-        }
-    }
-    
-    private var vignetteOverlay: some View {
-        RadialGradient(
-            gradient: Gradient(colors: [
-                Color.black.opacity(0.0),
-                Color.black.opacity(0.2),
-                Color.black.opacity(1.0)
-            ]),
-            center: .center,
-            startRadius: 0,
-            endRadius: 1000
-        )
-        .blendMode(.darken)
-        .allowsHitTesting(false)
+        c.compositionID = nil
+        view.player = nil
     }
 }

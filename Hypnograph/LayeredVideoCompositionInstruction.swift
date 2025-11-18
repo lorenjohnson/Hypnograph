@@ -15,6 +15,7 @@ import Metal
 /// Instruction describing how to composite a single segment:
 /// - which track IDs to use as layers
 /// - which blend modes (one per layer, same order)
+/// - per-layer transforms (usually the original track's preferredTransform)
 public final class LayeredVideoCompositionInstruction: NSObject, AVVideoCompositionInstructionProtocol {
     public var timeRange: CMTimeRange
     public var enablePostProcessing: Bool = false
@@ -25,26 +26,29 @@ public final class LayeredVideoCompositionInstruction: NSObject, AVVideoComposit
 
     let layerTrackIDs: [CMPersistentTrackID]
     let blendModes: [String]
+    let layerTransforms: [CGAffineTransform]
 
     public init(
         layerTrackIDs: [CMPersistentTrackID],
         blendModes: [String],
+        transforms: [CGAffineTransform],
         timeRange: CMTimeRange
     ) {
-        self.timeRange = timeRange
-        self.layerTrackIDs = layerTrackIDs
-        self.blendModes = blendModes
+        self.timeRange       = timeRange
+        self.layerTrackIDs   = layerTrackIDs
+        self.blendModes      = blendModes
+        self.layerTransforms = transforms
         self.requiredSourceTrackIDs = layerTrackIDs.map { NSNumber(value: $0) }
     }
 }
 
 /// Custom compositor that blends multiple video tracks using CoreImage.
-/// Each source frame is aspect-fill scaled into the render size,
-/// then blended using the requested CoreImage blend filters.
+/// Each source frame is orientation-corrected, aspect-fill scaled into
+/// the render size, then blended using the requested CoreImage blend filters.
 public final class LayeredVideoComposition: NSObject, AVVideoCompositing {
 
     private let renderContextQueue = DispatchQueue(label: "LayeredVideoComposition.renderContextQueue")
-    private let renderingQueue = DispatchQueue(label: "LayeredVideoComposition.renderingQueue")
+    private let renderingQueue     = DispatchQueue(label: "LayeredVideoComposition.renderingQueue")
     private var renderContext: AVVideoCompositionRenderContext?
 
     /// Core Image context, explicitly backed by Metal if available.
@@ -107,21 +111,22 @@ public final class LayeredVideoComposition: NSObject, AVVideoCompositing {
             let dstRect    = CGRect(origin: .zero, size: targetSize)
             let trackIDs   = instruction.layerTrackIDs
             let modes      = instruction.blendModes
+            let transforms = instruction.layerTransforms
 
             // Gather CIImages for all available source frames in order.
             var images: [CIImage] = []
 
-            for trackID in trackIDs {
+            for (index, trackID) in trackIDs.enumerated() {
                 guard let buffer = request.sourceFrame(byTrackID: trackID) else {
                     continue
                 }
 
                 var image = CIImage(cvPixelBuffer: buffer)
 
-                // Ask AVFoundation for the correct render transform for this track.
-                // This incorporates the track's preferredTransform and any composition transforms.
-                let transform = renderContext.renderTransform(for: trackID)
-                image = image.transformed(by: transform)
+                // Apply the original track’s preferredTransform if we have one.
+                if index < transforms.count {
+                    image = image.transformed(by: transforms[index])
+                }
 
                 images.append(image)
             }
@@ -145,22 +150,33 @@ public final class LayeredVideoComposition: NSObject, AVVideoCompositing {
             }
 
             // Use shared CI compositor (aspect-fill + blend filters).
-            let outputImage = self.compositor.composite(
+            let composedImage = self.compositor.composite(
                 images: images,
                 blendModes: modes,
                 targetSize: targetSize
             )
 
             // Extra guard: if the output extent is empty, bail to black.
-            if outputImage.extent.isEmpty {
+            guard !composedImage.extent.isEmpty else {
                 self.ciContext.clear(dstBuffer)
                 request.finish(withComposedVideoFrame: dstBuffer)
                 return
             }
 
+            // 🔁 Global vertical flip to correct upside-down output.
+            //
+            // HypnographCICompositor normalizes to (0,0,width,height),
+            // so we can flip by:
+            //   1. translate up by height
+            //   2. scale y by -1
+            let flipTransform = CGAffineTransform(translationX: 0, y: targetSize.height)
+                .scaledBy(x: 1, y: -1)
+
+            let uprightImage = composedImage.transformed(by: flipTransform)
+
             // Render CIImage → pixel buffer via CIContext (backed by Metal if available).
             self.ciContext.render(
-                outputImage,
+                uprightImage,
                 to: dstBuffer,
                 bounds: dstRect,
                 colorSpace: nil
@@ -184,7 +200,7 @@ private extension CIContext {
         defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
 
         if let base = CVPixelBufferGetBaseAddress(pixelBuffer) {
-            let height = CVPixelBufferGetHeight(pixelBuffer)
+            let height      = CVPixelBufferGetHeight(pixelBuffer)
             let bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer)
             memset(base, 0, height * bytesPerRow)
         }

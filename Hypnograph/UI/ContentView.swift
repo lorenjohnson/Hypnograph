@@ -11,7 +11,7 @@ struct ContentView: View {
             Color.black
                 .ignoresSafeArea()
 
-            // Live multi-layer preview: selected layers + current candidate.
+            // Live multi-layer preview: now driven by AVFoundation + custom compositor.
             MultiLayerPreviewView(
                 layers: viewModel.layersForPreview,
                 currentLayerIndex: viewModel.currentLayerIndex,
@@ -20,6 +20,11 @@ struct ContentView: View {
                     set: { viewModel.currentCandidateStartOverride = $0 }
                 ),
                 outputSize: viewModel.outputSize
+            )
+            // Respect the configured target size by constraining aspect ratio.
+            .aspectRatio(
+                viewModel.outputSize.width / max(viewModel.outputSize.height, 1),
+                contentMode: .fit
             )
             .ignoresSafeArea()
 
@@ -47,17 +52,13 @@ struct ContentView: View {
                         .font(.caption)
                         .padding(.bottom, 16)
 
-                    Text("Space = New Set")
-                        .font(.caption)
-                    Text("N = Next Candidate this layer")
-                        .font(.caption)
-                    Text("1-5 Next Candidate per layer X")
-                        .font(.caption)
-                    Text("Delete = Back a layer")
+                    Text("Space = Next Candidate this layer")
                         .font(.caption)
                     Text("Return = Accept Candidate")
                         .font(.caption)
-                    Text("R = Render Hypnogram")
+                    Text("Delete = Delete current layer")
+                        .font(.caption)
+                    Text("1-5 Switch to layer")
                         .font(.caption)
                     Text("M = Blend Mode")
                         .font(.caption)
@@ -65,6 +66,10 @@ struct ContentView: View {
                         .font(.caption)
                         .padding(.bottom, 16)
 
+                    Text("Cmd-N = New random Hypnogram")
+                        .font(.caption)
+                    Text("Cmd-S = Save Hypnogram")
+                        .font(.caption)
                     Text("Cmd-R = Reload Settings and Restart")
                         .font(.caption)
                     Text("Shift-Cmd-S = Show Settings Folder")
