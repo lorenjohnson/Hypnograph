@@ -9,6 +9,8 @@ import Foundation
 import AVFoundation
 import CoreImage
 import CoreMedia
+import CoreGraphics
+import Metal
 
 /// Instruction describing how to composite a single segment:
 /// - which track IDs to use as layers
@@ -18,21 +20,23 @@ public final class LayeredVideoCompositionInstruction: NSObject, AVVideoComposit
     public var enablePostProcessing: Bool = false
     public var containsTweening: Bool = false
 
-    /// AVVideoCompositing wants this even when we do full custom compositing.
     public var requiredSourceTrackIDs: [NSValue]?
     public var passthroughTrackID: CMPersistentTrackID = kCMPersistentTrackID_Invalid
 
     let layerTrackIDs: [CMPersistentTrackID]
     let blendModes: [String]
+    let layerTransforms: [CGAffineTransform]
 
-    public init(timeRange: CMTimeRange,
-         layerTrackIDs: [CMPersistentTrackID],
-         blendModes: [String]) {
+    public init(
+        layerTrackIDs: [CMPersistentTrackID],
+        blendModes: [String],
+        transforms: [CGAffineTransform],
+        timeRange: CMTimeRange
+    ) {
         self.timeRange = timeRange
         self.layerTrackIDs = layerTrackIDs
         self.blendModes = blendModes
-
-        // Bridge CMPersistentTrackID to NSValue/NSNumber as required.
+        self.layerTransforms = transforms
         self.requiredSourceTrackIDs = layerTrackIDs.map { NSNumber(value: $0) }
     }
 }
@@ -45,8 +49,19 @@ public final class LayeredVideoComposition: NSObject, AVVideoCompositing {
     private let renderContextQueue = DispatchQueue(label: "LayeredVideoComposition.renderContextQueue")
     private let renderingQueue = DispatchQueue(label: "LayeredVideoComposition.renderingQueue")
     private var renderContext: AVVideoCompositionRenderContext?
-    private let ciContext = CIContext(options: nil)
 
+    /// Core Image context, explicitly backed by Metal if available.
+    private let ciContext: CIContext = {
+        if let device = MTLCreateSystemDefaultDevice() {
+            return CIContext(mtlDevice: device)
+        } else {
+            return CIContext(options: nil)
+        }
+    }()
+
+    /// Shared compositing helper (aspect-fill + blend filters).
+    private lazy var compositor = HypnographCICompositor(ciContext: ciContext)
+    
     public var sourcePixelBufferAttributes: [String : Any]? {
         [
             kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)
@@ -92,61 +107,70 @@ public final class LayeredVideoComposition: NSObject, AVVideoCompositing {
             }
 
             let targetSize = renderContext.size
-            let trackIDs = instruction.layerTrackIDs
-            let modes = instruction.blendModes
+            let dstRect    = CGRect(origin: .zero, size: targetSize)
+            let trackIDs   = instruction.layerTrackIDs
+            let modes      = instruction.blendModes
+            let transforms = instruction.layerTransforms
 
-            // Base layer
-            guard
-                let firstTrackID = trackIDs.first,
-                let firstBuffer = request.sourceFrame(byTrackID: firstTrackID)
-            else {
-                guard let blank = renderContext.newPixelBuffer() else {
-                    let error = NSError(
-                        domain: "LayeredVideoComposition",
-                        code: -3,
-                        userInfo: [NSLocalizedDescriptionKey: "Failed to allocate output buffer"]
-                    )
-                    request.finish(with: error)
-                    return
-                }
-                request.finish(withComposedVideoFrame: blank)
-                return
-            }
+            // Gather CIImages for all available source frames in order.
+            var images: [CIImage] = []
 
-            // Scale base image to FILL the target size, cropping center.
-            let baseImage = CIImage(cvPixelBuffer: firstBuffer)
-            var outputImage = self.resizedToFill(baseImage, targetSize: targetSize)
-
-            // Blend each additional track onto the base.
-            for (index, trackID) in trackIDs.dropFirst().enumerated() {
+            for (index, trackID) in trackIDs.enumerated() {
                 guard let buffer = request.sourceFrame(byTrackID: trackID) else {
                     continue
                 }
 
-                let rawTopImage = CIImage(cvPixelBuffer: buffer)
-                let topImage = self.resizedToFill(rawTopImage, targetSize: targetSize)
+                var image = CIImage(cvPixelBuffer: buffer)
 
-                let modeName: String
-                if index + 1 < modes.count {
-                    modeName = modes[index + 1]
-                } else {
-                    modeName = modes.last ?? "CISourceOverCompositing"
+                // Apply the original track’s preferredTransform if we have one.
+                if index < transforms.count {
+                    image = image.transformed(by: transforms[index])
                 }
 
-                outputImage = self.composite(bottom: outputImage, top: topImage, modeName: modeName)
+                images.append(image)
             }
 
+            // Destination pixel buffer from render context.
             guard let dstBuffer = renderContext.newPixelBuffer() else {
                 let error = NSError(
                     domain: "LayeredVideoComposition",
-                    code: -4,
+                    code: -3,
                     userInfo: [NSLocalizedDescriptionKey: "Failed to allocate destination buffer"]
                 )
                 request.finish(with: error)
                 return
             }
 
-            self.ciContext.render(outputImage, to: dstBuffer)
+            // If nothing came through, clear to black and finish.
+            guard !images.isEmpty else {
+                self.ciContext.clear(dstBuffer)
+                request.finish(withComposedVideoFrame: dstBuffer)
+                return
+            }
+
+            // Use shared CI compositor (aspect-fill + blend filters).
+            let outputImage = self.compositor.composite(
+                images: images,
+                blendModes: modes,
+                targetSize: targetSize
+            )
+
+            // Extra guard: if the output extent is empty, bail to black.
+            if outputImage.extent.isEmpty {
+                self.ciContext.clear(dstBuffer)
+                request.finish(withComposedVideoFrame: dstBuffer)
+                return
+            }
+
+            // Render CIImage → pixel buffer via CIContext (backed by Metal if available).
+            // Use explicit bounds matching the render size.
+            self.ciContext.render(
+                outputImage,
+                to: dstBuffer,
+                bounds: dstRect,
+                colorSpace: nil
+            )
+
             request.finish(withComposedVideoFrame: dstBuffer)
         }
     }
@@ -155,39 +179,6 @@ public final class LayeredVideoComposition: NSObject, AVVideoCompositing {
         renderingQueue.sync {
             // just drain
         }
-    }
-
-    private func composite(bottom: CIImage, top: CIImage, modeName: String) -> CIImage {
-        guard let filter = CIFilter(name: modeName) else {
-            print("LayeredVideoComposition: unknown blend filter '\(modeName)', falling back to source-over")
-            return top.composited(over: bottom)
-        }
-
-        filter.setValue(top, forKey: kCIInputImageKey)
-        filter.setValue(bottom, forKey: kCIInputBackgroundImageKey)
-
-        return filter.outputImage ?? top.composited(over: bottom)
-    }
-
-    /// Scale `image` to completely fill `targetSize`, then crop center.
-    private func resizedToFill(_ image: CIImage, targetSize: CGSize) -> CIImage {
-        let extent = image.extent
-        guard extent.width > 0, extent.height > 0 else {
-            return image
-        }
-
-        let scale = max(
-            targetSize.width  / extent.width,
-            targetSize.height / extent.height
-        )
-
-        let scaled = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-
-        let x = (scaled.extent.width  - targetSize.width)  / 2.0
-        let y = (scaled.extent.height - targetSize.height) / 2.0
-        let cropRect = CGRect(x: x, y: y, width: targetSize.width, height: targetSize.height)
-
-        return scaled.cropped(to: cropRect)
     }
 }
 

@@ -95,6 +95,7 @@ final class AVFoundationRenderer: HypnogramRenderer {
 
         var videoTrackIDs: [CMPersistentTrackID] = []
         var blendModes: [String] = []
+        var transforms: [CGAffineTransform] = []
 
         // Helper to insert a timeRange based on seconds
         func insertSegment(
@@ -138,8 +139,6 @@ final class AVFoundationRenderer: HypnogramRenderer {
                 print("AVFoundationRenderer: failed to add video track for layer \(index)")
                 continue
             }
-
-            compVideoTrack.preferredTransform = srcVideoTrack.preferredTransform
 
             var insertTime: CMTime = .zero
             var remainingSeconds = targetSeconds
@@ -191,6 +190,9 @@ final class AVFoundationRenderer: HypnogramRenderer {
             } else {
                 blendModes.append(layer.blendMode.ciFilterName)
             }
+
+            // Preserve the original track's orientation transform
+            transforms.append(srcVideoTrack.preferredTransform)
 
             // Audio: mirror the same looping if present
             if let srcAudioTrack = asset.tracks(withMediaType: .audio).first {
@@ -252,9 +254,10 @@ final class AVFoundationRenderer: HypnogramRenderer {
 
         // 4. Video composition + custom compositor
         let instruction = LayeredVideoCompositionInstruction(
-            timeRange: CMTimeRange(start: .zero, duration: targetDuration),
             layerTrackIDs: videoTrackIDs,
-            blendModes: blendModes
+            blendModes: blendModes,
+            transforms: transforms,
+            timeRange: CMTimeRange(start: .zero, duration: targetDuration)
         )
 
         let videoComposition = AVMutableVideoComposition()
