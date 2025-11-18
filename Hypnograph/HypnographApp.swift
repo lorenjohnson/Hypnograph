@@ -72,7 +72,7 @@ struct HypnographApp: App {
             )
         }
 
-        let outputPath = (settings.outputFolder as NSString).expandingTildeInPath
+        let outputPath = settings.outputFolder
         let outputURL = URL(fileURLWithPath: outputPath, isDirectory: true)
 
         let backend = AVFoundationRenderer(

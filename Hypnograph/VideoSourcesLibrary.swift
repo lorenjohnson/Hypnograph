@@ -43,7 +43,7 @@ public final class VideoSourcesLibrary {
                     let asset = AVAsset(url: fileURL)
                     let duration = asset.duration
 
-                    if duration.isValid, duration.seconds > 0 {
+                    if asset.isPlayable, duration.isValid, duration.seconds > 0 {
                         results.append(VideoFile(url: fileURL, duration: duration))
                     }
                 }

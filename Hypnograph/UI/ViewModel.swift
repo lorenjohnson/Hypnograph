@@ -194,8 +194,6 @@ final class ViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Auto-prime (modularized here)
-
     /// Called whenever the user presses a key that changes the state.
     private func noteUserInteraction() {
         scheduleAutoPrimeTimer()

@@ -235,7 +235,7 @@ struct MultiLayerPreviewView: View {
         if index == 0 {
             // Base layer: when there is a second layer, we want layer 2's mode
             // to "apply down" to layer 1 as well, so they feel like one paired blend.
-            return firstEdgeMode ?? .normal
+            return .normal
         } else if index == 1 {
             // Second layer: same story – its mode is the one defining the
             // interaction between layer 1 and 2.
