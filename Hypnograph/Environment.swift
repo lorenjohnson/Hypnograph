@@ -52,7 +52,7 @@ enum Environment {
         guard !fm.fileExists(atPath: url.path) else { return }
 
         guard let bundledURL = Bundle.main.url(
-            forResource: "hypnograph-default-settings",
+            forResource: "default-settings",
             withExtension: "json"
         ) else {
             print("⚠️ No bundled default settings found; skipping creation.")
