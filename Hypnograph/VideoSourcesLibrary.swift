@@ -1,13 +1,22 @@
 import Foundation
 import AVFoundation
 import CoreMedia
+import Photos
 
 public final class VideoSourcesLibrary {
     public private(set) var files: [VideoFile] = []
 
     public init(sourceFolders: [String]) {
-        loadFiles(from: sourceFolders)
+        if sourceFolders.isEmpty {
+            // No explicit sources → default to Photos library videos
+            loadFilesFromPhotosLibrary()
+        } else {
+            // Explicit folders / files → current behavior
+            loadFiles(from: sourceFolders)
+        }
     }
+
+    // MARK: - File system sources
 
     private func loadFiles(from sources: [String]) {
         let fileManager = FileManager.default
@@ -63,6 +72,76 @@ public final class VideoSourcesLibrary {
 
         self.files = results
     }
+
+    // MARK: - Photos library fallback (raw originals scan)
+
+    private func loadFilesFromPhotosLibrary() {
+        let fm = FileManager.default
+        let picturesDir = fm.urls(for: .picturesDirectory, in: .userDomainMask).first!
+
+        let photosLibURL = picturesDir.appendingPathComponent(
+            "Photos Library.photoslibrary",
+            isDirectory: true
+        )
+
+        let originalsURL = photosLibURL.appendingPathComponent("originals", isDirectory: true)
+
+        guard fm.fileExists(atPath: originalsURL.path) else {
+            print("VideoSourcesLibrary: Originals folder not found at \(originalsURL.path)")
+            self.files = []
+            return
+        }
+
+        let allowedExtensions = Set([
+            "mov", "mp4", "m4v", "webm",
+            "hevc", "avi", "mkv",
+            "3gp", "3g2" // optional
+        ])
+
+        let resourceKeys: Set<URLResourceKey> = [
+            .isRegularFileKey,
+            .fileSizeKey,
+            .isReadableKey
+        ]
+
+        var results: [VideoFile] = []
+
+        guard let enumerator = fm.enumerator(
+            at: originalsURL,
+            includingPropertiesForKeys: Array(resourceKeys),
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]
+        ) else {
+            self.files = []
+            return
+        }
+
+        for case let fileURL as URL in enumerator {
+            // Filter by extension
+            let ext = fileURL.pathExtension.lowercased()
+            guard allowedExtensions.contains(ext) else { continue }
+
+            // File metadata
+            guard let values = try? fileURL.resourceValues(forKeys: resourceKeys),
+                values.isRegularFile == true,
+                values.isReadable == true else { continue }
+
+            // Skip iCloud placeholders / stubs
+            if let size = values.fileSize, size < 1024 { continue }
+
+            // Try to load AVAsset and read duration
+            let asset = AVAsset(url: fileURL)
+            let duration = asset.duration
+
+            guard duration.isValid, duration.seconds > 0 else { continue }
+
+            results.append(VideoFile(url: fileURL, duration: duration))
+        }
+
+        self.files = results
+        print("VideoSourcesLibrary: loaded \(results.count) original local videos from Photos originals/")
+    }
+
+    // MARK: - Random clip selection
 
     public func randomClip(clipLength: Double) -> VideoClip? {
         guard let file = files.randomElement() else { return nil }

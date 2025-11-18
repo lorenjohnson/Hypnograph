@@ -65,6 +65,8 @@ struct ContentView: View {
                         .font(.caption)
                         .padding(.bottom, 16)
 
+                    Text("Cmd-R = Reload Settings and Restart")
+                        .font(.caption)
                     Text("Shift-Cmd-S = Show Settings Folder")
                         .font(.caption)
                 }
