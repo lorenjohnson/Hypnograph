@@ -61,7 +61,21 @@ public final class Session: ObservableObject {
         let idx = layerBlendIndices[currentLayer]
         return blendModes[idx]
     }
-    
+
+    public var layers: [HypnogramLayer] {
+        var layers: [HypnogramLayer] = []
+
+        for layerIndex in 0..<maxLayers {
+            let modeIndex = layerBlendIndices[layerIndex]
+            let mode = blendModes[modeIndex]
+
+            if let clip = candidateClips[layerIndex] ?? selectedClips[layerIndex] {
+                layers.append(HypnogramLayer(clip: clip, blendMode: mode))
+            }
+        }
+
+        return layers
+    }
     // MARK: - Actions (to drive from UI)
     
     /// SPACE: Get a new random candidate for the current layer.
@@ -172,6 +186,11 @@ public final class Session: ObservableObject {
         }
     }
 
+    /// For every layer, use candidate if present, otherwise selected.
+    public func layersForPreview() -> [HypnogramLayer] {
+        return self.layers
+    }
+
     /// Build a HypnogramRecipe from:
     /// - all *selected* layers below the current one
     /// - the *current* layer’s candidate (or selected if no candidate)
@@ -179,26 +198,14 @@ public final class Session: ObservableObject {
     ///
     /// Returns nil only if *no* clips are present at all.
     public func layersForRender() -> HypnogramRecipe? {
-        var layers: [HypnogramLayer] = []
-
-        for layerIndex in 0..<maxLayers {
-            // Prefer candidate, fall back to selected.
-            guard let clip = candidateClips[layerIndex] ?? selectedClips[layerIndex] else {
-                continue
-            }
-            let modeIndex = layerBlendIndices[layerIndex]
-            let mode = blendModes[modeIndex]
-            layers.append(HypnogramLayer(clip: clip, blendMode: mode))
-        }
-
-        guard !layers.isEmpty else { return nil }
+        guard !self.layers.isEmpty else { return nil }
 
         let duration = CMTime(
             seconds: settings.outputSeconds,
             preferredTimescale: 600
         )
 
-        return HypnogramRecipe(layers: layers, targetDuration: duration)
+        return HypnogramRecipe(layers: self.layers, targetDuration: duration)
     }
 
     /// Fill the first `activeLayerCount` layers with random clips + random blend modes,
@@ -251,21 +258,4 @@ public final class Session: ObservableObject {
 
         _ = nextCandidateForCurrentLayer()
     }
-
-    /// Build a list of layers for live preview:
-    /// - For every layer, use candidate if present, otherwise selected.
-    /// - Ignore layers that have neither.
-    public func layersForPreview() -> [HypnogramLayer] {
-        var result: [HypnogramLayer] = []
-
-        for index in 0..<maxLayers {
-            let modeIndex = layerBlendIndices[index]
-            let mode = blendModes[modeIndex]
-
-            if let clip = candidateClips[index] ?? selectedClips[index] {
-                result.append(HypnogramLayer(clip: clip, blendMode: mode))
-            }
-        }
-
-        return result
-    }}
+}
