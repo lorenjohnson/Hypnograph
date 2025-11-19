@@ -12,14 +12,15 @@ struct ContentView: View {
                 .ignoresSafeArea()
 
             // Live multi-layer preview: now driven by AVFoundation + custom compositor.
-            MultiLayerPreviewView(
+            MontagePreviewView(
                 layers: viewModel.layersForPreview,
                 currentLayerIndex: viewModel.currentLayerIndex,
                 currentLayerTime: Binding(
                     get: { viewModel.currentCandidateStartOverride },
                     set: { viewModel.currentCandidateStartOverride = $0 }
                 ),
-                outputSize: viewModel.outputSize
+                outputSize: viewModel.outputSize,
+                outputDuration: viewModel.outputDuration
             )
             // Respect the configured target size by constraining aspect ratio.
             .aspectRatio(

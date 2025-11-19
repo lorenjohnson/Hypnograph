@@ -26,6 +26,13 @@ final class ViewModel: ObservableObject {
 
     private var autoPrimeTimer: Timer?
 
+    var outputDuration: CMTime {
+        CMTime(
+            seconds: currentSession.settings.outputSeconds,
+            preferredTimescale: 600
+        )
+    }
+
     init(settings: Settings, renderQueue: RenderQueue) {
         self.settings = settings
         self.currentSession = Session(settings: settings)
@@ -38,6 +45,14 @@ final class ViewModel: ObservableObject {
     }
 
     // MARK: - Intents driven by key commands
+
+    func prevLayer() {
+        selectLayer(index: max(0, currentSession.currentLayer - 1))
+    }
+
+    func nextLayer() {
+        selectLayer(index: min(settings.maxLayers - 1, currentSession.currentLayer + 1))
+    }
 
     /// N: advance to the next random candidate for the current layer.
     func nextCandidate() {
@@ -121,6 +136,7 @@ final class ViewModel: ObservableObject {
             print("⚠️ Failed to reload settings; keeping existing settings. Error: \(error)")
         }
     }
+
     func toggleHUD() {
         isHUDVisible.toggle()
         objectWillChange.send()
