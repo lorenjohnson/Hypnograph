@@ -43,8 +43,39 @@ extension NSWindow {
     }
 }
 
+
+// MARK: - App Delegate
+
+final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
+    weak var renderQueue: RenderQueue?
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let queue = renderQueue else {
+            return .terminateNow
+        }
+
+        if queue.activeJobs == 0 {
+            return .terminateNow
+        }
+
+        print("Hypnograph: delaying termination until \(queue.activeJobs) render job(s) complete")
+
+        // When all jobs finish, tell AppKit it's okay to quit.
+        queue.onAllJobsFinished = { [weak sender] in
+            DispatchQueue.main.async {
+                sender?.reply(toApplicationShouldTerminate: true)
+            }
+        }
+
+        return .terminateLater
+    }
+}
+
 @main
 struct HypnographApp: App {
+    @NSApplicationDelegateAdaptor(HypnographAppDelegate.self)
+    private var appDelegate
+
     private let settings: Settings
     @StateObject private var state: HypnogramState
     @StateObject private var renderQueue: RenderQueue
@@ -91,14 +122,17 @@ struct HypnographApp: App {
         self.settings = settings
         let state = HypnogramState(settings: settings)
 
-        let montageMode = MontageMode(state: state)
+        let mode = MontageMode(state: state)
 
         _state       = StateObject(wrappedValue: state)
-        _renderQueue = StateObject(wrappedValue: montageMode.renderQueue)
+        _renderQueue = StateObject(wrappedValue: mode.renderQueue)
 
-        self.mode = montageMode
+        self.mode = mode
 
-        montageMode.renderQueue.onAllJobsFinished = { NSApp.terminate(nil) }
+        mode.renderQueue.onAllJobsFinished = { NSApp.terminate(nil) }
+
+        // Let the AppDelegate know about the render queue for Cmd-Q handling
+        appDelegate.renderQueue = mode.renderQueue
     }
     
     var body: some Scene {
