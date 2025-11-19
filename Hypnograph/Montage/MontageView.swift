@@ -8,7 +8,6 @@ import CoreGraphics
 /// Core Image compositor as the final render.
 struct MontageView: NSViewRepresentable {
     let layers: [HypnogramLayer]
-    let currentLayerIndex: Int   // kept for future use if you want e.g. HUD
     @Binding var currentLayerTime: CMTime?
     let outputSize: CGSize
     let outputDuration: CMTime
@@ -47,7 +46,7 @@ struct MontageView: NSViewRepresentable {
 
         if newID != c.compositionID || c.player == nil {
             // Rebuild composition + player item
-            guard let (item, _) = makePreviewItem(for: layers, renderSize: outputSize) else {
+            guard let (item, _) = makeDisplay(for: layers, renderSize: outputSize) else {
                 Self.tearDown(coordinator: c, view: nsView)
                 currentLayerTime = nil
                 return
@@ -125,7 +124,7 @@ struct MontageView: NSViewRepresentable {
     /// Build an AVPlayerItem using AVMutableComposition + our custom
     /// MultiLayerBlendCompositor (Core Image compositor), using the
     /// *same* looping + duration semantics as the final renderer.
-    private func makePreviewItem(
+    private func makeDisplay(
         for layers: [HypnogramLayer],
         renderSize: CGSize
     ) -> (AVPlayerItem, Double)? {
@@ -146,7 +145,7 @@ struct MontageView: NSViewRepresentable {
             return nil
         }
 
-        let composition = buildResult.composition
+        let composition   = buildResult.composition
         let videoTrackIDs = buildResult.videoTrackIDs
         let blendModes    = buildResult.blendModes
         let transforms    = buildResult.transforms

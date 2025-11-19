@@ -1,7 +1,6 @@
 import Foundation
 import AVFoundation
 import CoreMedia
-import Photos
 
 public final class VideoSourcesLibrary {
     public private(set) var files: [VideoFile] = []
