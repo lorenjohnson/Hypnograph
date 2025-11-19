@@ -4,6 +4,7 @@ import AVFoundation
 struct ContentView: View {
     @ObservedObject var state: HypnogramState
     @ObservedObject var renderQueue: RenderQueue
+    let mode: HypnographMode
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -11,23 +12,14 @@ struct ContentView: View {
             Color.black
                 .ignoresSafeArea()
 
-            // Live multi-layer preview: AVFoundation + custom compositor.
-            MontageView(
-                layers: state.layersForPreview(),
-                currentLayerIndex: state.currentLayer,
-                currentLayerTime: Binding(
-                    get: { state.currentCandidateStartOverride },
-                    set: { state.currentCandidateStartOverride = $0 }
-                ),
-                outputSize: state.outputSize,
-                outputDuration: state.outputDuration
-            )
-            // Respect the configured target size by constraining aspect ratio.
-            .aspectRatio(
-                state.outputSize.width / max(state.outputSize.height, 1),
-                contentMode: .fit
-            )
-            .ignoresSafeArea()
+            // Mode-driven display: ContentView has no idea which concrete view this is.
+            mode.makeDisplayView(state: state, renderQueue: renderQueue)
+                // Respect the configured target size by constraining aspect ratio.
+                .aspectRatio(
+                    state.outputSize.width / max(state.outputSize.height, 1),
+                    contentMode: .fit
+                )
+                .ignoresSafeArea()
 
             // HUD
             if state.isHUDVisible {
@@ -46,14 +38,14 @@ struct ContentView: View {
                             .padding(.bottom, 8)
                     }
 
-                    Text("Layer \(state.currentLayer + 1) of \(state.maxLayers)")
+                    Text("Layer \(state.currentLayerIndex + 1) of \(state.maxLayers)")
                         .font(.caption)
 
                     Text("Blend mode: \(state.currentBlendModeName)")
                         .font(.caption)
                         .padding(.bottom, 16)
 
-                    Text("Space = Next Candidate this layer")
+                    Text("N = Next Candidate this layer")
                         .font(.caption)
                     Text("Return = Accept Candidate")
                         .font(.caption)
@@ -65,7 +57,7 @@ struct ContentView: View {
                         .font(.caption)
                         .padding(.bottom, 16)
 
-                    Text("Cmd-N = New random Hypnogram")
+                    Text("Space = New random Hypnogram")
                         .font(.caption)
                     Text("Cmd-S = Save Hypnogram")
                         .font(.caption)

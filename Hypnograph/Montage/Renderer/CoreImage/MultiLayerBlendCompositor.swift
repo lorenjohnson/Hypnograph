@@ -1,5 +1,5 @@
 //
-//  MultiLayerBlendInstruction.swift
+//  MultiLayerBlendCompositor.swift
 //  Hypnograph
 //
 //  Created by Loren Johnson on 15.11.25.
@@ -30,7 +30,7 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
     }()
 
     /// Shared compositing helper (aspect-fill + blend filters).
-    private lazy var compositor = AspectFillStackCompositor(ciContext: ciContext)
+    private let compositor = AspectFillStackCompositor()
     
     public var sourcePixelBufferAttributes: [String : Any]? {
         [

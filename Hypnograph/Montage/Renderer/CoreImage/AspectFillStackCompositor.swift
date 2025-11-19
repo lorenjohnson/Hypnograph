@@ -16,8 +16,6 @@ import CoreGraphics
 /// - return a single CIImage ready to render
 struct AspectFillStackCompositor {
 
-    let ciContext: CIContext
-
     /// Compose a stack of CIImages using CI blend filters.
     ///
     /// - Parameters:

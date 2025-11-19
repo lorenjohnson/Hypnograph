@@ -1,57 +1,135 @@
-//
-//  MontageMode.swift
-//  Hypnograph
-//
-//  Created by Loren Johnson on 19.11.25.
-//
-
-
 import Foundation
 import CoreGraphics
+import Combine
+import SwiftUI
 
 /// Concrete HypnographMode backed by HypnogramState + Montage renderer semantics.
-final class MontageMode: HypnographMode {
+/// Holds any Montage-specific preview state (like solo).
+final class MontageMode: ObservableObject, HypnographMode {
 
     /// Shared session state used by the Montage mode.
     /// This is the same instance that ContentView observes.
     private let state: HypnogramState
 
-    init(state: HypnogramState) {
+    /// Render queue + backend for this mode.
+    let renderQueue: RenderQueue
+
+    /// If set, preview only this layer (solo).
+    /// `nil` = normal multi-layer preview.
+    @Published private(set) var soloLayerIndex: Int? = nil
+
+    init(state: HypnogramState, settings: Settings) {
         self.state = state
+
+        // Mode builds its own backend and queue.
+        let outputPath = settings.outputFolder
+        let outputURL  = URL(fileURLWithPath: outputPath, isDirectory: true)
+
+        let backend = MontageRenderer(
+            outputFolder: outputURL,
+            outputWidth: settings.outputWidth,
+            outputHeight: settings.outputHeight
+        )
+
+        self.renderQueue = RenderQueue(renderer: backend)
     }
 
-    // MARK: - HypnographMode
+    // Expose state bits if you need them (read-only)
+    var currentLayerIndex: Int {
+        state.currentLayerIndex
+    }
+
+    var maxLayers: Int {
+        state.maxLayers
+    }
+
+    var currentBlendModeName: String {
+        state.currentBlendModeName
+    }
+
+    // MARK: - Preview / solo
+
+    func layersForDisplay() -> [HypnogramLayer] {
+        if let solo = soloLayerIndex {
+            let all = state.layers
+            guard solo >= 0, solo < all.count else { return all }
+            return [all[solo]]
+        } else {
+            return state.layers
+        }
+    }
+
+    /// Solo the current layer (or clear solo if already soloed).
+    func toggleSoloCurrentSource() {
+        let idx = state.currentLayerIndex
+        if soloLayerIndex == idx {
+            soloLayerIndex = nil
+        } else {
+            soloLayerIndex = idx
+        }
+    }
+
+    var isSoloActive: Bool {
+        soloLayerIndex != nil
+    }
+
+    // MARK: - HypnographMode – display wiring
+
+    func makeDisplayView(
+        state: HypnogramState,
+        renderQueue: RenderQueue
+    ) -> AnyView {
+        // We ignore parameters and use our captured state/queue,
+        // assuming they’re the same instances.
+        AnyView(
+            MontageView(
+                layers: layersForDisplay(),
+                currentLayerTime: Binding(
+                    get: { self.state.currentCandidateStartOverride },
+                    set: { self.state.currentCandidateStartOverride = $0 }
+                ),
+                outputSize: self.state.outputSize,
+                outputDuration: self.state.outputDuration
+            )
+        )
+    }
+
+    // MARK: - HypnographMode – engine behavior
 
     var outputSize: CGSize {
         state.outputSize
     }
 
-    // MARK: Hypnogram lifecycle
+    // Hypnogram lifecycle
 
     func newRandomHypnogram() {
+        // Clear solo on new random set, feels saner.
+        soloLayerIndex = nil
         state.newAutoPrimeSet()
     }
 
-    func saveCurrentHypnogram(using queue: RenderQueue) {
+    func saveCurrentHypnogram() {
         guard let recipe = state.layersForRender() else {
             print("renderCurrentHypnogram(): no renderable hypnogram (no selected clips).")
             return
         }
 
         print("renderCurrentHypnogram(): enqueuing recipe with \(recipe.layers.count) layer(s).")
-        queue.enqueue(recipe: recipe)
+        renderQueue.enqueue(recipe: recipe)
 
         state.resetForNextHypnogram()
+
+        // Keep solo off after saving; new set is full stack again.
+        soloLayerIndex = nil
 
         if state.settings.autoPrime {
             state.newAutoPrimeSet()
         }
     }
 
-    // MARK: Source navigation
+    // Source navigation
 
     func nextSource() {
-        // "Source" == layer in Montage mode
         state.nextLayer()
     }
 
@@ -63,7 +141,7 @@ final class MontageMode: HypnographMode {
         state.selectLayer(index: index)
     }
 
-    // MARK: Candidate / selection
+    // Candidate / selection
 
     func nextCandidate() {
         state.nextCandidate()
@@ -77,7 +155,7 @@ final class MontageMode: HypnographMode {
         state.handleEscape()
     }
 
-    // MARK: Mode-specific tweaks
+    // Mode-specific tweaks
 
     func cycleEffect() {
         state.cycleBlendMode()
@@ -89,5 +167,7 @@ final class MontageMode: HypnographMode {
 
     func reloadSettings() {
         state.reloadSettings(from: Environment.defaultSettingsURL)
+        // settings reload might change layer counts; safest is to clear solo
+        soloLayerIndex = nil
     }
 }

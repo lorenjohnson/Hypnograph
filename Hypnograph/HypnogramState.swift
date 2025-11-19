@@ -33,7 +33,7 @@ public final class HypnogramState: ObservableObject {
     // MARK: - Layer state
 
     /// Index of the layer currently being chosen [0 ..< maxLayers]
-    @Published public private(set) var currentLayer: Int = 0
+    @Published public private(set) var currentLayerIndex: Int = 0
 
     /// For each layer, the current candidate clip (Space cycles this).
     @Published public private(set) var candidateClips: [VideoClip?]
@@ -62,7 +62,7 @@ public final class HypnogramState: ObservableObject {
         self.settings = settings
         self.library  = VideoSourcesLibrary(sourceFolders: settings.sourceFolders)
         self.blendModes = settings.blendModes.map { BlendMode(key: $0) }
-        self.currentLayer = 0
+        self.currentLayerIndex = 0
 
         let layers = max(1, settings.maxLayers)
         self.candidateClips    = Array(repeating: nil, count: layers)
@@ -85,7 +85,7 @@ public final class HypnogramState: ObservableObject {
 
     /// The blend mode currently selected for the active layer.
     public var currentBlendMode: BlendMode {
-        let idx = layerBlendIndices[currentLayer]
+        let idx = layerBlendIndices[currentLayerIndex]
         return blendModes[idx]
     }
 
@@ -95,8 +95,8 @@ public final class HypnogramState: ObservableObject {
 
     /// Current candidate clip for the active layer, if any.
     public var currentCandidateClip: VideoClip? {
-        guard currentLayer >= 0 && currentLayer < candidateClips.count else { return nil }
-        return candidateClips[currentLayer]
+        guard currentLayerIndex >= 0 && currentLayerIndex < candidateClips.count else { return nil }
+        return candidateClips[currentLayerIndex]
     }
 
     /// All layers, using candidate if present, else selected.
@@ -113,11 +113,6 @@ public final class HypnogramState: ObservableObject {
         }
 
         return result
-    }
-
-    /// Convenience for the preview.
-    public func layersForPreview() -> [HypnogramLayer] {
-        layers
     }
 
     /// Target duration as CMTime.
@@ -197,18 +192,18 @@ public final class HypnogramState: ObservableObject {
 
     public func prevLayer() {
         noteUserInteraction()
-        currentLayer = max(0, currentLayer - 1)
+        currentLayerIndex = max(0, currentLayerIndex - 1)
     }
 
     public func nextLayer() {
         noteUserInteraction()
-        currentLayer = min(maxLayers - 1, currentLayer + 1)
+        currentLayerIndex = min(maxLayers - 1, currentLayerIndex + 1)
     }
 
     public func selectLayer(index: Int) {
         noteUserInteraction()
         let clamped = max(0, min(maxLayers - 1, index))
-        currentLayer = clamped
+        currentLayerIndex = clamped
     }
 
     public func cycleBlendMode() {
@@ -224,7 +219,7 @@ public final class HypnogramState: ObservableObject {
     public func handleEscape() {
         noteUserInteraction()
 
-        if currentLayer > 0 {
+        if currentLayerIndex > 0 {
             goBackOneLayer()
             currentCandidateStartOverride = nil
         } else {
@@ -257,7 +252,7 @@ public final class HypnogramState: ObservableObject {
         selectedClips     = Array(repeating: nil, count: layersCount)
         candidateClips    = Array(repeating: nil, count: layersCount)
         layerBlendIndices = Array(repeating: 0,  count: layersCount)
-        currentLayer      = 0
+        currentLayerIndex = 0
         currentCandidateStartOverride = nil
 
         _ = nextCandidateForCurrentLayer()
@@ -271,7 +266,7 @@ public final class HypnogramState: ObservableObject {
         guard let clip = library.randomClip(clipLength: settings.outputSeconds) else {
             return nil
         }
-        candidateClips[currentLayer] = clip
+        candidateClips[currentLayerIndex] = clip
         return clip
     }
 
@@ -279,7 +274,7 @@ public final class HypnogramState: ObservableObject {
     /// optionally overriding its start time with a custom playhead time,
     /// and move to the next layer if there is one.
     public func acceptCandidateForCurrentLayer(usingStartTime customStart: CMTime? = nil) {
-        guard let candidate = candidateClips[currentLayer] else { return }
+        guard let candidate = candidateClips[currentLayerIndex] else { return }
 
         let finalClip: VideoClip
 
@@ -312,16 +307,16 @@ public final class HypnogramState: ObservableObject {
             finalClip = candidate
         }
 
-        selectedClips[currentLayer] = finalClip
-        candidateClips[currentLayer] = finalClip
+        selectedClips[currentLayerIndex] = finalClip
+        candidateClips[currentLayerIndex] = finalClip
 
-        if currentLayer + 1 < maxLayers {
+        if currentLayerIndex + 1 < maxLayers {
             // Inherit blend mode from this layer to the next.
-            let currentBlendIndex = layerBlendIndices[currentLayer]
-            let nextLayer = currentLayer + 1
-            layerBlendIndices[nextLayer] = currentBlendIndex
+            let currentBlendIndex = layerBlendIndices[currentLayerIndex]
+            let nextLayerIndex = currentLayerIndex + 1
+            layerBlendIndices[nextLayerIndex] = currentBlendIndex
 
-            currentLayer = nextLayer
+            currentLayerIndex = nextLayerIndex
             _ = nextCandidateForCurrentLayer()
         } else {
             // All layers have selected clips; ready to render.
@@ -334,13 +329,13 @@ public final class HypnogramState: ObservableObject {
         guard !blendModes.isEmpty else { return }
 
         // Disable changing on the first layer to avoid confusing "black screen" behavior.
-        guard currentLayer > 0 else {
+        guard currentLayerIndex > 0 else {
             return
         }
 
-        var idx = layerBlendIndices[currentLayer]
+        var idx = layerBlendIndices[currentLayerIndex]
         idx = (idx + 1) % blendModes.count
-        layerBlendIndices[currentLayer] = idx
+        layerBlendIndices[currentLayerIndex] = idx
     }
 
     /// ESC / Delete: Go back one layer and DROP the layer we were on.
@@ -349,20 +344,20 @@ public final class HypnogramState: ObservableObject {
     /// - The new current layer gets its selected clip (if any) as candidate so you can tweak it.
     public func goBackOneLayer() {
         // Nothing to drop if we're already at the base layer.
-        guard currentLayer > 0 else { return }
+        guard currentLayerIndex > 0 else { return }
 
         // The layer we are *leaving* should be killed.
-        let layerToDrop = currentLayer
+        let layerToDrop = currentLayerIndex
         candidateClips[layerToDrop] = nil
         selectedClips[layerToDrop]  = nil
         layerBlendIndices[layerToDrop] = 0
 
         // Move the cursor down.
-        currentLayer -= 1
+        currentLayerIndex -= 1
 
         // For the new current layer, show its selected clip (if any) as the candidate.
-        if let selected = selectedClips[currentLayer] {
-            candidateClips[currentLayer] = selected
+        if let selected = selectedClips[currentLayerIndex] {
+            candidateClips[currentLayerIndex] = selected
         }
     }
 
@@ -373,7 +368,7 @@ public final class HypnogramState: ObservableObject {
     public func primeRandomLayers(activeLayerCount: Int) {
         let totalLayers = maxLayers
         guard totalLayers > 0 else {
-            currentLayer = 0
+            currentLayerIndex = 0
             return
         }
 
@@ -399,7 +394,7 @@ public final class HypnogramState: ObservableObject {
         }
 
         // Cursor on the top-most active layer so M/randomize etc. are meaningful.
-        currentLayer = clampedCount - 1
+        currentLayerIndex = clampedCount - 1
     }
 
     // MARK: - Settings reload
@@ -412,7 +407,7 @@ public final class HypnogramState: ObservableObject {
         candidateClips    = Array(repeating: nil, count: layersCount)
         selectedClips     = Array(repeating: nil, count: layersCount)
         layerBlendIndices = Array(repeating: 0,  count: layersCount)
-        currentLayer      = 0
+        currentLayerIndex = 0
         currentCandidateStartOverride = nil
 
         _ = nextCandidateForCurrentLayer()

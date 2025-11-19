@@ -5,14 +5,6 @@
 //  Created by Loren Johnson on 19.11.25.
 //
 
-
-//
-//  MultiLayerBlendInstruction.swift
-//  Hypnograph
-//
-//  Created by Loren Johnson on 15.11.25.
-//
-
 import Foundation
 import AVFoundation
 import CoreMedia

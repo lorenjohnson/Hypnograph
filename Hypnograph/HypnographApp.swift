@@ -86,44 +86,40 @@ struct HypnographApp: App {
             )
         }
 
-        let outputPath = settings.outputFolder
-        let outputURL = URL(fileURLWithPath: outputPath, isDirectory: true)
-
-        let backend = MontageRenderer(
-            outputFolder: outputURL,
-            outputWidth: settings.outputWidth,
-            outputHeight: settings.outputHeight
-        )
-
-        let queue   = RenderQueue(renderer: backend)
+        // Shared state
         let state = HypnogramState(settings: settings)
 
-        _renderQueue = StateObject(wrappedValue: queue)
-        _state     = StateObject(wrappedValue: state)
+        let montageMode = MontageMode(state: state, settings: settings)
 
-        // Create current mode (Montage) backed by the same state instance
-        self.mode = MontageMode(state: state)
+        _state       = StateObject(wrappedValue: state)
+        _renderQueue = StateObject(wrappedValue: montageMode.renderQueue)
 
-        queue.onAllJobsFinished = { NSApp.terminate(nil) }
+        self.mode = montageMode
+
+        montageMode.renderQueue.onAllJobsFinished = { NSApp.terminate(nil) }
     }
     
     var body: some Scene {
         WindowGroup {
-            ContentView(state: state, renderQueue: renderQueue)
-                .onAppear {
-                    DispatchQueue.main.async {
-                        guard let window = NSApp.windows.first else { return }
+            ContentView(
+                state: state,
+                renderQueue: renderQueue,
+                mode: mode
+            )
+            .onAppear {
+                DispatchQueue.main.async {
+                    guard let window = NSApp.windows.first else { return }
 
-                        let screens = NSScreen.screens
-                        // Prefer external monitor if present
-                        let targetScreen = (screens.count > 1 ? screens[1] : screens[0])
+                    let screens = NSScreen.screens
+                    // Prefer external monitor if present
+                    let targetScreen = (screens.count > 1 ? screens[1] : screens[0])
 
-                        window.makeHypnographBorderless(
-                            on: targetScreen,
-                            contentSize: mode.outputSize
-                        )
-                    }
+                    window.makeHypnographBorderless(
+                        on: targetScreen,
+                        contentSize: mode.outputSize
+                    )
                 }
+            }
         }
         .commands {
             
@@ -141,7 +137,7 @@ struct HypnographApp: App {
             // Add custom Save behavior
             CommandGroup(replacing: .saveItem) {
                 Button("Save") {
-                    mode.saveCurrentHypnogram(using: renderQueue)
+                    mode.saveCurrentHypnogram()
                 }
                 .keyboardShortcut("s", modifiers: [.command])
             }
