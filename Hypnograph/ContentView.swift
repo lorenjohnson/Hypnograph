@@ -2,7 +2,7 @@ import SwiftUI
 import AVFoundation
 
 struct ContentView: View {
-    @ObservedObject var session: HypnogramState
+    @ObservedObject var state: HypnogramState
     @ObservedObject var renderQueue: RenderQueue
 
     var body: some View {
@@ -13,24 +13,24 @@ struct ContentView: View {
 
             // Live multi-layer preview: AVFoundation + custom compositor.
             MontageView(
-                layers: session.layersForPreview(),
-                currentLayerIndex: session.currentLayer,
+                layers: state.layersForPreview(),
+                currentLayerIndex: state.currentLayer,
                 currentLayerTime: Binding(
-                    get: { session.currentCandidateStartOverride },
-                    set: { session.currentCandidateStartOverride = $0 }
+                    get: { state.currentCandidateStartOverride },
+                    set: { state.currentCandidateStartOverride = $0 }
                 ),
-                outputSize: session.outputSize,
-                outputDuration: session.outputDuration
+                outputSize: state.outputSize,
+                outputDuration: state.outputDuration
             )
             // Respect the configured target size by constraining aspect ratio.
             .aspectRatio(
-                session.outputSize.width / max(session.outputSize.height, 1),
+                state.outputSize.width / max(state.outputSize.height, 1),
                 contentMode: .fit
             )
             .ignoresSafeArea()
 
             // HUD
-            if session.isHUDVisible {
+            if state.isHUDVisible {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Hypnograph")
                         .font(.headline)
@@ -46,10 +46,10 @@ struct ContentView: View {
                             .padding(.bottom, 8)
                     }
 
-                    Text("Layer \(session.currentLayer + 1) of \(session.maxLayers)")
+                    Text("Layer \(state.currentLayer + 1) of \(state.maxLayers)")
                         .font(.caption)
 
-                    Text("Blend mode: \(session.currentBlendModeName)")
+                    Text("Blend mode: \(state.currentBlendModeName)")
                         .font(.caption)
                         .padding(.bottom, 16)
 

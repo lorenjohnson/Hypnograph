@@ -238,7 +238,7 @@ public final class HypnogramState: ObservableObject {
         autoPrimeNow()
     }
 
-    /// Reload settings from disk and reconfigure the session.
+    /// Reload settings from disk and reconfigure the state.
     public func reloadSettings(from url: URL) {
         do {
             let newSettings = try SettingsLoader.load(from: url)
