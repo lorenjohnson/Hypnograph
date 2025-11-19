@@ -1,5 +1,5 @@
 //
-//  LayeredVideoCompositionInstruction.swift
+//  MontageVideoInstruction.swift
 //  Hypnograph
 //
 //  Created by Loren Johnson on 15.11.25.
@@ -16,7 +16,7 @@ import Metal
 /// - which track IDs to use as layers
 /// - which blend modes (one per layer, same order)
 /// - per-layer transforms (usually the original track's preferredTransform)
-public final class LayeredVideoCompositionInstruction: NSObject, AVVideoCompositionInstructionProtocol {
+public final class MontageVideoInstruction: NSObject, AVVideoCompositionInstructionProtocol {
     public var timeRange: CMTimeRange
     public var enablePostProcessing: Bool = false
     public var containsTweening: Bool = false
@@ -86,7 +86,7 @@ public final class LayeredVideoComposition: NSObject, AVVideoCompositing {
     public func startRequest(_ request: AVAsynchronousVideoCompositionRequest) {
         renderingQueue.async {
             guard
-                let instruction = request.videoCompositionInstruction as? LayeredVideoCompositionInstruction
+                let instruction = request.videoCompositionInstruction as? MontageVideoInstruction
             else {
                 let error = NSError(
                     domain: "LayeredVideoComposition",
