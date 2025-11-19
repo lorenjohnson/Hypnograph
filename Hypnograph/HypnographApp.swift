@@ -123,14 +123,12 @@ struct HypnographApp: App {
         }
         .commands {
 
-            // --- FILE MENU MODIFICATIONS ---
-
             // Remove “New Window” and the default “New” options
             CommandGroup(replacing: .newItem) { }
 
             // Add custom "New Hypnogram"
             CommandGroup(after: .newItem) {
-                Button("New Hypnogram (random)") {
+                Button("New (random)") {
                     viewModel.newAutoPrimeSet()
                 }
                 .keyboardShortcut("n", modifiers: [.command])
@@ -138,7 +136,7 @@ struct HypnographApp: App {
 
             // Add custom Save behavior
             CommandGroup(replacing: .saveItem) {
-                Button("Save Hypnogram") {
+                Button("Save") {
                     viewModel.renderCurrentHypnogram()
                 }
                 .keyboardShortcut("s", modifiers: [.command])
@@ -165,6 +163,16 @@ struct HypnographApp: App {
                 .keyboardShortcut("m", modifiers: [])
 
                 Divider()
+
+                Button("> Next Layer") {
+                    viewModel.nextLayer()
+                }
+                .keyboardShortcut(.rightArrow, modifiers: [])
+
+                Button("< Previous Layer") {
+                    viewModel.prevLayer()
+                }
+                .keyboardShortcut(.leftArrow, modifiers: [])
 
                 Button("Select Layer 1") {
                     viewModel.selectLayer(index: 0)
