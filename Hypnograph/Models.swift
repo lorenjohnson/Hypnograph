@@ -1,5 +1,5 @@
 //
-//  VideoFile.swift
+//  Models.swift
 //  Hypnogram
 //
 //  Created by Loren Johnson on 15.11.25.

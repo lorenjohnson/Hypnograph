@@ -55,13 +55,4 @@ final class RenderQueue: ObservableObject {
             }
         }
     }
-
-    /// Signal that the app should terminate when the queue empties.
-    /// If there are no active jobs right now, this will trigger immediately.
-    func requestTerminateWhenDone() {
-        pendingTerminate = true
-        if activeJobs == 0 {
-            onAllJobsFinished?()
-        }
-    }
 }

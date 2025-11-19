@@ -1,5 +1,5 @@
 //
-//  HypnographCompositionBuilder.swift
+//  MontageCompositionBuilder.swift
 //  Hypnograph
 //
 //  Created by Loren Johnson on 19.11.25.
