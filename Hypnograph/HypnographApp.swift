@@ -47,6 +47,7 @@ extension NSWindow {
 struct HypnographApp: App {
     @StateObject private var state: HypnogramState
     @StateObject private var renderQueue: RenderQueue
+    private let mode: HypnographMode
 
     init() {
         // Ensure user settings file exists (copy from bundle if missing)
@@ -100,6 +101,9 @@ struct HypnographApp: App {
         _renderQueue = StateObject(wrappedValue: queue)
         _state     = StateObject(wrappedValue: state)
 
+        // Create current mode (Montage) backed by the same state instance
+        self.mode = MontageMode(state: state)
+
         queue.onAllJobsFinished = { NSApp.terminate(nil) }
     }
     
@@ -116,120 +120,108 @@ struct HypnographApp: App {
 
                         window.makeHypnographBorderless(
                             on: targetScreen,
-                            contentSize: state.outputSize
+                            contentSize: mode.outputSize
                         )
                     }
                 }
         }
         .commands {
-
+            
             // Remove “New Window” and the default “New” options
             CommandGroup(replacing: .newItem) { }
-
+            
             // Add custom "New Hypnogram"
             CommandGroup(after: .newItem) {
                 Button("New (random)") {
-                    state.newAutoPrimeSet()
+                    mode.newRandomHypnogram()
                 }
                 .keyboardShortcut(.space, modifiers: [])
             }
-
+            
             // Add custom Save behavior
             CommandGroup(replacing: .saveItem) {
                 Button("Save") {
-                    guard let recipe = state.layersForRender() else {
-                        print("renderCurrentHypnogram(): no renderable hypnogram (no selected clips).")
-                        return
-                    }
-
-                    print("renderCurrentHypnogram(): enqueuing recipe with \(recipe.layers.count) layer(s).")
-                    renderQueue.enqueue(recipe: recipe)
-
-                    state.resetForNextHypnogram()
-
-                    if state.settings.autoPrime {
-                        state.newAutoPrimeSet()
-                    }
+                    mode.saveCurrentHypnogram(using: renderQueue)
                 }
                 .keyboardShortcut("s", modifiers: [.command])
             }
-
+            
             CommandMenu("Current") {
                 Button("Cycle Blend Mode") {
-                    state.cycleBlendMode()
+                    mode.cycleEffect()
                 }
                 .keyboardShortcut("m", modifiers: [])
-
+                
                 Button("New Clip") {
-                    state.nextCandidate()
+                    mode.nextCandidate()
                 }
                 .keyboardShortcut("n", modifiers: [])
-
+                
                 Button("Next Layer") {
-                    state.acceptCandidate()
+                    mode.acceptCandidate()
                 }
                 .keyboardShortcut(.return, modifiers: [])
-
+                
                 Divider()
-
-                Button("> Next Layer") {
-                    state.nextLayer()
+                
+                Button("> Next Source") {
+                    mode.nextSource()
                 }
                 .keyboardShortcut(.rightArrow, modifiers: [])
-
-                Button("< Previous Layer") {
-                    state.prevLayer()
+                
+                Button("< Previous Source") {
+                    mode.previousSource()
                 }
                 .keyboardShortcut(.leftArrow, modifiers: [])
-
-                Button("Select Layer 1") {
-                    state.selectLayer(index: 0)
+                
+                Button("Select Source 1") {
+                    mode.selectSource(index: 0)
                 }
                 .keyboardShortcut("1", modifiers: [])
-
-                Button("Select Layer 2") {
-                    state.selectLayer(index: 1)
+                
+                Button("Select Source 2") {
+                    mode.selectSource(index: 1)
                 }
                 .keyboardShortcut("2", modifiers: [])
-
-                Button("Select Layer 3") {
-                    state.selectLayer(index: 2)
+                
+                Button("Select Source 3") {
+                    mode.selectSource(index: 2)
                 }
                 .keyboardShortcut("3", modifiers: [])
-
-                Button("Select Layer 4") {
-                    state.selectLayer(index: 3)
+                
+                Button("Select Source 4") {
+                    mode.selectSource(index: 3)
                 }
                 .keyboardShortcut("4", modifiers: [])
-
-                Button("Select Layer 5") {
-                    state.selectLayer(index: 4)
+                
+                Button("Select Source 5") {
+                    mode.selectSource(index: 4)
                 }
                 .keyboardShortcut("5", modifiers: [])
-
+                
                 Divider()
-
-                Button("Delete current layer") {
-                    state.handleEscape()
+                
+                Button("Delete current source") {
+                    mode.deleteCurrentSource()
                 }
                 .keyboardShortcut(.delete, modifiers: [])
-
+                
                 Divider()
-
+                
                 Button("Toggle HUD") {
-                    state.toggleHUD()
+                    mode.toggleHUD()
                 }
                 .keyboardShortcut("h", modifiers: [])
-
+                
                 Button("Restart Session, Reloading Settings from File") {
-                    state.reloadSettings(from: Environment.defaultSettingsURL)
+                    mode.reloadSettings()
                 }
                 .keyboardShortcut("r", modifiers: [.command])
-
+                
                 Button("Install hypnograph command") {
                     Environment.installCLI()
                 }
-
+                
                 Button("Show Settings Folder") {
                     Environment.showSettingsFolderInFinder()
                 }
