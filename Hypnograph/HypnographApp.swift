@@ -45,7 +45,7 @@ extension NSWindow {
 
 @main
 struct HypnographApp: App {
-    @StateObject private var session: HypnogramState
+    @StateObject private var state: HypnogramState
     @StateObject private var renderQueue: RenderQueue
 
     init() {
@@ -95,17 +95,17 @@ struct HypnographApp: App {
         )
 
         let queue   = RenderQueue(renderer: backend)
-        let session = HypnogramState(settings: settings)
+        let state = HypnogramState(settings: settings)
 
         _renderQueue = StateObject(wrappedValue: queue)
-        _session     = StateObject(wrappedValue: session)
+        _state     = StateObject(wrappedValue: state)
 
         queue.onAllJobsFinished = { NSApp.terminate(nil) }
     }
     
     var body: some Scene {
         WindowGroup {
-            ContentView(session: session, renderQueue: renderQueue)
+            ContentView(state: state, renderQueue: renderQueue)
                 .onAppear {
                     DispatchQueue.main.async {
                         guard let window = NSApp.windows.first else { return }
@@ -116,7 +116,7 @@ struct HypnographApp: App {
 
                         window.makeHypnographBorderless(
                             on: targetScreen,
-                            contentSize: session.outputSize
+                            contentSize: state.outputSize
                         )
                     }
                 }
@@ -129,7 +129,7 @@ struct HypnographApp: App {
             // Add custom "New Hypnogram"
             CommandGroup(after: .newItem) {
                 Button("New (random)") {
-                    session.newAutoPrimeSet()
+                    state.newAutoPrimeSet()
                 }
                 .keyboardShortcut(.space, modifiers: [])
             }
@@ -137,7 +137,7 @@ struct HypnographApp: App {
             // Add custom Save behavior
             CommandGroup(replacing: .saveItem) {
                 Button("Save") {
-                    guard let recipe = session.layersForRender() else {
+                    guard let recipe = state.layersForRender() else {
                         print("renderCurrentHypnogram(): no renderable hypnogram (no selected clips).")
                         return
                     }
@@ -145,10 +145,10 @@ struct HypnographApp: App {
                     print("renderCurrentHypnogram(): enqueuing recipe with \(recipe.layers.count) layer(s).")
                     renderQueue.enqueue(recipe: recipe)
 
-                    session.resetForNextHypnogram()
+                    state.resetForNextHypnogram()
 
-                    if session.settings.autoPrime {
-                        session.newAutoPrimeSet()
+                    if state.settings.autoPrime {
+                        state.newAutoPrimeSet()
                     }
                 }
                 .keyboardShortcut("s", modifiers: [.command])
@@ -156,73 +156,73 @@ struct HypnographApp: App {
 
             CommandMenu("Current") {
                 Button("Cycle Blend Mode") {
-                    session.cycleBlendMode()
+                    state.cycleBlendMode()
                 }
                 .keyboardShortcut("m", modifiers: [])
 
                 Button("New Clip") {
-                    session.nextCandidate()
+                    state.nextCandidate()
                 }
                 .keyboardShortcut("n", modifiers: [])
 
                 Button("Next Layer") {
-                    session.acceptCandidate()
+                    state.acceptCandidate()
                 }
                 .keyboardShortcut(.return, modifiers: [])
 
                 Divider()
 
                 Button("> Next Layer") {
-                    session.nextLayer()
+                    state.nextLayer()
                 }
                 .keyboardShortcut(.rightArrow, modifiers: [])
 
                 Button("< Previous Layer") {
-                    session.prevLayer()
+                    state.prevLayer()
                 }
                 .keyboardShortcut(.leftArrow, modifiers: [])
 
                 Button("Select Layer 1") {
-                    session.selectLayer(index: 0)
+                    state.selectLayer(index: 0)
                 }
                 .keyboardShortcut("1", modifiers: [])
 
                 Button("Select Layer 2") {
-                    session.selectLayer(index: 1)
+                    state.selectLayer(index: 1)
                 }
                 .keyboardShortcut("2", modifiers: [])
 
                 Button("Select Layer 3") {
-                    session.selectLayer(index: 2)
+                    state.selectLayer(index: 2)
                 }
                 .keyboardShortcut("3", modifiers: [])
 
                 Button("Select Layer 4") {
-                    session.selectLayer(index: 3)
+                    state.selectLayer(index: 3)
                 }
                 .keyboardShortcut("4", modifiers: [])
 
                 Button("Select Layer 5") {
-                    session.selectLayer(index: 4)
+                    state.selectLayer(index: 4)
                 }
                 .keyboardShortcut("5", modifiers: [])
 
                 Divider()
 
                 Button("Delete current layer") {
-                    session.handleEscape()
+                    state.handleEscape()
                 }
                 .keyboardShortcut(.delete, modifiers: [])
 
                 Divider()
 
                 Button("Toggle HUD") {
-                    session.toggleHUD()
+                    state.toggleHUD()
                 }
                 .keyboardShortcut("h", modifiers: [])
 
                 Button("Restart Session, Reloading Settings from File") {
-                    session.reloadSettings(from: Environment.defaultSettingsURL)
+                    state.reloadSettings(from: Environment.defaultSettingsURL)
                 }
                 .keyboardShortcut("r", modifiers: [.command])
 
