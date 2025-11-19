@@ -11,7 +11,7 @@ import AVFoundation
 import CoreMedia
 import CoreGraphics
 
-struct HypnogramCompositionBuilder {
+struct MontageCompositionBuilder {
 
     struct Result {
         let composition: AVMutableComposition

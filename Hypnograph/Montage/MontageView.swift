@@ -123,7 +123,7 @@ struct MontageView: NSViewRepresentable {
     }
 
     /// Build an AVPlayerItem using AVMutableComposition + our custom
-    /// LayeredVideoComposition (Core Image compositor), using the
+    /// MultiLayerBlendCompositor (Core Image compositor), using the
     /// *same* looping + duration semantics as the final renderer.
     private func makePreviewItem(
         for layers: [HypnogramLayer],
@@ -135,9 +135,9 @@ struct MontageView: NSViewRepresentable {
             return nil
         }
 
-        let buildResult: HypnogramCompositionBuilder.Result
+        let buildResult: MontageCompositionBuilder.Result
         do {
-            buildResult = try HypnogramCompositionBuilder.build(
+            buildResult = try MontageCompositionBuilder.build(
                 layers: layers,
                 targetDuration: outputDuration
             )
@@ -152,7 +152,7 @@ struct MontageView: NSViewRepresentable {
         let transforms    = buildResult.transforms
 
         // Same instruction + custom compositor as renderer
-        let instruction = MontageVideoInstruction(
+        let instruction = MultiLayerBlendInstruction(
             layerTrackIDs: videoTrackIDs,
             blendModes: blendModes,
             transforms: transforms,
@@ -160,7 +160,7 @@ struct MontageView: NSViewRepresentable {
         )
 
         let videoComposition = AVMutableVideoComposition()
-        videoComposition.customVideoCompositorClass = LayeredVideoComposition.self
+        videoComposition.customVideoCompositorClass = MultiLayerBlendCompositor.self
         videoComposition.renderSize    = renderSize
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
         videoComposition.instructions  = [instruction]

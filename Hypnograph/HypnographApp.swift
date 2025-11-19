@@ -131,7 +131,7 @@ struct HypnographApp: App {
                 Button("New (random)") {
                     session.newAutoPrimeSet()
                 }
-                .keyboardShortcut("n", modifiers: [.command])
+                .keyboardShortcut(.space, modifiers: [])
             }
 
             // Add custom Save behavior
@@ -155,20 +155,20 @@ struct HypnographApp: App {
             }
 
             CommandMenu("Current") {
-                Button("Next Candidate") {
-                    session.nextCandidate()
-                }
-                .keyboardShortcut(.space, modifiers: [])
-
-                Button("Accept Candidate") {
-                    session.acceptCandidate()
-                }
-                .keyboardShortcut(.return, modifiers: [])
-
                 Button("Cycle Blend Mode") {
                     session.cycleBlendMode()
                 }
                 .keyboardShortcut("m", modifiers: [])
+
+                Button("New Clip") {
+                    session.nextCandidate()
+                }
+                .keyboardShortcut("n", modifiers: [])
+
+                Button("Next Layer") {
+                    session.acceptCandidate()
+                }
+                .keyboardShortcut(.return, modifiers: [])
 
                 Divider()
 
