@@ -2,7 +2,7 @@ import SwiftUI
 import AVFoundation
 
 struct ContentView: View {
-    @ObservedObject var viewModel: ViewModel
+    @ObservedObject var session: HypnogramState
     @ObservedObject var renderQueue: RenderQueue
 
     var body: some View {
@@ -11,26 +11,26 @@ struct ContentView: View {
             Color.black
                 .ignoresSafeArea()
 
-            // Live multi-layer preview: now driven by AVFoundation + custom compositor.
+            // Live multi-layer preview: AVFoundation + custom compositor.
             MontagePreviewView(
-                layers: viewModel.layersForPreview,
-                currentLayerIndex: viewModel.currentLayerIndex,
+                layers: session.layersForPreview(),
+                currentLayerIndex: session.currentLayer,
                 currentLayerTime: Binding(
-                    get: { viewModel.currentCandidateStartOverride },
-                    set: { viewModel.currentCandidateStartOverride = $0 }
+                    get: { session.currentCandidateStartOverride },
+                    set: { session.currentCandidateStartOverride = $0 }
                 ),
-                outputSize: viewModel.outputSize,
-                outputDuration: viewModel.outputDuration
+                outputSize: session.outputSize,
+                outputDuration: session.outputDuration
             )
             // Respect the configured target size by constraining aspect ratio.
             .aspectRatio(
-                viewModel.outputSize.width / max(viewModel.outputSize.height, 1),
+                session.outputSize.width / max(session.outputSize.height, 1),
                 contentMode: .fit
             )
             .ignoresSafeArea()
 
             // HUD
-            if viewModel.isHUDVisible {
+            if session.isHUDVisible {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Hypnograph")
                         .font(.headline)
@@ -46,10 +46,10 @@ struct ContentView: View {
                             .padding(.bottom, 8)
                     }
 
-                    Text("Layer \(viewModel.currentLayerIndex + 1) of \(viewModel.maxLayers)")
+                    Text("Layer \(session.currentLayer + 1) of \(session.maxLayers)")
                         .font(.caption)
 
-                    Text("Blend mode: \(viewModel.currentBlendModeName)")
+                    Text("Blend mode: \(session.currentBlendModeName)")
                         .font(.caption)
                         .padding(.bottom, 16)
 
@@ -62,8 +62,6 @@ struct ContentView: View {
                     Text("1-5 Switch to layer")
                         .font(.caption)
                     Text("M = Blend Mode")
-                        .font(.caption)
-                    Text("E = Toggle Global Effect")
                         .font(.caption)
                         .padding(.bottom, 16)
 

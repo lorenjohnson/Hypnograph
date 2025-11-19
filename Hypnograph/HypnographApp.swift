@@ -45,7 +45,7 @@ extension NSWindow {
 
 @main
 struct HypnographApp: App {
-    @StateObject private var viewModel: ViewModel
+    @StateObject private var session: HypnogramState
     @StateObject private var renderQueue: RenderQueue
 
     init() {
@@ -94,18 +94,18 @@ struct HypnographApp: App {
             outputHeight: settings.outputHeight
         )
 
-        let queue = RenderQueue(renderer: backend)
-        let vm    = ViewModel(settings: settings, renderQueue: queue)
+        let queue   = RenderQueue(renderer: backend)
+        let session = HypnogramState(settings: settings)
 
         _renderQueue = StateObject(wrappedValue: queue)
-        _viewModel = StateObject(wrappedValue: vm)
+        _session     = StateObject(wrappedValue: session)
 
         queue.onAllJobsFinished = { NSApp.terminate(nil) }
     }
     
     var body: some Scene {
         WindowGroup {
-            ContentView(viewModel: viewModel, renderQueue: renderQueue)
+            ContentView(session: session, renderQueue: renderQueue)
                 .onAppear {
                     DispatchQueue.main.async {
                         guard let window = NSApp.windows.first else { return }
@@ -116,7 +116,7 @@ struct HypnographApp: App {
 
                         window.makeHypnographBorderless(
                             on: targetScreen,
-                            contentSize: viewModel.outputSize
+                            contentSize: session.outputSize
                         )
                     }
                 }
@@ -129,7 +129,7 @@ struct HypnographApp: App {
             // Add custom "New Hypnogram"
             CommandGroup(after: .newItem) {
                 Button("New (random)") {
-                    viewModel.newAutoPrimeSet()
+                    session.newAutoPrimeSet()
                 }
                 .keyboardShortcut("n", modifiers: [.command])
             }
@@ -137,85 +137,92 @@ struct HypnographApp: App {
             // Add custom Save behavior
             CommandGroup(replacing: .saveItem) {
                 Button("Save") {
-                    viewModel.renderCurrentHypnogram()
+                    guard let recipe = session.layersForRender() else {
+                        print("renderCurrentHypnogram(): no renderable hypnogram (no selected clips).")
+                        return
+                    }
+
+                    print("renderCurrentHypnogram(): enqueuing recipe with \(recipe.layers.count) layer(s).")
+                    renderQueue.enqueue(recipe: recipe)
+
+                    session.resetForNextHypnogram()
+
+                    if session.settings.autoPrime {
+                        session.newAutoPrimeSet()
+                    }
                 }
                 .keyboardShortcut("s", modifiers: [.command])
             }
 
-
-            // --- REMOVE VIEW MENU ---
-//            CommandGroup(replacing: .view) { }
-
             CommandMenu("Current") {
                 Button("Next Candidate") {
-                    viewModel.nextCandidate()
+                    session.nextCandidate()
                 }
                 .keyboardShortcut(.space, modifiers: [])
 
                 Button("Accept Candidate") {
-                    viewModel.acceptCandidate()
+                    session.acceptCandidate()
                 }
                 .keyboardShortcut(.return, modifiers: [])
 
                 Button("Cycle Blend Mode") {
-                    viewModel.cycleBlendMode()
+                    session.cycleBlendMode()
                 }
                 .keyboardShortcut("m", modifiers: [])
 
                 Divider()
 
                 Button("> Next Layer") {
-                    viewModel.nextLayer()
+                    session.nextLayer()
                 }
                 .keyboardShortcut(.rightArrow, modifiers: [])
 
                 Button("< Previous Layer") {
-                    viewModel.prevLayer()
+                    session.prevLayer()
                 }
                 .keyboardShortcut(.leftArrow, modifiers: [])
 
                 Button("Select Layer 1") {
-                    viewModel.selectLayer(index: 0)
+                    session.selectLayer(index: 0)
                 }
                 .keyboardShortcut("1", modifiers: [])
 
                 Button("Select Layer 2") {
-                    viewModel.selectLayer(index: 1)
+                    session.selectLayer(index: 1)
                 }
                 .keyboardShortcut("2", modifiers: [])
 
                 Button("Select Layer 3") {
-                    viewModel.selectLayer(index: 2)
+                    session.selectLayer(index: 2)
                 }
                 .keyboardShortcut("3", modifiers: [])
 
                 Button("Select Layer 4") {
-                    viewModel.selectLayer(index: 3)
+                    session.selectLayer(index: 3)
                 }
                 .keyboardShortcut("4", modifiers: [])
 
                 Button("Select Layer 5") {
-                    viewModel.selectLayer(index: 4)
+                    session.selectLayer(index: 4)
                 }
                 .keyboardShortcut("5", modifiers: [])
 
                 Divider()
 
                 Button("Delete current layer") {
-                    viewModel.handleEscape()
+                    session.handleEscape()
                 }
                 .keyboardShortcut(.delete, modifiers: [])
-
 
                 Divider()
 
                 Button("Toggle HUD") {
-                    viewModel.toggleHUD()
+                    session.toggleHUD()
                 }
                 .keyboardShortcut("h", modifiers: [])
 
                 Button("Restart Session, Reloading Settings from File") {
-                    viewModel.newSessionReloadingSettings()
+                    session.reloadSettings(from: Environment.defaultSettingsURL)
                 }
                 .keyboardShortcut("r", modifiers: [.command])
 
