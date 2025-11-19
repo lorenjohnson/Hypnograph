@@ -8,6 +8,8 @@
 
 import Foundation
 import AppKit
+import CoreGraphics
+import CoreMedia
 
 // -------------------------------------------------------------
 //  First stage: raw decoded JSON (no tilde expansion, no logic)
@@ -27,16 +29,15 @@ public struct SettingsParams: Codable {
 // -------------------------------------------------------------
 //  Normalized Settings used by the app everywhere
 // -------------------------------------------------------------
-public struct Settings: Codable {
+public struct Settings {
     public var autoPrime: Bool
     public var autoPrimeTimeout: Double
     public var blendModes: [String]
     public var maxLayers: Int
     public var sourceFolders: [String]
-    public var outputFolder: String
-    public var outputHeight: Int
-    public var outputSeconds: Double
-    public var outputWidth: Int
+    public var outputSize: CGSize
+    public var outputDuration: CMTime
+    public var outputURL: URL
 
     // Main initializer with normalization
     public init(
@@ -54,14 +55,49 @@ public struct Settings: Codable {
         self.autoPrimeTimeout = autoPrimeTimeout
         self.blendModes = blendModes
         self.maxLayers = maxLayers
-
-        // Normalize + expand ~
-        self.outputFolder = (outputFolder as NSString).expandingTildeInPath
+        self.outputDuration = CMTime(
+            seconds: outputSeconds,
+            preferredTimescale: 600
+        )
+        self.outputSize = Self._computeOutputSize(
+            outputHeight: outputHeight,
+            outputWidth: outputWidth
+        )
+        self.outputURL  = URL(
+            fileURLWithPath: (outputFolder as NSString).expandingTildeInPath,
+            isDirectory: true
+        )
         self.sourceFolders = sourceFolders.map { ($0 as NSString).expandingTildeInPath }
+    }
+    
+    /// - if both outputWidth & outputHeight > 0 → use them exactly
+    /// - if only width > 0 → derive height with 16:9 (height = width * 9/16)
+    /// - if only height > 0 → derive width with 16:9 (width = height * 16/9)
+    /// - if both are 0 → default 1920x1080
+    private static func _computeOutputSize(outputHeight: Int, outputWidth: Int) -> CGSize {
+        let defaultW: CGFloat = 1920
+        let defaultH: CGFloat = 1080
+        let aspect: CGFloat   = 9.0 / 16.0   // height / width (16:9)
 
-        self.outputHeight = outputHeight
-        self.outputSeconds = outputSeconds
-        self.outputWidth = outputWidth
+        let w = CGFloat(outputWidth)
+        let h = CGFloat(outputHeight)
+
+        switch (w > 0, h > 0) {
+        case (true, true):
+            return CGSize(width: w, height: h)
+
+        case (true, false):
+            // width set, derive height (16:9)
+            return CGSize(width: w, height: round(w * aspect))
+
+        case (false, true):
+            // height set, derive width (16:9)
+            return CGSize(width: round(h / aspect), height: h)
+
+        default:
+            // neither set → default 1920x1080
+            return CGSize(width: defaultW, height: defaultH)
+        }
     }
 
     // Convenience initializer for decoding normalized Settings

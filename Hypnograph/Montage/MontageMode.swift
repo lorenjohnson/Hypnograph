@@ -11,6 +11,8 @@ final class MontageMode: ObservableObject, HypnographMode {
     /// This is the same instance that ContentView observes.
     private let state: HypnogramState
 
+    private let settings: Settings
+
     /// Render queue + backend for this mode.
     let renderQueue: RenderQueue
 
@@ -20,17 +22,9 @@ final class MontageMode: ObservableObject, HypnographMode {
 
     init(state: HypnogramState, settings: Settings) {
         self.state = state
+        self.settings = settings
 
-        // Mode builds its own backend and queue.
-        let outputPath = settings.outputFolder
-        let outputURL  = URL(fileURLWithPath: outputPath, isDirectory: true)
-
-        let backend = MontageRenderer(
-            outputFolder: outputURL,
-            outputWidth: settings.outputWidth,
-            outputHeight: settings.outputHeight
-        )
-
+        let backend = MontageRenderer(settings: settings)
         self.renderQueue = RenderQueue(renderer: backend)
     }
 
@@ -40,7 +34,7 @@ final class MontageMode: ObservableObject, HypnographMode {
     }
 
     var maxLayers: Int {
-        state.maxLayers
+        settings.maxLayers
     }
 
     var currentBlendModeName: String {
@@ -88,17 +82,12 @@ final class MontageMode: ObservableObject, HypnographMode {
                     get: { self.state.currentCandidateStartOverride },
                     set: { self.state.currentCandidateStartOverride = $0 }
                 ),
-                outputSize: self.state.outputSize,
-                outputDuration: self.state.outputDuration
+                settings: self.settings
             )
         )
     }
 
     // MARK: - HypnographMode – engine behavior
-
-    var outputSize: CGSize {
-        state.outputSize
-    }
 
     // Hypnogram lifecycle
 

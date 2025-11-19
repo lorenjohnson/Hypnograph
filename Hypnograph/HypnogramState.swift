@@ -114,55 +114,13 @@ public final class HypnogramState: ObservableObject {
 
         return result
     }
-
-    /// Target duration as CMTime.
-    public var outputDuration: CMTime {
-        CMTime(
-            seconds: settings.outputSeconds,
-            preferredTimescale: 600
-        )
-    }
-
-    /// Output size used for preview/render, following the same rules as the renderer.
-    /// - if both outputWidth & outputHeight > 0 → use them exactly
-    /// - if only width > 0 → derive height with 16:9 (height = width * 9/16)
-    /// - if only height > 0 → derive width with 16:9 (width = height * 16/9)
-    /// - if both are 0 → default 1920x1080
-    public var outputSize: CGSize {
-        let cfg = settings
-
-        let defaultW: CGFloat = 1920
-        let defaultH: CGFloat = 1080
-        let aspect: CGFloat   = 9.0 / 16.0   // height / width (16:9)
-
-        let w = CGFloat(cfg.outputWidth)
-        let h = CGFloat(cfg.outputHeight)
-
-        switch (w > 0, h > 0) {
-        case (true, true):
-            return CGSize(width: w, height: h)
-
-        case (true, false):
-            // width set, derive height (16:9)
-            return CGSize(width: w, height: round(w * aspect))
-
-        case (false, true):
-            // height set, derive width (16:9)
-            return CGSize(width: round(h / aspect), height: h)
-
-        default:
-            // neither set → default 1920x1080
-            return CGSize(width: defaultW, height: defaultH)
-        }
-    }
-
     /// Build a HypnogramRecipe for rendering.
     public func layersForRender() -> HypnogramRecipe? {
         guard !layers.isEmpty else { return nil }
 
         return HypnogramRecipe(
             layers: layers,
-            targetDuration: outputDuration
+            targetDuration: self.settings.outputDuration
         )
     }
 
@@ -263,7 +221,7 @@ public final class HypnogramState: ObservableObject {
     /// SPACE: Get a new random candidate for the current layer.
     @discardableResult
     public func nextCandidateForCurrentLayer() -> VideoClip? {
-        guard let clip = library.randomClip(clipLength: settings.outputSeconds) else {
+        guard let clip = library.randomClip(clipLength: settings.outputDuration.seconds) else {
             return nil
         }
         candidateClips[currentLayerIndex] = clip
@@ -381,7 +339,7 @@ public final class HypnogramState: ObservableObject {
 
         // Fill first clampedCount layers with random clips + random blend modes.
         for i in 0..<clampedCount {
-            if let clip = library.randomClip(clipLength: settings.outputSeconds) {
+            if let clip = library.randomClip(clipLength: settings.outputDuration.seconds) {
                 candidateClips[i] = clip
                 selectedClips[i]  = clip
             }
