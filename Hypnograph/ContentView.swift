@@ -12,7 +12,7 @@ struct ContentView: View {
                 .ignoresSafeArea()
 
             // Live multi-layer preview: AVFoundation + custom compositor.
-            MontagePreviewView(
+            MontageView(
                 layers: session.layersForPreview(),
                 currentLayerIndex: session.currentLayer,
                 currentLayerTime: Binding(

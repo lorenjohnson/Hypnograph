@@ -88,7 +88,7 @@ struct HypnographApp: App {
         let outputPath = settings.outputFolder
         let outputURL = URL(fileURLWithPath: outputPath, isDirectory: true)
 
-        let backend = AVFoundationRenderer(
+        let backend = MontageRenderer(
             outputFolder: outputURL,
             outputWidth: settings.outputWidth,
             outputHeight: settings.outputHeight
