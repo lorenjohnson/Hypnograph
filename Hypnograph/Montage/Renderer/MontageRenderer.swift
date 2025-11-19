@@ -11,50 +11,18 @@ import CoreMedia
 import CoreGraphics
 
 final class MontageRenderer: HypnogramRenderer {
-    private let outputFolder: URL
-    private let outputWidth: Int
-    private let outputHeight: Int
+    private let outputURL: URL
+    private let outputSize: CGSize
 
     /// `outputWidth` / `outputHeight`:
     /// - both > 0  → use exactly this size
     /// - only one > 0 (other 0) → derive the other assuming 16:9 (width:height)
     /// - both 0 → default 1920x1080
     init(
-        outputFolder: URL,
-        outputWidth: Int = 0,
-        outputHeight: Int = 0
+        settings: Settings
     ) {
-        self.outputFolder = outputFolder
-        self.outputWidth = outputWidth
-        self.outputHeight = outputHeight
-    }
-
-    /// Final render size based on settings, with 16:9 default.
-    private var targetRenderSize: CGSize {
-        let defaultW: CGFloat = 1920
-        let defaultH: CGFloat = 1080
-        let aspect: CGFloat   = 16.0 / 9.0  // width / height
-
-        let w = CGFloat(outputWidth)
-        let h = CGFloat(outputHeight)
-
-        switch (w > 0, h > 0) {
-        case (true, true):
-            // Both explicitly set
-            return CGSize(width: w, height: h)
-
-        case (true, false):
-            // Width set → derive height from 16:9
-            return CGSize(width: w, height: round(w / aspect))
-
-        case (false, true):
-            // Height set → derive width from 16:9
-            return CGSize(width: round(h * aspect), height: h)
-
-        default:
-            // Neither set → default 1920x1080
-            return CGSize(width: defaultW, height: defaultH)
-        }
+        self.outputURL = settings.outputURL
+        self.outputSize = settings.outputSize
     }
 
     func enqueue(recipe: HypnogramRecipe, completion: @escaping (Result<URL, Error>) -> Void) {
@@ -132,7 +100,7 @@ final class MontageRenderer: HypnogramRenderer {
 
         let videoComposition = AVMutableVideoComposition()
         videoComposition.customVideoCompositorClass = MultiLayerBlendCompositor.self
-        videoComposition.renderSize    = targetRenderSize
+        videoComposition.renderSize    = outputSize
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
         videoComposition.instructions  = [instruction]
 
@@ -159,7 +127,7 @@ final class MontageRenderer: HypnogramRenderer {
         // 5. Output folder
         do {
             try FileManager.default.createDirectory(
-                at: outputFolder,
+                at: outputURL,
                 withIntermediateDirectories: true,
                 attributes: nil
             )
@@ -170,7 +138,7 @@ final class MontageRenderer: HypnogramRenderer {
         }
 
         let filename = "hypnogram-\(UUID().uuidString).mp4"
-        let outputURL = outputFolder.appendingPathComponent(filename)
+        let outputURL = outputURL.appendingPathComponent(filename)
         try? FileManager.default.removeItem(at: outputURL)
 
         // 6. Export

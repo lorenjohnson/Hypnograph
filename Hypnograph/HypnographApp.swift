@@ -45,6 +45,7 @@ extension NSWindow {
 
 @main
 struct HypnographApp: App {
+    private let settings: Settings
     @StateObject private var state: HypnogramState
     @StateObject private var renderQueue: RenderQueue
     private let mode: HypnographMode
@@ -87,6 +88,7 @@ struct HypnographApp: App {
         }
 
         // Shared state
+        self.settings = settings
         let state = HypnogramState(settings: settings)
 
         let montageMode = MontageMode(state: state, settings: settings)
@@ -116,7 +118,7 @@ struct HypnographApp: App {
 
                     window.makeHypnographBorderless(
                         on: targetScreen,
-                        contentSize: mode.outputSize
+                        contentSize: settings.outputSize
                     )
                 }
             }

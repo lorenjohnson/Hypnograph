@@ -14,9 +14,6 @@ import SwiftUI
 /// The app defines global commands (Save, Reload, etc.)
 /// and delegates their meaning to the current mode.
 protocol HypnographMode: AnyObject {
-    /// The mode's preferred output size (used for window sizing).
-    var outputSize: CGSize { get }
-
     /// The render queue managed by this mode.
     /// (The app may observe it for HUD, quitting, etc.)
     var renderQueue: RenderQueue { get }

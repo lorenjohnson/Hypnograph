@@ -12,13 +12,8 @@ struct ContentView: View {
             Color.black
                 .ignoresSafeArea()
 
-            // Mode-driven display: ContentView has no idea which concrete view this is.
+            // Mode-driven display: ContentView doesn't care *what* this is.
             mode.makeDisplayView(state: state, renderQueue: renderQueue)
-                // Respect the configured target size by constraining aspect ratio.
-                .aspectRatio(
-                    state.outputSize.width / max(state.outputSize.height, 1),
-                    contentMode: .fit
-                )
                 .ignoresSafeArea()
 
             // HUD
@@ -45,7 +40,7 @@ struct ContentView: View {
                         .font(.caption)
                         .padding(.bottom, 16)
 
-                    Text("N = Next Candidate this layer")
+                    Text("Space = Next Candidate this layer")
                         .font(.caption)
                     Text("Return = Accept Candidate")
                         .font(.caption)
@@ -57,7 +52,7 @@ struct ContentView: View {
                         .font(.caption)
                         .padding(.bottom, 16)
 
-                    Text("Space = New random Hypnogram")
+                    Text("Cmd-N = New random Hypnogram")
                         .font(.caption)
                     Text("Cmd-S = Save Hypnogram")
                         .font(.caption)
