@@ -92,9 +92,9 @@ final class MontageRenderer: HypnogramRenderer {
         print("MontageRenderer: rendering recipe with \(recipe.layers.count) layer(s), target duration \(targetSeconds)s")
 
         // 2. Build composition via shared builder (same as preview)
-        let buildResult: HypnogramCompositionBuilder.Result
+        let buildResult: MontageCompositionBuilder.Result
         do {
-            buildResult = try HypnogramCompositionBuilder.build(
+            buildResult = try MontageCompositionBuilder.build(
                 layers: recipe.layers,
                 targetDuration: targetDuration
             )
@@ -123,7 +123,7 @@ final class MontageRenderer: HypnogramRenderer {
         print("MontageRenderer: using \(videoTrackIDs.count) video track(s), duration \(targetSeconds)s")
 
         // 3. Video composition + custom compositor
-        let instruction = MontageVideoInstruction(
+        let instruction = MultiLayerBlendInstruction(
             layerTrackIDs: videoTrackIDs,
             blendModes: blendModes,
             transforms: transforms,
@@ -131,7 +131,7 @@ final class MontageRenderer: HypnogramRenderer {
         )
 
         let videoComposition = AVMutableVideoComposition()
-        videoComposition.customVideoCompositorClass = LayeredVideoComposition.self
+        videoComposition.customVideoCompositorClass = MultiLayerBlendCompositor.self
         videoComposition.renderSize    = targetRenderSize
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
         videoComposition.instructions  = [instruction]

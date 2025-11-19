@@ -1,5 +1,5 @@
 //
-//  HypnographCICompositor.swift
+//  AspectFillStackCompositor.swift
 //  Hypnograph
 //
 //  Shared Core Image compositing for preview + render.
@@ -14,7 +14,7 @@ import CoreGraphics
 /// - resize each layer image to "fill" the target (aspect-fill, center crop)
 /// - apply Core Image blend filters in order
 /// - return a single CIImage ready to render
-struct HypnographCICompositor {
+struct AspectFillStackCompositor {
 
     let ciContext: CIContext
 
@@ -64,7 +64,7 @@ struct HypnographCICompositor {
 
     private func composite(bottom: CIImage, top: CIImage, modeName: String) -> CIImage {
         guard let filter = CIFilter(name: modeName) else {
-            print("HypnographCICompositor: unknown blend filter '\(modeName)', falling back to source-over")
+            print("AspectFillStackCompositor: unknown blend filter '\(modeName)', falling back to source-over")
             return top.composited(over: bottom)
         }
 
