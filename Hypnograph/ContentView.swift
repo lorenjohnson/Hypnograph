@@ -4,7 +4,7 @@ import AVFoundation
 struct ContentView: View {
     @ObservedObject var state: HypnogramState
     @ObservedObject var renderQueue: RenderQueue
-    let mode: HypnographMode
+    @ObservedObject var mode: HypnographMode
 
     var body: some View {
         ZStack(alignment: .topLeading) {

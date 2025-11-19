@@ -38,13 +38,14 @@ final class MontageMode: ObservableObject, HypnographMode {
 
     // MARK: - Preview / solo
 
-    func layersForDisplay() -> [HypnogramLayer] {
+    private func layersForDisplay(using state: HypnogramState) -> [HypnogramLayer] {
+        let all = state.layers
+
         if let solo = soloLayerIndex {
-            let all = state.layers
             guard solo >= 0, solo < all.count else { return all }
             return [all[solo]]
         } else {
-            return state.layers
+            return all
         }
     }
 
@@ -68,27 +69,22 @@ final class MontageMode: ObservableObject, HypnographMode {
         state: HypnogramState,
         renderQueue: RenderQueue
     ) -> AnyView {
-        // We ignore parameters and use our captured state/queue,
-        // assuming they’re the same instances.
-        AnyView(
+        return AnyView(
             MontageView(
-                layers: layersForDisplay(),
+                layers: layersForDisplay(using: state),
                 currentLayerTime: Binding(
-                    get: { self.state.currentCandidateStartOverride },
-                    set: { self.state.currentCandidateStartOverride = $0 }
+                    get: { state.currentCandidateStartOverride },
+                    set: { state.currentCandidateStartOverride = $0 }
                 ),
-                outputDuration: self.state.settings.outputDuration,
-                outputSize: self.state.settings.outputSize
+                outputDuration: state.settings.outputDuration,
+                outputSize: state.settings.outputSize
             )
         )
     }
 
     // MARK: - HypnographMode – engine behavior
 
-    // Hypnogram lifecycle
-
     func newRandomHypnogram() {
-        // Clear solo on new random set, feels saner.
         soloLayerIndex = nil
         state.newAutoPrimeSet()
     }
@@ -104,7 +100,6 @@ final class MontageMode: ObservableObject, HypnographMode {
 
         state.resetForNextHypnogram()
 
-        // Keep solo off after saving; new set is full stack again.
         soloLayerIndex = nil
 
         if state.settings.autoPrime {
@@ -152,7 +147,6 @@ final class MontageMode: ObservableObject, HypnographMode {
 
     func reloadSettings() {
         state.reloadSettings(from: Environment.defaultSettingsURL)
-        // settings reload might change layer counts; safest is to clear solo
         soloLayerIndex = nil
     }
 }
