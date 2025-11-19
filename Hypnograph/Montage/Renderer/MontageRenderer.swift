@@ -14,15 +14,12 @@ final class MontageRenderer: HypnogramRenderer {
     private let outputURL: URL
     private let outputSize: CGSize
 
-    /// `outputWidth` / `outputHeight`:
-    /// - both > 0  → use exactly this size
-    /// - only one > 0 (other 0) → derive the other assuming 16:9 (width:height)
-    /// - both 0 → default 1920x1080
     init(
-        settings: Settings
+        outputURL: URL,
+        outputSize: CGSize
     ) {
-        self.outputURL = settings.outputURL
-        self.outputSize = settings.outputSize
+        self.outputURL = outputURL
+        self.outputSize = outputSize
     }
 
     func enqueue(recipe: HypnogramRecipe, completion: @escaping (Result<URL, Error>) -> Void) {

@@ -40,7 +40,7 @@ struct ContentView: View {
                         .font(.caption)
                         .padding(.bottom, 16)
 
-                    Text("Space = Next Candidate this layer")
+                    Text("N = Next Candidate this layer")
                         .font(.caption)
                     Text("Return = Accept Candidate")
                         .font(.caption)
@@ -52,7 +52,7 @@ struct ContentView: View {
                         .font(.caption)
                         .padding(.bottom, 16)
 
-                    Text("Cmd-N = New random Hypnogram")
+                    Text("Space = New random Hypnogram")
                         .font(.caption)
                     Text("Cmd-S = Save Hypnogram")
                         .font(.caption)

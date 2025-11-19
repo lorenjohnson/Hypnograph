@@ -48,7 +48,7 @@ public final class VideoSourcesLibrary {
                     let ext = fileURL.pathExtension.lowercased()
                     guard allowedExtensions.contains(ext) else { continue }
 
-                    let asset = AVAsset(url: fileURL)
+                    let asset = AVURLAsset(url: fileURL)
                     let duration = asset.duration
 
                     if asset.isPlayable, duration.isValid, duration.seconds > 0 {
@@ -63,7 +63,7 @@ public final class VideoSourcesLibrary {
                 let asset = AVAsset(url: url)
                 let duration = asset.duration
 
-                if duration.isValid, duration.seconds > 0 {
+                if asset.isPlayable, duration.isValid, duration.seconds > 0 {
                     results.append(VideoFile(url: url, duration: duration))
                 }
             }

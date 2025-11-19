@@ -1,5 +1,5 @@
 //
-//  Session.swift
+//  HypnogramState.swift
 //  Hypnograph
 //
 //  Created by Loren Johnson on 15.11.25.
@@ -11,24 +11,12 @@ import CoreMedia
 import CoreGraphics
 
 /// Manages the current in-progress hypnogram:
-/// - which layer we're on
-/// - candidate clips per layer
-/// - accepted clips per layer
-/// - blend mode per layer
-/// - preview timing offsets
-/// - auto-prime timeout
-///
-/// This is the one state object your UI drives:
-/// - Space: nextCandidate()
-/// - Return: acceptCandidate()
-/// - M: cycleBlendMode()
-/// - R / Cmd-S: layersForRender() + resetForNextHypnogram()
 public final class HypnogramState: ObservableObject {
     // MARK: - Core configuration
 
     public private(set) var settings: Settings
     private var library: VideoSourcesLibrary
-    public let blendModes: [BlendMode]
+    public var blendModes: [BlendMode]
 
     // MARK: - Layer state
 
@@ -173,7 +161,7 @@ public final class HypnogramState: ObservableObject {
         isHUDVisible.toggle()
     }
 
-    /// Delete / Esc: step back a layer if possible.
+    /// Step back a layer if possible.
     public func handleEscape() {
         noteUserInteraction()
 
@@ -218,7 +206,7 @@ public final class HypnogramState: ObservableObject {
 
     // MARK: - Core actions (lower-level, used internally)
 
-    /// SPACE: Get a new random candidate for the current layer.
+    /// Get a new random candidate for the current layer.
     @discardableResult
     public func nextCandidateForCurrentLayer() -> VideoClip? {
         guard let clip = library.randomClip(clipLength: settings.outputDuration.seconds) else {
@@ -228,7 +216,7 @@ public final class HypnogramState: ObservableObject {
         return clip
     }
 
-    /// RETURN: Accept the current candidate for this layer,
+    /// Accept the current candidate for this layer,
     /// optionally overriding its start time with a custom playhead time,
     /// and move to the next layer if there is one.
     public func acceptCandidateForCurrentLayer(usingStartTime customStart: CMTime? = nil) {
@@ -282,7 +270,6 @@ public final class HypnogramState: ObservableObject {
     }
 
     /// M: Cycle the blend mode for the *current* layer.
-    /// On layer 0, do nothing (base layer has no meaningful blend visually).
     public func cycleBlendModeForCurrentLayer() {
         guard !blendModes.isEmpty else { return }
 
@@ -296,7 +283,7 @@ public final class HypnogramState: ObservableObject {
         layerBlendIndices[currentLayerIndex] = idx
     }
 
-    /// ESC / Delete: Go back one layer and DROP the layer we were on.
+    /// Go back one layer and DROP the layer we were on.
     /// - The layer we are leaving is cleared (no candidate, no selected, blend reset).
     /// - `currentLayer` moves down by 1.
     /// - The new current layer gets its selected clip (if any) as candidate so you can tweak it.
@@ -360,6 +347,7 @@ public final class HypnogramState: ObservableObject {
     private func applySettings(_ newSettings: Settings) {
         settings = newSettings
         library  = VideoSourcesLibrary(sourceFolders: newSettings.sourceFolders)
+        blendModes = newSettings.blendModes.map { BlendMode(key: $0) }
 
         let layersCount = max(1, newSettings.maxLayers)
         candidateClips    = Array(repeating: nil, count: layersCount)

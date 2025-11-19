@@ -11,8 +11,6 @@ final class MontageMode: ObservableObject, HypnographMode {
     /// This is the same instance that ContentView observes.
     private let state: HypnogramState
 
-    private let settings: Settings
-
     /// Render queue + backend for this mode.
     let renderQueue: RenderQueue
 
@@ -20,21 +18,18 @@ final class MontageMode: ObservableObject, HypnographMode {
     /// `nil` = normal multi-layer preview.
     @Published private(set) var soloLayerIndex: Int? = nil
 
-    init(state: HypnogramState, settings: Settings) {
+    init(state: HypnogramState) {
         self.state = state
-        self.settings = settings
-
-        let backend = MontageRenderer(settings: settings)
+        let backend = MontageRenderer(
+            outputURL: state.settings.outputURL,
+            outputSize: state.settings.outputSize
+        )
         self.renderQueue = RenderQueue(renderer: backend)
     }
 
     // Expose state bits if you need them (read-only)
     var currentLayerIndex: Int {
         state.currentLayerIndex
-    }
-
-    var maxLayers: Int {
-        settings.maxLayers
     }
 
     var currentBlendModeName: String {
@@ -82,7 +77,8 @@ final class MontageMode: ObservableObject, HypnographMode {
                     get: { self.state.currentCandidateStartOverride },
                     set: { self.state.currentCandidateStartOverride = $0 }
                 ),
-                settings: self.settings
+                outputDuration: self.state.settings.outputDuration,
+                outputSize: self.state.settings.outputSize
             )
         )
     }

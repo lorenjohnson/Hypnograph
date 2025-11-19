@@ -9,7 +9,8 @@ import CoreGraphics
 struct MontageView: NSViewRepresentable {
     let layers: [HypnogramLayer]
     @Binding var currentLayerTime: CMTime?
-    let settings: Settings
+    let outputDuration: CMTime
+    let outputSize: CGSize
 
     class Coordinator {
         var player: AVPlayer?
@@ -45,7 +46,7 @@ struct MontageView: NSViewRepresentable {
 
         if newID != c.compositionID || c.player == nil {
             // Rebuild composition + player item
-            guard let (item, _) = makeDisplay(for: layers, renderSize: settings.outputSize) else {
+            guard let item = makeDisplay(for: layers, renderSize: outputSize) else {
                 Self.tearDown(coordinator: c, view: nsView)
                 currentLayerTime = nil
                 return
@@ -126,8 +127,8 @@ struct MontageView: NSViewRepresentable {
     private func makeDisplay(
         for layers: [HypnogramLayer],
         renderSize: CGSize
-    ) -> (AVPlayerItem, Double)? {
-        let targetSeconds = settings.outputDuration.seconds
+    ) -> AVPlayerItem? {
+        let targetSeconds = outputDuration.seconds
         guard targetSeconds > 0 else {
             print("Preview: non-positive targetDuration; skipping")
             return nil
@@ -137,7 +138,7 @@ struct MontageView: NSViewRepresentable {
         do {
             buildResult = try MontageCompositionBuilder.build(
                 layers: layers,
-                targetDuration: settings.outputDuration
+                targetDuration: outputDuration
             )
         } catch {
             print("Preview: composition build failed: \(error)")
@@ -154,7 +155,7 @@ struct MontageView: NSViewRepresentable {
             layerTrackIDs: videoTrackIDs,
             blendModes: blendModes,
             transforms: transforms,
-            timeRange: CMTimeRange(start: .zero, duration: settings.outputDuration)
+            timeRange: CMTimeRange(start: .zero, duration: outputDuration)
         )
 
         let videoComposition = AVMutableVideoComposition()
@@ -166,7 +167,7 @@ struct MontageView: NSViewRepresentable {
         let item = AVPlayerItem(asset: composition)
         item.videoComposition = videoComposition
 
-        return (item, targetSeconds)
+        return item
     }
 
     private static func tearDown(coordinator c: Coordinator, view: AVPlayerView) {

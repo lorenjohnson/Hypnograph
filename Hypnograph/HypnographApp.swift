@@ -91,7 +91,7 @@ struct HypnographApp: App {
         self.settings = settings
         let state = HypnogramState(settings: settings)
 
-        let montageMode = MontageMode(state: state, settings: settings)
+        let montageMode = MontageMode(state: state)
 
         _state       = StateObject(wrappedValue: state)
         _renderQueue = StateObject(wrappedValue: montageMode.renderQueue)
@@ -118,7 +118,7 @@ struct HypnographApp: App {
 
                     window.makeHypnographBorderless(
                         on: targetScreen,
-                        contentSize: settings.outputSize
+                        contentSize: state.settings.outputSize
                     )
                 }
             }
