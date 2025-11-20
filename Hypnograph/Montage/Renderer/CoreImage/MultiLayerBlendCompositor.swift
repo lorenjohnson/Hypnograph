@@ -104,7 +104,7 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
                         time: request.compositionTime,
                         isPreview: true,
                         outputSize: targetSize,
-                        frameBuffer: FrameBuffer(maxFrames: 5),
+                        frameBuffer: manager.frameBuffer, // Use manager's persistent buffer
                         params: RenderParams()
                     )
                     image = manager.applyToSource(sourceIndex: index, context: &sourceContext, image: image)
@@ -149,16 +149,31 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
 
             let imageToRender: CIImage
             if let manager = GlobalRenderHooks.manager {
+                // Safety check: ensure composed image is valid before applying effects
+                guard !composedImage.extent.isEmpty else {
+                    print("MultiLayerBlendCompositor: composedImage has empty extent at time \(request.compositionTime)")
+                    request.finish(with: NSError(domain: "Compositor", code: -1, userInfo: nil))
+                    return
+                }
+
                 var context = RenderContext(
                     frameIndex: 0, // TODO: thread a real frame index if you want later
                     time: request.compositionTime,
                     isPreview: true,              // this compositing path is used for preview here
                     outputSize: targetSize,
-                    frameBuffer: FrameBuffer(maxFrames: 5), // TODO: reuse manager's buffer
+                    frameBuffer: manager.frameBuffer, // Use manager's persistent buffer
                     params: RenderParams()         // baseline params (unused for now)
                 )
 
-                imageToRender = manager.applyGlobal(to: &context, image: composedImage)
+                let effectResult = manager.applyGlobal(to: &context, image: composedImage)
+
+                // Safety check: ensure effect didn't produce empty image
+                if effectResult.extent.isEmpty {
+                    print("MultiLayerBlendCompositor: Effect produced empty image at time \(request.compositionTime)")
+                    imageToRender = composedImage // Fall back to original
+                } else {
+                    imageToRender = effectResult
+                }
             } else {
                 imageToRender = composedImage
             }
