@@ -80,7 +80,6 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
             let dstRect       = CGRect(origin: .zero, size: targetSize)
             let trackIDs      = instruction.layerTrackIDs
             let modes         = instruction.blendModes
-            let transforms    = instruction.layerTransforms
             let sourceIndices = instruction.sourceIndices
 
             // Gather CIImages for all available source frames in order.
@@ -92,11 +91,6 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
                 }
 
                 var image = CIImage(cvPixelBuffer: buffer)
-
-                // Apply the original track’s preferredTransform if we have one.
-                if index < transforms.count {
-                    image = image.transformed(by: transforms[index])
-                }
 
                 // Apply per-source effects BEFORE compositing
                 // Use the ORIGINAL source index, not the track position
@@ -181,15 +175,10 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
                 imageToRender = composedImage
             }
 
-            // 🔁 Global vertical flip to correct upside-down output.
-            let flipTransform = CGAffineTransform(translationX: 0, y: targetSize.height)
-                .scaledBy(x: 1, y: -1)
-
-            let uprightImage = imageToRender.transformed(by: flipTransform)
-
             // Render CIImage → pixel buffer via CIContext (backed by Metal if available).
+            // No flip needed - pixel buffers are already correctly oriented.
             self.ciContext.render(
-                uprightImage,
+                imageToRender,
                 to: dstBuffer,
                 bounds: dstRect,
                 colorSpace: nil

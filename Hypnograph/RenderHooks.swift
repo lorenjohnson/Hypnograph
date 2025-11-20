@@ -16,49 +16,62 @@ final class FrameBuffer {
     private var frames: [CIImage] = []
     private let maxFrames: Int
     private var lastTime: CMTime?
+    private let queue = DispatchQueue(label: "FrameBuffer.queue")
 
     init(maxFrames: Int = 5) {
         self.maxFrames = maxFrames
     }
 
     func addFrame(_ image: CIImage, at time: CMTime) {
-        // Detect discontinuity (seek/loop) - clear buffer if time jumps backwards
-        if let last = lastTime, time < last {
-            // Time went backwards - video looped or seeked
-            frames.removeAll()
-        }
+        queue.sync {
+            // Detect discontinuity (seek/loop) - clear buffer if time jumps backwards
+            if let last = lastTime, time < last {
+                // Time went backwards - video looped or seeked
+                frames.removeAll()
+            }
 
-        lastTime = time
-        frames.append(image)
-        if frames.count > maxFrames {
-            frames.removeFirst()
+            lastTime = time
+            frames.append(image)
+            if frames.count > maxFrames {
+                frames.removeFirst()
+            }
         }
     }
 
     /// Get previous frame (offset: 1 = previous, 2 = two frames ago, etc.)
     func previousFrame(offset: Int = 1) -> CIImage? {
-        let index = frames.count - 1 - offset
-        guard index >= 0, index < frames.count else { return nil }
-        return frames[index]
+        queue.sync {
+            let index = frames.count - 1 - offset
+            guard index >= 0, index < frames.count else { return nil }
+            return frames[index]
+        }
     }
 
     var currentFrame: CIImage? {
-        frames.last
+        queue.sync {
+            frames.last
+        }
     }
 
     /// Check if buffer is filled to minimum capacity
     var isFilled: Bool {
-        frames.count >= min(3, maxFrames) // Need at least 3 frames for good temporal effects
+        queue.sync {
+            frames.count >= min(3, maxFrames) // Need at least 3 frames for good temporal effects
+        }
     }
 
     /// Number of frames currently in the buffer
     var frameCount: Int {
-        frames.count
+        queue.sync {
+            frames.count
+        }
     }
 
     func clear() {
-        frames.removeAll()
-        lastTime = nil
+        queue.sync {
+            frames.removeAll()
+            lastTime = nil
+        }
     }
 }
 
