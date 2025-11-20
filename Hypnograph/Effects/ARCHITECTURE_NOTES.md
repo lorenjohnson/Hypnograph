@@ -57,8 +57,8 @@ Refactored the command menu system to properly separate global commands from mod
 
 3. **Mode-Specific Commands** (only exist in certain modes):
    - Montage: `Cycle Blend Mode` (M key)
-   - Montage: `Solo Current Source` (S key)
-   - Montage: `Solo Source 1-5` (1-5 keys) - selects source AND enables solo
+   - Montage: `Toggle Solo Current Source` (S key)
+   - Montage: `Toggle Solo Source 1-5` (1-5 keys) - selects source AND toggles solo
    - Future modes can add their own commands
 
 ### Implementation
@@ -77,8 +77,8 @@ Current Menu:
   [Divider]
   - [Mode-specific commands injected here via ForEach]
     - Montage: Cycle Blend Mode (M)
-    - Montage: Solo Current Source (S)
-    - Montage: Solo Source 1-5 (1-5)
+    - Montage: Toggle Solo Current Source (S)
+    - Montage: Toggle Solo Source 1-5 (1-5)
   [Divider]
   - New Clip (N)
   - Next Layer (Return)
