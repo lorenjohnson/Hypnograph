@@ -15,12 +15,20 @@ import CoreImage
 final class FrameBuffer {
     private var frames: [CIImage] = []
     private let maxFrames: Int
+    private var lastTime: CMTime?
 
     init(maxFrames: Int = 5) {
         self.maxFrames = maxFrames
     }
 
-    func addFrame(_ image: CIImage) {
+    func addFrame(_ image: CIImage, at time: CMTime) {
+        // Detect discontinuity (seek/loop) - clear buffer if time jumps backwards
+        if let last = lastTime, time < last {
+            // Time went backwards - video looped or seeked
+            frames.removeAll()
+        }
+
+        lastTime = time
         frames.append(image)
         if frames.count > maxFrames {
             frames.removeFirst()
@@ -38,8 +46,19 @@ final class FrameBuffer {
         frames.last
     }
 
+    /// Check if buffer is filled to minimum capacity
+    var isFilled: Bool {
+        frames.count >= min(3, maxFrames) // Need at least 3 frames for good temporal effects
+    }
+
+    /// Number of frames currently in the buffer
+    var frameCount: Int {
+        frames.count
+    }
+
     func clear() {
         frames.removeAll()
+        lastTime = nil
     }
 }
 
@@ -105,7 +124,10 @@ final class EffectRegistry {
     /// All available effects (None is implicit, not in this list)
     func allEffects() -> [RenderHook] {
         return [
-            HueWobbleHook()
+            HueWobbleHook(),
+            DatamoshHook(intensity: 0.7, maxFrameOffset: 60),
+            RGBSplitSimpleHook(offsetAmount: 15.0, animated: true),
+            ScanlinesHook(lineWidth: 2.0, intensity: 0.4)
             // Add more effects here as they're created
         ]
     }
@@ -129,7 +151,9 @@ final class EffectRegistry {
 /// Manager that both preview + export can share.
 /// Manages global effect and per-source effects.
 final class RenderHookManager {
-    private let frameBuffer = FrameBuffer(maxFrames: 5)
+    /// Shared frame buffer that persists across frames
+    /// 60 frames at 30fps = 2 seconds of history for temporal effects
+    let frameBuffer = FrameBuffer(maxFrames: 60)
 
     /// Global effect applied to the final composed image
     private var globalEffect: RenderHook?
@@ -178,15 +202,22 @@ final class RenderHookManager {
 
     /// Apply global effect to the final composed image
     func applyGlobal(to context: inout RenderContext, image: CIImage) -> CIImage {
-        // Update frame buffer
-        frameBuffer.addFrame(image)
-
         // Apply global effect if set
         guard let effect = globalEffect else {
+            // Even if no effect, still update buffer for future use
+            frameBuffer.addFrame(image, at: context.time)
             return image
         }
 
-        return effect.willRenderFrame(&context, image: image)
+        // Apply effect (it will check if buffer is filled)
+        let result = effect.willRenderFrame(&context, image: image)
+
+        // Update frame buffer AFTER applying effect
+        // This way the effect sees the previous frames, not including current
+        // Pass time to detect loops/seeks
+        frameBuffer.addFrame(image, at: context.time)
+
+        return result
     }
 
     /// Apply per-source effect to a single source image (before compositing)
