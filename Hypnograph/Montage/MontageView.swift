@@ -9,7 +9,7 @@ import CoreGraphics
 struct MontageView: NSViewRepresentable {
     let layers: [HypnogramLayer]
     let sourceIndices: [Int] // Maps layer position → original source index
-    @Binding var currentLayerTime: CMTime?
+    @Binding var currentSourceTime: CMTime?
     let outputDuration: CMTime
     let outputSize: CGSize
 
@@ -38,7 +38,7 @@ struct MontageView: NSViewRepresentable {
         // No layers → clear player and time.
         guard !layers.isEmpty else {
             Self.tearDown(coordinator: c, view: nsView)
-            currentLayerTime = nil
+            currentSourceTime = nil
             return
         }
 
@@ -49,7 +49,7 @@ struct MontageView: NSViewRepresentable {
             // Rebuild composition + player item
             guard let item = makeDisplay(for: layers, renderSize: outputSize) else {
                 Self.tearDown(coordinator: c, view: nsView)
-                currentLayerTime = nil
+                currentSourceTime = nil
                 return
             }
 
@@ -82,7 +82,7 @@ struct MontageView: NSViewRepresentable {
                 forInterval: interval,
                 queue: .main
             ) { time in
-                currentLayerTime = time
+                currentSourceTime = time
             }
 
             // Loop when reaching the end
