@@ -17,6 +17,7 @@ final class MontageMode: ObservableObject, HypnographMode {
     /// If set, preview only this layer (solo).
     /// `nil` = normal multi-layer preview.
     @Published private(set) var soloLayerIndex: Int? = nil
+    private var persistentSoloIndex: Int? = nil
     private var soloPulseWorkItem: DispatchWorkItem?
 
     init(state: HypnogramState) {
@@ -70,11 +71,13 @@ final class MontageMode: ObservableObject, HypnographMode {
     /// Solo the current layer (or clear solo if already soloed).
     func toggleSoloCurrentSource() {
         let idx = state.currentSourceIndex
-        if soloLayerIndex == idx {
-            soloLayerIndex = nil
+        if persistentSoloIndex == idx {
+            persistentSoloIndex = nil
         } else {
-            soloLayerIndex = idx
+            persistentSoloIndex = idx
         }
+        soloPulseWorkItem?.cancel()
+        soloLayerIndex = persistentSoloIndex
     }
 
     // MARK: - HypnographMode – display wiring
@@ -174,42 +177,39 @@ final class MontageMode: ObservableObject, HypnographMode {
         let activeCount = state.activeLayerCount
         guard activeCount > 0 else { return }
         let nextIndex = min(activeCount - 1, state.currentSourceIndex + 1)
-        let shouldPulse = (soloLayerIndex == nil)
-        selectLayer(index: nextIndex, pulse: shouldPulse)
+        selectLayer(index: nextIndex, pulse: true)
     }
 
     func previousSource() {
         let activeCount = state.activeLayerCount
         guard activeCount > 0 else { return }
         let prevIndex = max(0, state.currentSourceIndex - 1)
-        let shouldPulse = (soloLayerIndex == nil)
-        selectLayer(index: prevIndex, pulse: shouldPulse)
+        selectLayer(index: prevIndex, pulse: true)
     }
 
     func selectSource(index: Int) {
         let activeCount = state.activeLayerCount
         guard activeCount > 0 else { return }
         let clamped = max(0, min(activeCount - 1, index))
-        let shouldPulse = (soloLayerIndex == nil)
-        selectLayer(index: clamped, pulse: shouldPulse)
+        selectLayer(index: clamped, pulse: true)
     }
 
     private func selectLayer(index: Int, pulse: Bool) {
         state.selectLayer(index: index)
 
-        guard pulse else { return }
-
         soloPulseWorkItem?.cancel()
-        soloLayerIndex = index
 
-        let work = DispatchWorkItem { [weak self] in
-            guard let self else { return }
-            if self.soloLayerIndex == index {
-                self.soloLayerIndex = nil
+        if pulse {
+            soloLayerIndex = index
+            let work = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.soloLayerIndex = self.persistentSoloIndex
             }
+            soloPulseWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: work)
+        } else {
+            soloLayerIndex = persistentSoloIndex
         }
-        soloPulseWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: work)
     }
 
     // Candidate / selection
