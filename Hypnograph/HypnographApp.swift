@@ -3,20 +3,11 @@ import AppKit
 
 extension NSWindow {
     func makeHypnographBorderless(on screen: NSScreen, contentSize: CGSize) {
-        let visible = screen.visibleFrame
+        // Use full screen frame (not visibleFrame) so we extend under the menu bar / notch.
+        let fullFrame = screen.frame
 
-        // Maintain the content aspect ratio, scaling down uniformly
-        // if either dimension would exceed the visible frame.
-        let scaleX = visible.width  / contentSize.width
-        let scaleY = visible.height / contentSize.height
-        let scale  = min(scaleX, scaleY, 1.0)
-
-        let width  = contentSize.width  * scale
-        let height = contentSize.height * scale
-
-        let originX = visible.midX - width  / 2.0
-        let originY = visible.midY - height / 2.0
-        let frame = NSRect(x: originX, y: originY, width: width, height: height)
+        // Take the entire frame so black background fills the whole display.
+        let frame = fullFrame
 
         // Remove title bar & traffic lights
         styleMask.remove(.titled)
@@ -36,7 +27,8 @@ extension NSWindow {
 
         isOpaque = true
         backgroundColor = .black
-        level = .normal
+        // Lift window above the menu bar without entering macOS fullscreen Spaces.
+        level = .statusBar
 
         setFrame(frame, display: true, animate: false)
         isMovable = false
@@ -369,6 +361,11 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("n", modifiers: [])
 
+            Button("Add Source") {
+                currentMode.addSource()
+            }
+            .keyboardShortcut(".", modifiers: [])
+
             Button("Next Layer") {
                 currentMode.acceptCandidate()
             }
@@ -404,6 +401,11 @@ struct AppCommands: Commands {
                 currentMode.toggleHUD()
             }
             .keyboardShortcut("h", modifiers: [])
+
+            Button("Toggle Solo") {
+                currentMode.toggleSolo()
+            }
+            .keyboardShortcut("s", modifiers: [])
 
             Button("Restart Session, Reloading Settings from File") {
                 currentMode.reloadSettings()
