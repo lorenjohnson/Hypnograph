@@ -210,25 +210,3 @@ final class RenderHookManager {
 enum GlobalRenderHooks {
     static var manager: RenderHookManager?
 }
-
-// MARK: - Built-in Effects
-
-/// Minimal demo hook: wobble hue over time.
-struct HueWobbleHook: RenderHook {
-    var name: String { "Hue Wobble" }
-
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
-        let t = CMTimeGetSeconds(context.time)
-        let phase = Float(sin(t * 0.5))          // slow-ish oscillation
-        let angle = phase * .pi                  // radians
-
-        guard let filter = CIFilter(name: "CIHueAdjust") else {
-            return image
-        }
-
-        filter.setValue(image, forKey: kCIInputImageKey)
-        filter.setValue(angle, forKey: kCIInputAngleKey)
-
-        return filter.outputImage ?? image
-    }
-}
