@@ -137,6 +137,8 @@ final class EffectRegistry {
     /// All available effects (None is implicit, not in this list)
     func allEffects() -> [RenderHook] {
         return [
+            BlackAndWhiteLowHook(),
+            BlackAndWhiteHighHook(),
             HueWobbleHook(),
             DatamoshHook(intensity: 0.7, maxFrameOffset: 60),
             RGBSplitSimpleHook(offsetAmount: 15.0, animated: true),
