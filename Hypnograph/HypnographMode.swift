@@ -57,6 +57,7 @@ protocol HypnographMode: AnyObject {
 
     func cycleEffect()
     func toggleHUD()
+    func toggleSolo()
     func reloadSettings()
 
     // MARK: - Effects

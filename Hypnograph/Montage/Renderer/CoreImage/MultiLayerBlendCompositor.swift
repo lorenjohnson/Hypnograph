@@ -76,11 +76,12 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
                 return
             }
 
-            let targetSize = renderContext.size
-            let dstRect    = CGRect(origin: .zero, size: targetSize)
-            let trackIDs   = instruction.layerTrackIDs
-            let modes      = instruction.blendModes
-            let transforms = instruction.layerTransforms
+            let targetSize    = renderContext.size
+            let dstRect       = CGRect(origin: .zero, size: targetSize)
+            let trackIDs      = instruction.layerTrackIDs
+            let modes         = instruction.blendModes
+            let transforms    = instruction.layerTransforms
+            let sourceIndices = instruction.sourceIndices
 
             // Gather CIImages for all available source frames in order.
             var images: [CIImage] = []
@@ -98,7 +99,9 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
                 }
 
                 // Apply per-source effects BEFORE compositing
+                // Use the ORIGINAL source index, not the track position
                 if let manager = GlobalRenderHooks.manager {
+                    let originalSourceIndex = index < sourceIndices.count ? sourceIndices[index] : index
                     var sourceContext = RenderContext(
                         frameIndex: 0,
                         time: request.compositionTime,
@@ -107,7 +110,7 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
                         frameBuffer: manager.frameBuffer, // Use manager's persistent buffer
                         params: RenderParams()
                     )
-                    image = manager.applyToSource(sourceIndex: index, context: &sourceContext, image: image)
+                    image = manager.applyToSource(sourceIndex: originalSourceIndex, context: &sourceContext, image: image)
                 }
 
                 images.append(image)

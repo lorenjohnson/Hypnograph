@@ -192,7 +192,12 @@ struct HypnographApp: App {
                     mode.cycleEffect()
                 }
                 .keyboardShortcut("m", modifiers: [])
-                
+
+                Button("Solo Current Source") {
+                    mode.toggleSolo()
+                }
+                .keyboardShortcut("s", modifiers: [])
+
                 Button("New Clip") {
                     mode.nextCandidate()
                 }

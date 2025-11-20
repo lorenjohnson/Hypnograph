@@ -8,6 +8,7 @@ import CoreGraphics
 /// Core Image compositor as the final render.
 struct MontageView: NSViewRepresentable {
     let layers: [HypnogramLayer]
+    let sourceIndices: [Int] // Maps layer position → original source index
     @Binding var currentLayerTime: CMTime?
     let outputDuration: CMTime
     let outputSize: CGSize
@@ -155,6 +156,7 @@ struct MontageView: NSViewRepresentable {
             layerTrackIDs: videoTrackIDs,
             blendModes: blendModes,
             transforms: transforms,
+            sourceIndices: sourceIndices,
             timeRange: CMTimeRange(start: .zero, duration: outputDuration)
         )
 
