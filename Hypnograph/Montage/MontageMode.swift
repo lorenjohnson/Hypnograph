@@ -130,17 +130,15 @@ final class MontageMode: ObservableObject, HypnographMode {
     }
 
     func selectOrToggleSolo(index: Int) {
-        if currentSourceIndex == index {
-            toggleSolo()
-        } else {
-            selectSource(index: index)
-        }
+        // Number keys: only momentary solo pulse, never latch persistent solo.
+        selectSource(index: index)
     }
 
     // MARK: - HypnographMode – engine behavior
 
     func newRandomHypnogram() {
         soloLayerIndex = nil
+        persistentSoloIndex = nil
         state.newAutoPrimeSet()
     }
 
@@ -151,6 +149,7 @@ final class MontageMode: ObservableObject, HypnographMode {
         state.selectLayer(index: activeCount)
         _ = state.nextCandidateForcurrentSource()
         soloLayerIndex = nil
+        persistentSoloIndex = nil
     }
 
     func saveCurrentHypnogram() {
@@ -196,6 +195,11 @@ final class MontageMode: ObservableObject, HypnographMode {
 
     private func selectLayer(index: Int, pulse: Bool) {
         state.selectLayer(index: index)
+
+        // If persistent solo is enabled, keep it aligned to selection.
+        if persistentSoloIndex != nil {
+            persistentSoloIndex = index
+        }
 
         soloPulseWorkItem?.cancel()
 
