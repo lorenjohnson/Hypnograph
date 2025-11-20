@@ -132,16 +132,29 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
                 return
             }
 
+            // --- Render hooks: build context, apply hooks, then post-process image.
+
+            var context = RenderContext(
+                frameIndex: 0, // TODO: thread a real frame index if you want later
+                time: request.compositionTime,
+                isPreview: true,              // this compositing path is used for preview here
+                outputSize: targetSize,
+                params: RenderParams()         // baseline params (unused for now)
+            )
+
+            // Let any registered hooks post-process the image.
+            let imageToRender: CIImage
+            if let manager = GlobalRenderHooks.manager {
+                imageToRender = manager.apply(to: &context, image: composedImage)
+            } else {
+                imageToRender = composedImage
+            }
+
             // 🔁 Global vertical flip to correct upside-down output.
-            //
-            // AspectFillStackCompositor normalizes to (0,0,width,height),
-            // so we can flip by:
-            //   1. translate up by height
-            //   2. scale y by -1
             let flipTransform = CGAffineTransform(translationX: 0, y: targetSize.height)
                 .scaledBy(x: 1, y: -1)
 
-            let uprightImage = composedImage.transformed(by: flipTransform)
+            let uprightImage = imageToRender.transformed(by: flipTransform)
 
             // Render CIImage → pixel buffer via CIContext (backed by Metal if available).
             self.ciContext.render(

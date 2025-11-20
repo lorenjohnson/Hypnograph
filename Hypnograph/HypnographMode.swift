@@ -25,6 +25,14 @@ protocol HypnographMode: AnyObject {
         renderQueue: RenderQueue
     ) -> AnyView
 
+    /// Mode-specific HUD items.
+    /// Returns an array of HUDItems that will be merged with global items.
+    /// Use ordering indices to position items (e.g., 15, 25, 35 to fit between global items at 10, 20, 30, 40).
+    func hudItems(
+        state: HypnogramState,
+        renderQueue: RenderQueue
+    ) -> [HUDItem]
+
     // MARK: - Hypnogram lifecycle
 
     /// Create a new random setup for this mode.

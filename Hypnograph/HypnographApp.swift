@@ -121,15 +121,14 @@ struct HypnographApp: App {
         // Shared state
         self.settings = settings
         let state = HypnogramState(settings: settings)
-
         let mode = MontageMode(state: state)
+
+        GlobalRenderHooks.manager = state.renderHooks
 
         _state       = StateObject(wrappedValue: state)
         _renderQueue = StateObject(wrappedValue: mode.renderQueue)
 
         self.mode = mode
-
-        mode.renderQueue.onAllJobsFinished = { NSApp.terminate(nil) }
 
         // Let the AppDelegate know about the render queue for Cmd-Q handling
         appDelegate.renderQueue = mode.renderQueue
@@ -179,6 +178,15 @@ struct HypnographApp: App {
             }
             
             CommandMenu("Current") {
+                Button("Toggle Global Effect") {
+                    if state.renderHooks.hooks.isEmpty {
+                        state.renderHooks.addHook(HueWobbleHook())
+                    } else {
+                        state.renderHooks.removeAllHooks()
+                    }
+                }
+                .keyboardShortcut("e", modifiers: [])
+
                 Button("Cycle Blend Mode") {
                     mode.cycleEffect()
                 }

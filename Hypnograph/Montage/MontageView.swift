@@ -52,6 +52,7 @@ struct MontageView: NSViewRepresentable {
                 return
             }
 
+            let previousTime = c.player?.currentTime() ?? .zero
             let player: AVPlayer
             if let existing = c.player {
                 player = existing
@@ -94,8 +95,7 @@ struct MontageView: NSViewRepresentable {
                 p.playImmediately(atRate: 0.8)
             }
 
-            // Start playback at preview rate (slightly slower than real time).
-            player.seek(to: .zero)
+            player.seek(to: previousTime)
             player.playImmediately(atRate: 0.8)
         } else {
             // Same composition, just make sure it's playing.
