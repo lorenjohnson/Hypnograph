@@ -32,6 +32,85 @@ ISF is designed for **real-time VJ/live video performance**, not video file expo
 
 ---
 
+# Mode Independence Architecture
+
+## Summary
+
+Refactored the command menu system to properly separate global commands from mode-specific commands, ensuring true mode independence.
+
+## Architecture
+
+### Command Types
+
+1. **Global Commands** (delegated to mode, but available in all modes):
+   - Navigation: `previousSource`, `nextSource`
+   - Effects: `cycleGlobalEffect`, `cycleSourceEffect`, `clearAllEffects`
+   - Candidates: `nextCandidate`, `acceptCandidate`, `deleteCurrentSource`
+   - Hypnogram: `newRandomHypnogram`
+   - UI: `toggleHUD`
+   - Note: `clearAllEffects` (0 key) clears all effects globally, but modes can add mode-specific behavior (e.g., Montage also clears solo)
+
+2. **App-Level Commands** (not delegated to mode):
+   - `restartSession` (reload settings)
+   - `installHypnographCommand` (CLI tool)
+   - `showSettingsFolder`
+
+3. **Mode-Specific Commands** (only exist in certain modes):
+   - Montage: `Cycle Blend Mode` (M key)
+   - Montage: `Solo Current Source` (S key)
+   - Montage: `Solo Source 1-5` (1-5 keys) - selects source AND enables solo
+   - Future modes can add their own commands
+
+### Implementation
+
+**HypnographMode Protocol:**
+- Added `ModeCommand` struct to represent commands with keyboard shortcuts
+- Added `modeCommands() -> [ModeCommand]` method to protocol
+- Each mode returns its specific commands
+
+**HypnographApp Menu Structure:**
+```
+Current Menu:
+  - Cycle Global Effect (E)
+  - Cycle Source Effect (F)
+  - Clear All Effects (0)
+  [Divider]
+  - [Mode-specific commands injected here via ForEach]
+    - Montage: Cycle Blend Mode (M)
+    - Montage: Solo Current Source (S)
+    - Montage: Solo Source 1-5 (1-5)
+  [Divider]
+  - New Clip (N)
+  - Next Layer (Return)
+  - Next/Previous Source (←/→)
+  - Delete Current Source (Delete)
+  [Divider]
+  - Toggle HUD (H)
+  - Restart Session (Cmd-R)
+  - Install hypnograph command
+  - Show Settings Folder (Cmd-Shift-S)
+```
+
+**MontageMode:**
+- Implements `modeCommands()` to return Montage-specific commands
+- Only returns commands unique to Montage mode
+- Global commands are handled by the app
+
+### Benefits
+
+1. **True Mode Independence**: Future modes can define their own commands without modifying the app
+2. **Clear Separation**: Global vs. mode-specific commands are clearly separated
+3. **Dynamic Menu**: Menu adapts to the current mode automatically
+4. **Maintainability**: Adding a new mode-specific command only requires updating the mode, not the app
+
+### Files Modified
+
+- `Hypnograph/HypnographMode.swift` - Added `ModeCommand` struct and `modeCommands()` method
+- `Hypnograph/Montage/MontageMode.swift` - Implemented `modeCommands()` for Montage
+- `Hypnograph/HypnographApp.swift` - Refactored menu to inject mode commands dynamically
+
+---
+
 # Solo Mode Feature
 
 ## Summary

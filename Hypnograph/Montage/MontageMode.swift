@@ -106,10 +106,46 @@ final class MontageMode: ObservableObject, HypnographMode {
         }
 
         // Mode-specific shortcuts (after global shortcuts)
+        // Global shortcuts are shown by the app, only show Montage-specific ones here
         items.append(.text("M = Cycle Blend mode", order: 46))
         items.append(.text("S = Solo current source", order: 47))
+        items.append(.text("1-5 = Solo source", order: 48))
 
         return items
+    }
+
+    func modeCommands() -> [ModeCommand] {
+        // Only Montage-specific commands
+        // Global commands (navigation, candidates, etc.) are in HypnographApp
+        return [
+            ModeCommand(title: "Cycle Blend Mode", key: "m") { [weak self] in
+                self?.cycleEffect()
+            },
+            ModeCommand(title: "Solo Current Source", key: "s") { [weak self] in
+                self?.toggleSolo()
+            },
+            // 1-5 keys: Select source AND enable solo (Montage-specific behavior)
+            ModeCommand(title: "Solo Source 1", key: "1") { [weak self] in
+                self?.selectSource(index: 0)
+                self?.soloLayerIndex = 0
+            },
+            ModeCommand(title: "Solo Source 2", key: "2") { [weak self] in
+                self?.selectSource(index: 1)
+                self?.soloLayerIndex = 1
+            },
+            ModeCommand(title: "Solo Source 3", key: "3") { [weak self] in
+                self?.selectSource(index: 2)
+                self?.soloLayerIndex = 2
+            },
+            ModeCommand(title: "Solo Source 4", key: "4") { [weak self] in
+                self?.selectSource(index: 3)
+                self?.soloLayerIndex = 3
+            },
+            ModeCommand(title: "Solo Source 5", key: "5") { [weak self] in
+                self?.selectSource(index: 4)
+                self?.soloLayerIndex = 4
+            }
+        ]
     }
 
     // MARK: - HypnographMode – engine behavior
@@ -195,6 +231,19 @@ final class MontageMode: ObservableObject, HypnographMode {
 
     func cycleSourceEffect() {
         state.renderHooks.cycleSourceEffect(for: state.currentLayerIndex)
+    }
+
+    func clearAllEffects() {
+        // Clear global effect
+        state.renderHooks.setGlobalEffect(nil)
+
+        // Clear all per-source effects
+        for i in 0..<state.maxLayers {
+            state.renderHooks.setSourceEffect(nil, for: i)
+        }
+
+        // Montage-specific: also clear solo mode
+        soloLayerIndex = nil
     }
 
     var globalEffectName: String {

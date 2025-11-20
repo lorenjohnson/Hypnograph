@@ -70,8 +70,9 @@ struct ContentView: View {
             // HUD
             if state.isHUDVisible {
                 VStack(alignment: .leading, spacing: 4) {
-                    ForEach(Array(allHUDItems().enumerated()), id: \.offset) { _, item in
+                    ForEach(Array(allHUDItems().enumerated()), id: \.offset) { index, item in
                         item.render()
+                            .id(index) // Use the enumeration index as the unique ID
                     }
                 }
                 .foregroundColor(.white)

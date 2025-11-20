@@ -9,6 +9,21 @@ import Foundation
 import CoreGraphics
 import SwiftUI
 
+/// Represents a mode-specific command with keyboard shortcut
+struct ModeCommand {
+    let title: String
+    let keyEquivalent: KeyEquivalent
+    let modifiers: EventModifiers
+    let action: () -> Void
+
+    init(title: String, key: KeyEquivalent, modifiers: EventModifiers = [], action: @escaping () -> Void) {
+        self.title = title
+        self.keyEquivalent = key
+        self.modifiers = modifiers
+        self.action = action
+    }
+}
+
 /// High-level contract for a Hypnograph "mode"
 ///
 /// The app defines global commands (Save, Reload, etc.)
@@ -32,6 +47,10 @@ protocol HypnographMode: AnyObject {
         state: HypnogramState,
         renderQueue: RenderQueue
     ) -> [HUDItem]
+
+    /// Mode-specific commands for the menu.
+    /// Returns an array of ModeCommands that will be added to the "Current" menu.
+    func modeCommands() -> [ModeCommand]
 
     // MARK: - Hypnogram lifecycle
 
@@ -64,6 +83,7 @@ protocol HypnographMode: AnyObject {
 
     func cycleGlobalEffect()
     func cycleSourceEffect()
+    func clearAllEffects()
 
     var globalEffectName: String { get }
     var sourceEffectName: String { get }
