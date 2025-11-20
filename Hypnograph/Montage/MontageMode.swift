@@ -28,12 +28,24 @@ final class MontageMode: ObservableObject, HypnographMode {
     }
 
     // Expose state bits if you need them (read-only)
-    var currentLayerIndex: Int {
-        state.currentLayerIndex
+    var currentSourceIndex: Int {
+        state.currentSourceIndex
     }
 
     var currentBlendModeName: String {
         state.currentBlendModeName
+    }
+
+    var isSoloActive: Bool {
+        soloLayerIndex != nil
+    }
+
+    var soloIndicatorText: String? {
+        if let solo = soloLayerIndex {
+            return "SOLO \(solo + 1)"
+        } else {
+            return "\(currentSourceIndex + 1)"
+        }
     }
 
     // MARK: - Preview / solo
@@ -56,16 +68,12 @@ final class MontageMode: ObservableObject, HypnographMode {
 
     /// Solo the current layer (or clear solo if already soloed).
     func toggleSoloCurrentSource() {
-        let idx = state.currentLayerIndex
+        let idx = state.currentSourceIndex
         if soloLayerIndex == idx {
             soloLayerIndex = nil
         } else {
             soloLayerIndex = idx
         }
-    }
-
-    var isSoloActive: Bool {
-        soloLayerIndex != nil
     }
 
     // MARK: - HypnographMode – display wiring
@@ -79,7 +87,7 @@ final class MontageMode: ObservableObject, HypnographMode {
             MontageView(
                 layers: layers,
                 sourceIndices: sourceIndices,
-                currentLayerTime: Binding(
+                currentSourceTime: Binding(
                     get: { state.currentCandidateStartOverride },
                     set: { state.currentCandidateStartOverride = $0 }
                 ),
@@ -95,21 +103,14 @@ final class MontageMode: ObservableObject, HypnographMode {
     ) -> [HUDItem] {
         var items: [HUDItem] = [
             // Source/Layer-specific status (order 25-29 range)
-            .text("Source \(state.currentLayerIndex + 1) of \(state.maxLayers)", order: 25),
+            .text("Source \(state.currentSourceIndex + 1) of \(state.activeLayerCount)", order: 25),
             .text("Blend mode: \(state.currentBlendModeName)", order: 26),
             .text("Source Effect: \(sourceEffectName)", order: 27),
         ]
 
-        // Show solo status if active
-        if isSoloActive {
-            items.append(.text("SOLO: Source \(soloLayerIndex! + 1)", order: 28, font: .headline))
-        }
-
         // Mode-specific shortcuts (after global shortcuts)
         // Global shortcuts are shown by the app, only show Montage-specific ones here
         items.append(.text("M = Cycle Blend mode", order: 46))
-        items.append(.text("S = Toggle solo current source", order: 47))
-        items.append(.text("1-5 = Toggle solo source", order: 48))
 
         return items
     }
@@ -120,43 +121,16 @@ final class MontageMode: ObservableObject, HypnographMode {
         return [
             ModeCommand(title: "Cycle Blend Mode", key: "m") { [weak self] in
                 self?.cycleEffect()
-            },
-            ModeCommand(title: "Solo Current Source", key: "s") { [weak self] in
-                self?.toggleSolo()
-            },
-            // 1-5 keys: Toggle solo for that source
-            ModeCommand(title: "Toggle Solo Source 1", key: "1") { [weak self] in
-                self?.toggleSoloForSource(index: 0)
-            },
-            ModeCommand(title: "Toggle Solo Source 2", key: "2") { [weak self] in
-                self?.toggleSoloForSource(index: 1)
-            },
-            ModeCommand(title: "Toggle Solo Source 3", key: "3") { [weak self] in
-                self?.toggleSoloForSource(index: 2)
-            },
-            ModeCommand(title: "Toggle Solo Source 4", key: "4") { [weak self] in
-                self?.toggleSoloForSource(index: 3)
-            },
-            ModeCommand(title: "Toggle Solo Source 5", key: "5") { [weak self] in
-                self?.toggleSoloForSource(index: 4)
             }
         ]
     }
 
-    /// Toggle solo for a specific source index
-    private func toggleSoloForSource(index: Int) {
-        // Check if this source is already soloed BEFORE selecting
-        // (selectSource clears solo, so we need to check first)
-        let wasAlreadySoloed = (soloLayerIndex == index)
-
-        // Select the source (this will clear solo)
-        selectSource(index: index)
-
-        // Toggle solo: if it was already soloed, leave it off; otherwise turn it on
-        if !wasAlreadySoloed {
-            soloLayerIndex = index
+    func selectOrToggleSolo(index: Int) {
+        if currentSourceIndex == index {
+            toggleSolo()
+        } else {
+            selectSource(index: index)
         }
-        // If wasAlreadySoloed is true, solo stays nil (turned off by selectSource)
     }
 
     // MARK: - HypnographMode – engine behavior
@@ -241,7 +215,7 @@ final class MontageMode: ObservableObject, HypnographMode {
     }
 
     func cycleSourceEffect() {
-        state.renderHooks.cycleSourceEffect(for: state.currentLayerIndex)
+        state.renderHooks.cycleSourceEffect(for: state.currentSourceIndex)
     }
 
     func clearAllEffects() {
@@ -262,6 +236,6 @@ final class MontageMode: ObservableObject, HypnographMode {
     }
 
     var sourceEffectName: String {
-        state.renderHooks.sourceEffectName(for: state.currentLayerIndex)
+        state.renderHooks.sourceEffectName(for: state.currentSourceIndex)
     }
 }

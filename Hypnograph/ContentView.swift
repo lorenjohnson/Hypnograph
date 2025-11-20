@@ -1,10 +1,22 @@
 import SwiftUI
 import AVFoundation
+import Combine
 
 struct ContentView: View {
     @ObservedObject var state: HypnogramState
     @ObservedObject var renderQueue: RenderQueue
     var mode: HypnographMode
+    @State private var modeChangePing = UUID()
+
+    private func modeChangePublisher() -> AnyPublisher<Void, Never> {
+        guard let publisher = (mode as? any ObservableObject)?.objectWillChange as? ObservableObjectPublisher else {
+            return Empty().eraseToAnyPublisher()
+        }
+
+        return publisher
+            .map { _ in () }
+            .eraseToAnyPublisher()
+    }
 
     // MARK: - Global HUD Items
 
@@ -13,7 +25,9 @@ struct ContentView: View {
 
         // Header
         items.append(.text("Hypnograph", order: 10, font: .headline))
-        items.append(.padding(8, order: 11))
+        let modeLabel = state.currentModeType == .montage ? "Montage Mode" : "Sequence Mode"
+        items.append(.text(modeLabel, order: 11, font: .subheadline))
+        items.append(.padding(8, order: 12))
 
         // Queue status
         if renderQueue.activeJobs > 0 {
@@ -76,10 +90,27 @@ struct ContentView: View {
                     }
                 }
                 .foregroundColor(.white)
-                .padding()
+                .padding(12)
+                .background(
+                    Color.black.opacity(0.6)
+                        .cornerRadius(10)
+                )
+                .padding(.top, 12)
+                .padding(.leading, 12)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            if let text = mode.soloIndicatorText {
+                Text(text)
+                    .font(.system(size: 48, weight: .bold))
+                    .foregroundColor(.red)
+                    .padding()
             }
         }
         // extra safety: whole scene black
         .background(Color.black)
+        .onReceive(modeChangePublisher()) { _ in
+            modeChangePing = UUID()
+        }
     }
 }

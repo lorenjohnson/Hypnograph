@@ -8,6 +8,14 @@
 import Foundation
 import CoreMedia
 
+// MARK: - Mode Types
+
+/// Available mode types for the application
+public enum ModeType {
+    case montage
+    case sequence
+}
+
 // MARK: - Core Data Models
 
 /// A single video file on disk that we can select clips from.

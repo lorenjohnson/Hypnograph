@@ -32,6 +32,14 @@ protocol HypnographMode: AnyObject {
     /// The render queue managed by this mode.
     /// (The app may observe it for HUD, quitting, etc.)
     var renderQueue: RenderQueue { get }
+    /// Index of the currently focused source/clip.
+    var currentSourceIndex: Int { get }
+    /// Whether solo is active for the current selection.
+    var isSoloActive: Bool { get }
+    /// Short text to display when solo is active (e.g., "1/SOLO").
+    var soloIndicatorText: String? { get }
+    /// Select a source or toggle solo if already selected.
+    func selectOrToggleSolo(index: Int)
 
     /// Root preview/display view for this mode.
     /// ContentView doesn't know which concrete view it is.

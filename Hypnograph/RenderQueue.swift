@@ -10,7 +10,7 @@ import Foundation
 /// Manages a queue of rendering jobs for Hypnogram.
 /// Wraps a HypnogramRenderer and keeps track of active jobs.
 final class RenderQueue: ObservableObject {
-    private let renderer: HypnogramRenderer
+    let renderer: HypnogramRenderer
 
     /// Number of currently active jobs (being processed).
     @Published private(set) var activeJobs: Int = 0
