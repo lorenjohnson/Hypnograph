@@ -23,20 +23,30 @@ struct ContentView: View {
         }
         items.append(.padding(8, order: 21))
 
-        items.append(.text("Source \(state.currentLayerIndex + 1) of \(state.maxLayers)", order: 25))
-        // Mode-specific items will be inserted here (e.g., order 25, 26, etc.)
-        items.append(.padding(16, order: 29))
+        // Global status
+        items.append(.text("Global Effect: \(mode.globalEffectName)", order: 22))
+
+        // Divider before source/layer-specific items
+        items.append(.padding(16, order: 24))
+
+        // Source/layer-specific items will be inserted here (order 25-29)
+        // Mode provides: Source index, blend mode, source effect, etc.
+
+        // Divider after source/layer-specific items
+        items.append(.padding(16, order: 39))
 
         // Global keyboard shortcuts
-        items.append(.text("N = Next Candidate this layer", order: 30))
-        items.append(.text("Return = Accept Candidate", order: 31))
-        items.append(.text("Delete = Delete current layer", order: 32))
-        items.append(.text("1-5 Switch to layer", order: 33))
-        items.append(.padding(16, order: 40))
-        items.append(.text("Space = New random Hypnogram", order: 41))
-        items.append(.text("Cmd-S = Save Hypnogram", order: 41))
-        items.append(.text("Cmd-R = Reload Settings and Restart", order: 42))
-        items.append(.text("Shift-Cmd-S = Show Settings Folder", order: 43))
+        items.append(.text("E = Cycle Global Effect", order: 40))
+        items.append(.text("F = Cycle Source Effect", order: 41))
+        items.append(.text("N = Next Candidate this layer", order: 42))
+        items.append(.text("Return = Accept Candidate", order: 43))
+        items.append(.text("Delete = Delete current layer", order: 44))
+        items.append(.text("1-5 Switch to layer", order: 45))
+        items.append(.padding(16, order: 49))
+        items.append(.text("Space = New random Hypnogram", order: 50))
+        items.append(.text("Cmd-S = Save Hypnogram", order: 51))
+        items.append(.text("Cmd-R = Reload Settings and Restart", order: 52))
+        items.append(.text("Shift-Cmd-S = Show Settings Folder", order: 53))
 
         return items
     }

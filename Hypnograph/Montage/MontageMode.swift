@@ -87,8 +87,13 @@ final class MontageMode: ObservableObject, HypnographMode {
         renderQueue: RenderQueue
     ) -> [HUDItem] {
         return [
+            // Source/Layer-specific status (order 25-29 range)
+            .text("Source \(state.currentLayerIndex + 1) of \(state.maxLayers)", order: 25),
             .text("Blend mode: \(state.currentBlendModeName)", order: 26),
-            .text("M = Cycle Blend mode", order: 34)
+            .text("Source Effect: \(sourceEffectName)", order: 27),
+
+            // Mode-specific shortcuts (after global shortcuts)
+            .text("M = Cycle Blend mode", order: 46)
         ]
     }
 
@@ -158,5 +163,23 @@ final class MontageMode: ObservableObject, HypnographMode {
     func reloadSettings() {
         state.reloadSettings(from: Environment.defaultSettingsURL)
         soloLayerIndex = nil
+    }
+
+    // MARK: - Effects
+
+    func cycleGlobalEffect() {
+        state.renderHooks.cycleGlobalEffect()
+    }
+
+    func cycleSourceEffect() {
+        state.renderHooks.cycleSourceEffect(for: state.currentLayerIndex)
+    }
+
+    var globalEffectName: String {
+        state.renderHooks.globalEffectName
+    }
+
+    var sourceEffectName: String {
+        state.renderHooks.sourceEffectName(for: state.currentLayerIndex)
     }
 }

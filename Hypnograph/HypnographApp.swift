@@ -178,14 +178,15 @@ struct HypnographApp: App {
             }
             
             CommandMenu("Current") {
-                Button("Toggle Global Effect") {
-                    if state.renderHooks.hooks.isEmpty {
-                        state.renderHooks.addHook(HueWobbleHook())
-                    } else {
-                        state.renderHooks.removeAllHooks()
-                    }
+                Button("Cycle Global Effect") {
+                    mode.cycleGlobalEffect()
                 }
                 .keyboardShortcut("e", modifiers: [])
+
+                Button("Cycle Source Effect") {
+                    mode.cycleSourceEffect()
+                }
+                .keyboardShortcut("f", modifiers: [])
 
                 Button("Cycle Blend Mode") {
                     mode.cycleEffect()
