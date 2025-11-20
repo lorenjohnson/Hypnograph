@@ -14,6 +14,7 @@ import CoreGraphics
 /// - which track IDs to use as layers
 /// - which blend modes (one per layer, same order)
 /// - per-layer transforms (usually the original track's preferredTransform)
+/// - original source indices (for applying per-source effects correctly)
 public final class MultiLayerBlendInstruction: NSObject, AVVideoCompositionInstructionProtocol {
     public var timeRange: CMTimeRange
     public var enablePostProcessing: Bool = false
@@ -25,17 +26,20 @@ public final class MultiLayerBlendInstruction: NSObject, AVVideoCompositionInstr
     let layerTrackIDs: [CMPersistentTrackID]
     let blendModes: [String]
     let layerTransforms: [CGAffineTransform]
+    let sourceIndices: [Int] // Maps track position → original layer index
 
     public init(
         layerTrackIDs: [CMPersistentTrackID],
         blendModes: [String],
         transforms: [CGAffineTransform],
+        sourceIndices: [Int],
         timeRange: CMTimeRange
     ) {
         self.timeRange       = timeRange
         self.layerTrackIDs   = layerTrackIDs
         self.blendModes      = blendModes
         self.layerTransforms = transforms
+        self.sourceIndices   = sourceIndices
         self.requiredSourceTrackIDs = layerTrackIDs.map { NSNumber(value: $0) }
     }
 }

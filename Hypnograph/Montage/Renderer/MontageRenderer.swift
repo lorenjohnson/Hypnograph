@@ -88,10 +88,13 @@ final class MontageRenderer: HypnogramRenderer {
         print("MontageRenderer: using \(videoTrackIDs.count) video track(s), duration \(targetSeconds)s")
 
         // 3. Video composition + custom compositor
+        // For full render, source indices are sequential (no solo filtering)
+        let sourceIndices = Array(0..<videoTrackIDs.count)
         let instruction = MultiLayerBlendInstruction(
             layerTrackIDs: videoTrackIDs,
             blendModes: blendModes,
             transforms: transforms,
+            sourceIndices: sourceIndices,
             timeRange: CMTimeRange(start: .zero, duration: targetDuration)
         )
 

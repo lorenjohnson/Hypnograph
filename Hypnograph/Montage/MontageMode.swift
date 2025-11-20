@@ -38,14 +38,19 @@ final class MontageMode: ObservableObject, HypnographMode {
 
     // MARK: - Preview / solo
 
-    private func layersForDisplay(using state: HypnogramState) -> [HypnogramLayer] {
+    /// Returns layers for display along with their original indices
+    private func layersForDisplay(using state: HypnogramState) -> (layers: [HypnogramLayer], sourceIndices: [Int]) {
         let all = state.layers
 
         if let solo = soloLayerIndex {
-            guard solo >= 0, solo < all.count else { return all }
-            return [all[solo]]
+            guard solo >= 0, solo < all.count else {
+                return (all, Array(0..<all.count))
+            }
+            // Solo mode: return only the soloed layer with its original index
+            return ([all[solo]], [solo])
         } else {
-            return all
+            // Normal mode: all layers with sequential indices
+            return (all, Array(0..<all.count))
         }
     }
 
@@ -69,9 +74,11 @@ final class MontageMode: ObservableObject, HypnographMode {
         state: HypnogramState,
         renderQueue: RenderQueue
     ) -> AnyView {
+        let (layers, sourceIndices) = layersForDisplay(using: state)
         return AnyView(
             MontageView(
-                layers: layersForDisplay(using: state),
+                layers: layers,
+                sourceIndices: sourceIndices,
                 currentLayerTime: Binding(
                     get: { state.currentCandidateStartOverride },
                     set: { state.currentCandidateStartOverride = $0 }
@@ -86,15 +93,23 @@ final class MontageMode: ObservableObject, HypnographMode {
         state: HypnogramState,
         renderQueue: RenderQueue
     ) -> [HUDItem] {
-        return [
+        var items: [HUDItem] = [
             // Source/Layer-specific status (order 25-29 range)
             .text("Source \(state.currentLayerIndex + 1) of \(state.maxLayers)", order: 25),
             .text("Blend mode: \(state.currentBlendModeName)", order: 26),
             .text("Source Effect: \(sourceEffectName)", order: 27),
-
-            // Mode-specific shortcuts (after global shortcuts)
-            .text("M = Cycle Blend mode", order: 46)
         ]
+
+        // Show solo status if active
+        if isSoloActive {
+            items.append(.text("SOLO: Source \(soloLayerIndex! + 1)", order: 28, font: .headline))
+        }
+
+        // Mode-specific shortcuts (after global shortcuts)
+        items.append(.text("M = Cycle Blend mode", order: 46))
+        items.append(.text("S = Solo current source", order: 47))
+
+        return items
     }
 
     // MARK: - HypnographMode – engine behavior
@@ -125,14 +140,17 @@ final class MontageMode: ObservableObject, HypnographMode {
     // Source navigation
 
     func nextSource() {
+        soloLayerIndex = nil // Clear solo when switching layers
         state.nextLayer()
     }
 
     func previousSource() {
+        soloLayerIndex = nil // Clear solo when switching layers
         state.prevLayer()
     }
 
     func selectSource(index: Int) {
+        soloLayerIndex = nil // Clear solo when switching layers
         state.selectLayer(index: index)
     }
 
@@ -158,6 +176,10 @@ final class MontageMode: ObservableObject, HypnographMode {
 
     func toggleHUD() {
         state.toggleHUD()
+    }
+
+    func toggleSolo() {
+        toggleSoloCurrentSource()
     }
 
     func reloadSettings() {
