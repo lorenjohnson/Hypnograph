@@ -143,9 +143,9 @@ public final class HypnogramState: ObservableObject {
             // Preview time is relative to the clip's current startTime.
             // Convert back to an absolute time in the source file.
             let absoluteStart = CMTimeAdd(candidate.startTime, offset)
-            acceptCandidateForcurrentSource(usingStartTime: absoluteStart)
+            acceptCandidateForCurrentSource(usingStartTime: absoluteStart)
         } else {
-            acceptCandidateForcurrentSource(usingStartTime: nil)
+            acceptCandidateForCurrentSource(usingStartTime: nil)
         }
 
         currentCandidateStartOverride = nil
@@ -230,7 +230,7 @@ public final class HypnogramState: ObservableObject {
     /// Accept the current candidate for this layer,
     /// optionally overriding its start time with a custom playhead time,
     /// and move to the next layer if there is one.
-    public func acceptCandidateForcurrentSource(usingStartTime customStart: CMTime? = nil) {
+    public func acceptCandidateForCurrentSource(usingStartTime customStart: CMTime? = nil) {
         guard let candidate = candidateClips[currentSourceIndex] else { return }
 
         let finalClip: VideoClip

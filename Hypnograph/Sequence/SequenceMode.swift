@@ -152,26 +152,61 @@ final class SequenceMode: ObservableObject, HypnographMode {
     
     func nextSource() {
         guard !sequenceClips.isEmpty else { return }
-        soloClipIndex = nil
         currentClipIndex = min(sequenceClips.count - 1, currentClipIndex + 1)
+        if soloClipIndex != nil {
+            soloClipIndex = currentClipIndex
+        }
     }
 
     func previousSource() {
-        soloClipIndex = nil
         currentClipIndex = max(0, currentClipIndex - 1)
+        if soloClipIndex != nil {
+            soloClipIndex = currentClipIndex
+        }
     }
 
     func selectSource(index: Int) {
         guard !sequenceClips.isEmpty else { return }
-        soloClipIndex = nil
         currentClipIndex = max(0, min(sequenceClips.count - 1, index))
+        if soloClipIndex != nil {
+            soloClipIndex = currentClipIndex
+        }
+    }
+
+    func addSource() {
+        let clipDuration = randomClipDuration()
+        guard let clip = state.library.randomClip(clipLength: clipDuration) else {
+            print("SequenceMode: failed to get random clip")
+            return
+        }
+
+        sequenceClips.append(clip)
+        currentClipIndex = sequenceClips.count - 1
+        if soloClipIndex != nil {
+            soloClipIndex = currentClipIndex
+        }
     }
     
     // MARK: - Candidate / selection
     
     func nextCandidate() {
-        // In sequence mode, "next candidate" adds a new clip to the sequence
-        addClipToSequence()
+        // In sequence mode, "next candidate" refreshes the current source with a new random clip
+        let clipDuration = randomClipDuration()
+        guard let clip = state.library.randomClip(clipLength: clipDuration) else {
+            print("SequenceMode: failed to get random clip")
+            return
+        }
+
+        if sequenceClips.isEmpty {
+            sequenceClips = [clip]
+            currentClipIndex = 0
+        } else {
+            sequenceClips[currentClipIndex] = clip
+        }
+
+        if soloClipIndex != nil {
+            soloClipIndex = currentClipIndex
+        }
     }
     
     func acceptCandidate() {

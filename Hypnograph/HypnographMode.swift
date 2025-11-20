@@ -70,6 +70,9 @@ protocol HypnographMode: AnyObject {
 
     // MARK: - Source navigation
 
+    /// Add a new source/slot and jump to it (if supported by the mode).
+    func addSource()
+
     func nextSource()
     func previousSource()
     func selectSource(index: Int)
