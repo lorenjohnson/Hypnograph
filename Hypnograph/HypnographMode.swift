@@ -58,4 +58,12 @@ protocol HypnographMode: AnyObject {
     func cycleEffect()
     func toggleHUD()
     func reloadSettings()
+
+    // MARK: - Effects
+
+    func cycleGlobalEffect()
+    func cycleSourceEffect()
+
+    var globalEffectName: String { get }
+    var sourceEffectName: String { get }
 }

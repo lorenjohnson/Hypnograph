@@ -97,6 +97,19 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
                     image = image.transformed(by: transforms[index])
                 }
 
+                // Apply per-source effects BEFORE compositing
+                if let manager = GlobalRenderHooks.manager {
+                    var sourceContext = RenderContext(
+                        frameIndex: 0,
+                        time: request.compositionTime,
+                        isPreview: true,
+                        outputSize: targetSize,
+                        frameBuffer: FrameBuffer(maxFrames: 5),
+                        params: RenderParams()
+                    )
+                    image = manager.applyToSource(sourceIndex: index, context: &sourceContext, image: image)
+                }
+
                 images.append(image)
             }
 
@@ -134,18 +147,18 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
 
             // --- Render hooks: build context, apply hooks, then post-process image.
 
-            var context = RenderContext(
-                frameIndex: 0, // TODO: thread a real frame index if you want later
-                time: request.compositionTime,
-                isPreview: true,              // this compositing path is used for preview here
-                outputSize: targetSize,
-                params: RenderParams()         // baseline params (unused for now)
-            )
-
-            // Let any registered hooks post-process the image.
             let imageToRender: CIImage
             if let manager = GlobalRenderHooks.manager {
-                imageToRender = manager.apply(to: &context, image: composedImage)
+                var context = RenderContext(
+                    frameIndex: 0, // TODO: thread a real frame index if you want later
+                    time: request.compositionTime,
+                    isPreview: true,              // this compositing path is used for preview here
+                    outputSize: targetSize,
+                    frameBuffer: FrameBuffer(maxFrames: 5), // TODO: reuse manager's buffer
+                    params: RenderParams()         // baseline params (unused for now)
+                )
+
+                imageToRender = manager.applyGlobal(to: &context, image: composedImage)
             } else {
                 imageToRender = composedImage
             }
