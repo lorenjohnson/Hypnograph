@@ -81,6 +81,7 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
             let trackIDs      = instruction.layerTrackIDs
             let modes         = instruction.blendModes
             let sourceIndices = instruction.sourceIndices
+            let transforms    = instruction.layerTransforms
 
             // Gather CIImages for all available source frames in order.
             var images: [CIImage] = []
@@ -91,6 +92,16 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
                 }
 
                 var image = CIImage(cvPixelBuffer: buffer)
+
+                // Apply the original track orientation based on preferredTransform.
+                if index < transforms.count {
+                    let transform = transforms[index]
+                    if let exifOrientation = exifOrientation(from: transform) {
+                        image = image.oriented(forExifOrientation: exifOrientation)
+                    } else {
+                        image = image.transformed(by: transform)
+                    }
+                }
 
                 // Apply per-source effects BEFORE compositing
                 // Use the ORIGINAL source index, not the track position
@@ -207,4 +218,29 @@ private extension CIContext {
             memset(base, 0, height * bytesPerRow)
         }
     }
+}
+
+/// Map a CGAffineTransform (as used for track preferredTransform) to an EXIF orientation.
+private func exifOrientation(from transform: CGAffineTransform) -> Int32? {
+    // Normalize minor floating point drift
+    let a = round(transform.a * 1000) / 1000
+    let b = round(transform.b * 1000) / 1000
+    let c = round(transform.c * 1000) / 1000
+    let d = round(transform.d * 1000) / 1000
+
+    if a == 0, b == 1, c == -1, d == 0 {
+        // 90° CCW
+        return 8 // left
+    } else if a == 0, b == -1, c == 1, d == 0 {
+        // 90° CW
+        return 6 // right
+    } else if a == -1, b == 0, c == 0, d == -1 {
+        // 180°
+        return 3 // down
+    } else if a == 1, b == 0, c == 0, d == 1 {
+        // 0°
+        return 1 // up
+    }
+
+    return nil
 }
