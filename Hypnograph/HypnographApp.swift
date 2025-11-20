@@ -188,72 +188,51 @@ struct HypnographApp: App {
                 }
                 .keyboardShortcut("f", modifiers: [])
 
-                Button("Cycle Blend Mode") {
-                    mode.cycleEffect()
+                Button("Clear All Effects") {
+                    mode.clearAllEffects()
                 }
-                .keyboardShortcut("m", modifiers: [])
+                .keyboardShortcut("0", modifiers: [])
 
-                Button("Solo Current Source") {
-                    mode.toggleSolo()
+                Divider()
+
+                // Mode-specific commands (injected by current mode)
+                ForEach(Array(mode.modeCommands().enumerated()), id: \.offset) { _, command in
+                    Button(command.title) {
+                        command.action()
+                    }
+                    .keyboardShortcut(command.keyEquivalent, modifiers: command.modifiers)
                 }
-                .keyboardShortcut("s", modifiers: [])
 
+                Divider()
+
+                // Global navigation & candidate commands
                 Button("New Clip") {
                     mode.nextCandidate()
                 }
                 .keyboardShortcut("n", modifiers: [])
-                
+
                 Button("Next Layer") {
                     mode.acceptCandidate()
                 }
                 .keyboardShortcut(.return, modifiers: [])
-                
-                Divider()
-                
+
                 Button("> Next Source") {
                     mode.nextSource()
                 }
                 .keyboardShortcut(.rightArrow, modifiers: [])
-                
+
                 Button("< Previous Source") {
                     mode.previousSource()
                 }
                 .keyboardShortcut(.leftArrow, modifiers: [])
-                
-                Button("Select Source 1") {
-                    mode.selectSource(index: 0)
-                }
-                .keyboardShortcut("1", modifiers: [])
-                
-                Button("Select Source 2") {
-                    mode.selectSource(index: 1)
-                }
-                .keyboardShortcut("2", modifiers: [])
-                
-                Button("Select Source 3") {
-                    mode.selectSource(index: 2)
-                }
-                .keyboardShortcut("3", modifiers: [])
-                
-                Button("Select Source 4") {
-                    mode.selectSource(index: 3)
-                }
-                .keyboardShortcut("4", modifiers: [])
-                
-                Button("Select Source 5") {
-                    mode.selectSource(index: 4)
-                }
-                .keyboardShortcut("5", modifiers: [])
-                
-                Divider()
-                
-                Button("Delete current source") {
+
+                Button("Delete Current Source") {
                     mode.deleteCurrentSource()
                 }
                 .keyboardShortcut(.delete, modifiers: [])
-                
+
                 Divider()
-                
+
                 Button("Toggle HUD") {
                     mode.toggleHUD()
                 }
