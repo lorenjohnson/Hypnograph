@@ -82,6 +82,16 @@ final class MontageMode: ObservableObject, HypnographMode {
         )
     }
 
+    func hudItems(
+        state: HypnogramState,
+        renderQueue: RenderQueue
+    ) -> [HUDItem] {
+        return [
+            .text("Blend mode: \(state.currentBlendModeName)", order: 26),
+            .text("M = Cycle Blend mode", order: 34)
+        ]
+    }
+
     // MARK: - HypnographMode – engine behavior
 
     func newRandomHypnogram() {

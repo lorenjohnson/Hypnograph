@@ -40,6 +40,11 @@ public final class HypnogramState: ObservableObject {
     /// HUD visibility flag (for the overlay in ContentView).
     @Published public var isHUDVisible: Bool = false
 
+    /// Render hooks
+    let renderHooks = RenderHookManager()
+    // optional: a baseline params object to reuse
+    var baseRenderParams = RenderParams()
+
     // MARK: - Auto-prime timer
 
     private var autoPrimeTimer: Timer?
@@ -51,7 +56,7 @@ public final class HypnogramState: ObservableObject {
         self.library  = VideoSourcesLibrary(sourceFolders: settings.sourceFolders)
         self.blendModes = settings.blendModes.map { BlendMode(key: $0) }
         self.currentLayerIndex = 0
-
+        
         let layers = max(1, settings.maxLayers)
         self.candidateClips    = Array(repeating: nil, count: layers)
         self.selectedClips     = Array(repeating: nil, count: layers)
