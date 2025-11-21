@@ -25,7 +25,7 @@ public final class MultiLayerBlendInstruction: NSObject, AVVideoCompositionInstr
 
     let layerTrackIDs: [CMPersistentTrackID]
     let blendModes: [String]
-    let layerTransforms: [CGAffineTransform]
+    var layerTransforms: [CGAffineTransform]
     let sourceIndices: [Int] // Maps track position → original layer index
 
     public init(

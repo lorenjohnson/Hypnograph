@@ -230,10 +230,10 @@ private func exifOrientation(from transform: CGAffineTransform) -> Int32? {
 
     if a == 0, b == 1, c == -1, d == 0 {
         // 90° CCW
-        return 8 // left
+        return 6 // right
     } else if a == 0, b == -1, c == 1, d == 0 {
         // 90° CW
-        return 6 // right
+        return 8 // left
     } else if a == -1, b == 0, c == 0, d == -1 {
         // 180°
         return 3 // down

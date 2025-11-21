@@ -119,6 +119,8 @@ final class DivineMode: ObservableObject, HypnographMode {
         refreshCard(at: currentIndex, revealed: false)
     }
 
+    func excludeCurrentSource() {}
+
     func redeal() {
         dealCards()
     }

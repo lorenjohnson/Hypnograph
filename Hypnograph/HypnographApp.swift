@@ -437,6 +437,11 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut(.delete, modifiers: [])
 
+            Button("Exclude Current Source") {
+                state.excludeCurrentSource()
+            }
+            .keyboardShortcut("x", modifiers: [])
+
             Divider()
 
             Button("Toggle HUD") {

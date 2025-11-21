@@ -374,6 +374,14 @@ public final class HypnogramState: ObservableObject {
         }
     }
 
+    // MARK: - Exclusions
+
+    public func excludeCurrentSource() {
+        guard let clip = currentCandidateClip else { return }
+        library.exclude(file: clip.file)
+        nextCandidate()
+    }
+
     // MARK: - Settings reload
 
     private func applySettings(_ newSettings: Settings) {
