@@ -276,7 +276,6 @@ struct AppContentView: View {
             ModeHolder.shared.state = state
             ModeHolder.shared.appDelegate = appDelegate
             appDelegate?.renderQueue = montageMode.renderQueue
-
         }
     }
 }
@@ -316,19 +315,52 @@ struct AppCommands: Commands {
             return divineMode
         }
     }
-    
+
     private func selectOrToggleSolo(index: Int) {
         currentMode.selectOrToggleSolo(index: index)
     }
 
     var body: some Commands {
+        // Standard About panel with custom label
+        CommandGroup(replacing: .appInfo) {
+            Button("About Hypnogram") {
+                NSApp.activate(ignoringOtherApps: true)
+                NSApp.orderFrontStandardAboutPanel(nil)
+            }
+        }
+
+        // Items in the Hypnograph app menu (leftmost)
+        CommandGroup(after: .appSettings) {
+            Button("Toggle HUD") {
+                currentMode.toggleHUD()
+            }
+            .keyboardShortcut("h", modifiers: [])
+
+            Button("Restart Session (Reload Settings)") {
+                currentMode.reloadSettings()
+            }
+            .keyboardShortcut("r", modifiers: [.command])
+
+            Divider()
+
+            Button("Show Settings Folder") {
+                Environment.showSettingsFolderInFinder()
+            }
+            .keyboardShortcut("s", modifiers: [.command, .shift])
+
+            Button("Install hypnograph CLI and Finder Action") {
+                Environment.installCLI()
+                Environment.installAutomatorQuickAction()
+            }
+        }
+
         // Remove "New Window" and the default "New" options
         CommandGroup(replacing: .newItem) { }
 
         // Add custom "New Hypnogram"
         CommandGroup(after: .newItem) {
-            Button("New (random)") {
-                currentMode.newRandomHypnogram()
+            Button("New") {
+                currentMode.new()
             }
             .keyboardShortcut(.space, modifiers: [])
         }
@@ -344,6 +376,7 @@ struct AppCommands: Commands {
         // Extend the default View menu with mode controls
         CommandGroup(after: .sidebar) {
             Divider()
+
             Button("Cycle Mode") {
                 cycleModeHandler()
             }
@@ -368,50 +401,28 @@ struct AppCommands: Commands {
             .keyboardShortcut("3", modifiers: [.command, .shift])
         }
 
-        CommandMenu("Current") {
+        CommandMenu("Composition") {
+            let modeSourceCommands = currentMode.sourceCommands()
+            if !modeSourceCommands.isEmpty {
+                ForEach(Array(modeSourceCommands.enumerated()), id: \.offset) { _, command in
+                    Button(command.title) {
+                        command.action()
+                    }
+                    .keyboardShortcut(command.keyEquivalent, modifiers: command.modifiers)
+                }
+
+                Divider()
+            }
+
             Button("Cycle Global Effect") {
                 currentMode.cycleGlobalEffect()
             }
             .keyboardShortcut("e", modifiers: [])
 
-            Button("Cycle Source Effect") {
-                currentMode.cycleSourceEffect()
-            }
-            .keyboardShortcut("f", modifiers: [])
-
-            Button("Clear All Effects") {
-                currentMode.clearAllEffects()
-            }
-            .keyboardShortcut("0", modifiers: [])
-
-            Divider()
-
-            // Mode-specific commands (injected by current mode)
-            let modeCommands = currentMode.modeCommands()
-            ForEach(Array(modeCommands.enumerated()), id: \.offset) { _, command in
-                Button(command.title) {
-                    command.action()
-                }
-                .keyboardShortcut(command.keyEquivalent, modifiers: command.modifiers)
-            }
-
-            Divider()
-
-            // Global navigation & candidate commands
-            Button("New Clip") {
-                currentMode.nextCandidate()
-            }
-            .keyboardShortcut("n", modifiers: [])
-
             Button("Add Source") {
                 currentMode.addSource()
             }
             .keyboardShortcut(".", modifiers: [])
-
-            Button("Next Layer") {
-                currentMode.acceptCandidate()
-            }
-            .keyboardShortcut(.return, modifiers: [])
 
             Button("> Next Source") {
                 currentMode.nextSource()
@@ -423,41 +434,68 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut(.leftArrow, modifiers: [])
 
-            Divider()
-
-            ForEach(0..<5) { idx in
+            ForEach(0..<state.maxSources) { idx in
                 Button("Select Source \(idx + 1)") {
                     selectOrToggleSolo(index: idx)
                 }
                 .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
             }
 
-            Button("Delete Current Source") {
-                currentMode.deleteCurrentSource()
-            }
-            .keyboardShortcut(.delete, modifiers: [])
-
-            Button("Exclude Current Source") {
-                state.excludeCurrentSource()
-            }
-            .keyboardShortcut("x", modifiers: [])
-
             Divider()
 
-            Button("Toggle HUD") {
-                currentMode.toggleHUD()
+            Button("Clear All Effects") {
+                currentMode.clearAllEffects()
             }
-            .keyboardShortcut("h", modifiers: [])
+            .keyboardShortcut("0", modifiers: [])
+        }
+
+        CommandMenu("Current Source") {
+            let modeSourceCommands = currentMode.sourceCommands()
+            if !modeSourceCommands.isEmpty {
+                ForEach(Array(modeSourceCommands.enumerated()), id: \.offset) { _, command in
+                    Button(command.title) {
+                        command.action()
+                    }
+                    .keyboardShortcut(command.keyEquivalent, modifiers: command.modifiers)
+                }
+
+                Divider()
+            }
 
             Button("Toggle Solo") {
                 currentMode.toggleSolo()
             }
             .keyboardShortcut("s", modifiers: [])
 
-            Button("Restart Session, Reloading Settings from File") {
-                currentMode.reloadSettings()
+            Button("Cycle Effect") {
+                currentMode.cycleSourceEffect()
             }
-            .keyboardShortcut("r", modifiers: [.command])
+            .keyboardShortcut("f", modifiers: [])
+
+            // Global navigation & candidate commands
+            Button("New Candidate") {
+                currentMode.nextCandidate()
+            }
+            .keyboardShortcut("n", modifiers: [])
+
+            Button("Accept Candidate") {
+                currentMode.acceptCandidate()
+            }
+            .keyboardShortcut(.return, modifiers: [])
+
+            Divider()
+
+            Button("Delete") {
+                currentMode.deleteCurrentSource()
+            }
+            .keyboardShortcut(.delete, modifiers: [])
+
+            Button("Add to Exclude List") {
+                state.excludeCurrentSource()
+            }
+            .keyboardShortcut("x", modifiers: [])
+
+            Divider()
 
             if state.currentModeType == .divine {
                 Button("Re-deal Divine Cards") {
@@ -465,16 +503,6 @@ struct AppCommands: Commands {
                 }
                 .keyboardShortcut("r", modifiers: [])
             }
-
-            Button("Install hypnograph CLI and Finder Action") {
-                Environment.installCLI()
-                Environment.installAutomatorQuickAction()
-            }
-
-            Button("Show Settings Folder") {
-                Environment.showSettingsFolderInFinder()
-            }
-            .keyboardShortcut("s", modifiers: [.command, .shift])
         }
     }
 }

@@ -46,7 +46,7 @@ Refactored the command menu system to properly separate global commands from mod
    - Navigation: `previousSource`, `nextSource`
    - Effects: `cycleGlobalEffect`, `cycleSourceEffect`, `clearAllEffects`
    - Candidates: `nextCandidate`, `acceptCandidate`, `deleteCurrentSource`
-   - Hypnogram: `newRandomHypnogram`
+   - Hypnogram: `new`
    - UI: `toggleHUD`
    - Note: `clearAllEffects` (0 key) clears all effects globally, but modes can add mode-specific behavior (e.g., Montage also clears solo)
 

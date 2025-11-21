@@ -104,14 +104,18 @@ final class SequenceMode: ObservableObject, HypnographMode {
         return items
     }
     
-    func modeCommands() -> [ModeCommand] {
-        // Sequence-specific commands (number keys handled globally)
+    
+    func compositionCommands() -> [ModeCommand] {
+        return []
+    }
+    
+    func sourceCommands() -> [ModeCommand] {
         return []
     }
     
     // MARK: - HypnographMode – engine behavior
     
-    func newRandomHypnogram() {
+    func new() {
         // Generate a new sequence
         fillSequence()
     }
