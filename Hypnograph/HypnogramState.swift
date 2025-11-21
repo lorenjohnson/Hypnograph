@@ -25,17 +25,17 @@ public final class HypnogramState: ObservableObject {
 
     // MARK: - Layer state
 
-    /// Index of the layer currently being chosen [0 ..< maxLayers]
+    /// Index of the source currently being chosen [0 ..< maxSources]
     @Published public private(set) var currentSourceIndex: Int = 0
 
-    /// For each layer, the current candidate clip (Space cycles this).
+    /// For each source, the current candidate clip (Space cycles this).
     @Published public private(set) var candidateClips: [VideoClip?]
 
-    /// For each layer, the accepted clip (after Return is pressed).
+    /// For each source, the accepted clip (after Return is pressed).
     @Published public private(set) var selectedClips: [VideoClip?]
 
-    /// For each layer, index into `blendModes` determining its mode.
-    @Published public private(set) var layerBlendIndices: [Int]
+    /// For each source, index into `blendModes` determining its mode.
+    @Published public private(set) var sourceBlendIndices: [Int]
 
     // MARK: - UI-ish state
 
@@ -62,10 +62,10 @@ public final class HypnogramState: ObservableObject {
         self.blendModes = settings.blendModes.map { BlendMode(key: $0) }
         self.currentSourceIndex = 0
         
-        let layers = max(1, settings.maxLayers)
-        self.candidateClips    = Array(repeating: nil, count: layers)
-        self.selectedClips     = Array(repeating: nil, count: layers)
-        self.layerBlendIndices = Array(repeating: 0,  count: layers)
+        let sources = max(1, settings.maxSources)
+        self.candidateClips    = Array(repeating: nil, count: sources)
+        self.selectedClips     = Array(repeating: nil, count: sources)
+        self.sourceBlendIndices = Array(repeating: 0,  count: sources)
 
         _ = nextCandidateForCurrentSource()
 
@@ -77,18 +77,18 @@ public final class HypnogramState: ObservableObject {
 
     // MARK: - Derived properties
 
-    public var maxLayers: Int {
+    public var maxSources: Int {
         candidateClips.count
     }
 
-    /// Number of layers that currently have a clip (no empties)
-    public var activeLayerCount: Int {
-        layers.count
+    /// Number of sources that currently have a clip (no empties)
+    public var activeSourceCount: Int {
+        sources.count
     }
 
-    /// The blend mode currently selected for the active layer.
+    /// The blend mode currently selected for the active source.
     public var currentBlendMode: BlendMode {
-        let idx = layerBlendIndices[currentSourceIndex]
+        let idx = sourceBlendIndices[currentSourceIndex]
         return blendModes[idx]
     }
 
@@ -96,33 +96,33 @@ public final class HypnogramState: ObservableObject {
         currentBlendMode.name
     }
 
-    /// Current candidate clip for the active layer, if any.
+    /// Current candidate clip for the active source, if any.
     public var currentCandidateClip: VideoClip? {
         guard currentSourceIndex >= 0 && currentSourceIndex < candidateClips.count else { return nil }
         return candidateClips[currentSourceIndex]
     }
 
-    /// All layers, using candidate if present, else selected.
-    public var layers: [HypnogramLayer] {
-        var result: [HypnogramLayer] = []
+    /// All sources, using candidate if present, else selected.
+    public var sources: [HypnogramSource] {
+        var result: [HypnogramSource] = []
 
-        for layerIndex in 0..<maxLayers {
-            let modeIndex = layerBlendIndices[layerIndex]
+        for sourceIndex in 0..<maxSources {
+            let modeIndex = sourceBlendIndices[sourceIndex]
             let mode = blendModes[modeIndex]
 
-            if let clip = candidateClips[layerIndex] ?? selectedClips[layerIndex] {
-                result.append(HypnogramLayer(clip: clip, blendMode: mode))
+            if let clip = candidateClips[sourceIndex] ?? selectedClips[sourceIndex] {
+                result.append(HypnogramSource(clip: clip, blendMode: mode))
             }
         }
 
         return result
     }
     /// Build a HypnogramRecipe for rendering.
-    public func layersForRender() -> HypnogramRecipe? {
-        guard !layers.isEmpty else { return nil }
+    public func sourcesForRender() -> HypnogramRecipe? {
+        guard !sources.isEmpty else { return nil }
 
         return HypnogramRecipe(
-            layers: layers,
+            sources: sources,
             targetDuration: self.settings.outputDuration
         )
     }
@@ -151,36 +151,36 @@ public final class HypnogramState: ObservableObject {
         currentCandidateStartOverride = nil
     }
 
-    public func prevLayer() {
+    public func prevSource() {
         noteUserInteraction()
         currentSourceIndex = max(0, currentSourceIndex - 1)
     }
 
-    public func nextLayer() {
+    public func nextSource() {
         noteUserInteraction()
-        currentSourceIndex = min(maxLayers - 1, currentSourceIndex + 1)
+        currentSourceIndex = min(maxSources - 1, currentSourceIndex + 1)
     }
 
-    public func selectLayer(index: Int) {
+    public func selectSource(index: Int) {
         noteUserInteraction()
-        let clamped = max(0, min(maxLayers - 1, index))
+        let clamped = max(0, min(maxSources - 1, index))
         currentSourceIndex = clamped
     }
 
     public func cycleBlendMode() {
         noteUserInteraction()
-        cycleBlendModeForcurrentSource()
+        cycleBlendModeForCurrentSource()
     }
 
     public func toggleHUD() {
         isHUDVisible.toggle()
     }
 
-    /// Step back a layer if possible.
+    /// Step back a source if possible.
     public func handleEscape() {
         noteUserInteraction()
 
-        deletecurrentSource()
+        deleteCurrentSource()
         currentCandidateStartOverride = nil
     }
 
@@ -204,11 +204,11 @@ public final class HypnogramState: ObservableObject {
     /// After enqueuing a recipe for render, call this to start a fresh one.
     /// This does *not* auto-prime; caller decides that.
     public func resetForNextHypnogram() {
-        let layersCount = maxLayers
+        let sourcesCount = maxSources
 
-        selectedClips     = Array(repeating: nil, count: layersCount)
-        candidateClips    = Array(repeating: nil, count: layersCount)
-        layerBlendIndices = Array(repeating: 0,  count: layersCount)
+        selectedClips     = Array(repeating: nil, count: sourcesCount)
+        candidateClips    = Array(repeating: nil, count: sourcesCount)
+        sourceBlendIndices = Array(repeating: 0,  count: sourcesCount)
         currentSourceIndex = 0
         currentCandidateStartOverride = nil
 
@@ -217,7 +217,7 @@ public final class HypnogramState: ObservableObject {
 
     // MARK: - Core actions (lower-level, used internally)
 
-    /// Get a new random candidate for the current layer.
+    /// Get a new random candidate for the current source.
     @discardableResult
     public func nextCandidateForCurrentSource() -> VideoClip? {
         guard let clip = library.randomClip(clipLength: settings.outputDuration.seconds) else {
@@ -227,9 +227,9 @@ public final class HypnogramState: ObservableObject {
         return clip
     }
 
-    /// Accept the current candidate for this layer,
+    /// Accept the current candidate for this source,
     /// optionally overriding its start time with a custom playhead time,
-    /// and move to the next layer if there is one.
+    /// and move to the next source if there is one.
     public func acceptCandidateForCurrentSource(usingStartTime customStart: CMTime? = nil) {
         guard let candidate = candidateClips[currentSourceIndex] else { return }
 
@@ -267,62 +267,62 @@ public final class HypnogramState: ObservableObject {
         selectedClips[currentSourceIndex] = finalClip
         candidateClips[currentSourceIndex] = finalClip
 
-        if currentSourceIndex + 1 < maxLayers {
-            // Inherit blend mode from this layer to the next.
-            let currentBlendIndex = layerBlendIndices[currentSourceIndex]
-            let nextLayerIndex = currentSourceIndex + 1
-            layerBlendIndices[nextLayerIndex] = currentBlendIndex
+        if currentSourceIndex + 1 < maxSources {
+            // Inherit blend mode from this source to the next.
+            let currentBlendIndex = sourceBlendIndices[currentSourceIndex]
+            let nextSourceIndex = currentSourceIndex + 1
+            sourceBlendIndices[nextSourceIndex] = currentBlendIndex
 
-            currentSourceIndex = nextLayerIndex
+            currentSourceIndex = nextSourceIndex
             _ = nextCandidateForCurrentSource()
         } else {
-            // All layers have selected clips; ready to render.
+            // All sources have selected clips; ready to render.
         }
     }
 
-    /// M: Cycle the blend mode for the *current* layer.
-    public func cycleBlendModeForcurrentSource() {
+    /// M: Cycle the blend mode for the *current* source.
+    public func cycleBlendModeForCurrentSource() {
         guard !blendModes.isEmpty else { return }
 
-        // Disable changing on the first layer to avoid confusing "black screen" behavior.
+        // Disable changing on the first source to avoid confusing "black screen" behavior.
         guard currentSourceIndex > 0 else {
             return
         }
 
-        var idx = layerBlendIndices[currentSourceIndex]
+        var idx = sourceBlendIndices[currentSourceIndex]
         idx = (idx + 1) % blendModes.count
-        layerBlendIndices[currentSourceIndex] = idx
+        sourceBlendIndices[currentSourceIndex] = idx
     }
 
-    /// Go back one layer and DROP the layer we were on.
-    /// - The layer we are leaving is cleared (no candidate, no selected, blend reset).
+    /// Go back one source and DROP the source we were on.
+    /// - The source we are leaving is cleared (no candidate, no selected, blend reset).
     /// - `currentSource` moves down by 1.
-    /// - The new current layer gets its selected clip (if any) as candidate so you can tweak it.
-    public func goBackOneLayer() {
-        // Nothing to drop if we're already at the base layer.
+    /// - The new current source gets its selected clip (if any) as candidate so you can tweak it.
+    public func goBackOneSource() {
+        // Nothing to drop if we're already at the base source.
         guard currentSourceIndex > 0 else { return }
         deleteLayer(at: currentSourceIndex)
     }
 
-    /// Fill the first `activeLayerCount` layers with random clips + random blend modes,
-    /// clear the rest, and position the cursor on the top-most active layer.
+    /// Fill the first `activeSourceCount` sources with random clips + random blend modes,
+    /// clear the rest, and position the cursor on the top-most active source.
     ///
     /// This is deliberately dumb and stateless: callers decide *when* and *how many*.
-    public func primeRandomLayers(activeLayerCount: Int) {
-        let totalLayers = maxLayers
+    public func primeRandomSources(activeSourceCount: Int) {
+        let totalLayers = maxSources
         guard totalLayers > 0 else {
             currentSourceIndex = 0
             return
         }
 
-        let clampedCount = max(1, min(activeLayerCount, totalLayers))
+        let clampedCount = max(1, min(activeSourceCount, totalLayers))
 
         // Clear everything so we don't leak old selections.
         candidateClips    = Array(repeating: nil, count: totalLayers)
         selectedClips     = Array(repeating: nil, count: totalLayers)
-        layerBlendIndices = Array(repeating: 0,  count: totalLayers)
+        sourceBlendIndices = Array(repeating: 0,  count: totalLayers)
 
-        // Fill first clampedCount layers with random clips + random blend modes.
+        // Fill first clampedCount sources with random clips + random blend modes.
         for i in 0..<clampedCount {
             if let clip = library.randomClip(clipLength: settings.outputDuration.seconds) {
                 candidateClips[i] = clip
@@ -330,45 +330,45 @@ public final class HypnogramState: ObservableObject {
             }
 
             if !blendModes.isEmpty {
-                layerBlendIndices[i] = (Double.random(in: 0...1) < 0.8)
+                sourceBlendIndices[i] = (Double.random(in: 0...1) < 0.8)
                     ? 0
                     : Int.random(in: 1..<blendModes.count)
             }
         }
 
-        // Cursor on the top-most active layer so M/randomize etc. are meaningful.
+        // Cursor on the top-most active source so M/randomize etc. are meaningful.
         currentSourceIndex = clampedCount - 1
     }
 
     // MARK: - Layer deletion helpers
 
-    /// Delete the current layer, keeping arrays dense (no empty slots).
-    private func deletecurrentSource() {
+    /// Delete the current source, keeping arrays dense (no empty slots).
+    private func deleteCurrentSource() {
         deleteLayer(at: currentSourceIndex)
     }
 
-    /// Remove a layer at the given index and keep indices contiguous.
+    /// Remove a source at the given index and keep indices contiguous.
     private func deleteLayer(at index: Int) {
         guard index >= 0, index < candidateClips.count else { return }
 
         candidateClips.remove(at: index)
         selectedClips.remove(at: index)
-        layerBlendIndices.remove(at: index)
+        sourceBlendIndices.remove(at: index)
 
         if candidateClips.isEmpty {
-            // Always maintain at least one layer
+            // Always maintain at least one source
             candidateClips = [nil]
             selectedClips = [nil]
-            layerBlendIndices = [0]
+            sourceBlendIndices = [0]
             currentSourceIndex = 0
             _ = nextCandidateForCurrentSource()
             return
         }
 
-        // Clamp current layer to valid range
+        // Clamp current source to valid range
         currentSourceIndex = min(currentSourceIndex, candidateClips.count - 1)
 
-        // If the new current layer has a selected clip, show it as candidate
+        // If the new current source has a selected clip, show it as candidate
         if let selected = selectedClips[currentSourceIndex] {
             candidateClips[currentSourceIndex] = selected
         }
@@ -389,10 +389,10 @@ public final class HypnogramState: ObservableObject {
         library  = VideoSourcesLibrary(sourceFolders: newSettings.sourceFolders)
         blendModes = newSettings.blendModes.map { BlendMode(key: $0) }
 
-        let layersCount = max(1, newSettings.maxLayers)
-        candidateClips    = Array(repeating: nil, count: layersCount)
-        selectedClips     = Array(repeating: nil, count: layersCount)
-        layerBlendIndices = Array(repeating: 0,  count: layersCount)
+        let sourcesCount = max(1, newSettings.maxSources)
+        candidateClips    = Array(repeating: nil, count: sourcesCount)
+        selectedClips     = Array(repeating: nil, count: sourcesCount)
+        sourceBlendIndices = Array(repeating: 0,  count: sourcesCount)
         currentSourceIndex = 0
         currentCandidateStartOverride = nil
 
@@ -413,14 +413,14 @@ public final class HypnogramState: ObservableObject {
     }
 
     private func autoPrimeNow() {
-        guard settings.maxLayers > 0 else { return }
+        guard settings.maxSources > 0 else { return }
 
-        let total = settings.maxLayers
-        // 2..maxLayers normally; fall back to 1 if maxLayers == 1.
+        let total = settings.maxSources
+        // 2..maxSources normally; fall back to 1 if maxSources == 1.
         let minLayers = min(2, total)
         let activeCount = Int.random(in: minLayers...total)
 
-        primeRandomLayers(activeLayerCount: activeCount)
+        primeRandomSources(activeSourceCount: activeCount)
         currentCandidateStartOverride = nil
     }
 

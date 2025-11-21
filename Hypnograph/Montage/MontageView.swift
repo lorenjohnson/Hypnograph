@@ -7,8 +7,8 @@ import CoreGraphics
 /// Single composited preview using the same AVFoundation + custom
 /// Core Image compositor as the final render.
 struct MontageView: NSViewRepresentable {
-    let layers: [HypnogramLayer]
-    let sourceIndices: [Int] // Maps layer position → original source index
+    let sources: [HypnogramSource]
+    let sourceIndices: [Int] // Maps source position → original source index
     @Binding var currentSourceTime: CMTime?
     let outputDuration: CMTime
     let outputSize: CGSize
@@ -35,19 +35,19 @@ struct MontageView: NSViewRepresentable {
     func updateNSView(_ nsView: AVPlayerView, context: Context) {
         let c = context.coordinator
 
-        // No layers → clear player and time.
-        guard !layers.isEmpty else {
+        // No sources → clear player and time.
+        guard !sources.isEmpty else {
             Self.tearDown(coordinator: c, view: nsView)
             currentSourceTime = nil
             return
         }
 
-        // Build a simple identity string so we only rebuild when layers change.
-        let newID = compositionIdentity(for: layers)
+        // Build a simple identity string so we only rebuild when sources change.
+        let newID = compositionIdentity(for: sources)
 
         if newID != c.compositionID || c.player == nil {
             // Rebuild composition + player item
-            guard let item = makeDisplay(for: layers, renderSize: outputSize) else {
+            guard let item = makeDisplay(for: sources, renderSize: outputSize) else {
                 Self.tearDown(coordinator: c, view: nsView)
                 currentSourceTime = nil
                 return
@@ -110,13 +110,13 @@ struct MontageView: NSViewRepresentable {
 
     // MARK: - Helpers
 
-    /// Build an identity string so we know when layers change.
-    private func compositionIdentity(for layers: [HypnogramLayer]) -> String {
-        layers.map { layer in
-            let url   = layer.clip.file.url.path
-            let start = layer.clip.startTime.seconds
-            let dur   = layer.clip.duration.seconds
-            let mode  = layer.blendMode.key
+    /// Build an identity string so we know when sources change.
+    private func compositionIdentity(for sources: [HypnogramSource]) -> String {
+        sources.map { source in
+            let url   = source.clip.file.url.path
+            let start = source.clip.startTime.seconds
+            let dur   = source.clip.duration.seconds
+            let mode  = source.blendMode.key
             return "\(url)|\(start)|\(dur)|\(mode)"
         }
         .joined(separator: ";;")
@@ -126,7 +126,7 @@ struct MontageView: NSViewRepresentable {
     /// MultiLayerBlendCompositor (Core Image compositor), using the
     /// *same* looping + duration semantics as the final renderer.
     private func makeDisplay(
-        for layers: [HypnogramLayer],
+        for sources: [HypnogramSource],
         renderSize: CGSize
     ) -> AVPlayerItem? {
         let targetSeconds = outputDuration.seconds
@@ -138,7 +138,7 @@ struct MontageView: NSViewRepresentable {
         let buildResult: MontageCompositionBuilder.Result
         do {
             buildResult = try MontageCompositionBuilder.build(
-                layers: layers,
+                sources: sources,
                 targetDuration: outputDuration
             )
         } catch {

@@ -115,7 +115,7 @@ Current Menu:
 
 ## Summary
 
-Added per-source solo mode toggle for Montage mode. When solo is active, only the selected layer is displayed in the preview, **with both per-source and global effects correctly applied**.
+Added per-source solo mode toggle for Montage mode. When solo is active, only the selected source is displayed in the preview, **with both per-source and global effects correctly applied**.
 
 ## Implementation
 
@@ -124,10 +124,10 @@ Added per-source solo mode toggle for Montage mode. When solo is active, only th
 1. **MontageMode.swift**:
    - Solo mode was already partially implemented with `soloLayerIndex` property
    - Added `toggleSolo()` method to protocol interface
-   - Solo automatically clears when switching layers (via `nextSource()`, `previousSource()`, `selectSource()`)
+   - Solo automatically clears when switching sources (via `nextSource()`, `previousSource()`, `selectSource()`)
    - Solo clears when creating new hypnogram or saving current one
    - Added solo status to HUD display
-   - Modified `layersForDisplay()` to return both layers and their original source indices
+   - Modified `sourcesForDisplay()` to return both sources and their original source indices
 
 2. **HypnographMode.swift**:
    - Added `toggleSolo()` to protocol
@@ -136,8 +136,8 @@ Added per-source solo mode toggle for Montage mode. When solo is active, only th
    - Added keyboard shortcut: **S = Solo Current Source**
 
 4. **MultiLayerBlendInstruction.swift**:
-   - Added `sourceIndices` array to track original layer indices
-   - This ensures per-source effects are applied to the correct source even when solo filtering changes layer positions
+   - Added `sourceIndices` array to track original source indices
+   - This ensures per-source effects are applied to the correct source even when solo filtering changes source positions
 
 5. **MultiLayerBlendCompositor.swift**:
    - Updated to use `sourceIndices` when applying per-source effects
@@ -152,18 +152,18 @@ Added per-source solo mode toggle for Montage mode. When solo is active, only th
 
 ### Behavior:
 
-- **Press S**: Toggle solo for current layer
-  - If solo is off → solo current layer (only that layer displays)
-  - If solo is on for current layer → turn solo off (all layers display)
-  - If solo is on for different layer → switch solo to current layer
+- **Press S**: Toggle solo for current source
+  - If solo is off → solo current source (only that source displays)
+  - If solo is on for current source → turn solo off (all sources display)
+  - If solo is on for different source → switch solo to current source
 
 - **Effects in Solo Mode**:
-  - ✅ Per-source effects are correctly applied to the soloed layer
+  - ✅ Per-source effects are correctly applied to the soloed source
   - ✅ Global effects continue to work on the final output
   - The original source index is preserved through the rendering pipeline
 
 - **Solo automatically clears when**:
-  - Switching to another layer (arrow keys, 1-5 keys)
+  - Switching to another source (arrow keys, 1-5 keys)
   - Creating new random hypnogram (Space)
   - Saving current hypnogram (Cmd-S)
   - Reloading settings (Cmd-R)
@@ -173,10 +173,10 @@ Added per-source solo mode toggle for Montage mode. When solo is active, only th
 
 ### Technical Details:
 
-The key challenge was that when you solo layer 2, it becomes index 0 in the filtered layer array, but we need to apply the effect configured for source 2, not source 0.
+The key challenge was that when you solo source 2, it becomes index 0 in the filtered source array, but we need to apply the effect configured for source 2, not source 0.
 
 **Solution**: Track original source indices through the entire pipeline:
-1. `MontageMode.layersForDisplay()` returns `(layers, sourceIndices)` tuple
+1. `MontageMode.sourcesForDisplay()` returns `(sources, sourceIndices)` tuple
 2. `MontageView` passes `sourceIndices` to `MultiLayerBlendInstruction`
 3. `MultiLayerBlendCompositor` uses `sourceIndices[trackPosition]` to look up the correct per-source effect
 
@@ -198,7 +198,7 @@ The key challenge was that when you solo layer 2, it becomes index 0 in the filt
 **Pros**:
 - Easy to apply to any SwiftUI view
 - Great for interactive UI
-- Simple API (`.colorEffect()`, `.layerEffect()`)
+- Simple API (`.colorEffect()`, `.sourceEffect()`)
 - Perfect for buttons, text, backgrounds
 
 **Cons**:

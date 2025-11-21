@@ -18,7 +18,7 @@ public struct SettingsParams: Codable {
     public var autoPrime: Bool
     public var autoPrimeTimeout: Double
     public var blendModes: [String]
-    public var maxLayers: Int
+    public var maxSources: Int
     public var sourceFolders: [String]
     public var outputFolder: String
     public var outputHeight: Int
@@ -33,7 +33,7 @@ public struct Settings {
     public var autoPrime: Bool
     public var autoPrimeTimeout: Double
     public var blendModes: [String]
-    public var maxLayers: Int
+    public var maxSources: Int
     public var sourceFolders: [String]
     public var outputSize: CGSize
     public var outputDuration: CMTime
@@ -44,7 +44,7 @@ public struct Settings {
         autoPrime: Bool,
         autoPrimeTimeout: Double = 120,
         blendModes: [String],
-        maxLayers: Int,
+        maxSources: Int,
         outputFolder: String,
         outputHeight: Int = 0,
         outputSeconds: Double,
@@ -54,7 +54,7 @@ public struct Settings {
         self.autoPrime = autoPrime
         self.autoPrimeTimeout = autoPrimeTimeout
         self.blendModes = blendModes
-        self.maxLayers = maxLayers
+        self.maxSources = maxSources
         self.outputDuration = CMTime(
             seconds: outputSeconds,
             preferredTimescale: 600
@@ -106,7 +106,7 @@ public struct Settings {
             autoPrime: p.autoPrime,
             autoPrimeTimeout: p.autoPrimeTimeout,
             blendModes: p.blendModes,
-            maxLayers: p.maxLayers,
+            maxSources: p.maxSources,
             outputFolder: p.outputFolder,
             outputHeight: p.outputHeight,
             outputSeconds: p.outputSeconds,
