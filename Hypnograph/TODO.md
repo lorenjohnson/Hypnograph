@@ -1,18 +1,18 @@
-maxSources → maxSources
-activeSourceCount → activeSourceCount
-layers → layers
-layersForRender → sourcesForRender
-sourceBlendIndices → sourceBlendIndices
-sourceTransforms → sourceTransforms (if present)
-currentLayerIndex → currentSourceIndex (Montage already uses this)
-nextSource → nextSource
-prevSource → prevSource
-selectSource → selectSource
-goBackOneSource → goBackOneSource
-primeRandomSources → primeRandomSources
-nextCandidateForCurrentSource → nextCandidateForCurrentSource
-acceptCandidateForCurrentSource → acceptCandidateForCurrentSource
-cycleBlendModeForCurrentSource → cycleBlendModeForCurrentSource
+Divine Mode:
+
+- when the video is played and paused, not just played through, the paused frame becomes the new face of the card
+- card should not flip over after video is done playing
+- zoom should be centered from the point of zoom rather than the center of the view
+- i need some way to save these card layouts for this Divine mode
+- two finger drag to move the canvas around would be a very helpuful compliment to the pinch to zoom, add that
+
+- related hotkey commands which should be added to the Mode commands/hud: 
+"Arrow keys = Move current card"
+Cmd-Lef/Right Arrow keys = Rotate current card"
+"Zoom = Cmd-+/-" 
+"Z = Zoom to fit" 
+
+---
 
 
 

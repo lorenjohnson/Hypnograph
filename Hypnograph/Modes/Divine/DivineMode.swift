@@ -19,6 +19,7 @@ final class DivineMode: ObservableObject, HypnographMode {
         var isRevealed: Bool
         var isPlaying: Bool
         var isFlipped: Bool
+        var rotationQuarterTurns: Int = 0
         var offset: CGSize
         var dragOffset: CGSize
     }
@@ -52,6 +53,7 @@ final class DivineMode: ObservableObject, HypnographMode {
             DivineView(
                 cards: cards,
                 onTap: { [weak self] id in self?.handleTap(id: id) },
+                onLongPress: { [weak self] id in self?.handleLongPress(id: id) },
                 onDragChanged: { [weak self] id, translation in self?.updateDrag(id: id, translation: translation) },
                 onDragEnded: { [weak self] id, translation in self?.endDrag(id: id, translation: translation) },
                 onLayoutUpdate: { [weak self] viewport, cardSize in
@@ -104,8 +106,15 @@ final class DivineMode: ObservableObject, HypnographMode {
 
     // MARK: Candidate / selection
 
-    func nextCandidate() { refreshCard(at: currentIndex) }
-    func acceptCandidate() { handleTap(index: currentIndex) }
+    func nextCandidate() {
+        addCardAtRandom()
+        // I like it better without this so you always have to draw a new card
+        // refreshCard(at: currentIndex)
+    }
+    func acceptCandidate() {
+        // irrelevant in this mode I think
+        // handleTap(index: currentIndex)
+    }
 
     func deleteCurrentSource() {
         guard !cards.isEmpty, currentIndex < cards.count else { return }
@@ -176,31 +185,38 @@ final class DivineMode: ObservableObject, HypnographMode {
 
     private func handleTap(index: Int) {
         guard index >= 0 && index < cards.count else { return }
-        bringToFront(at: index)
+        // If the card is not already on top, just bring it forward; user can tap again to interact.
+        if index != cards.count - 1 {
+            _ = bringToFront(at: index)
+            return
+        }
+
         var card = cards[index]
         let player = player(for: card)
 
         switch (card.isRevealed, card.isPlaying) {
         case (false, _):
-            // Face-down → reveal, paused at start.
+            // Face-down → reveal still
             card.isRevealed = true
             card.isPlaying = false
             player?.pause()
             if let p = player { seek(p, to: card.clip.startTime) }
         case (true, false):
-            // Face-up paused → play.
-            card.isPlaying = true
-            card.isRevealed = true
-            if let p = player {
-                seek(p, to: card.clip.startTime)
-                p.play()
-            }
-        case (true, true):
-            // Playing → stop and flip back down.
+            // Face-up still → flip back down
+            card.isRevealed = false
+            card.isPlaying = false
             player?.pause()
             if let p = player { seek(p, to: card.clip.startTime) }
+        case (true, true):
+            // Playing → pause and update snapshot, stay revealed
+            player?.pause()
+            if let p = player { seek(p, to: p.currentTime()) }
+            let snapshotTime = player?.currentTime() ?? card.clip.startTime
+            if let image = snapshot(for: card.clip, at: snapshotTime) {
+                card.cgImage = image
+            }
             card.isPlaying = false
-            card.isRevealed = false
+            card.isRevealed = true
         }
 
         cards[index] = card
@@ -210,6 +226,22 @@ final class DivineMode: ObservableObject, HypnographMode {
         guard let idx = cards.firstIndex(where: { $0.id == id }) else { return }
         let newIdx = bringToFront(at: idx)
         handleTap(index: newIdx)
+    }
+
+    private func handleLongPress(id: UUID) {
+        guard let idx = cards.firstIndex(where: { $0.id == id }) else { return }
+        let newIdx = bringToFront(at: idx)
+        var card = cards[newIdx]
+        let player = player(for: card)
+
+        card.isRevealed = true
+        card.isPlaying = true
+        if let p = player {
+            seek(p, to: card.clip.startTime)
+            p.play()
+        }
+
+        cards[newIdx] = card
     }
 
     private func updateDrag(id: UUID, translation: CGSize) {
@@ -265,6 +297,20 @@ final class DivineMode: ObservableObject, HypnographMode {
             return imageRef
         } catch {
             print("DivineMode: failed to grab still: \(error)")
+            return nil
+        }
+    }
+
+    private func snapshot(for clip: VideoClip, at time: CMTime) -> CGImage? {
+        let asset = AVURLAsset(url: clip.file.url)
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true
+        do {
+            var actual = CMTime.zero
+            let imageRef = try generator.copyCGImage(at: time, actualTime: &actual)
+            return imageRef
+        } catch {
+            print("DivineMode: failed to snapshot: \(error)")
             return nil
         }
     }

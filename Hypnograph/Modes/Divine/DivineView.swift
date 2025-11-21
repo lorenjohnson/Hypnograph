@@ -8,52 +8,87 @@ import CoreGraphics
 public struct DivineView: View {
     let cards: [DivineMode.Card]
     let onTap: (UUID) -> Void
+    let onLongPress: (UUID) -> Void
     let onDragChanged: (UUID, CGSize) -> Void
     let onDragEnded: (UUID, CGSize) -> Void
     let onLayoutUpdate: (CGSize, CGSize) -> Void
     let playerProvider: (UUID) -> AVPlayer?
 
+    private let cornerRadius: CGFloat = 12
+    private let showBorders: Bool = false
+    @State private var baseScale: CGFloat = 1.0
+    @State private var sceneScale: CGFloat = 1.0
+
     public var body: some View {
         GeometryReader { geo in
-            let count = max(cards.count, 1)
-            let cardWidth = min(max(geo.size.width / CGFloat(count + 1), 260), 420)
-            let cardHeight = min(geo.size.height * 0.75, cardWidth * 1.5)
-            let cardSize = CGSize(width: cardWidth, height: cardHeight)
+            let cardSize = layoutSizes(for: geo.size, count: cards.count)
 
-            ZStack {
+            let content = ZStack {
                 ForEach(Array(cards.enumerated()), id: \.element.id) { pair in
                     let idx = pair.offset
                     let card = pair.element
-                    ZStack {
-                        CardView(
-                            card: card,
-                            size: cardSize,
-                            player: playerProvider(card.id)
-                        )
-                    }
-                    .frame(width: cardWidth, height: cardHeight, alignment: .center)
+
+                    CardView(
+                        card: card,
+                        size: cardSize,
+                        player: playerProvider(card.id),
+                        showBorder: showBorders,
+                        cornerRadius: cornerRadius
+                    )
+                    .frame(width: cardSize.width, height: cardSize.height, alignment: .center)
                     .contentShape(Rectangle())
                     .offset(card.offset + card.dragOffset)
                     .onTapGesture { onTap(card.id) }
+                    .simultaneousGesture(
+                        LongPressGesture(minimumDuration: 0.4).onEnded { _ in
+                            onLongPress(card.id)
+                        }
+                    )
                     .gesture(
                         DragGesture()
                             .onChanged { value in
                                 onDragChanged(card.id, value.translation)
                             }
                             .onEnded { value in
-                            onDragEnded(card.id, value.translation)
-                        }
+                                onDragEnded(card.id, value.translation)
+                            }
                     )
                     .zIndex(Double(idx))
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .onAppear { onLayoutUpdate(geo.size, cardSize) }
-            .onChange(of: geo.size) { newSize in
-                onLayoutUpdate(newSize, cardSize)
-            }
+
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onAppear { onLayoutUpdate(geo.size, cardSize) }
+                .onChange(of: geo.size) { newSize in
+                    onLayoutUpdate(newSize, layoutSizes(for: newSize, count: cards.count))
+                }
+                .scaleEffect(sceneScale)
+                .gesture(magnificationGesture())
         }
         .background(Color.black)
+    }
+
+    private func magnificationGesture() -> some Gesture {
+        MagnificationGesture()
+            .onChanged { value in
+                let adjusted = 1 + (value - 1) * 0.3
+                sceneScale = max(0.5, min(baseScale * adjusted, 3.0))
+            }
+            .onEnded { value in
+                let adjusted = 1 + (value - 1) * 0.3
+                sceneScale = max(0.5, min(baseScale * adjusted, 3.0))
+                baseScale = sceneScale
+            }
+    }
+
+    private func layoutSizes(for geoSize: CGSize, count: Int) -> CGSize {
+        let safeCount = max(count, 1)
+        let countCGFloat = CGFloat(safeCount)
+        let rawWidth = geoSize.width / (countCGFloat + 1)
+        let clampedWidth = min(max(rawWidth, 260), 420)
+        let cardHeight = min(geoSize.height * 0.75, clampedWidth * 1.5)
+        return CGSize(width: clampedWidth, height: cardHeight)
     }
 }
 
@@ -61,6 +96,8 @@ private struct CardView: View {
     let card: DivineMode.Card
     let size: CGSize
     let player: AVPlayer?
+    let showBorder: Bool
+    let cornerRadius: CGFloat
 
     var body: some View {
         ZStack {
@@ -89,9 +126,14 @@ private struct CardView: View {
             }
         }
         .frame(width: size.width, height: size.height)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white, lineWidth: 12)
+            Group {
+                if showBorder {
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .stroke(Color.white, lineWidth: 12)
+                }
+            }
         )
         .shadow(color: Color.black.opacity(0.4), radius: 6, x: 0, y: 4)
     }
