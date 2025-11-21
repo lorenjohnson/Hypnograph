@@ -11,30 +11,33 @@ final class DivineNoopRenderer: HypnogramRenderer {
     }
 }
 
-/// Tarot-style stills mode with optional playback.
+/// Tarot-style stills mode with drag-and-drop cards from a bottom-right deck.
 final class DivineMode: ObservableObject, HypnographMode {
-    struct DivineCard: Identifiable {
+    struct Card: Identifiable {
         let id = UUID()
         var clip: VideoClip
         var cgImage: CGImage?
         var isRevealed: Bool
-        var offset: CGSize
-        var isFlipped: Bool
         var isPlaying: Bool
+        var isFlipped: Bool
+        var offset: CGSize
+        var dragOffset: CGSize
     }
 
     private let state: HypnogramState
     let renderQueue: RenderQueue
+
     private var players: [UUID: AVPlayer] = [:]
     private var endObservers: [UUID: Any] = [:]
 
-    @Published private(set) var cards: [DivineCard] = []
+    @Published private(set) var cards: [Card] = []
     @Published private(set) var currentIndex: Int = 0
 
     init(state: HypnogramState) {
         self.state = state
         self.renderQueue = RenderQueue(renderer: DivineNoopRenderer())
-        dealCards()
+        cards = []
+        currentIndex = 0
     }
 
     // MARK: HypnographMode basics
@@ -47,9 +50,10 @@ final class DivineMode: ObservableObject, HypnographMode {
         AnyView(
             DivineView(
                 cards: cards,
-                currentIndex: currentIndex,
-                onTap: { [weak self] in self?.handleTap(index: $0) },
-                onRedeal: { [weak self] in self?.redeal() },
+                onTap: { [weak self] id in self?.handleTap(id: id) },
+                onDragChanged: { [weak self] id, translation in self?.updateDrag(id: id, translation: translation) },
+                onDragEnded: { [weak self] id, translation in self?.endDrag(id: id, translation: translation) },
+                onAddFromDeck: { [weak self] offset in self?.addCardFromDeck(initialOffset: offset) },
                 playerProvider: { [weak self] id in self?.players[id] }
             )
         )
@@ -59,40 +63,25 @@ final class DivineMode: ObservableObject, HypnographMode {
         [
             .text("Mode: Divine", order: 25, font: .headline),
             .text("Cards: \(cards.count)", order: 26),
-            .text("Current: \(min(currentIndex + 1, cards.count))/\(max(cards.count, 1))", order: 27),
-            .text("Space: Re-deal 3 cards", order: 28),
-            .text("N: New image for current card", order: 46),
-            .text(". : Add new card and select it", order: 47),
-            .text("Return: Flip/Play current card", order: 48)
+            .text("Space: Clear table", order: 27),
+            .text(". : Add card at center", order: 28)
         ]
     }
 
-    func compositionCommands() -> [ModeCommand] {
-        return []
-    }
+    func compositionCommands() -> [ModeCommand] { [] }
+    func sourceCommands() -> [ModeCommand] { [] }
 
-    func sourceCommands() -> [ModeCommand] {
-        return []
-    }    // MARK: Lifecycle
+    // MARK: Lifecycle
 
-    func new() {
-        withAnimation(.easeInOut) {
-            dealCards()
-        }
-    }
-
-    func saveCurrentHypnogram() {
-        print("DivineMode: save not supported.")
-    }
+    func newRandomHypnogram() { clearTable() }
+    func new() { clearTable() }
+    func saveCurrentHypnogram() { print("DivineMode: save not supported.") }
 
     // MARK: Source navigation
 
-    func addSource() {
-        if let card = makeCard() {
-            cards.append(card)
-            currentIndex = cards.count - 1
-        }
-    }
+    func addSource() { addCardAtCenter() }
+
+    func modeCommands() -> [ModeCommand] { [] }
 
     func nextSource() {
         guard !cards.isEmpty else { return }
@@ -111,32 +100,29 @@ final class DivineMode: ObservableObject, HypnographMode {
 
     // MARK: Candidate / selection
 
-    func nextCandidate() {
-        refreshCard(at: currentIndex)
-    }
-
-    func acceptCandidate() {
-        handleTap(index: currentIndex)
-    }
+    func nextCandidate() { refreshCard(at: currentIndex) }
+    func acceptCandidate() { handleTap(index: currentIndex) }
 
     func deleteCurrentSource() {
-        refreshCard(at: currentIndex, revealed: false)
+        guard !cards.isEmpty, currentIndex < cards.count else { return }
+        clearPlayer(for: cards[currentIndex].id)
+        cards.remove(at: currentIndex)
+        if currentIndex >= cards.count { currentIndex = max(0, cards.count - 1) }
     }
 
     func excludeCurrentSource() {}
 
-    func redeal() {
-        dealCards()
-    }
+    func redeal() { clearTable() }
 
     // MARK: Effects / misc
 
     func cycleEffect() {}
     func toggleHUD() { state.toggleHUD() }
     func toggleSolo() {}
+
     func reloadSettings() {
         state.reloadSettings(from: Environment.defaultSettingsURL)
-        dealCards()
+        clearTable()
     }
 
     func cycleGlobalEffect() { state.renderHooks.cycleGlobalEffect() }
@@ -149,76 +135,114 @@ final class DivineMode: ObservableObject, HypnographMode {
     var globalEffectName: String { state.renderHooks.globalEffectName }
     var sourceEffectName: String { state.renderHooks.sourceEffectName(for: currentIndex) }
 
-    func selectOrToggleSolo(index: Int) {
-        selectSource(index: index)
-    }
+    func selectOrToggleSolo(index: Int) { selectSource(index: index) }
 
     // MARK: Helpers
 
-    private func dealCards() {
+    private func clearTable() {
         clearPlayers()
-        cards = (0..<3).compactMap { _ in makeCard() }
+        cards = []
         currentIndex = 0
     }
 
-    private func refreshCard(at index: Int, revealed: Bool = false) {
+    private func addCardFromDeck(initialOffset: CGSize) {
+        guard let card = makeCard(offset: initialOffset) else { return }
+        cards.append(card)
+        currentIndex = cards.count - 1
+    }
+
+    private func addCardAtCenter() {
+        addCardFromDeck(initialOffset: .zero)
+    }
+
+    private func refreshCard(at index: Int) {
         guard index >= 0 && index < cards.count else { return }
-        if let newCard = makeCard(revealed: revealed) {
+        if let newCard = makeCard(offset: cards[index].offset) {
+            clearPlayer(for: cards[index].id)
             cards[index] = newCard
         }
     }
 
     private func handleTap(index: Int) {
         guard index >= 0 && index < cards.count else { return }
-        selectSource(index: index)
-
+        bringToFront(at: index)
         var card = cards[index]
         let player = player(for: card)
 
-        if !card.isRevealed {
-            // Flip face-up, paused at start
+        switch (card.isRevealed, card.isPlaying) {
+        case (false, _):
+            // Face-down → reveal, paused at start.
             card.isRevealed = true
             card.isPlaying = false
             player?.pause()
             if let p = player { seek(p, to: card.clip.startTime) }
-        } else if card.isPlaying {
-            // Stop and flip back down
-            player?.pause()
-            if let p = player { seek(p, to: card.clip.startTime) }
-            card.isPlaying = false
-            card.isRevealed = false
-        } else {
-            // Face-up paused → start playing
+        case (true, false):
+            // Face-up paused → play.
             card.isPlaying = true
             card.isRevealed = true
             if let p = player {
                 seek(p, to: card.clip.startTime)
                 p.play()
             }
+        case (true, true):
+            // Playing → stop and flip back down.
+            player?.pause()
+            if let p = player { seek(p, to: card.clip.startTime) }
+            card.isPlaying = false
+            card.isRevealed = false
         }
 
-        withAnimation(.easeInOut) {
-            cards[index] = card
-        }
+        cards[index] = card
     }
 
-    private func makeCard(revealed: Bool = false) -> DivineCard? {
+    private func handleTap(id: UUID) {
+        guard let idx = cards.firstIndex(where: { $0.id == id }) else { return }
+        print("DivineMode: tap card \(idx) id=\(id)")
+        let newIdx = bringToFront(at: idx)
+        handleTap(index: newIdx)
+    }
+
+    private func updateDrag(id: UUID, translation: CGSize) {
+        guard let idx = cards.firstIndex(where: { $0.id == id }) else { return }
+        let newIdx = bringToFront(at: idx)
+        print("DivineMode: drag change card \(newIdx) id=\(id) translation=\(translation)")
+        var card = cards[newIdx]
+        card.dragOffset = translation
+        cards[newIdx] = card
+    }
+
+    private func endDrag(id: UUID, translation: CGSize) {
+        guard let idx = cards.firstIndex(where: { $0.id == id }) else { return }
+        print("DivineMode: drag end card \(idx) id=\(id) translation=\(translation)")
+        var card = cards[idx]
+        card.offset = card.offset + translation
+        card.dragOffset = .zero
+        cards[idx] = card
+    }
+
+    @discardableResult
+    private func bringToFront(at index: Int) -> Int {
+        guard index >= 0 && index < cards.count else { return index }
+        let card = cards.remove(at: index)
+        cards.append(card)
+        currentIndex = cards.count - 1
+        return currentIndex
+    }
+
+    private func makeCard(offset: CGSize) -> Card? {
         let clipLength = max(3.0, state.settings.outputDuration.seconds)
         guard let clip = state.library.randomClip(clipLength: clipLength) else { return nil }
         let cgImage = grabStill(from: clip)
-        let offset = CGSize(
-            width: Double.random(in: -18...18),
-            height: Double.random(in: -12...12)
-        )
         let flipped = Bool.random()
 
-        return DivineCard(
+        return Card(
             clip: clip,
             cgImage: cgImage,
-            isRevealed: revealed,
-            offset: offset,
+            isRevealed: false,
+            isPlaying: false,
             isFlipped: flipped,
-            isPlaying: false
+            offset: offset,
+            dragOffset: .zero
         )
     }
 
@@ -237,7 +261,7 @@ final class DivineMode: ObservableObject, HypnographMode {
         }
     }
 
-    private func player(for card: DivineCard) -> AVPlayer? {
+    private func player(for card: Card) -> AVPlayer? {
         if let existing = players[card.id] {
             return existing
         }
@@ -257,6 +281,7 @@ final class DivineMode: ObservableObject, HypnographMode {
             if let idx = self.cards.firstIndex(where: { $0.id == card.id }) {
                 var updated = self.cards[idx]
                 updated.isPlaying = false
+                updated.isRevealed = false
                 self.cards[idx] = updated
             }
         }
@@ -267,6 +292,15 @@ final class DivineMode: ObservableObject, HypnographMode {
 
     private func seek(_ player: AVPlayer, to time: CMTime) {
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+
+    private func clearPlayer(for id: UUID) {
+        if let token = endObservers[id], let player = players[id] {
+            player.removeTimeObserver(token)
+        }
+        endObservers[id] = nil
+        players[id]?.pause()
+        players[id] = nil
     }
 
     private func clearPlayers() {
@@ -281,142 +315,9 @@ final class DivineMode: ObservableObject, HypnographMode {
     }
 }
 
-struct DivineView: View {
-    let cards: [DivineMode.DivineCard]
-    let currentIndex: Int
-    let onTap: (Int) -> Void
-    let onRedeal: () -> Void
-    let playerProvider: (UUID) -> AVPlayer?
-
-    var body: some View {
-        GeometryReader { geo in
-            let count = max(cards.count, 1)
-            let spacing: CGFloat = 32
-            let horizontalInset: CGFloat = 48
-
-            let cardHeight = geo.size.height * 0.7
-            let usableWidth = geo.size.width - (horizontalInset * 2) - spacing * CGFloat(max(count - 1, 0))
-            let targetWidth = usableWidth / CGFloat(count)
-            let cardWidth = min(max(targetWidth, 260), 420)
-            let cardsWidth = CGFloat(count) * cardWidth + CGFloat(max(count - 1, 0)) * spacing
-            let dynamicInset = max((geo.size.width - cardsWidth) / 2, horizontalInset)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: spacing) {
-                    ForEach(Array(cards.enumerated()), id: \.element.id) { idx, card in
-                        CardView(
-                            card: card,
-                            isSelected: idx == currentIndex,
-                            size: CGSize(width: cardWidth, height: cardHeight),
-                            player: playerProvider(card.id)
-                        )
-                        .offset(card.offset)
-                        // TODO:  A hack because I can't seem  to figure out
-                        // how to just have this be an open frame
-                        .frame(width: cardWidth, height: cardHeight + 100)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            onTap(idx)
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.horizontal, dynamicInset)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        }
-        .background(Color.black)
-    }
-
-    private struct CardView: View {
-        let card: DivineMode.DivineCard
-        let isSelected: Bool
-        let size: CGSize
-        let player: AVPlayer?
-
-        var body: some View {
-            ZStack {
-                if card.isRevealed, let cg = card.cgImage {
-                    if let player {
-                        CardPlayerView(player: player)
-                            .frame(width: size.width, height: size.height)
-                            .clipped()
-                            .rotationEffect(.degrees(card.isFlipped ? 180 : 0))
-                    } else {
-                        Image(decorative: cg, scale: 1.0, orientation: .up)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: size.width, height: size.height)
-                            .rotationEffect(.degrees(card.isFlipped ? 180 : 0))
-                            .clipped()
-                            .transition(.asymmetric(insertion: .opacity, removal: .opacity))
-                    }
-                } else {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [Color(red: 0.0, green: 0.6, blue: 0.65), Color(red: 0.0, green: 0.45, blue: 0.5)]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay(
-                            StripedPattern()
-                                .opacity(0.15)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        )
-                        .frame(width: size.width, height: size.height)
-                        .transition(.asymmetric(insertion: .opacity, removal: .opacity))
-                }
-            }
-            .frame(width: size.width, height: size.height)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.white, lineWidth: 12)
-            )
-            .rotation3DEffect(.degrees(card.isRevealed ? 0 : 180), axis: (x: 0, y: 1, z: 0))
-            .animation(.easeInOut, value: card.isRevealed)
-            .shadow(color: Color.black.opacity(0.5), radius: 6, x: 0, y: 4)
-        }
-    }
-}
-
-private struct CardPlayerView: NSViewRepresentable {
-    let player: AVPlayer
-
-    func makeNSView(context: Context) -> AVPlayerView {
-        let view = HitTransparentPlayerView()
-        view.controlsStyle = .none
-        view.player = player
-        view.videoGravity = .resizeAspectFill
-        view.isHidden = false
-        return view
-    }
-
-    func updateNSView(_ nsView: AVPlayerView, context: Context) {
-        nsView.player = player
-    }
-
-    /// AVPlayerView that forwards mouse events so SwiftUI tap gestures still work.
-    private final class HitTransparentPlayerView: AVPlayerView {
-        override func hitTest(_ point: NSPoint) -> NSView? { nil }
-    }
-}
-
-private struct StripedPattern: View {
-    var body: some View {
-        GeometryReader { geo in
-            let stripeWidth: CGFloat = 12
-            let count = Int(geo.size.width / stripeWidth * 2)
-            ZStack(alignment: .topLeading) {
-                ForEach(0..<count, id: \.self) { i in
-                    Color.white
-                        .opacity(0.3)
-                        .frame(width: stripeWidth, height: geo.size.height)
-                        .rotationEffect(.degrees(45))
-                        .offset(x: CGFloat(i) * stripeWidth - geo.size.height)
-                }
-            }
-        }
+// Shared helper for offset math
+extension CGSize {
+    static func + (lhs: CGSize, rhs: CGSize) -> CGSize {
+        CGSize(width: lhs.width + rhs.width, height: lhs.height + rhs.height)
     }
 }
