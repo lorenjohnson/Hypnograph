@@ -1,6 +1,5 @@
 import SwiftUI
 import AVFoundation
-import AVKit
 import CoreMedia
 import CoreGraphics
 
@@ -209,7 +208,6 @@ final class DivineMode: ObservableObject, HypnographMode {
 
     private func handleTap(id: UUID) {
         guard let idx = cards.firstIndex(where: { $0.id == id }) else { return }
-        print("DivineMode: tap card \(idx) id=\(id)")
         let newIdx = bringToFront(at: idx)
         handleTap(index: newIdx)
     }
@@ -217,7 +215,6 @@ final class DivineMode: ObservableObject, HypnographMode {
     private func updateDrag(id: UUID, translation: CGSize) {
         guard let idx = cards.firstIndex(where: { $0.id == id }) else { return }
         let newIdx = bringToFront(at: idx)
-        print("DivineMode: drag change card \(newIdx) id=\(id) translation=\(translation)")
         var card = cards[newIdx]
         card.dragOffset = translation
         cards[newIdx] = card
@@ -225,7 +222,6 @@ final class DivineMode: ObservableObject, HypnographMode {
 
     private func endDrag(id: UUID, translation: CGSize) {
         guard let idx = cards.firstIndex(where: { $0.id == id }) else { return }
-        print("DivineMode: drag end card \(idx) id=\(id) translation=\(translation)")
         var card = cards[idx]
         card.offset = card.offset + translation
         card.dragOffset = .zero
