@@ -5,7 +5,6 @@
 //  Created by Loren Johnson on 17.11.25.
 //
 
-
 import AppKit
 import Foundation
 
@@ -37,6 +36,19 @@ enum Environment {
             try? fm.createDirectory(at: url, withIntermediateDirectories: true, attributes: nil)
         }
         return url
+    }
+
+    /// ~/Library/Services
+    static var userServicesDirectory: URL {
+        let fm = FileManager.default
+        let base = fm.homeDirectoryForCurrentUser
+        let dir = base.appendingPathComponent("Library/Services", isDirectory: true)
+
+        if !fm.fileExists(atPath: dir.path) {
+            try? fm.createDirectory(at: dir, withIntermediateDirectories: true, attributes: nil)
+        }
+
+        return dir
     }
 
     /// ~/Library/Application Support/Hypnograph/hypnograph-settings.json
@@ -76,7 +88,7 @@ enum Environment {
         let url = appSupportDirectory
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
-    
+
     static func installCLI() {
         let fm = FileManager.default
 
@@ -138,5 +150,39 @@ enum Environment {
 
         // 5) Reveal the installed script
         NSWorkspace.shared.activateFileViewerSelecting([destination])
+    }
+
+    static func installAutomatorQuickAction() {
+        let fm = FileManager.default
+
+        // Name must match the resource in your bundle (without extension).
+        // From your screenshot: AddToHypnographSourcesAction.workflow
+        let workflowName = "Add To Hypnograph Sources"
+
+        guard let bundledWorkflowURL = Bundle.main.url(
+            forResource: workflowName,
+            withExtension: "workflow"
+        ) else {
+            print("⚠️ Could not find bundled Automator workflow '\(workflowName).workflow'")
+            return
+        }
+
+        let destination = userServicesDirectory.appendingPathComponent("\(workflowName).workflow")
+
+        do {
+            if fm.fileExists(atPath: destination.path) {
+                // Overwrite existing so updates propagate
+                try fm.removeItem(at: destination)
+            }
+
+            try fm.copyItem(at: bundledWorkflowURL, to: destination)
+            print("Installed Automator Quick Action at \(destination.path)")
+
+            // Optional: reveal it
+            // NSWorkspace.shared.activateFileViewerSelecting([destination])
+
+        } catch {
+            print("Failed to install Automator Quick Action: \(error)")
+        }
     }
 }

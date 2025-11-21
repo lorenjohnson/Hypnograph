@@ -227,6 +227,23 @@ public final class HypnogramState: ObservableObject {
         return clip
     }
 
+    /// Get a new random candidate for the current source with a custom length.
+    @discardableResult
+    public func setRandomCandidateForCurrentSource(clipLength: Double) -> VideoClip? {
+        guard let clip = library.randomClip(clipLength: clipLength) else { return nil }
+        candidateClips[currentSourceIndex] = clip
+        selectedClips[currentSourceIndex] = clip
+        return clip
+    }
+
+    /// Explicitly set the candidate (and selected) clip for a given source index.
+    public func setCandidate(_ clip: VideoClip, forSource index: Int? = nil) {
+        let idx = index ?? currentSourceIndex
+        guard idx >= 0 && idx < candidateClips.count else { return }
+        candidateClips[idx] = clip
+        selectedClips[idx] = clip
+    }
+
     /// Accept the current candidate for this source,
     /// optionally overriding its start time with a custom playhead time,
     /// and move to the next source if there is one.
@@ -343,7 +360,7 @@ public final class HypnogramState: ObservableObject {
     // MARK: - Layer deletion helpers
 
     /// Delete the current source, keeping arrays dense (no empty slots).
-    private func deleteCurrentSource() {
+    public func deleteCurrentSource() {
         deleteLayer(at: currentSourceIndex)
     }
 
