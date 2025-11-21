@@ -108,8 +108,8 @@ final class MontageMode: ObservableObject, HypnographMode {
         var items: [HUDItem] = [
             // Source/Layer-specific status (order 25-29 range)
             .text("Source \(state.currentSourceIndex + 1) of \(state.activeSourceCount)", order: 25),
-            .text("Blend mode: \(state.currentBlendModeName)", order: 26),
-            .text("Source Effect: \(sourceEffectName)", order: 27),
+            .text("Blend mode (M): \(state.currentBlendModeName)", order: 26),
+            .text("Source Effect (F): \(sourceEffectName)", order: 27),
         ]
 
         // Mode-specific shortcuts (after global shortcuts)

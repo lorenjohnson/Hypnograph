@@ -38,12 +38,10 @@ struct ContentView: View {
         items.append(.padding(8, order: 21))
 
         // Global status
-        items.append(.text("Global Effect: \(mode.globalEffectName)", order: 22))
+        items.append(.text("Global Effect (E): \(mode.globalEffectName)", order: 22))
 
         // Divider before source-specific items
         items.append(.padding(16, order: 24))
-
-        items.append(.text("E = Cycle Global Effect", order: 25))
 
         // Source-specific items will be inserted here (order 25-29)
         // Mode provides: Source index, blend mode, source effect, etc.
@@ -53,18 +51,17 @@ struct ContentView: View {
 
         items.append(.text("Current Source", order: 11, font: .subheadline))
         // Global keyboard shortcuts
-        items.append(.text("F = Cycle Effect", order: 41))
         items.append(.text("N = Next Candidate", order: 42))
         items.append(.text("Return = Accept Candidate", order: 43))
         items.append(.text("Delete = Delete Source", order: 44))
-        items.append(.text("1-9 = Jump to Source 1-9", order: 45))
 
         items.append(.padding(16, order: 49))
 
-        items.append(.text("Space = New random Hypnogram", order: 50))
-        items.append(.text("Cmd-S = Save Hypnogram", order: 51))
-        items.append(.text("Cmd-R = Reload Settings and Restart", order: 52))
-        items.append(.text("Shift-Cmd-S = Show Settings Folder", order: 53))
+        items.append(.text("1-9 = Jump to Source 1-9", order: 50))
+        items.append(.text("Space = New random Hypnogram", order: 51))
+        items.append(.text("Cmd-S = Save Hypnogram", order: 52))
+        items.append(.text("Cmd-R = Reload Settings and Restart", order: 53))
+        items.append(.text("Shift-Cmd-S = Show Settings Folder", order: 54))
 
         return items
     }

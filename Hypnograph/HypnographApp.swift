@@ -466,8 +466,9 @@ struct AppCommands: Commands {
                 .keyboardShortcut("r", modifiers: [])
             }
 
-            Button("Install hypnograph command") {
+            Button("Install hypnograph CLI and Finder Action") {
                 Environment.installCLI()
+                Environment.installAutomatorQuickAction()
             }
 
             Button("Show Settings Folder") {
