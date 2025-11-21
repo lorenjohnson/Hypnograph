@@ -14,6 +14,7 @@ import CoreMedia
 public enum ModeType {
     case montage
     case sequence
+    case divine
 }
 
 // MARK: - Core Data Models
