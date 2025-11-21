@@ -9,9 +9,9 @@ import Foundation
 import SwiftUI
 import CoreMedia
 
-/// Sequence mode: Select multiple clips with random durations (2-15s each)
+/// Sequence mode: Select multiple sources (video clips) with random durations (2-15s each)
 /// that play one after another in sequence until the total duration equals targetDuration.
-/// Navigate between clips with arrow keys or 1-5 keys. Global and per-source effects still apply.
+/// Navigate between sources with arrow keys or 1-5 keys. Global and per-source effects still apply.
 final class SequenceMode: ObservableObject, HypnographMode {
 
     /// Shared session state
@@ -20,22 +20,22 @@ final class SequenceMode: ObservableObject, HypnographMode {
     /// Render queue + backend for this mode
     let renderQueue: RenderQueue
 
-    /// Array of clips in the sequence (each plays one after another)
-    @Published private(set) var sequenceClips: [VideoClip] = []
+    /// Array of sources in the sequence (each plays one after another)
+    @Published private(set) var sequenceSources: [VideoClip] = []
 
-    /// Current clip index being viewed/edited
-    @Published private(set) var currentClipIndex: Int = 0
+    /// Current source index being viewed/edited
+    @Published private(set) var currentSourceIndex: Int = 0
 
-    /// Soloed clip index (loops when active)
-    @Published private(set) var soloClipIndex: Int? = nil
+    /// Soloed source index (loops when active)
+    @Published private(set) var soloSourceIndex: Int? = nil
 
-    /// Total accumulated duration of all clips in the sequence
+    /// Total accumulated duration of all sources in the sequence
     var totalDuration: CMTime {
-        sequenceClips.reduce(CMTime.zero) { $0 + $1.duration }
+        sequenceSources.reduce(CMTime.zero) { $0 + $1.duration }
     }
 
-    /// Desired starting clip count
-    private let initialClipCount = 5
+    /// Desired starting source count
+    private let initialSourceCount = 5
 
     init(state: HypnogramState) {
         self.state = state
@@ -53,7 +53,7 @@ final class SequenceMode: ObservableObject, HypnographMode {
         renderQueue: RenderQueue
     ) -> AnyView {
         // Ensure we have something to show when the user switches into the mode
-        if sequenceClips.isEmpty {
+        if sequenceSources.isEmpty {
             fillSequence()
         }
 
@@ -72,19 +72,19 @@ final class SequenceMode: ObservableObject, HypnographMode {
         var items: [HUDItem] = []
         
         // Sequence status
-        items.append(.text("Sources: \(sequenceClips.count)", order: 25))
-        items.append(.text("Current: \(currentClipIndex + 1)/\(sequenceClips.count)", order: 26))
+        items.append(.text("Sources: \(sequenceSources.count)", order: 25))
+        items.append(.text("Current: \(currentSourceIndex + 1)/\(sequenceSources.count)", order: 26))
         
         let totalSecs = totalDuration.seconds
         items.append(.text(String(format: "Duration: %.1fs", totalSecs), order: 27))
         items.append(.text("Press N to add sources", order: 28))
         
-        // Current clip info
-        if currentClipIndex < sequenceClips.count {
-            let clip = sequenceClips[currentClipIndex]
+        // Current source info
+        if currentSourceIndex < sequenceSources.count {
+            let clip = sequenceSources[currentSourceIndex]
             items.append(.padding(8, order: 29))
-            items.append(.text("Source \(currentClipIndex + 1): \(clip.duration.seconds)s", order: 30))
-            items.append(.text("Source Effect: \(state.renderHooks.sourceEffectName(for: currentClipIndex))", order: 31))
+            items.append(.text("Source \(currentSourceIndex + 1): \(clip.duration.seconds)s", order: 30))
+            items.append(.text("Source Effect: \(state.renderHooks.sourceEffectName(for: currentSourceIndex))", order: 31))
         }
         
         // Mode-specific shortcuts
@@ -103,29 +103,29 @@ final class SequenceMode: ObservableObject, HypnographMode {
     
     func newRandomHypnogram() {
         // Generate a new sequence
-        sequenceClips.removeAll()
-        currentClipIndex = 0
+        sequenceSources.removeAll()
+        currentSourceIndex = 0
         fillSequence()
     }
     
     func saveCurrentHypnogram() {
-        guard !sequenceClips.isEmpty else {
-            print("SequenceMode: no clips to save")
+        guard !sequenceSources.isEmpty else {
+            print("SequenceMode: no sources to save")
             return
         }
 
-        // Convert sequence clips to HypnogramRecipe format
-        // Each clip becomes a single- source that will be concatenated during rendering
-        let sources = sequenceClips.map { clip in
-            HypnogramSource(clip: clip, blendMode: BlendMode(key: "normal"))
+        // Convert sequence sources to HypnogramRecipe format
+        // Each source becomes a single-source that will be concatenated during rendering
+        let sources = sequenceSources.map { source in
+            HypnogramSource(clip: source, blendMode: BlendMode(key: "normal"))
         }
 
         let recipe = HypnogramRecipe(
             sources: sources,
-            targetDuration: totalDuration  // Use actual total duration of all clips
+            targetDuration: totalDuration  // Use actual total duration of all sources
         )
 
-        print("SequenceMode: enqueuing sequence with \(sequenceClips.count) clip(s), total duration: \(totalDuration.seconds)s")
+        print("SequenceMode: enqueuing sequence with \(sequenceSources.count) source(s), total duration: \(totalDuration.seconds)s")
         (renderQueue.renderer as? SequenceRenderer)?.enqueueSequence(recipe: recipe) { result in
             DispatchQueue.main.async {
                 switch result {
@@ -138,8 +138,8 @@ final class SequenceMode: ObservableObject, HypnographMode {
         }
 
         // Reset for next sequence
-        sequenceClips.removeAll()
-        currentClipIndex = 0
+        sequenceSources.removeAll()
+        currentSourceIndex = 0
 
         if state.settings.autoPrime {
             fillSequence()
@@ -150,39 +150,39 @@ final class SequenceMode: ObservableObject, HypnographMode {
     // MARK: - Source navigation
     
     func nextSource() {
-        guard !sequenceClips.isEmpty else { return }
-        currentClipIndex = min(sequenceClips.count - 1, currentClipIndex + 1)
-        if soloClipIndex != nil {
-            soloClipIndex = currentClipIndex
+        guard !sequenceSources.isEmpty else { return }
+        currentSourceIndex = min(sequenceSources.count - 1, currentSourceIndex + 1)
+        if soloSourceIndex != nil {
+            soloSourceIndex = currentSourceIndex
         }
     }
 
     func previousSource() {
-        currentClipIndex = max(0, currentClipIndex - 1)
-        if soloClipIndex != nil {
-            soloClipIndex = currentClipIndex
+        currentSourceIndex = max(0, currentSourceIndex - 1)
+        if soloSourceIndex != nil {
+            soloSourceIndex = currentSourceIndex
         }
     }
 
     func selectSource(index: Int) {
-        guard !sequenceClips.isEmpty else { return }
-        currentClipIndex = max(0, min(sequenceClips.count - 1, index))
-        if soloClipIndex != nil {
-            soloClipIndex = currentClipIndex
+        guard !sequenceSources.isEmpty else { return }
+        currentSourceIndex = max(0, min(sequenceSources.count - 1, index))
+        if soloSourceIndex != nil {
+            soloSourceIndex = currentSourceIndex
         }
     }
 
     func addSource() {
-        let clipDuration = randomClipDuration()
+        let clipDuration = randomSourceDuration()
         guard let clip = state.library.randomClip(clipLength: clipDuration) else {
             print("SequenceMode: failed to get random clip")
             return
         }
 
-        sequenceClips.append(clip)
-        currentClipIndex = sequenceClips.count - 1
-        if soloClipIndex != nil {
-            soloClipIndex = currentClipIndex
+        sequenceSources.append(clip)
+        currentSourceIndex = sequenceSources.count - 1
+        if soloSourceIndex != nil {
+            soloSourceIndex = currentSourceIndex
         }
     }
     
@@ -190,39 +190,39 @@ final class SequenceMode: ObservableObject, HypnographMode {
     
     func nextCandidate() {
         // In sequence mode, "next candidate" refreshes the current source with a new random clip
-        let clipDuration = randomClipDuration()
+        let clipDuration = randomSourceDuration()
         guard let clip = state.library.randomClip(clipLength: clipDuration) else {
             print("SequenceMode: failed to get random clip")
             return
         }
 
-        if sequenceClips.isEmpty {
-            sequenceClips = [clip]
-            currentClipIndex = 0
+        if sequenceSources.isEmpty {
+            sequenceSources = [clip]
+            currentSourceIndex = 0
         } else {
-            sequenceClips[currentClipIndex] = clip
+            sequenceSources[currentSourceIndex] = clip
         }
 
-        if soloClipIndex != nil {
-            soloClipIndex = currentClipIndex
+        if soloSourceIndex != nil {
+            soloSourceIndex = currentSourceIndex
         }
     }
     
     func acceptCandidate() {
-        // In sequence mode, accepting moves to the next clip
+        // In sequence mode, accepting moves to the next source
         nextSource()
     }
     
     func deleteCurrentSource() {
-        guard currentClipIndex < sequenceClips.count else { return }
-        sequenceClips.remove(at: currentClipIndex)
-        if soloClipIndex == currentClipIndex {
-            soloClipIndex = nil
-        } else if let solo = soloClipIndex, solo > currentClipIndex {
-            soloClipIndex = solo - 1
+        guard currentSourceIndex < sequenceSources.count else { return }
+        sequenceSources.remove(at: currentSourceIndex)
+        if soloSourceIndex == currentSourceIndex {
+            soloSourceIndex = nil
+        } else if let solo = soloSourceIndex, solo > currentSourceIndex {
+            soloSourceIndex = solo - 1
         }
-        if currentClipIndex >= sequenceClips.count && currentClipIndex > 0 {
-            currentClipIndex -= 1
+        if currentSourceIndex >= sequenceSources.count && currentSourceIndex > 0 {
+            currentSourceIndex -= 1
         }
     }
     
@@ -237,17 +237,17 @@ final class SequenceMode: ObservableObject, HypnographMode {
     }
     
     func toggleSolo() {
-        if soloClipIndex == currentClipIndex {
-            soloClipIndex = nil
+        if soloSourceIndex == currentSourceIndex {
+            soloSourceIndex = nil
         } else {
-            soloClipIndex = currentClipIndex
+            soloSourceIndex = currentSourceIndex
         }
     }
     
     func reloadSettings() {
         state.reloadSettings(from: Environment.defaultSettingsURL)
-        sequenceClips.removeAll()
-        currentClipIndex = 0
+        sequenceSources.removeAll()
+        currentSourceIndex = 0
     }
     
     // MARK: - Effects
@@ -257,12 +257,12 @@ final class SequenceMode: ObservableObject, HypnographMode {
     }
     
     func cycleSourceEffect() {
-        state.renderHooks.cycleSourceEffect(for: currentClipIndex)
+        state.renderHooks.cycleSourceEffect(for: currentSourceIndex)
     }
     
     func clearAllEffects() {
         state.renderHooks.setGlobalEffect(nil)
-        for i in 0..<sequenceClips.count {
+        for i in 0..<sequenceSources.count {
             state.renderHooks.setSourceEffect(nil, for: i)
         }
     }
@@ -272,11 +272,11 @@ final class SequenceMode: ObservableObject, HypnographMode {
     }
     
     var sourceEffectName: String {
-        state.renderHooks.sourceEffectName(for: currentClipIndex)
+        state.renderHooks.sourceEffectName(for: currentSourceIndex)
     }
 
     func selectOrToggleSolo(index: Int) {
-        if currentClipIndex == index {
+        if currentSourceIndex == index {
             toggleSolo()
         } else {
             selectSource(index: index)
@@ -285,49 +285,45 @@ final class SequenceMode: ObservableObject, HypnographMode {
     
     // MARK: - Sequence building
     
-    /// Fill the sequence with random clips until we reach targetDuration
+    /// Fill the sequence with random sources until we reach our starting count
     private func fillSequence() {
-        while sequenceClips.count < initialClipCount {
-            let clipDuration = randomClipDuration()
+        while sequenceSources.count < initialSourceCount {
+            let clipDuration = randomSourceDuration()
             guard let clip = state.library.randomClip(clipLength: clipDuration) else {
                 print("SequenceMode: failed to get random clip")
                 break
             }
-            sequenceClips.append(clip)
+            sequenceSources.append(clip)
         }
 
-        currentClipIndex = min(currentClipIndex, max(sequenceClips.count - 1, 0))
+        currentSourceIndex = min(currentSourceIndex, max(sequenceSources.count - 1, 0))
 
-        print("SequenceMode: generated sequence with \(sequenceClips.count) clips, total duration: \(totalDuration.seconds)s")
+        print("SequenceMode: generated sequence with \(sequenceSources.count) sources, total duration: \(totalDuration.seconds)s")
     }
     
-    /// Add a single clip to the sequence
-    private func addClipToSequence() {
-        let clipDuration = randomClipDuration()
+    /// Add a single source to the sequence
+    private func addSourceToSequence() {
+        let clipDuration = randomSourceDuration()
 
         if let clip = state.library.randomClip(clipLength: clipDuration) {
-            sequenceClips.append(clip)
-            currentClipIndex = sequenceClips.count - 1
-            print("SequenceMode: added clip with duration \(clip.duration.seconds)s")
+            sequenceSources.append(clip)
+            currentSourceIndex = sequenceSources.count - 1
+            print("SequenceMode: added source with duration \(clip.duration.seconds)s")
         } else {
             print("SequenceMode: failed to get random clip")
         }
     }
 
-    private func randomClipDuration() -> Double {
+    private func randomSourceDuration() -> Double {
         Double.random(in: 2.0...15.0)
     }
 
-    var currentSourceIndex: Int {
-        currentClipIndex
-    }
-
     var isSoloActive: Bool {
-        soloClipIndex != nil
+        soloSourceIndex != nil
     }
 
     var soloIndicatorText: String? {
-        if let solo = soloClipIndex {
+        if let solo = soloSourceIndex {
             return "SOLO \(solo + 1)"
         } else {
             return "\(currentSourceIndex + 1)"

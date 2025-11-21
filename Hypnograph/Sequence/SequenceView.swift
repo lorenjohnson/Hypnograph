@@ -38,13 +38,13 @@ struct SequenceView: NSViewRepresentable {
     func updateNSView(_ nsView: AVPlayerView, context: Context) {
         let c = context.coordinator
         
-        let clips = mode.sequenceClips
+        let clips = mode.sequenceSources
         let isSolo = mode.isSoloActive
-        let currentIndex = mode.currentClipIndex
+        let currentIndex = mode.currentSourceIndex
         let displayClips: [(VideoClip, Int)]
         let targetIndex: Int
 
-        if isSolo, let solo = mode.soloClipIndex, solo < clips.count {
+        if isSolo, let solo = mode.soloSourceIndex, solo < clips.count {
             displayClips = [(clips[solo], solo)] // solo uses original index
             targetIndex = 0
         } else {
