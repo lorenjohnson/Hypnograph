@@ -10,26 +10,15 @@ public struct DivineView: View {
     let onTap: (UUID) -> Void
     let onDragChanged: (UUID, CGSize) -> Void
     let onDragEnded: (UUID, CGSize) -> Void
-    let onAddFromDeck: (CGSize) -> Void
+    let onLayoutUpdate: (CGSize, CGSize) -> Void
     let playerProvider: (UUID) -> AVPlayer?
-
-    @State private var deckDrag: CGSize?
 
     public var body: some View {
         GeometryReader { geo in
-            let spacing: CGFloat = 32
             let count = max(cards.count, 1)
             let cardWidth = min(max(geo.size.width / CGFloat(count + 1), 260), 420)
             let cardHeight = min(geo.size.height * 0.75, cardWidth * 1.5)
-
-            let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
-            let deckPadding: CGFloat = 48
-            let deckSize = CGSize(width: cardWidth * 0.8, height: cardHeight * 0.8)
-            let deckOrigin = CGPoint(
-                x: geo.size.width - deckPadding - deckSize.width / 2,
-                y: geo.size.height - deckPadding - deckSize.height / 2
-            )
-            let spawnOffset = CGSize(width: deckOrigin.x - center.x, height: deckOrigin.y - center.y)
+            let cardSize = CGSize(width: cardWidth, height: cardHeight)
 
             ZStack {
                 ForEach(Array(cards.enumerated()), id: \.element.id) { pair in
@@ -38,7 +27,7 @@ public struct DivineView: View {
                     ZStack {
                         CardView(
                             card: card,
-                            size: CGSize(width: cardWidth, height: cardHeight),
+                            size: cardSize,
                             player: playerProvider(card.id)
                         )
                     }
@@ -52,46 +41,17 @@ public struct DivineView: View {
                                 onDragChanged(card.id, value.translation)
                             }
                             .onEnded { value in
-                                onDragEnded(card.id, value.translation)
-                            }
+                            onDragEnded(card.id, value.translation)
+                        }
                     )
                     .zIndex(Double(idx))
                 }
-
-                // Deck
-                CardBack()
-                    .frame(width: deckSize.width, height: deckSize.height)
-                    .position(deckOrigin)
-                    .shadow(color: Color.black.opacity(0.3), radius: 6, x: 0, y: 4)
-                    .highPriorityGesture(
-                        TapGesture().onEnded {
-                            onAddFromDeck(spawnOffset)
-                        }
-                    )
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                deckDrag = value.translation
-                            }
-                            .onEnded { value in
-                                let finalOffset = spawnOffset + value.translation
-                                onAddFromDeck(finalOffset)
-                                deckDrag = nil
-                            }
-                    )
-                    .zIndex(1000)
-
-                // Ghost card while dragging from deck
-                if let deckDrag {
-                    CardBack()
-                        .frame(width: deckSize.width, height: deckSize.height)
-                        .position(
-                            x: center.x + spawnOffset.width + deckDrag.width,
-                            y: center.y + spawnOffset.height + deckDrag.height
-                        )
-                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onAppear { onLayoutUpdate(geo.size, cardSize) }
+            .onChange(of: geo.size) { newSize in
+                onLayoutUpdate(newSize, cardSize)
+            }
         }
         .background(Color.black)
     }

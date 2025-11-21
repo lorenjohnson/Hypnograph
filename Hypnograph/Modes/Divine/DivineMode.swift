@@ -29,6 +29,8 @@ final class DivineMode: ObservableObject, HypnographMode {
 
     private var players: [UUID: AVPlayer] = [:]
     private var endObservers: [UUID: Any] = [:]
+    private var viewportSize: CGSize = .zero
+    private var cardSize: CGSize = .zero
 
     @Published private(set) var cards: [Card] = []
     @Published private(set) var currentIndex: Int = 0
@@ -53,7 +55,10 @@ final class DivineMode: ObservableObject, HypnographMode {
                 onTap: { [weak self] id in self?.handleTap(id: id) },
                 onDragChanged: { [weak self] id, translation in self?.updateDrag(id: id, translation: translation) },
                 onDragEnded: { [weak self] id, translation in self?.endDrag(id: id, translation: translation) },
-                onAddFromDeck: { [weak self] offset in self?.addCardFromDeck(initialOffset: offset) },
+                onLayoutUpdate: { [weak self] viewport, cardSize in
+                    self?.viewportSize = viewport
+                    self?.cardSize = cardSize
+                },
                 playerProvider: { [weak self] id in self?.players[id] }
             )
         )
@@ -79,7 +84,7 @@ final class DivineMode: ObservableObject, HypnographMode {
 
     // MARK: Source navigation
 
-    func addSource() { addCardAtCenter() }
+    func addSource() { addCardAtRandom() }
 
     func modeCommands() -> [ModeCommand] { [] }
 
@@ -145,14 +150,21 @@ final class DivineMode: ObservableObject, HypnographMode {
         currentIndex = 0
     }
 
-    private func addCardFromDeck(initialOffset: CGSize) {
-        guard let card = makeCard(offset: initialOffset) else { return }
-        cards.append(card)
-        currentIndex = cards.count - 1
+    private func addCardAtRandom() {
+        let padding: CGFloat = 20
+        let halfW: CGFloat = max((viewportSize.width - cardSize.width) / 2 - padding, 0)
+        let halfH: CGFloat = max((viewportSize.height - cardSize.height) / 2 - padding, 0)
+        let offset = CGSize(
+            width: halfW > 0 ? CGFloat.random(in: (-halfW)...halfW) : 0,
+            height: halfH > 0 ? CGFloat.random(in: (-halfH)...halfH) : 0
+        )
+        addCard(offset: offset)
     }
 
-    private func addCardAtCenter() {
-        addCardFromDeck(initialOffset: .zero)
+    private func addCard(offset: CGSize) {
+        guard let card = makeCard(offset: offset) else { return }
+        cards.append(card)
+        currentIndex = cards.count - 1
     }
 
     private func refreshCard(at index: Int) {
