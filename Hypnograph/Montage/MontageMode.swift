@@ -147,7 +147,7 @@ final class MontageMode: ObservableObject, HypnographMode {
         guard activeCount < state.maxLayers else { return }
 
         state.selectLayer(index: activeCount)
-        _ = state.nextCandidateForcurrentSource()
+        _ = state.nextCandidateForCurrentSource()
         soloLayerIndex = nil
         persistentSoloIndex = nil
     }
