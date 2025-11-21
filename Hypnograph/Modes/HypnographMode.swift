@@ -56,14 +56,18 @@ protocol HypnographMode: AnyObject {
         renderQueue: RenderQueue
     ) -> [HUDItem]
 
-    /// Mode-specific commands for the menu.
+    /// Mode-specific Composition commands for the menu.
     /// Returns an array of ModeCommands that will be added to the "Current" menu.
-    func modeCommands() -> [ModeCommand]
+    func compositionCommands() -> [ModeCommand]
+
+    /// Mode-specific Source commands for the menu.
+    /// Returns an array of ModeCommands that will be added to the "Current" menu.
+    func sourceCommands() -> [ModeCommand]
 
     // MARK: - Hypnogram lifecycle
 
     /// Create a new random setup for this mode.
-    func newRandomHypnogram()
+    func new()
 
     /// Save / render the current hypnogram using the mode's queue.
     func saveCurrentHypnogram()

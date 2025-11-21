@@ -67,11 +67,15 @@ final class DivineMode: ObservableObject, HypnographMode {
         ]
     }
 
-    func modeCommands() -> [ModeCommand] { [] }
+    func compositionCommands() -> [ModeCommand] {
+        return []
+    }
 
-    // MARK: Lifecycle
+    func sourceCommands() -> [ModeCommand] {
+        return []
+    }    // MARK: Lifecycle
 
-    func newRandomHypnogram() {
+    func new() {
         withAnimation(.easeInOut) {
             dealCards()
         }
@@ -307,7 +311,9 @@ struct DivineView: View {
                             player: playerProvider(card.id)
                         )
                         .offset(card.offset)
-                        .frame(width: cardWidth, height: cardHeight)
+                        // TODO:  A hack because I can't seem  to figure out
+                        // how to just have this be an open frame
+                        .frame(width: cardWidth, height: cardHeight + 100)
                         .contentShape(Rectangle())
                         .onTapGesture {
                             onTap(idx)
@@ -367,11 +373,9 @@ struct DivineView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(Color.white, lineWidth: 12)
-                    .padding(12)
             )
             .rotation3DEffect(.degrees(card.isRevealed ? 0 : 180), axis: (x: 0, y: 1, z: 0))
             .animation(.easeInOut, value: card.isRevealed)
-            .padding(12)
             .shadow(color: Color.black.opacity(0.5), radius: 6, x: 0, y: 4)
         }
     }

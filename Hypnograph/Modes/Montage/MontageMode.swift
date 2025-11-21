@@ -119,9 +119,11 @@ final class MontageMode: ObservableObject, HypnographMode {
         return items
     }
 
-    func modeCommands() -> [ModeCommand] {
-        // Only Montage-specific commands
-        // Global commands (navigation, candidates, etc.) are in HypnographApp
+    func compositionCommands() -> [ModeCommand] {
+        return []
+    }
+
+    func sourceCommands() -> [ModeCommand] {
         return [
             ModeCommand(title: "Cycle Blend Mode", key: "m") { [weak self] in
                 self?.cycleEffect()
@@ -136,7 +138,7 @@ final class MontageMode: ObservableObject, HypnographMode {
 
     // MARK: - HypnographMode – engine behavior
 
-    func newRandomHypnogram() {
+    func new() {
         soloLayerIndex = nil
         persistentSoloIndex = nil
         state.newAutoPrimeSet()
