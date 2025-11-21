@@ -1,10 +1,21 @@
 Divine Mode:
 
-- when the video is played and paused, not just played through, the paused frame becomes the new face of the card
-- card should not flip over after video is done playing
-- zoom should be centered from the point of zoom rather than the center of the view
-- i need some way to save these card layouts for this Divine mode
+Current project;
+
+- When the video is played and paused, not just played through, the paused frame becomes the new face of the card
+
+- Card should not flip over after video is done playing, it currently does
+
+- Zoom should be centered from the point of zoom rather than the center of the view
+
+After this:
+
 - two finger drag to move the canvas around would be a very helpuful compliment to the pinch to zoom, add that
+- I want a flag in the code like we have for card borders to turn on/off the card back. Card back is on by default but when it is off it would just immediately show the cards turned over and deactivate any sort of flipping them to the back. 
+
+
+
+- i need some way to save these card layouts for this Divine mode
 
 - related hotkey commands which should be added to the Mode commands/hud: 
 "Arrow keys = Move current card"

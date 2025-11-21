@@ -22,6 +22,7 @@ final class DivineMode: ObservableObject, HypnographMode {
         var rotationQuarterTurns: Int = 0
         var offset: CGSize
         var dragOffset: CGSize
+        var lastSnapshotTime: CMTime?
     }
 
     private let state: HypnogramState
@@ -196,22 +197,24 @@ final class DivineMode: ObservableObject, HypnographMode {
 
         switch (card.isRevealed, card.isPlaying) {
         case (false, _):
-            // Face-down → reveal still
+            // Face-down → reveal still using last snapshot if available
+            let snapshotTime = card.lastSnapshotTime ?? card.clip.startTime
+            if card.cgImage == nil, let image = snapshot(for: card.clip, at: snapshotTime) {
+                card.cgImage = image
+            }
             card.isRevealed = true
             card.isPlaying = false
             player?.pause()
-            if let p = player { seek(p, to: card.clip.startTime) }
         case (true, false):
-            // Face-up still → flip back down
+            // Face-up still → flip back down (keep snapshot/time)
             card.isRevealed = false
             card.isPlaying = false
             player?.pause()
-            if let p = player { seek(p, to: card.clip.startTime) }
         case (true, true):
             // Playing → pause and update snapshot, stay revealed
             player?.pause()
-            if let p = player { seek(p, to: p.currentTime()) }
             let snapshotTime = player?.currentTime() ?? card.clip.startTime
+            card.lastSnapshotTime = snapshotTime
             if let image = snapshot(for: card.clip, at: snapshotTime) {
                 card.cgImage = image
             }
@@ -281,8 +284,10 @@ final class DivineMode: ObservableObject, HypnographMode {
             isRevealed: false,
             isPlaying: false,
             isFlipped: flipped,
+            rotationQuarterTurns: 0,
             offset: offset,
-            dragOffset: .zero
+            dragOffset: .zero,
+            lastSnapshotTime: clip.startTime
         )
     }
 
@@ -334,8 +339,17 @@ final class DivineMode: ObservableObject, HypnographMode {
             player?.pause()
             if let idx = self.cards.firstIndex(where: { $0.id == card.id }) {
                 var updated = self.cards[idx]
+                // Use first frame as face after playback completes.
+                let startTime = updated.clip.startTime
+                if let image = self.snapshot(for: updated.clip, at: startTime) {
+                    updated.cgImage = image
+                }
+                updated.lastSnapshotTime = updated.clip.startTime
                 updated.isPlaying = false
-                updated.isRevealed = false
+                updated.isRevealed = true
+                if let p = player {
+                    self.seek(p, to: startTime)
+                }
                 self.cards[idx] = updated
             }
         }

@@ -15,9 +15,12 @@ public struct DivineView: View {
     let playerProvider: (UUID) -> AVPlayer?
 
     private let cornerRadius: CGFloat = 12
-    private let showBorders: Bool = false
+    private let showBorders: Bool = true
     @State private var baseScale: CGFloat = 1.0
     @State private var sceneScale: CGFloat = 1.0
+    @State private var pinchAnchor: UnitPoint = .center
+    @State private var isZooming: Bool = false
+    @State private var pinchLocation: CGPoint = .zero
 
     public var body: some View {
         GeometryReader { geo in
@@ -63,15 +66,25 @@ public struct DivineView: View {
                 .onChange(of: geo.size) { newSize in
                     onLayoutUpdate(newSize, layoutSizes(for: newSize, count: cards.count))
                 }
-                .scaleEffect(sceneScale)
-                .gesture(magnificationGesture())
+                .scaleEffect(sceneScale, anchor: pinchAnchor)
+                .gesture(magnificationGesture(viewSize: geo.size))
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            pinchLocation = value.location
+                            guard isZooming else { return }
+                            pinchAnchor = anchorPoint(for: value.location, in: geo.size)
+                        }
+                )
         }
         .background(Color.black)
     }
 
-    private func magnificationGesture() -> some Gesture {
+    private func magnificationGesture(viewSize: CGSize) -> some Gesture {
         MagnificationGesture()
             .onChanged { value in
+                isZooming = true
+                pinchAnchor = anchorPoint(for: pinchLocation, in: viewSize)
                 let adjusted = 1 + (value - 1) * 0.3
                 sceneScale = max(0.5, min(baseScale * adjusted, 3.0))
             }
@@ -79,6 +92,7 @@ public struct DivineView: View {
                 let adjusted = 1 + (value - 1) * 0.3
                 sceneScale = max(0.5, min(baseScale * adjusted, 3.0))
                 baseScale = sceneScale
+                isZooming = false
             }
     }
 
@@ -89,6 +103,12 @@ public struct DivineView: View {
         let clampedWidth = min(max(rawWidth, 260), 420)
         let cardHeight = min(geoSize.height * 0.75, clampedWidth * 1.5)
         return CGSize(width: clampedWidth, height: cardHeight)
+    }
+
+    private func anchorPoint(for location: CGPoint, in size: CGSize) -> UnitPoint {
+        let x = max(0, min(1, location.x / size.width))
+        let y = max(0, min(1, location.y / size.height))
+        return UnitPoint(x: x, y: y)
     }
 }
 
