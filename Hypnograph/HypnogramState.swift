@@ -67,7 +67,7 @@ public final class HypnogramState: ObservableObject {
         self.selectedClips     = Array(repeating: nil, count: layers)
         self.layerBlendIndices = Array(repeating: 0,  count: layers)
 
-        _ = nextCandidateForcurrentSource()
+        _ = nextCandidateForCurrentSource()
 
         if settings.autoPrime {
             autoPrimeNow()
@@ -132,7 +132,7 @@ public final class HypnogramState: ObservableObject {
     public func nextCandidate() {
         noteUserInteraction()
         currentCandidateStartOverride = nil
-        _ = nextCandidateForcurrentSource()
+        _ = nextCandidateForCurrentSource()
     }
 
     public func acceptCandidate() {
@@ -212,14 +212,14 @@ public final class HypnogramState: ObservableObject {
         currentSourceIndex = 0
         currentCandidateStartOverride = nil
 
-        _ = nextCandidateForcurrentSource()
+        _ = nextCandidateForCurrentSource()
     }
 
     // MARK: - Core actions (lower-level, used internally)
 
     /// Get a new random candidate for the current layer.
     @discardableResult
-    public func nextCandidateForcurrentSource() -> VideoClip? {
+    public func nextCandidateForCurrentSource() -> VideoClip? {
         guard let clip = library.randomClip(clipLength: settings.outputDuration.seconds) else {
             return nil
         }
@@ -274,7 +274,7 @@ public final class HypnogramState: ObservableObject {
             layerBlendIndices[nextLayerIndex] = currentBlendIndex
 
             currentSourceIndex = nextLayerIndex
-            _ = nextCandidateForcurrentSource()
+            _ = nextCandidateForCurrentSource()
         } else {
             // All layers have selected clips; ready to render.
         }
@@ -361,7 +361,7 @@ public final class HypnogramState: ObservableObject {
             selectedClips = [nil]
             layerBlendIndices = [0]
             currentSourceIndex = 0
-            _ = nextCandidateForcurrentSource()
+            _ = nextCandidateForCurrentSource()
             return
         }
 
@@ -396,7 +396,7 @@ public final class HypnogramState: ObservableObject {
         currentSourceIndex = 0
         currentCandidateStartOverride = nil
 
-        _ = nextCandidateForcurrentSource()
+        _ = nextCandidateForCurrentSource()
 
         autoPrimeTimer?.invalidate()
         autoPrimeTimer = nil
