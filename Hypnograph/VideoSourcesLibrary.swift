@@ -13,6 +13,7 @@ public final class VideoSourcesLibrary {
             // Explicit folders / files → current behavior
             loadFiles(from: sourceFolders)
         }
+        applyExclusions()
     }
 
     // MARK: - File system sources
@@ -70,6 +71,7 @@ public final class VideoSourcesLibrary {
         }
 
         self.files = results
+        applyExclusions()
     }
 
     // MARK: - Photos library fallback (raw originals scan)
@@ -157,5 +159,17 @@ public final class VideoSourcesLibrary {
             startTime: CMTime(seconds: startSeconds, preferredTimescale: 600),
             duration: CMTime(seconds: length, preferredTimescale: 600)
         )
+    }
+
+    private func applyExclusions() {
+        let store = ExclusionStore.shared
+        files.removeAll { store.isExcluded(url: $0.url) }
+    }
+
+    // MARK: - Exclusions
+
+    public func exclude(file: VideoFile) {
+        ExclusionStore.shared.add(url: file.url)
+        files.removeAll { $0.url == file.url }
     }
 }

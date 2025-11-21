@@ -92,8 +92,9 @@ struct MontageCompositionBuilder {
                 continue
             }
 
-            // Preserve original orientation
-            compVideoTrack.preferredTransform = srcVideoTrack.preferredTransform
+            // Keep composition tracks untransformed; apply orientation + user transform downstream.
+            let baseTransform = srcVideoTrack.preferredTransform
+            compVideoTrack.preferredTransform = .identity
 
             var insertTime: CMTime = .zero
             var remainingSeconds = targetSeconds
@@ -145,8 +146,9 @@ struct MontageCompositionBuilder {
                 blendModes.append(layer.blendMode.ciFilterName)
             }
 
-            // Preserve the original track's orientation transform
-            transforms.append(srcVideoTrack.preferredTransform)
+            // Orientation (base) + user transform combined; applied in compositor
+            let finalTransform = srcVideoTrack.preferredTransform.concatenating(layer.transform)
+            transforms.append(finalTransform)
 
             // --- Audio mirroring (same looping semantics) ---
 

@@ -113,10 +113,12 @@ public struct BlendMode {
 public struct HypnogramLayer {
     public let clip: VideoClip
     public let blendMode: BlendMode
+    public let transform: CGAffineTransform
 
-    public init(clip: VideoClip, blendMode: BlendMode) {
+    public init(clip: VideoClip, blendMode: BlendMode, transform: CGAffineTransform = .identity) {
         self.clip = clip
         self.blendMode = blendMode
+        self.transform = transform
     }
 }
 
