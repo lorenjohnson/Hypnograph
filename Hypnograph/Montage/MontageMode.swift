@@ -14,8 +14,8 @@ final class MontageMode: ObservableObject, HypnographMode {
     /// Render queue + backend for this mode.
     let renderQueue: RenderQueue
 
-    /// If set, preview only this layer (solo).
-    /// `nil` = normal multi-layer preview.
+    /// If set, preview only this source (solo).
+    /// `nil` = normal multi-source preview.
     @Published private(set) var soloLayerIndex: Int? = nil
     private var persistentSoloIndex: Int? = nil
     private var soloPulseWorkItem: DispatchWorkItem?
@@ -52,23 +52,23 @@ final class MontageMode: ObservableObject, HypnographMode {
 
     // MARK: - Preview / solo
 
-    /// Returns layers for display along with their original indices
-    private func layersForDisplay(using state: HypnogramState) -> (layers: [HypnogramLayer], sourceIndices: [Int]) {
-        let all = state.layers
+    /// Returns sources for display along with their original indices
+    private func sourcesForDisplay(using state: HypnogramState) -> (sources: [HypnogramSource], sourceIndices: [Int]) {
+        let all = state.sources
 
         if let solo = soloLayerIndex {
             guard solo >= 0, solo < all.count else {
                 return (all, Array(0..<all.count))
             }
-            // Solo mode: return only the soloed layer with its original index
+            // Solo mode: return only the soloed source with its original index
             return ([all[solo]], [solo])
         } else {
-            // Normal mode: all layers with sequential indices
+            // Normal mode: all sources with sequential indices
             return (all, Array(0..<all.count))
         }
     }
 
-    /// Solo the current layer (or clear solo if already soloed).
+    /// Solo the current source (or clear solo if already soloed).
     func toggleSoloCurrentSource() {
         let idx = state.currentSourceIndex
         if persistentSoloIndex == idx {
@@ -86,10 +86,10 @@ final class MontageMode: ObservableObject, HypnographMode {
         state: HypnogramState,
         renderQueue: RenderQueue
     ) -> AnyView {
-        let (layers, sourceIndices) = layersForDisplay(using: state)
+        let (sources, sourceIndices) = sourcesForDisplay(using: state)
         return AnyView(
             MontageView(
-                layers: layers,
+                sources: sources,
                 sourceIndices: sourceIndices,
                 currentSourceTime: Binding(
                     get: { state.currentCandidateStartOverride },
@@ -107,7 +107,7 @@ final class MontageMode: ObservableObject, HypnographMode {
     ) -> [HUDItem] {
         var items: [HUDItem] = [
             // Source/Layer-specific status (order 25-29 range)
-            .text("Source \(state.currentSourceIndex + 1) of \(state.activeLayerCount)", order: 25),
+            .text("Source \(state.currentSourceIndex + 1) of \(state.activeSourceCount)", order: 25),
             .text("Blend mode: \(state.currentBlendModeName)", order: 26),
             .text("Source Effect: \(sourceEffectName)", order: 27),
         ]
@@ -143,22 +143,22 @@ final class MontageMode: ObservableObject, HypnographMode {
     }
 
     func addSource() {
-        let activeCount = state.activeLayerCount
-        guard activeCount < state.maxLayers else { return }
+        let activeCount = state.activeSourceCount
+        guard activeCount < state.maxSources else { return }
 
-        state.selectLayer(index: activeCount)
+        state.selectSource(index: activeCount)
         _ = state.nextCandidateForCurrentSource()
         soloLayerIndex = nil
         persistentSoloIndex = nil
     }
 
     func saveCurrentHypnogram() {
-        guard let recipe = state.layersForRender() else {
+        guard let recipe = state.sourcesForRender() else {
             print("renderCurrentHypnogram(): no renderable hypnogram (no selected clips).")
             return
         }
 
-        print("renderCurrentHypnogram(): enqueuing recipe with \(recipe.layers.count) layer(s).")
+        print("renderCurrentHypnogram(): enqueuing recipe with \(recipe.sources.count) source(s).")
         renderQueue.enqueue(recipe: recipe)
 
         state.resetForNextHypnogram()
@@ -173,28 +173,28 @@ final class MontageMode: ObservableObject, HypnographMode {
     // Source navigation
 
     func nextSource() {
-        let activeCount = state.activeLayerCount
+        let activeCount = state.activeSourceCount
         guard activeCount > 0 else { return }
         let nextIndex = min(activeCount - 1, state.currentSourceIndex + 1)
-        selectLayer(index: nextIndex, pulse: true)
+        selectSource(index: nextIndex, pulse: true)
     }
 
     func previousSource() {
-        let activeCount = state.activeLayerCount
+        let activeCount = state.activeSourceCount
         guard activeCount > 0 else { return }
         let prevIndex = max(0, state.currentSourceIndex - 1)
-        selectLayer(index: prevIndex, pulse: true)
+        selectSource(index: prevIndex, pulse: true)
     }
 
     func selectSource(index: Int) {
-        let activeCount = state.activeLayerCount
+        let activeCount = state.activeSourceCount
         guard activeCount > 0 else { return }
         let clamped = max(0, min(activeCount - 1, index))
-        selectLayer(index: clamped, pulse: true)
+        selectSource(index: clamped, pulse: true)
     }
 
-    private func selectLayer(index: Int, pulse: Bool) {
-        state.selectLayer(index: index)
+    private func selectSource(index: Int, pulse: Bool) {
+        state.selectSource(index: index)
 
         // If persistent solo is enabled, keep it aligned to selection.
         if persistentSoloIndex != nil {
@@ -264,7 +264,7 @@ final class MontageMode: ObservableObject, HypnographMode {
         state.renderHooks.setGlobalEffect(nil)
 
         // Clear all per-source effects
-        for i in 0..<state.maxLayers {
+        for i in 0..<state.maxSources {
             state.renderHooks.setSourceEffect(nil, for: i)
         }
 

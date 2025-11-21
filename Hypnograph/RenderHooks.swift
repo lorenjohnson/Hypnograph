@@ -173,7 +173,7 @@ final class RenderHookManager {
     /// Global effect applied to the final composed image
     private var globalEffect: RenderHook?
 
-    /// Per-source effects (indexed by layer/source index)
+    /// Per-source effects (indexed by source index)
     private var sourceEffects: [Int: RenderHook] = [:]
 
     // MARK: - Global Effect

@@ -27,15 +27,15 @@ struct MontageCompositionBuilder {
         case noValidVideoTracks
     }
 
-    /// Build an AVMutableComposition (video + audio) from hypnogram layers,
+    /// Build an AVMutableComposition (video + audio) from hypnogram sources,
     /// looping clips as needed to fill `targetDuration`.
     ///
     /// This is the *single* source of truth used by both preview + export.
     static func build(
-        layers: [HypnogramLayer],
+        sources: [HypnogramSource],
         targetDuration: CMTime
     ) throws -> Result {
-        guard !layers.isEmpty else {
+        guard !sources.isEmpty else {
             throw BuildError.emptyLayers
         }
 
@@ -65,20 +65,20 @@ struct MontageCompositionBuilder {
             insertTime = insertTime + duration
         }
 
-        // One track per layer, looped to fill `targetDuration`.
-        for (index, layer) in layers.enumerated() {
-            let clip  = layer.clip
+        // One track per source, looped to fill `targetDuration`.
+        for (index, source) in sources.enumerated() {
+            let clip  = source.clip
             let asset = AVAsset(url: clip.file.url)
 
             guard let srcVideoTrack = asset.tracks(withMediaType: .video).first else {
-                print("CompositionBuilder: layer \(index) has no video track; skipping")
+                print("CompositionBuilder: source \(index) has no video track; skipping")
                 continue
             }
 
             let fileDuration = asset.duration
             let fileSeconds  = fileDuration.seconds
             if fileSeconds <= 0 {
-                print("CompositionBuilder: layer \(index) has non-positive duration; skipping")
+                print("CompositionBuilder: source \(index) has non-positive duration; skipping")
                 continue
             }
 
@@ -88,7 +88,7 @@ struct MontageCompositionBuilder {
                 withMediaType: .video,
                 preferredTrackID: trackID
             ) else {
-                print("CompositionBuilder: failed to add video track for layer \(index)")
+                print("CompositionBuilder: failed to add video track for source \(index)")
                 continue
             }
 
@@ -132,22 +132,22 @@ struct MontageCompositionBuilder {
                     remainingSeconds -= segmentSeconds
                 }
             } catch {
-                print("CompositionBuilder: failed to insert video segments for layer \(index): \(error)")
+                print("CompositionBuilder: failed to insert video segments for source \(index): \(error)")
                 continue
             }
 
             // Track ID for compositor
             videoTrackIDs.append(compVideoTrack.trackID)
 
-            // Per-layer blend mode: base layer is always source-over, others use CI filter.
+            // Per-source blend mode: base source is always source-over, others use CI filter.
             if index == 0 {
                 blendModes.append("CISourceOverCompositing")
             } else {
-                blendModes.append(layer.blendMode.ciFilterName)
+                blendModes.append(source.blendMode.ciFilterName)
             }
 
             // Orientation (base) + user transform combined; applied in compositor
-            let finalTransform = srcVideoTrack.preferredTransform.concatenating(layer.transform)
+            let finalTransform = srcVideoTrack.preferredTransform.concatenating(source.transform)
             transforms.append(finalTransform)
 
             // --- Audio mirroring (same looping semantics) ---
@@ -185,13 +185,13 @@ struct MontageCompositionBuilder {
                             audioRemainingSeconds -= seg
                         }
                     } catch {
-                        print("CompositionBuilder: failed to insert audio segments for layer \(index): \(error)")
+                        print("CompositionBuilder: failed to insert audio segments for source \(index): \(error)")
                     }
                 } else {
-                    print("CompositionBuilder: failed to add audio track for layer \(index)")
+                    print("CompositionBuilder: failed to add audio track for source \(index)")
                 }
             } else {
-                // fine: no audio on this layer
+                // fine: no audio on this source
             }
         }
 

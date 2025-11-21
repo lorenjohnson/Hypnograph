@@ -112,7 +112,7 @@ struct HypnographApp: App {
                     "difference",
                     "exclusion"
                 ],
-                maxLayers: 3,
+                maxSources: 3,
                 outputFolder: "~/Movies/Hypnograph/Renders",
                 outputHeight: 1080,
                 outputSeconds: 30,

@@ -1,3 +1,20 @@
+maxSources → maxSources
+activeSourceCount → activeSourceCount
+layers → layers
+layersForRender → sourcesForRender
+sourceBlendIndices → sourceBlendIndices
+sourceTransforms → sourceTransforms (if present)
+currentLayerIndex → currentSourceIndex (Montage already uses this)
+nextSource → nextSource
+prevSource → prevSource
+selectSource → selectSource
+goBackOneSource → goBackOneSource
+primeRandomSources → primeRandomSources
+nextCandidateForCurrentSource → nextCandidateForCurrentSource
+acceptCandidateForCurrentSource → acceptCandidateForCurrentSource
+cycleBlendModeForCurrentSource → cycleBlendModeForCurrentSource
+
+
 
 - Not paying attention to outputHeight, Width from settings file
 - 
@@ -21,7 +38,7 @@
 
 ---
 
-Refactor so Hypnogram sources are abvoe Mode in a/the state object:
+Refactor so Hypnogram curent sources selections are stored in Session above Mode in a/the state object?
 
 Right now each mode owns its own “current source” data, so there isn’t a single object that can both identify the current clip and replace it:
 

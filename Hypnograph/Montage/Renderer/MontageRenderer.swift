@@ -30,7 +30,7 @@ final class MontageRenderer: HypnogramRenderer {
 
     private func render(recipe: HypnogramRecipe, completion: @escaping (Result<URL, Error>) -> Void) {
         // 1. Basic sanity check
-        guard !recipe.layers.isEmpty else {
+        guard !recipe.sources.isEmpty else {
             let err = NSError(
                 domain: "MontageRenderer",
                 code: 1,
@@ -54,13 +54,13 @@ final class MontageRenderer: HypnogramRenderer {
             return
         }
 
-        print("MontageRenderer: rendering recipe with \(recipe.layers.count) layer(s), target duration \(targetSeconds)s")
+        print("MontageRenderer: rendering recipe with \(recipe.sources.count) source(s), target duration \(targetSeconds)s")
 
         // 2. Build composition via shared builder (same as preview)
         let buildResult: MontageCompositionBuilder.Result
         do {
             buildResult = try MontageCompositionBuilder.build(
-                layers: recipe.layers,
+                sources: recipe.sources,
                 targetDuration: targetDuration
             )
         } catch {

@@ -12,7 +12,6 @@ import CoreMedia
 /// Sequence mode: Select multiple clips with random durations (2-15s each)
 /// that play one after another in sequence until the total duration equals targetDuration.
 /// Navigate between clips with arrow keys or 1-5 keys. Global and per-source effects still apply.
-/// Compatible with HypnogramRecipe by creating a single-layer recipe for each clip.
 final class SequenceMode: ObservableObject, HypnographMode {
 
     /// Shared session state
@@ -116,13 +115,13 @@ final class SequenceMode: ObservableObject, HypnographMode {
         }
 
         // Convert sequence clips to HypnogramRecipe format
-        // Each clip becomes a single-layer recipe that will be concatenated during rendering
-        let layers = sequenceClips.map { clip in
-            HypnogramLayer(clip: clip, blendMode: BlendMode(key: "normal"))
+        // Each clip becomes a single- source that will be concatenated during rendering
+        let sources = sequenceClips.map { clip in
+            HypnogramSource(clip: clip, blendMode: BlendMode(key: "normal"))
         }
 
         let recipe = HypnogramRecipe(
-            layers: layers,
+            sources: sources,
             targetDuration: totalDuration  // Use actual total duration of all clips
         )
 

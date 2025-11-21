@@ -81,7 +81,7 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
             let trackIDs      = instruction.layerTrackIDs
             let modes         = instruction.blendModes
             let sourceIndices = instruction.sourceIndices
-            let transforms    = instruction.layerTransforms
+            let transforms    = instruction.sourceTransforms
 
             // Gather CIImages for all available source frames in order.
             var images: [CIImage] = []

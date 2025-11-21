@@ -109,8 +109,8 @@ public struct BlendMode {
     }
 }
 
-/// One layer of a hypnogram: a clip + its blend mode.
-public struct HypnogramLayer {
+/// One source of a hypnogram: a clip + its blend mode.
+public struct HypnogramSource {
     public let clip: VideoClip
     public let blendMode: BlendMode
     public let transform: CGAffineTransform
@@ -122,14 +122,14 @@ public struct HypnogramLayer {
     }
 }
 
-/// A complete “hypnogram” recipe: ordered layers of clip + blend mode
+/// A complete “hypnogram” recipe: ordered sources of clip + blend mode
 /// plus the target render duration for the composition.
 public struct HypnogramRecipe {
-    public let layers: [HypnogramLayer]
+    public let sources: [HypnogramSource]
     public let targetDuration: CMTime
 
-    public init(layers: [HypnogramLayer], targetDuration: CMTime) {
-        self.layers = layers
+    public init(sources: [HypnogramSource], targetDuration: CMTime) {
+        self.sources = sources
         self.targetDuration = targetDuration
     }
 }

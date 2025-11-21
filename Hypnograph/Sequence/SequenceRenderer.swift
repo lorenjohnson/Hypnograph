@@ -23,7 +23,7 @@ final class SequenceRenderer: HypnogramRenderer {
     }
     
     func enqueue(recipe: HypnogramRecipe, completion: @escaping (Result<URL, Error>) -> Void) {
-        // In Sequence mode, each layer represents a clip to be played sequentially
+        // In Sequence mode, each source represents a clip to be played sequentially
         DispatchQueue.global(qos: .userInitiated).async {
             self.renderSequence(recipe: recipe, completion: completion)
         }
@@ -36,7 +36,7 @@ final class SequenceRenderer: HypnogramRenderer {
 
     private func renderSequence(recipe: HypnogramRecipe, completion: @escaping (Result<URL, Error>) -> Void) {
 
-        guard !recipe.layers.isEmpty else {
+        guard !recipe.sources.isEmpty else {
             let err = NSError(
                 domain: "SequenceRenderer",
                 code: 2,
@@ -47,9 +47,9 @@ final class SequenceRenderer: HypnogramRenderer {
             return
         }
 
-        print("SequenceRenderer: rendering sequence with \(recipe.layers.count) clip(s)")
+        print("SequenceRenderer: rendering sequence with \(recipe.sources.count) clip(s)")
 
-        // Build composition by concatenating clips (each layer is one clip in the sequence)
+        // Build composition by concatenating clips (each source is one clip in the sequence)
         let composition = AVMutableComposition()
 
         guard let videoTrack = composition.addMutableTrack(
@@ -74,8 +74,8 @@ final class SequenceRenderer: HypnogramRenderer {
         var currentTime = CMTime.zero
         var instructions: [AVVideoCompositionInstructionProtocol] = []
 
-        for (index, layer) in recipe.layers.enumerated() {
-            let clip = layer.clip
+        for (index, source) in recipe.sources.enumerated() {
+            let clip = source.clip
             let asset = AVURLAsset(url: clip.file.url)
 
             guard let sourceVideoTrack = asset.tracks(withMediaType: .video).first else {

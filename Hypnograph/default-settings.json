@@ -4,7 +4,7 @@
   "sourceFolders": [
     "~/Movies/Hypnograph/sources"
   ],
-  "maxLayers": 5,
+  "maxSources": 5,
   "blendModes": [
     "screen",
     "overlay",
