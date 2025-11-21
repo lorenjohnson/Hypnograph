@@ -13,7 +13,5 @@
   - Can I have the App add a Finder action 
 - Video favorites list
 
-
 - Review saving recipe / source bundle for Hypnogram
 - Use same videos in both Montage and Sequence mode, so that switching between them doesn't change the source
-
