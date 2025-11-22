@@ -1,6 +1,15 @@
 Divine Mode:
 
+Cmd-Left/Right Arrow keys = Rotate current card"
+"Zoom = Cmd-+/-" 
+"Z = Zoom to fit" 
+
+
 - two finger drag to move the canvas around would be a very helpuful compliment to the pinch to zoom, add that
+
+
+----
+
 - I want a flag in the code like we have for card borders to turn on/off the card back. Card back is on by default but when it is off it would just immediately show the cards turned over and deactivate any sort of flipping them to the back. 
 
 - i need some way to save these card layouts for this Divine mode
@@ -8,19 +17,16 @@ Divine Mode:
 - related hotkey commands which should be added to the Mode commands/hud: 
 
 "Arrow keys = Move current card"
-Cmd-Lef/Right Arrow keys = Rotate current card"
-"Zoom = Cmd-+/-" 
-"Z = Zoom to fit" 
 
 ---
 
-
-
-- Not paying attention to outputHeight, Width from settings file
-- 
-- Video should not switch when actively working on it. Double check autoPrime setting snd timer, and maybe turn off by default in my settings but make sure there is a hotkey for enabling it
+- outputHeight / width are currently ignored from settings file
+- Saving in Sequence Mode isn't working
+- Divine Mode is shwowing Sequence Mode in the HUD header
+- Sort-out AutoPrime: Video should not switch when actively working on it. Double check autoPrime setting snd timer, and maybe turn off by default in my settings but make sure there is a hotkey for enabling it
 
 - Ability to rotate, reposition and re-size a video! (how is this stored?)
+
   I would love to have the following feature in both Montage and Sequence:
 
   Adjust mode = Toggles on when user hit the "a" key
@@ -33,7 +39,6 @@ Cmd-Lef/Right Arrow keys = Rotate current card"
 
 - Review saving recipe / source bundle for Hypnogram
 - Use same videos in both Montage and Sequence mode, so that switching between them doesn't change the source
-
 - Why is exclude source and such not in common between modes? Same with source prep like rotations and such...
 
 ---

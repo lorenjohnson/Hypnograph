@@ -368,7 +368,7 @@ struct AppCommands: Commands {
         // Add custom Save behavior
         CommandGroup(replacing: .saveItem) {
             Button("Save") {
-                currentMode.saveCurrentHypnogram()
+                currentMode.save()
             }
             .keyboardShortcut("s", modifiers: [.command])
         }

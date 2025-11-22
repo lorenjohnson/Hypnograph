@@ -120,7 +120,7 @@ final class SequenceMode: ObservableObject, HypnographMode {
         fillSequence()
     }
     
-    func saveCurrentHypnogram() {
+    func save() {
         guard !sequenceSources.isEmpty else {
             print("SequenceMode: no sources to save")
             return
