@@ -402,9 +402,9 @@ struct AppCommands: Commands {
         }
 
         CommandMenu("Composition") {
-            let modeSourceCommands = currentMode.compositionCommands()
-            if !modeSourceCommands.isEmpty {
-                ForEach(Array(modeSourceCommands.enumerated()), id: \.offset) { _, command in
+            let modeCompositionCommands = currentMode.compositionCommands()
+            if !modeCompositionCommands.isEmpty {
+                ForEach(Array(modeCompositionCommands.enumerated()), id: \.offset) { _, command in
                     Button(command.title) {
                         command.action()
                     }
@@ -434,7 +434,7 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut(.leftArrow, modifiers: [])
 
-            ForEach(0..<state.maxSources) { idx in
+            ForEach(0..<state.maxSources, id: \.self) { idx in
                 Button("Select Source \(idx + 1)") {
                     selectOrToggleSolo(index: idx)
                 }

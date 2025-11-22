@@ -301,11 +301,6 @@ public final class HypnogramState: ObservableObject {
     public func cycleBlendModeForCurrentSource() {
         guard !blendModes.isEmpty else { return }
 
-        // Disable changing on the first source to avoid confusing "black screen" behavior.
-        guard currentSourceIndex > 0 else {
-            return
-        }
-
         var idx = sourceBlendIndices[currentSourceIndex]
         idx = (idx + 1) % blendModes.count
         sourceBlendIndices[currentSourceIndex] = idx
