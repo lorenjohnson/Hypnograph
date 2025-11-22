@@ -7,6 +7,7 @@ import CoreGraphics
 
 public struct DivineView: View {
     let cards: [DivineCard]
+    let selectedIndex: Int?
     let onTap: (UUID) -> Void
     let onLongPress: (UUID) -> Void
     let onDragChanged: (UUID, CGSize) -> Void
@@ -56,13 +57,15 @@ public struct DivineView: View {
                     ForEach(Array(cards.enumerated()), id: \.element.id) { pair in
                         let idx = pair.offset
                         let card = pair.element
+                        let isSelected = (selectedIndex == idx)
 
                         CardView(
                             card: card,
                             size: cardSize,
                             player: playerProvider(card.id),
                             showBorder: showBorders,
-                            cornerRadius: cornerRadius
+                            cornerRadius: cornerRadius,
+                            isSelected: isSelected
                         )
                         .frame(width: cardSize.width, height: cardSize.height, alignment: .center)
                         .contentShape(Rectangle())
@@ -159,6 +162,7 @@ private struct CardView: View {
     let player: AVPlayer?
     let showBorder: Bool
     let cornerRadius: CGFloat
+    let isSelected: Bool
 
     var body: some View {
         ZStack {
@@ -196,6 +200,12 @@ private struct CardView: View {
                 }
             }
         )
+        .overlay(alignment: .bottomTrailing) {
+            if isSelected {
+                BlinkingDot()
+                    .padding(8)
+            }
+        }
         .shadow(color: Color.black.opacity(0.4), radius: 6, x: 0, y: 4)
     }
 }
@@ -260,5 +270,25 @@ private struct CardPlayerView: NSViewRepresentable {
     /// AVPlayerView that forwards mouse events so SwiftUI tap/drag gestures still work.
     private final class HitTransparentPlayerView: AVPlayerView {
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    }
+}
+
+private struct BlinkingDot: View {
+    @State private var isVisible = true
+
+    var body: some View {
+        Circle()
+            .fill(Color(red: 0.6, green: 0.0, blue: 0.0))
+            .frame(width: 10, height: 10)
+            .opacity(isVisible ? 1.0 : 0.15)
+            .onAppear {
+                withAnimation(
+                    Animation
+                        .easeInOut(duration: 0.8)
+                        .repeatForever(autoreverses: true)
+                ) {
+                    isVisible.toggle()
+                }
+            }
     }
 }
