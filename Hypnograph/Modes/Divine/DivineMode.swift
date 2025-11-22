@@ -97,6 +97,9 @@ final class DivineMode: ObservableObject, HypnographMode {
                 onLayoutUpdate: { [weak self] viewport, cardSize in
                     self?.cardManager.updateLayout(viewport: viewport, cardSize: cardSize)
                 },
+                onBackgroundDoubleTap: { [weak self] offset in
+                    self?.cardManager.addCardAtOffset(offset: offset)
+                },
                 playerProvider: { [weak self] id in
                     self?.cardManager.player(forID: id)
                 },
@@ -144,7 +147,7 @@ final class DivineMode: ObservableObject, HypnographMode {
 
     func new() {
         clearTable()
-        cardManager.addCardAtRandom()
+        cardManager.addCardAtOffsetAtCenter()
     }
 
     func save() {
@@ -154,7 +157,7 @@ final class DivineMode: ObservableObject, HypnographMode {
     // MARK: - Source navigation
 
     func addSource() {
-        cardManager.addCardAtRandom()
+        cardManager.addCardAtOffsetAtCenter()
     }
 
     func nextSource() {
@@ -173,7 +176,7 @@ final class DivineMode: ObservableObject, HypnographMode {
 
     func nextCandidate() {
         // For Divine, "next candidate" = draw another card.
-        cardManager.addCardAtRandom()
+        cardManager.addCardAtOffsetAtCenter()
     }
 
     func acceptCandidate() {
