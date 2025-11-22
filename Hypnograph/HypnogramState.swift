@@ -43,7 +43,7 @@ public final class HypnogramState: ObservableObject {
     @Published public var currentCandidateStartOverride: CMTime?
 
     /// HUD visibility flag (for the overlay in ContentView).
-    @Published public var isHUDVisible: Bool = false
+    @Published public var isHUDVisible: Bool = true
 
     /// Render hooks
     let renderHooks = RenderHookManager()

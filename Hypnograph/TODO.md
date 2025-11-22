@@ -10,11 +10,10 @@ General:
 
 Divine Mode:
 
+- A new card back of my own design
 - Card rotation? Cmd-Left/Right Arrow keys OR Cmd-<squarebrackets> or CMD-R (no because its already used for reload)?
 - Long press release should stop play of video.
 - Cmd-0 should zoom to fit current cards including re-centering view to have them be in the center of the screen.
-- Don't have cards flip when they are not on top and click on them to bring them to front
 - Flag to enable/disable card backs
 - Ability to save card layouts including sources (and probably also current view state), extend HypnogramRecipe to include view state?
 - Is exclude current source working in this mode?
-

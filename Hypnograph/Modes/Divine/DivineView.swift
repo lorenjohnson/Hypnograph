@@ -212,6 +212,15 @@ private struct CardView: View {
 
 private struct CardBack: View {
     var body: some View {
+        Image("CardBack")        // name of the image set in Assets.xcassets
+            .resizable()
+            .scaledToFill()
+    }
+}
+
+// No longer used
+private struct OriginalCardBack: View {
+    var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 12)
                 .fill(
