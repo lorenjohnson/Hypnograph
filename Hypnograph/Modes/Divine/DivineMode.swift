@@ -81,6 +81,7 @@ final class DivineMode: ObservableObject, HypnographMode {
         return AnyView(
             DivineView(
                 cards: cardManager.cards,
+                selectedIndex: cardManager.cards.isEmpty ? nil : cardManager.currentIndex,
                 onTap: { [weak self] id in
                     self?.cardManager.handleTap(id: id)
                 },
