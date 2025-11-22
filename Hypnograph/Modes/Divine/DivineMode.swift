@@ -26,6 +26,15 @@ final class DivineMode: ObservableObject, HypnographMode {
     let cardManager: DivineCardManager
     private var cancellables = Set<AnyCancellable>()
 
+    // MARK: - View transform (zoom + pan) exposed to the view
+
+    @Published var sceneScale: CGFloat = 1.0
+    @Published var panOffset: CGSize = .zero
+
+    private let minZoom: CGFloat = 0.5
+    private let maxZoom: CGFloat = 3.0
+    private let zoomStep: CGFloat = 1.1
+
     init(state: HypnogramState) {
         self.state = state
         self.renderQueue = RenderQueue(renderer: DivineNoopRenderer())
@@ -50,7 +59,26 @@ final class DivineMode: ObservableObject, HypnographMode {
     var soloIndicatorText: String? { nil }
 
     func makeDisplayView(state: HypnogramState, renderQueue: RenderQueue) -> AnyView {
-        AnyView(
+        // Build bindings manually because we're not in a View context.
+        let sceneScaleBinding = Binding<CGFloat>(
+            get: { [weak self] in
+                self?.sceneScale ?? 1.0
+            },
+            set: { [weak self] newValue in
+                self?.sceneScale = newValue
+            }
+        )
+
+        let panOffsetBinding = Binding<CGSize>(
+            get: { [weak self] in
+                self?.panOffset ?? .zero
+            },
+            set: { [weak self] newValue in
+                self?.panOffset = newValue
+            }
+        )
+
+        return AnyView(
             DivineView(
                 cards: cardManager.cards,
                 onTap: { [weak self] id in
@@ -70,7 +98,9 @@ final class DivineMode: ObservableObject, HypnographMode {
                 },
                 playerProvider: { [weak self] id in
                     self?.cardManager.player(forID: id)
-                }
+                },
+                sceneScale: sceneScaleBinding,
+                panOffset: panOffsetBinding
             )
         )
     }
@@ -81,9 +111,33 @@ final class DivineMode: ObservableObject, HypnographMode {
         ]
     }
 
-    func compositionCommands() -> [ModeCommand] { [] }
+    func compositionCommands() -> [ModeCommand] {
+        [
+            ModeCommand(
+                title: "Zoom In",
+                key: "=",
+                modifiers: [.command]
+            ) { [weak self] in
+                self?.zoomInStep()
+            },
+            ModeCommand(
+                title: "Zoom Out",
+                key: "-",
+                modifiers: [.command]
+            ) { [weak self] in
+                self?.zoomOutStep()
+            },
+            ModeCommand(
+                title: "Reset View",
+                key: "0",
+                modifiers: [.command]
+            ) { [weak self] in
+                self?.resetViewTransform()
+            }
+        ]
+    }
+
     func sourceCommands() -> [ModeCommand] { [] }
-    func modeCommands() -> [ModeCommand] { [] }
 
     // MARK: - Lifecycle
 
@@ -177,9 +231,27 @@ final class DivineMode: ObservableObject, HypnographMode {
         selectSource(index: index)
     }
 
+    // MARK: - View transform helpers (zoom + pan)
+
+    private func zoomInStep() {
+        let newScale = min(sceneScale * zoomStep, maxZoom)
+        sceneScale = newScale
+    }
+
+    private func zoomOutStep() {
+        let newScale = max(sceneScale / zoomStep, minZoom)
+        sceneScale = newScale
+    }
+
+    private func resetViewTransform() {
+        sceneScale = 1.0
+        panOffset = .zero
+    }
+
     // MARK: - Internal helpers
 
     private func clearTable() {
         cardManager.reset()
+        resetViewTransform()
     }
 }

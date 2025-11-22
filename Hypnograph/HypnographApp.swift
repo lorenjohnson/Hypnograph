@@ -402,7 +402,7 @@ struct AppCommands: Commands {
         }
 
         CommandMenu("Composition") {
-            let modeSourceCommands = currentMode.sourceCommands()
+            let modeSourceCommands = currentMode.compositionCommands()
             if !modeSourceCommands.isEmpty {
                 ForEach(Array(modeSourceCommands.enumerated()), id: \.offset) { _, command in
                     Button(command.title) {

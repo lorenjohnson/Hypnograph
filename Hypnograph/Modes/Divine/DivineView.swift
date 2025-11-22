@@ -14,17 +14,19 @@ public struct DivineView: View {
     let onLayoutUpdate: (CGSize, CGSize) -> Void
     let playerProvider: (UUID) -> AVPlayer?
 
+    @Binding var sceneScale: CGFloat
+    @Binding var panOffset: CGSize
+
     private let cornerRadius: CGFloat = 12
     private let showBorders: Bool = true
 
+    // Gesture-local state
     @State private var baseScale: CGFloat = 1.0
-    @State private var sceneScale: CGFloat = 1.0
     @State private var pinchAnchor: UnitPoint = .center
     @State private var isZooming: Bool = false
     @State private var pinchLocation: CGPoint = .zero
 
-    // Canvas pan state
-    @State private var panOffset: CGSize = .zero
+    // Canvas pan drag delta (transient; panOffset is the persisted value)
     @State private var panDrag: CGSize = .zero
 
     public var body: some View {
@@ -83,8 +85,8 @@ public struct DivineView: View {
                         .zIndex(Double(idx))
                     }
                 }
-                .offset(panOffset + panDrag)                  // 👈 pan the whole canvas
-                .scaleEffect(sceneScale, anchor: pinchAnchor) // 👈 zoom the whole canvas
+                .offset(panOffset + panDrag)                  // pan the whole canvas
+                .scaleEffect(sceneScale, anchor: pinchAnchor) // zoom the whole canvas
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .background(Color.black)
@@ -111,15 +113,27 @@ public struct DivineView: View {
     private func magnificationGesture(viewSize: CGSize) -> some Gesture {
         MagnificationGesture()
             .onChanged { value in
-                isZooming = true
+                if !isZooming {
+                    isZooming = true
+                    // Start gesture from current external scale
+                    baseScale = sceneScale
+                }
                 pinchAnchor = anchorPoint(for: pinchLocation, in: viewSize)
                 let adjusted = 1 + (value - 1) * 0.3
-                sceneScale = max(0.5, min(baseScale * adjusted, 3.0))
+
+                // Match DivineMode's min/max zoom for consistency
+                let minZoom: CGFloat = 0.5
+                let maxZoom: CGFloat = 3.0
+
+                sceneScale = max(minZoom, min(baseScale * adjusted, maxZoom))
             }
             .onEnded { value in
                 let adjusted = 1 + (value - 1) * 0.3
-                sceneScale = max(0.5, min(baseScale * adjusted, 3.0))
-                baseScale = sceneScale
+
+                let minZoom: CGFloat = 0.5
+                let maxZoom: CGFloat = 3.0
+
+                sceneScale = max(minZoom, min(baseScale * adjusted, maxZoom))
                 isZooming = false
             }
     }

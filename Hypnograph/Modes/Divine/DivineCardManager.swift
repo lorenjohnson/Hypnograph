@@ -45,13 +45,20 @@ final class DivineCardManager: ObservableObject {
     }
 
     func addCardAtRandom() {
-        let padding: CGFloat = 20
-        let halfW: CGFloat = max((viewportSize.width - cardSize.width) / 2 - padding, 0)
-        let halfH: CGFloat = max((viewportSize.height - cardSize.height) / 2 - padding, 0)
-        let offset = CGSize(
-            width: halfW > 0 ? CGFloat.random(in: (-halfW)...halfW) : 0,
-            height: halfH > 0 ? CGFloat.random(in: (-halfH)...halfH) : 0
-        )
+        // Previously: Truly random around canvas but not too close to edges
+        // let padding: CGFloat = 20
+        // let halfW: CGFloat = max((viewportSize.width - cardSize.width) / 2 - padding, 0)
+        // let halfH: CGFloat = max((viewportSize.height - cardSize.height) / 2 - padding, 0)
+        // let offset = CGSize(
+        //     width: halfW > 0 ? CGFloat.random(in: (-halfW)...halfW) : 0,
+        //     height: halfH > 0 ? CGFloat.random(in: (-halfH)...halfH) : 0
+        // )
+        //
+        // Jitter radius around center (0–50px)
+        let jitter: CGFloat = 50
+        let dx = CGFloat.random(in: -jitter...jitter)
+        let dy = CGFloat.random(in: -jitter...jitter)
+        let offset = CGSize(width: dx, height: dy)   
         addCard(offset: offset)
     }
 
