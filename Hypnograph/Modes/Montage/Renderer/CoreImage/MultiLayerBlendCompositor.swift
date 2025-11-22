@@ -14,7 +14,7 @@ import Metal
 /// Custom compositor that blends multiple video tracks using CoreImage.
 /// Each source frame is orientation-corrected, aspect-fill scaled into
 /// the render size, then blended using the requested CoreImage blend filters.
-public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
+final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
 
     private let renderContextQueue = DispatchQueue(label: "MultiLayerBlendCompositor.renderContextQueue")
     private let renderingQueue     = DispatchQueue(label: "MultiLayerBlendCompositor.renderingQueue")
@@ -32,27 +32,27 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
     /// Shared compositing helper (aspect-fill + blend filters).
     private let compositor = AspectFillStackCompositor()
     
-    public var sourcePixelBufferAttributes: [String : Any]? {
+    var sourcePixelBufferAttributes: [String : Any]? {
         [
             kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)
         ]
     }
 
-    public var requiredPixelBufferAttributesForRenderContext: [String : Any] {
+    var requiredPixelBufferAttributesForRenderContext: [String : Any] {
         [
             kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)
         ]
     }
 
-    public var supportsWideColorSourceFrames: Bool { false }
+    var supportsWideColorSourceFrames: Bool { false }
 
-    public func renderContextChanged(_ newRenderContext: AVVideoCompositionRenderContext) {
+    func renderContextChanged(_ newRenderContext: AVVideoCompositionRenderContext) {
         renderContextQueue.sync {
             renderContext = newRenderContext
         }
     }
 
-    public func startRequest(_ request: AVAsynchronousVideoCompositionRequest) {
+    func startRequest(_ request: AVAsynchronousVideoCompositionRequest) {
         renderingQueue.async {
             guard
                 let instruction = request.videoCompositionInstruction as? MultiLayerBlendInstruction
@@ -199,7 +199,7 @@ public final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
         }
     }
 
-    public func cancelAllPendingVideoCompositionRequests() {
+    func cancelAllPendingVideoCompositionRequests() {
         renderingQueue.sync {
             // just drain
         }

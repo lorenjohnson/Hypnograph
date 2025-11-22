@@ -1,10 +1,14 @@
 General:
 
+- Adding a sourceFolder without any files in it causes a crash
+- Add a defatul
+- Rename sourceFolders simple to sources or "sources"? to reflect better that both files and folders are supported
 - OutputHeight / width are currently ignored from settings file (see existing "Task Difficulty ranking" chat for this)
 - General Mode domain diligence. I think there is some duplication here that can still be sorted through.
 - Saving in Sequence Mode isn't working
 - Ability to rotate, reposition and re-size a video (Adjust mode? = Toggles on when user hit the "a" key?)
 - Sort-out AutoPrime: Video should not switch when actively working on it. Double check autoPrime setting snd timer, and maybe turn off by default in my settings but make sure there is a hotkey for enabling it
+  - Rename or eliminate maxSources as it in fact is maxLayers for Montage mode and/or maxClips for Sequence mode all in the context of autoPrime
 - Finder action not installing correctly yet, explore/fix that, including identify right place to store it in project
 - "Favorite" Sources list/s maybe for use with Divine mode? Generally ability to switch between video clip libraries
 
@@ -22,6 +26,10 @@ Montage Mode:
 
 - Sensing relative brightness and contrast to pick better blend modes automatically?
 - A global reset all layers to blend mode X? 
+
+Sequence Mode:
+
+- Currently only allows maxSources of clips, and should not be limited by this
 
 Initial TestFlight Release:
 

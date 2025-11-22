@@ -5,7 +5,7 @@ import CoreGraphics
 
 // MARK: - Divine View Hierarchy
 
-public struct DivineView: View {
+struct DivineView: View {
     let cards: [DivineCard]
     let selectedIndex: Int?
     let onTap: (UUID) -> Void
@@ -22,7 +22,7 @@ public struct DivineView: View {
     @Binding var panOffset: CGSize
 
     private let cornerRadius: CGFloat = 12
-    private let showBorders: Bool = false
+    private let showBorders: Bool = true
 
     // Gesture-local state
     @State private var baseScale: CGFloat = 1.0
@@ -33,7 +33,7 @@ public struct DivineView: View {
     // Canvas pan drag delta (transient; panOffset is the persisted value)
     @State private var panDrag: CGSize = .zero
 
-    public var body: some View {
+    var body: some View {
         GeometryReader { geo in
             let cardSize = layoutSizes(for: geo.size, count: cards.count)
 

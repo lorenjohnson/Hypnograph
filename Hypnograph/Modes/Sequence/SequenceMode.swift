@@ -129,7 +129,7 @@ final class SequenceMode: ObservableObject, HypnographMode {
         // Convert sequence sources to HypnogramRecipe format
         // Each source becomes a single-source that will be concatenated during rendering
         let sources = sequenceSources.map { source in
-            HypnogramSource(clip: source, blendMode: BlendMode(key: "normal"))
+            HypnogramSource(clip: source)
         }
 
         let recipe = HypnogramRecipe(

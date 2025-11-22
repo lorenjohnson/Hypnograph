@@ -1,9 +1,10 @@
 {
   "autoPrime": true,
   "autoPrimeTimeout": 120,
-  "sourceFolders": [
-    "~/Movies/Hypnograph/sources"
-  ],
+  "sourceFolders": {
+    "default": "~/Movies/Hypnograph/sources",
+    "From Finder Helper": []
+  },
   "maxSources": 5,
   "blendModes": [
     "screen",

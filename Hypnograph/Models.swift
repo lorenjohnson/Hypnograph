@@ -11,7 +11,7 @@ import CoreMedia
 // MARK: - Mode Types
 
 /// Available mode types for the application
-public enum ModeType {
+enum ModeType {
     case montage
     case sequence
     case divine
@@ -20,12 +20,12 @@ public enum ModeType {
 // MARK: - Core Data Models
 
 /// A single video file on disk that we can select clips from.
-public struct VideoFile: Identifiable {
-    public let id: UUID
-    public let url: URL
-    public let duration: CMTime
+struct VideoFile: Identifiable {
+    let id: UUID
+    let url: URL
+    let duration: CMTime
 
-    public init(id: UUID = UUID(), url: URL, duration: CMTime) {
+    init(id: UUID = UUID(), url: URL, duration: CMTime) {
         self.id = id
         self.url = url
         self.duration = duration
@@ -33,12 +33,12 @@ public struct VideoFile: Identifiable {
 }
 
 /// A specific slice (start + length) from a VideoFile.
-public struct VideoClip {
-    public let file: VideoFile
-    public let startTime: CMTime
-    public let duration: CMTime
+struct VideoClip {
+    let file: VideoFile
+    let startTime: CMTime
+    let duration: CMTime
 
-    public init(file: VideoFile, startTime: CMTime, duration: CMTime) {
+    init(file: VideoFile, startTime: CMTime, duration: CMTime) {
         self.file = file
         self.startTime = startTime
         self.duration = duration
@@ -50,27 +50,27 @@ public struct VideoClip {
 /// derive both:
 /// - a stable key/name ("multiply") for UI / JSON
 /// - the CoreImage filter name (e.g. "CIMultiplyBlendMode") for rendering
-public struct BlendMode {
+struct BlendMode {
     /// Simple key from settings, e.g. "multiply", "softlight", "overlay".
-    public let key: String
+    let key: String
 
     /// Convenience init to keep existing `BlendMode(name: ...)` calls working.
-    public init(name: String) {
+    init(name: String) {
         self.key = name
     }
 
     /// Optional direct key-based init if you ever need it.
-    public init(key: String) {
+    init(key: String) {
         self.key = key
     }
 
     /// Name used everywhere else (UI label, JSON, etc.).
-    public var name: String {
+    var name: String {
         key
     }
 
     /// CoreImage filter name for this blend mode.
-    public var ciFilterName: String {
+    var ciFilterName: String {
         switch key.lowercased() {
         case "multiply":
             return "CIMultiplyBlendMode"
@@ -109,26 +109,33 @@ public struct BlendMode {
     }
 }
 
-/// One source of a hypnogram: a clip + its blend mode.
-public struct HypnogramSource {
-    public let clip: VideoClip
-    public let blendMode: BlendMode
-    public let transform: CGAffineTransform
+/// One source of a hypnogram: clip + optional blend mode + transform + effects.
+struct HypnogramSource {
+    var clip: VideoClip
+    var blendMode: BlendMode
+    var transform: CGAffineTransform
+    var effects: [RenderHook]
 
-    public init(clip: VideoClip, blendMode: BlendMode, transform: CGAffineTransform = .identity) {
+    init(
+        clip: VideoClip,
+        blendMode: BlendMode = BlendMode(key: "normal"),
+        transform: CGAffineTransform = .identity,
+        effects: [RenderHook] = []
+    ) {
         self.clip = clip
         self.blendMode = blendMode
         self.transform = transform
+        self.effects = effects
     }
 }
 
 /// A complete “hypnogram” recipe: ordered sources of clip + blend mode
 /// plus the target render duration for the composition.
-public struct HypnogramRecipe {
-    public let sources: [HypnogramSource]
-    public let targetDuration: CMTime
+struct HypnogramRecipe {
+    let sources: [HypnogramSource]
+    let targetDuration: CMTime
 
-    public init(sources: [HypnogramSource], targetDuration: CMTime) {
+    init(sources: [HypnogramSource], targetDuration: CMTime) {
         self.sources = sources
         self.targetDuration = targetDuration
     }
