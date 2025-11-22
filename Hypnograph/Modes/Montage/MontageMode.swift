@@ -92,8 +92,8 @@ final class MontageMode: ObservableObject, HypnographMode {
                 sources: sources,
                 sourceIndices: sourceIndices,
                 currentSourceTime: Binding(
-                    get: { state.currentCandidateStartOverride },
-                    set: { state.currentCandidateStartOverride = $0 }
+                    get: { state.currentClipTimeOffset },
+                    set: { state.currentClipTimeOffset = $0 }
                 ),
                 outputDuration: state.settings.outputDuration,
                 outputSize: state.settings.outputSize

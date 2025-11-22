@@ -12,6 +12,7 @@ struct MontageView: NSViewRepresentable {
     @Binding var currentSourceTime: CMTime?
     let outputDuration: CMTime
     let outputSize: CGSize
+    let playRate: Float = 0.8
 
     class Coordinator {
         var player: AVPlayer?
@@ -93,14 +94,14 @@ struct MontageView: NSViewRepresentable {
             ) { [weak player] _ in
                 guard let p = player else { return }
                 p.seek(to: .zero)
-                p.playImmediately(atRate: 0.8)
+                p.playImmediately(atRate: playRate)
             }
 
             player.seek(to: previousTime)
-            player.playImmediately(atRate: 0.8)
+            player.playImmediately(atRate: playRate)
         } else {
             // Same composition, just make sure it's playing.
-            c.player?.playImmediately(atRate: 0.8)
+            c.player?.playImmediately(atRate: playRate)
         }
     }
 

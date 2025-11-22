@@ -401,6 +401,37 @@ struct AppCommands: Commands {
             .keyboardShortcut("3", modifiers: [.command, .shift])
         }
 
+        CommandMenu("Source Libraries") {
+            // Prefer explicit order if present; otherwise just use keys.
+            let keys: [String] = {
+                let order = state.settings.sourceLibraryOrder
+                if !order.isEmpty {
+                    return order
+                } else {
+                    return Array(state.settings.sourceLibraries.keys).sorted()
+                }
+            }()
+
+            if keys.isEmpty {
+                Text("No libraries configured")
+                    .disabled(true)
+            } else {
+                ForEach(keys, id: \.self) { key in
+                    Button {
+                        state.toggleLibrary(key: key)
+                    } label: {
+                        Text(state.isLibraryActive(key: key) ? "✓ \(key)" : key)
+                    }
+                }
+
+                Divider()
+
+                Button("Use Default Only") {
+                    state.useOnlyDefaultLibrary()
+                }
+            }
+        }
+
         CommandMenu("Composition") {
             let modeCompositionCommands = currentMode.compositionCommands()
             if !modeCompositionCommands.isEmpty {

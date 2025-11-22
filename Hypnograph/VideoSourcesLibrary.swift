@@ -2,10 +2,10 @@ import Foundation
 import AVFoundation
 import CoreMedia
 
-public final class VideoSourcesLibrary {
-    public private(set) var files: [VideoFile] = []
+final class VideoSourcesLibrary {
+    private(set) var files: [VideoFile] = []
 
-    public init(sourceFolders: [String]) {
+    init(sourceFolders: [String]) {
         if sourceFolders.isEmpty {
             // No explicit sources → default to Photos library videos
             loadFilesFromPhotosLibrary()
@@ -144,7 +144,7 @@ public final class VideoSourcesLibrary {
 
     // MARK: - Random clip selection
 
-    public func randomClip(clipLength: Double) -> VideoClip? {
+    func randomClip(clipLength: Double) -> VideoClip? {
         guard let file = files.randomElement() else { return nil }
 
         let totalSeconds = file.duration.seconds
@@ -168,7 +168,7 @@ public final class VideoSourcesLibrary {
 
     // MARK: - Exclusions
 
-    public func exclude(file: VideoFile) {
+    func exclude(file: VideoFile) {
         ExclusionStore.shared.add(url: file.url)
         files.removeAll { $0.url == file.url }
     }
