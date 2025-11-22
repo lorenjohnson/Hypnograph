@@ -27,6 +27,7 @@ final class DivineCardManager: ObservableObject {
 
     init(state: HypnogramState) {
         self.state = state
+        addCardAtRandom()
     }
 
     // MARK: - Layout
@@ -89,12 +90,64 @@ final class DivineCardManager: ObservableObject {
         currentIndex = max(0, min(cards.count - 1, index))
     }
 
+    // MARK: - Internals
+
+    private func cardRect(for card: DivineCard) -> CGRect {
+        // Assume cards are centered in the viewport plus offset/dragOffset
+        let center = CGPoint(
+            x: viewportSize.width / 2 + card.offset.width + card.dragOffset.width,
+            y: viewportSize.height / 2 + card.offset.height + card.dragOffset.height
+        )
+
+        let origin = CGPoint(
+            x: center.x - cardSize.width / 2,
+            y: center.y - cardSize.height / 2
+        )
+
+        return CGRect(origin: origin, size: cardSize)
+    }
+
+    private func isCardOverlapped(at index: Int) -> Bool {
+        guard index >= 0 && index < cards.count else { return false }
+
+        let targetRect = cardRect(for: cards[index])
+
+        // Any later (higher z-order) card overlapping this one = overlapped.
+        for i in (index + 1)..<cards.count {
+            let otherRect = cardRect(for: cards[i])
+            if targetRect.intersects(otherRect) {
+                return true
+            }
+        }
+
+        return false
+    }
+
     // MARK: - Interaction
 
     func handleTap(id: UUID) {
         guard let idx = cards.firstIndex(where: { $0.id == id }) else { return }
-        let newIdx = bringToFront(at: idx)
-        handleTapAtIndex(newIdx)
+
+        let isOverlapped = isCardOverlapped(at: idx)
+
+        if isOverlapped {
+            // Something is on top of this card → first bring to front, do not flip.
+            _ = bringToFront(at: idx)
+            return
+        }
+
+        // Not overlapped — safe to flip.
+        // Bring to front (visually won't change because nothing covered it)
+        // but aligns z-order internally.
+        let effectiveIndex: Int
+        if idx == cards.count - 1 {
+            effectiveIndex = idx
+        } else {
+            effectiveIndex = bringToFront(at: idx)
+        }
+
+        currentIndex = effectiveIndex
+        handleTapAtIndex(effectiveIndex)
     }
 
     func handleLongPress(id: UUID) {
