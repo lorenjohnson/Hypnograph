@@ -125,10 +125,9 @@ public struct DivineView: View {
     }
 
     private func layoutSizes(for geoSize: CGSize, count: Int) -> CGSize {
-        let safeCount = max(count, 1)
-        let countCGFloat = CGFloat(safeCount)
-        let rawWidth = geoSize.width / (countCGFloat + 1)
-        let clampedWidth = min(max(rawWidth, 260), 420)
+        // Ignore `count` so card size is stable as you add/remove cards.
+        let baseWidth = geoSize.width * 0.3   // 30% of width, tweak to taste
+        let clampedWidth = min(max(baseWidth, 260), 420)
         let cardHeight = min(geoSize.height * 0.75, clampedWidth * 1.5)
         return CGSize(width: clampedWidth, height: cardHeight)
     }
