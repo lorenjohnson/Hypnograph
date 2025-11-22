@@ -68,10 +68,7 @@ final class DivineMode: ObservableObject, HypnographMode {
 
     func hudItems(state: HypnogramState, renderQueue: RenderQueue) -> [HUDItem] {
         [
-            .text("Mode: Divine", order: 25, font: .headline),
-            .text("Cards: \(cards.count)", order: 26),
             .text("Space: Clear table", order: 27),
-            .text(". : Add card at center", order: 28)
         ]
     }
 
@@ -80,9 +77,12 @@ final class DivineMode: ObservableObject, HypnographMode {
 
     // MARK: Lifecycle
 
-    func newRandomHypnogram() { clearTable() }
-    func new() { clearTable() }
-    func saveCurrentHypnogram() { print("DivineMode: save not supported.") }
+    func new() { 
+        clearTable()
+        addCardAtRandom()
+    }
+
+    func save() { print("DivineMode: save not supported.") }
 
     // MARK: Source navigation
 

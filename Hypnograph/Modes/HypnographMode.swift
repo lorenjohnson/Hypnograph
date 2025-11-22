@@ -70,7 +70,7 @@ protocol HypnographMode: AnyObject {
     func new()
 
     /// Save / render the current hypnogram using the mode's queue.
-    func saveCurrentHypnogram()
+    func save()
 
     // MARK: - Source navigation
 

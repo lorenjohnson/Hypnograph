@@ -154,7 +154,7 @@ final class MontageMode: ObservableObject, HypnographMode {
         persistentSoloIndex = nil
     }
 
-    func saveCurrentHypnogram() {
+    func save() {
         guard let recipe = state.sourcesForRender() else {
             print("renderCurrentHypnogram(): no renderable hypnogram (no selected clips).")
             return

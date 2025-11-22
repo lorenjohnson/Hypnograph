@@ -25,7 +25,15 @@ struct ContentView: View {
 
         // Header
         items.append(.text("Hypnograph", order: 10, font: .headline))
-        let modeLabel = state.currentModeType == .montage ? "Montage Mode" : "Sequence Mode"
+        var modeLabel: String
+        switch state.currentModeType {
+        case .montage:
+            modeLabel = "Montage Mode"
+        case .sequence:
+            modeLabel = "Sequence Mode"
+        case .divine:
+            modeLabel = "Divine Mode"
+        }
         items.append(.text(modeLabel, order: 11, font: .subheadline))
         items.append(.padding(8, order: 12))
 
