@@ -19,7 +19,7 @@ public struct DivineView: View {
     @Binding var panOffset: CGSize
 
     private let cornerRadius: CGFloat = 12
-    private let showBorders: Bool = true
+    private let showBorders: Bool = false
 
     // Gesture-local state
     @State private var baseScale: CGFloat = 1.0
