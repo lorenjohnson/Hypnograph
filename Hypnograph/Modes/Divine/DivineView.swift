@@ -13,6 +13,9 @@ public struct DivineView: View {
     let onDragChanged: (UUID, CGSize) -> Void
     let onDragEnded: (UUID, CGSize) -> Void
     let onLayoutUpdate: (CGSize, CGSize) -> Void
+    /// The offset is in the same coordinate convention as DivineCard.offset:
+    /// relative to the viewport center.
+    let onBackgroundDoubleTap: (CGSize) -> Void
     let playerProvider: (UUID) -> AVPlayer?
 
     @Binding var sceneScale: CGFloat
@@ -110,6 +113,13 @@ public struct DivineView: View {
                         pinchAnchor = anchorPoint(for: value.location, in: geo.size)
                     }
             )
+            .simultaneousGesture(
+                SpatialTapGesture(count: 2).onEnded { value in
+                    let offset = canvasOffset(fromScreenPoint: value.location,
+                                            in: geo.size)
+                    onBackgroundDoubleTap(offset)
+                }
+            )
         }
     }
 
@@ -154,6 +164,26 @@ public struct DivineView: View {
         let y = max(0, min(1, location.y / size.height))
         return UnitPoint(x: x, y: y)
     }
+
+    private func canvasOffset(fromScreenPoint l: CGPoint, in viewport: CGSize) -> CGSize {
+        let s = sceneScale
+        let pan = panOffset + panDrag
+
+        let anchor = CGPoint(
+            x: pinchAnchor.x * viewport.width,
+            y: pinchAnchor.y * viewport.height
+        )
+
+        // Invert the transform
+        let lMinusA = CGPoint(x: l.x - anchor.x, y: l.y - anchor.y)
+        let q = CGPoint(x: anchor.x + lMinusA.x / s,
+                        y: anchor.y + lMinusA.y / s)
+        let p = CGPoint(x: q.x - pan.width,
+                        y: q.y - pan.height)
+
+        let center = CGPoint(x: viewport.width/2, y: viewport.height/2)
+        return CGSize(width: p.x - center.x, height: p.y - center.y)
+    }
 }
 
 private struct CardView: View {
@@ -165,48 +195,50 @@ private struct CardView: View {
     let isSelected: Bool
 
     var body: some View {
-        ZStack {
-            if card.isRevealed {
-                if let player {
-                    CardPlayerView(player: player)
-                        .clipped()
-                        .allowsHitTesting(false)
-                        .rotationEffect(.degrees(card.isFlipped ? 180 : 0))
-                } else if let cg = card.cgImage {
-                    Image(decorative: cg, scale: 1.0, orientation: .up)
-                        .resizable()
-                        .scaledToFill()
-                        .clipped()
-                        .rotationEffect(.degrees(card.isFlipped ? 180 : 0))
+        ZStack(alignment: .bottomTrailing) {
+            // Rotating card content (front/back, border, shadow)
+            ZStack {
+                if card.isRevealed {
+                    if let player {
+                        CardPlayerView(player: player)
+                            .clipped()
+                            .allowsHitTesting(false)
+                    } else if let cg = card.cgImage {
+                        Image(decorative: cg, scale: 1.0, orientation: .up)
+                            .resizable()
+                            .scaledToFill()
+                            .clipped()
+                    } else {
+                        Color.black
+                            .overlay(
+                                Text("Loading...")
+                                    .foregroundColor(.white.opacity(0.7))
+                            )
+                    }
                 } else {
-                    Color.black
-                        .overlay(
-                            Text("Loading...")
-                                .foregroundColor(.white.opacity(0.7))
-                        )
-                        .rotationEffect(.degrees(card.isFlipped ? 180 : 0))
-                }
-            } else {
-                CardBack()
-            }
-        }
-        .frame(width: size.width, height: size.height)
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-        .overlay(
-            Group {
-                if showBorder {
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .stroke(Color.white, lineWidth: 12)
+                    CardBack()
                 }
             }
-        )
-        .overlay(alignment: .bottomTrailing) {
+            .frame(width: size.width, height: size.height)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+            .overlay(
+                Group {
+                    if showBorder {
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .stroke(Color.white, lineWidth: 12)
+                    }
+                }
+            )
+            .shadow(color: Color.black.opacity(0.4), radius: 6, x: 0, y: 4)
+            .rotationEffect(card.isFlipped ? Angle.degrees(180) : .degrees(0))
+
+            // Non-rotating selection indicator
             if isSelected {
                 BlinkingDot()
                     .padding(8)
             }
         }
-        .shadow(color: Color.black.opacity(0.4), radius: 6, x: 0, y: 4)
+        .frame(width: size.width, height: size.height)
     }
 }
 

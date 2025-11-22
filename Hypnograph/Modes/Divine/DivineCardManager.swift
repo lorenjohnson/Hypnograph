@@ -27,7 +27,7 @@ final class DivineCardManager: ObservableObject {
 
     init(state: HypnogramState) {
         self.state = state
-        addCardAtRandom()
+        addCardAtOffsetAtCenter()
     }
 
     // MARK: - Layout
@@ -45,7 +45,13 @@ final class DivineCardManager: ObservableObject {
         currentIndex = 0
     }
 
-    func addCardAtRandom() {
+    func addCardAtOffset(offset: CGSize) {
+        guard let card = makeCard(offset: offset) else { return }
+        cards.append(card)
+        currentIndex = cards.count - 1
+    }
+
+    func addCardAtOffsetAtCenter() {
         // Previously: Truly random around canvas but not too close to edges
         // let padding: CGFloat = 20
         // let halfW: CGFloat = max((viewportSize.width - cardSize.width) / 2 - padding, 0)
@@ -60,7 +66,7 @@ final class DivineCardManager: ObservableObject {
         let dx = CGFloat.random(in: -jitter...jitter)
         let dy = CGFloat.random(in: -jitter...jitter)
         let offset = CGSize(width: dx, height: dy)   
-        addCard(offset: offset)
+        addCardAtOffset(offset: offset)
     }
 
     func deleteCurrent() {
@@ -194,12 +200,6 @@ final class DivineCardManager: ObservableObject {
     }
 
     // MARK: - Internals
-
-    private func addCard(offset: CGSize) {
-        guard let card = makeCard(offset: offset) else { return }
-        cards.append(card)
-        currentIndex = cards.count - 1
-    }
 
     private func handleTapAtIndex(_ index: Int) {
         guard index >= 0 && index < cards.count else { return }
