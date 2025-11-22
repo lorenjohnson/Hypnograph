@@ -6,7 +6,7 @@ import CoreGraphics
 // MARK: - Divine View Hierarchy
 
 public struct DivineView: View {
-    let cards: [DivineMode.Card]
+    let cards: [DivineCard]
     let onTap: (UUID) -> Void
     let onLongPress: (UUID) -> Void
     let onDragChanged: (UUID, CGSize) -> Void
@@ -16,68 +16,96 @@ public struct DivineView: View {
 
     private let cornerRadius: CGFloat = 12
     private let showBorders: Bool = true
+
     @State private var baseScale: CGFloat = 1.0
     @State private var sceneScale: CGFloat = 1.0
     @State private var pinchAnchor: UnitPoint = .center
     @State private var isZooming: Bool = false
     @State private var pinchLocation: CGPoint = .zero
 
+    // Canvas pan state
+    @State private var panOffset: CGSize = .zero
+    @State private var panDrag: CGSize = .zero
+
     public var body: some View {
         GeometryReader { geo in
             let cardSize = layoutSizes(for: geo.size, count: cards.count)
 
-            let content = ZStack {
-                ForEach(Array(cards.enumerated()), id: \.element.id) { pair in
-                    let idx = pair.offset
-                    let card = pair.element
-
-                    CardView(
-                        card: card,
-                        size: cardSize,
-                        player: playerProvider(card.id),
-                        showBorder: showBorders,
-                        cornerRadius: cornerRadius
-                    )
-                    .frame(width: cardSize.width, height: cardSize.height, alignment: .center)
+            ZStack {
+                // Background pan surface — only hit when *not* over a card.
+                Color.clear
                     .contentShape(Rectangle())
-                    .offset(card.offset + card.dragOffset)
-                    .onTapGesture { onTap(card.id) }
-                    .simultaneousGesture(
-                        LongPressGesture(minimumDuration: 0.4).onEnded { _ in
-                            onLongPress(card.id)
-                        }
-                    )
                     .gesture(
                         DragGesture()
                             .onChanged { value in
-                                onDragChanged(card.id, value.translation)
+                                // Only treat as pan when we're not actively pinch-zooming
+                                guard !isZooming else { return }
+                                panDrag = value.translation
                             }
                             .onEnded { value in
-                                onDragEnded(card.id, value.translation)
+                                guard !isZooming else { return }
+                                panOffset = panOffset + value.translation
+                                panDrag = .zero
                             }
                     )
-                    .zIndex(Double(idx))
-                }
-            }
 
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .onAppear { onLayoutUpdate(geo.size, cardSize) }
-                .onChange(of: geo.size) { newSize in
-                    onLayoutUpdate(newSize, layoutSizes(for: newSize, count: cards.count))
+                // Inner content that actually scales and pans.
+                ZStack {
+                    ForEach(Array(cards.enumerated()), id: \.element.id) { pair in
+                        let idx = pair.offset
+                        let card = pair.element
+
+                        CardView(
+                            card: card,
+                            size: cardSize,
+                            player: playerProvider(card.id),
+                            showBorder: showBorders,
+                            cornerRadius: cornerRadius
+                        )
+                        .frame(width: cardSize.width, height: cardSize.height, alignment: .center)
+                        .contentShape(Rectangle())
+                        .offset(card.offset + card.dragOffset)
+                        .onTapGesture { onTap(card.id) }
+                        .simultaneousGesture(
+                            LongPressGesture(minimumDuration: 0.4).onEnded { _ in
+                                onLongPress(card.id)
+                            }
+                        )
+                        .gesture(
+                            DragGesture()
+                                .onChanged { value in
+                                    onDragChanged(card.id, value.translation)
+                                }
+                                .onEnded { value in
+                                    onDragEnded(card.id, value.translation)
+                                }
+                        )
+                        .zIndex(Double(idx))
+                    }
                 }
-                .scaleEffect(sceneScale, anchor: pinchAnchor)
-                .gesture(magnificationGesture(viewSize: geo.size))
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            pinchLocation = value.location
-                            guard isZooming else { return }
-                            pinchAnchor = anchorPoint(for: value.location, in: geo.size)
-                        }
-                )
+                .offset(panOffset + panDrag)                  // 👈 pan the whole canvas
+                .scaleEffect(sceneScale, anchor: pinchAnchor) // 👈 zoom the whole canvas
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .background(Color.black)
+            .contentShape(Rectangle()) // full rect hittable for pinch
+            .onAppear {
+                onLayoutUpdate(geo.size, cardSize)
+            }
+            .onChange(of: geo.size) { newSize in
+                let newCardSize = layoutSizes(for: newSize, count: cards.count)
+                onLayoutUpdate(newSize, newCardSize)
+            }
+            .gesture(magnificationGesture(viewSize: geo.size)) // pinch attached to unscaled container
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        pinchLocation = value.location
+                        guard isZooming else { return }
+                        pinchAnchor = anchorPoint(for: value.location, in: geo.size)
+                    }
+            )
         }
-        .background(Color.black)
     }
 
     private func magnificationGesture(viewSize: CGSize) -> some Gesture {
@@ -113,7 +141,7 @@ public struct DivineView: View {
 }
 
 private struct CardView: View {
-    let card: DivineMode.Card
+    let card: DivineCard
     let size: CGSize
     let player: AVPlayer?
     let showBorder: Bool
@@ -130,9 +158,9 @@ private struct CardView: View {
                 } else if let cg = card.cgImage {
                     Image(decorative: cg, scale: 1.0, orientation: .up)
                         .resizable()
-                        .aspectRatio(2/3, contentMode: .fill)
-                        .rotationEffect(.degrees(card.isFlipped ? 180 : 0))
+                        .scaledToFill()
                         .clipped()
+                        .rotationEffect(.degrees(card.isFlipped ? 180 : 0))
                 } else {
                     Color.black
                         .overlay(
