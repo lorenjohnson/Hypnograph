@@ -16,7 +16,12 @@ struct ModeCommand {
     let modifiers: EventModifiers
     let action: () -> Void
 
-    init(title: String, key: KeyEquivalent, modifiers: EventModifiers = [], action: @escaping () -> Void) {
+    init(
+        title: String,
+        key: KeyEquivalent,
+        modifiers: EventModifiers = [],
+        action: @escaping () -> Void
+    ) {
         self.title = title
         self.keyEquivalent = key
         self.modifiers = modifiers
@@ -28,18 +33,30 @@ struct ModeCommand {
 ///
 /// The app defines global commands (Save, Reload, etc.)
 /// and delegates their meaning to the current mode.
+///
+/// Most methods have sensible defaults implemented in the extension
+/// that simply wire through to `state`. Concrete modes can override
+/// anything they need to specialize.
 protocol HypnographMode: AnyObject {
+    /// Shared session state backing this mode.
+    var state: HypnogramState { get }
+
     /// The render queue managed by this mode.
     /// (The app may observe it for HUD, quitting, etc.)
     var renderQueue: RenderQueue { get }
+
+    // MARK: - Status / identity
+
     /// Index of the currently focused source/clip.
     var currentSourceIndex: Int { get }
+
     /// Whether solo is active for the current selection.
     var isSoloActive: Bool { get }
-    /// Short text to display when solo is active (e.g., "1/SOLO").
+
+    /// Short text to display when solo is active (e.g., "SOLO 1").
     var soloIndicatorText: String? { get }
-    /// Select a source or toggle solo if already selected.
-    func selectOrToggleSolo(index: Int)
+
+    // MARK: - Display
 
     /// Root preview/display view for this mode.
     /// ContentView doesn't know which concrete view it is.
@@ -50,18 +67,15 @@ protocol HypnographMode: AnyObject {
 
     /// Mode-specific HUD items.
     /// Returns an array of HUDItems that will be merged with global items.
-    /// Use ordering indices to position items (e.g., 15, 25, 35 to fit between global items at 10, 20, 30, 40).
     func hudItems(
         state: HypnogramState,
         renderQueue: RenderQueue
     ) -> [HUDItem]
 
-    /// Mode-specific Composition commands for the menu.
-    /// Returns an array of ModeCommands that will be added to the "Current" menu.
+    /// Mode-specific Composition commands for the "Composition" menu.
     func compositionCommands() -> [ModeCommand]
 
-    /// Mode-specific Source commands for the menu.
-    /// Returns an array of ModeCommands that will be added to the "Current" menu.
+    /// Mode-specific Source commands for the "Current Source" menu.
     func sourceCommands() -> [ModeCommand]
 
     // MARK: - Hypnogram lifecycle
@@ -81,16 +95,16 @@ protocol HypnographMode: AnyObject {
     func previousSource()
     func selectSource(index: Int)
 
-    // MARK: - Candidate / selection
+    // MARK: - Clip / selection
 
+    /// Replace the current source’s clip with a new random clip.
     func newRandomClip()
-    // Deprecated: Should just be nextSource()
-    // func acceptCandidate()
+
+    /// Delete the current source.
     func deleteCurrentSource()
 
     // MARK: - Mode-specific tweaks
 
-    func cycleEffect()
     func toggleHUD()
     func toggleSolo()
     func reloadSettings()
@@ -103,4 +117,138 @@ protocol HypnographMode: AnyObject {
 
     var globalEffectName: String { get }
     var sourceEffectName: String { get }
+}
+
+// MARK: - Default behavior backed by HypnogramState
+
+extension HypnographMode {
+    // MARK: - Status / identity
+
+    var currentSourceIndex: Int {
+        state.currentSourceIndex
+    }
+
+    var isSoloActive: Bool {
+        state.soloSourceIndex != nil
+    }
+
+    var soloIndicatorText: String? {
+        if let solo = state.soloSourceIndex {
+            return "SOLO \(solo + 1)"
+        } else if !state.sources.isEmpty {
+            return "\(state.currentSourceIndex + 1)"
+        } else {
+            return nil
+        }
+    }
+    // MARK: - Lifecycle
+
+    func new() {
+        state.resetForNextHypnogram()
+        state.clearSolo()
+
+        if state.settings.autoPrime {
+            state.newAutoPrimeSet()
+        }
+    }
+
+    func save() {
+        guard let recipe = state.sourcesForRender() else {
+            print("HypnographMode.save(): no renderable hypnogram (no sources).")
+            return
+        }
+
+        renderQueue.enqueue(recipe: recipe)
+
+        state.resetForNextHypnogram()
+        state.clearSolo()
+
+        if state.settings.autoPrime {
+            state.newAutoPrimeSet()
+        }
+    }
+
+    // MARK: - Source navigation
+
+    func addSource() {
+        _ = state.addSource()
+    }
+
+    func nextSource() {
+        state.nextSource()
+    }
+
+    func previousSource() {
+        state.previousSource()
+    }
+
+    func selectSource(index: Int) {
+        state.selectSource(index)
+    }
+
+    // MARK: - Clip / selection
+
+    func newRandomClip() {
+        state.replaceClipForCurrentSource()
+    }
+
+    func deleteCurrentSource() {
+        state.deleteCurrentSource()
+    }
+
+    // MARK: - Mode-specific tweaks
+
+    func toggleHUD() {
+        state.toggleHUD()
+    }
+
+    func toggleSolo() {
+        state.soloSource(index: state.currentSourceIndex)
+    }
+
+    func reloadSettings() {
+        state.reloadSettings(from: Environment.defaultSettingsURL)
+    }
+
+    // MARK: - Effects
+
+    func cycleGlobalEffect() {
+        state.renderHooks.cycleGlobalEffect()
+    }
+
+    func cycleSourceEffect() {
+        state.renderHooks.cycleSourceEffect(for: state.currentSourceIndex)
+    }
+
+    func clearAllEffects() {
+        state.renderHooks.setGlobalEffect(nil)
+        for i in 0..<state.activeSourceCount {
+            state.renderHooks.setSourceEffect(nil, for: i)
+        }
+    }
+
+    var globalEffectName: String {
+        state.renderHooks.globalEffectName
+    }
+
+    var sourceEffectName: String {
+        state.renderHooks.sourceEffectName(for: state.currentSourceIndex)
+    }
+
+    // MARK: - Default HUD / commands
+
+    func hudItems(
+        state: HypnogramState,
+        renderQueue: RenderQueue
+    ) -> [HUDItem] {
+        []
+    }
+
+    func compositionCommands() -> [ModeCommand] {
+        []
+    }
+
+    func sourceCommands() -> [ModeCommand] {
+        []
+    }
 }

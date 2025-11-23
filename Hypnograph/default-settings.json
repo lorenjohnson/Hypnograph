@@ -6,14 +6,6 @@
     "From Finder Helper": []
   },
   "maxSources": 5,
-  "blendModes": [
-    "screen",
-    "overlay",
-    "softlight",
-    "multiply",
-    "darken",
-    "lighten"
-  ],
   "outputSeconds": 60,
   "outputWidth": 1920,
   "outputHeight": 1080,

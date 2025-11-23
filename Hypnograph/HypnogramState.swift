@@ -24,7 +24,6 @@ final class HypnogramState: ObservableObject {
     @Published private(set) var activeLibraryKeys: Set<String>
 
     private(set) var library: VideoSourcesLibrary
-    var blendModes: [BlendMode]
 
     // MARK: - Mode management
 
@@ -33,7 +32,7 @@ final class HypnogramState: ObservableObject {
     // MARK: - Source list
 
     /// Dense, ordered list of all sources.
-    @Published private(set) var sources: [HypnogramSource]
+    @Published var sources: [HypnogramSource]
 
     /// Current selection index
     @Published private(set) var currentSourceIndex: Int = 0
@@ -68,7 +67,6 @@ final class HypnogramState: ObservableObject {
         self.currentLibraryKey = defaultKey
         self.activeLibraryKeys = initialKeys
         self.library = VideoSourcesLibrary(sourceFolders: initialFolders)
-        self.blendModes = settings.blendModes.map { BlendMode(key: $0) }
 
         self.sources = []
         self.currentSourceIndex = 0
@@ -84,10 +82,6 @@ final class HypnogramState: ObservableObject {
 
     // MARK: - Convenience
 
-    private var defaultBlendMode: BlendMode {
-        blendModes.first ?? BlendMode(key: "normal")
-    }
-
     var activeSourceCount: Int { sources.count }
 
     var currentSource: HypnogramSource? {
@@ -99,13 +93,6 @@ final class HypnogramState: ObservableObject {
         currentSource?.clip
     }
 
-    var currentBlendMode: BlendMode {
-        currentSource?.blendMode ?? defaultBlendMode
-    }
-
-    var currentBlendModeName: String {
-        currentBlendMode.key
-    }
 
     // MARK: - Rendering
 
@@ -125,10 +112,7 @@ final class HypnogramState: ObservableObject {
         guard let clip = library.randomClip(clipLength: length ?? settings.outputDuration.seconds)
         else { return nil }
 
-        let newSource = HypnogramSource(
-            clip: clip,
-            blendMode: defaultBlendMode
-        )
+        let newSource = HypnogramSource(clip: clip)
 
         sources.append(newSource)
         currentSourceIndex = sources.count - 1
@@ -190,19 +174,6 @@ final class HypnogramState: ObservableObject {
         guard !sources.isEmpty else { return }
         let prev = max(0, currentSourceIndex - 1)
         currentSourceIndex = prev
-    }
-
-    func cycleBlendMode(at index: Int? = nil) {
-        let idx = index ?? currentSourceIndex
-        guard idx >= 0, idx < sources.count else { return }
-        guard !blendModes.isEmpty else { return }
-
-        let current = sources[idx]
-        let currentIndex = blendModes.firstIndex { $0.key == current.blendMode.key } ?? -1
-        let next = (currentIndex + 1).positiveMod(blendModes.count)
-        var updated = current
-        updated.blendMode = blendModes[next]
-        sources[idx] = updated
     }
 
     func deleteSource(at index: Int) {
@@ -370,9 +341,6 @@ final class HypnogramState: ObservableObject {
         do {
             let newSettings = try SettingsLoader.load(from: url)
             self.settings = newSettings
-
-            // Rebuild blend modes
-            self.blendModes = newSettings.blendModes.map { BlendMode(key: $0) }
 
             // Re-apply active libraries with the new settings
             applyActiveLibraries(activeLibraryKeys)

@@ -35,11 +35,11 @@ final class MultiLayerBlendInstruction: NSObject, AVVideoCompositionInstructionP
         sourceIndices: [Int],
         timeRange: CMTimeRange
     ) {
-        self.timeRange       = timeRange
-        self.layerTrackIDs   = layerTrackIDs
-        self.blendModes      = blendModes
+        self.timeRange        = timeRange
+        self.layerTrackIDs    = layerTrackIDs
+        self.blendModes       = blendModes
         self.sourceTransforms = transforms
-        self.sourceIndices   = sourceIndices
+        self.sourceIndices    = sourceIndices
         self.requiredSourceTrackIDs = layerTrackIDs.map { NSNumber(value: $0) }
     }
 }

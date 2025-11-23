@@ -36,7 +36,6 @@ extension NSWindow {
     }
 }
 
-
 // MARK: - App Delegate
 
 final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
@@ -64,6 +63,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
         return .terminateLater
     }
 
+    // If you ever want to float the window above apps again:
     // func applicationDidBecomeActive(_ notification: Notification) {
     //     mainWindow?.level = .statusBar
     // }
@@ -72,6 +72,8 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     //     mainWindow?.level = .normal
     // }
 }
+
+// MARK: - Main App
 
 @main
 struct HypnographApp: App {
@@ -102,16 +104,6 @@ struct HypnographApp: App {
             settings = Settings(
                 autoPrime: true,
                 autoPrimeTimeout: 30,
-                blendModes: [
-                    "screen",
-                    "overlay",
-                    "softlight",
-                    "multiply",
-                    "darken",
-                    "lighten",
-                    "difference",
-                    "exclusion"
-                ],
                 maxSources: 3,
                 outputFolder: "~/Movies/Hypnograph/Renders",
                 outputHeight: 1080,
@@ -133,6 +125,7 @@ struct HypnographApp: App {
         _divineMode = StateObject(wrappedValue: DivineMode(state: state))
     }
 
+    // Current mode based on state
     var currentMode: HypnographMode {
         switch state.currentModeType {
         case .montage:
@@ -180,8 +173,8 @@ struct HypnographApp: App {
                     appDelegate.mainWindow = window
                 }
 
-                // Set initial render queue
-                appDelegate.renderQueue = montageMode.renderQueue
+                // Set initial render queue for termination handling
+                appDelegate.renderQueue = currentMode.renderQueue
             }
         }
         .commands {
@@ -197,90 +190,8 @@ struct HypnographApp: App {
     }
 }
 
-// Singleton to hold the modes for command access
-class ModeHolder {
-    static let shared = ModeHolder()
-    var montageMode: MontageMode?
-    var sequenceMode: SequenceMode?
-    var divineMode: DivineMode?
-    var state: HypnogramState?
-    var appDelegate: HypnographAppDelegate?
+// MARK: - Commands
 
-    private init() {}
-
-    var currentMode: HypnographMode? {
-        guard let state = state else { return nil }
-        switch state.currentModeType {
-        case .montage:
-            return montageMode
-        case .sequence:
-            return sequenceMode
-        case .divine:
-            return divineMode
-        }
-    }
-
-    func cycleMode() {
-        guard let state = state else { return }
-        switch state.currentModeType {
-        case .montage:
-            state.currentModeType = .sequence
-            appDelegate?.renderQueue = sequenceMode?.renderQueue
-        case .sequence:
-            state.currentModeType = .divine
-            appDelegate?.renderQueue = divineMode?.renderQueue
-        case .divine:
-            state.currentModeType = .montage
-            appDelegate?.renderQueue = montageMode?.renderQueue
-        }
-    }
-}
-
-// Main content view that manages modes
-struct AppContentView: View {
-    @ObservedObject var state: HypnogramState
-    weak var appDelegate: HypnographAppDelegate?
-    @StateObject private var montageMode: MontageMode
-    @StateObject private var sequenceMode: SequenceMode
-    @StateObject private var divineMode: DivineMode
-
-    init(state: HypnogramState, appDelegate: HypnographAppDelegate?) {
-        self.state = state
-        self.appDelegate = appDelegate
-        _montageMode = StateObject(wrappedValue: MontageMode(state: state))
-        _sequenceMode = StateObject(wrappedValue: SequenceMode(state: state))
-        _divineMode = StateObject(wrappedValue: DivineMode(state: state))
-    }
-
-    var currentMode: HypnographMode {
-        switch state.currentModeType {
-        case .montage:
-            return montageMode
-        case .sequence:
-            return sequenceMode
-        case .divine:
-            return divineMode
-        }
-    }
-
-    var body: some View {
-        ContentView(
-            state: state,
-            renderQueue: currentMode.renderQueue,
-            mode: currentMode
-        )
-        .onAppear {
-            ModeHolder.shared.montageMode = montageMode
-            ModeHolder.shared.sequenceMode = sequenceMode
-            ModeHolder.shared.divineMode = divineMode
-            ModeHolder.shared.state = state
-            ModeHolder.shared.appDelegate = appDelegate
-            appDelegate?.renderQueue = montageMode.renderQueue
-        }
-    }
-}
-
-// Commands that access the modes
 struct AppCommands: Commands {
     @ObservedObject private var state: HypnogramState
     @ObservedObject private var montageMode: MontageMode
@@ -304,11 +215,11 @@ struct AppCommands: Commands {
         self.appDelegate = appDelegate
         self.cycleModeHandler = cycleMode
     }
-    
+
     private var maxSources: Int {
         max(1, state.settings.maxSources)
     }
-    
+
     private var currentMode: HypnographMode {
         switch state.currentModeType {
         case .montage:
@@ -320,14 +231,10 @@ struct AppCommands: Commands {
         }
     }
 
-    private func selectOrToggleSolo(index: Int) {
-        currentMode.selectOrToggleSolo(index: index)
-    }
-
     var body: some Commands {
         // Standard About panel with custom label
         CommandGroup(replacing: .appInfo) {
-            Button("About Hypnogram") {
+            Button("About Hypnograph") {
                 NSApp.activate(ignoringOtherApps: true)
                 NSApp.orderFrontStandardAboutPanel(nil)
             }
@@ -471,7 +378,7 @@ struct AppCommands: Commands {
 
             ForEach(0..<maxSources, id: \.self) { idx in
                 Button("Select Source \(idx + 1)") {
-                    selectOrToggleSolo(index: idx)
+                    currentMode.selectSource(index: idx)
                 }
                 .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
             }
@@ -507,9 +414,7 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("f", modifiers: [])
 
-            // Global navigation & candidate commands
             Button("New Random Clip") {
-                // currentMode.nextCandidate()
                 currentMode.newRandomClip()
             }
             .keyboardShortcut("n", modifiers: [])

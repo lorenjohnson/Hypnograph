@@ -9,7 +9,6 @@ import SwiftUI
 import AVFoundation
 import CoreMedia
 import CoreGraphics
-import Combine
 
 // Simple no-op renderer since Divine is view-only.
 final class DivineNoopRenderer: HypnogramRenderer {
@@ -24,14 +23,10 @@ final class DivineNoopRenderer: HypnogramRenderer {
 
 /// Tarot-style stills mode with drag-and-drop cards.
 final class DivineMode: ObservableObject, HypnographMode {
-
-    // MARK: - Dependencies / core state
-
-    private let state: HypnogramState
+    let state: HypnogramState
     let renderQueue: RenderQueue
 
     let cardManager: DivineCardManager
-    private var cancellables = Set<AnyCancellable>()
 
     // MARK: - View transform (zoom + pan) exposed to the view
 
@@ -46,11 +41,6 @@ final class DivineMode: ObservableObject, HypnographMode {
         self.state = state
         self.renderQueue = RenderQueue(renderer: DivineNoopRenderer())
         self.cardManager = DivineCardManager(state: state)
-
-        // Bridge cardManager changes into DivineMode's objectWillChange
-        cardManager.objectWillChange
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &cancellables)
     }
 
     // MARK: - HypnographMode core props
@@ -72,21 +62,10 @@ final class DivineMode: ObservableObject, HypnographMode {
         state: HypnogramState,
         renderQueue: RenderQueue
     ) -> AnyView {
-        // Build bindings manually because we're not in a View context.
-        let sceneScaleBinding = Binding<CGFloat>(
-            get: { [weak self] in self?.sceneScale ?? 1.0 },
-            set: { [weak self] newValue in self?.sceneScale = newValue }
-        )
-
-        let panOffsetBinding = Binding<CGSize>(
-            get: { [weak self] in self?.panOffset ?? .zero },
-            set: { [weak self] newValue in self?.panOffset = newValue }
-        )
-
         return AnyView(
             DivineView(
-                cards: cardManager.cards,
-                selectedIndex: cardManager.cards.isEmpty ? nil : cardManager.currentIndex,
+                mode: self,
+                cardManager: cardManager,
                 onTap: { [weak self] id in
                     self?.cardManager.handleTap(id: id)
                 },
@@ -108,8 +87,8 @@ final class DivineMode: ObservableObject, HypnographMode {
                 playerProvider: { [weak self] id in
                     self?.cardManager.player(forID: id)
                 },
-                sceneScale: sceneScaleBinding,
-                panOffset: panOffsetBinding
+                minZoom: minZoom,
+                maxZoom: maxZoom
             )
         )
     }
@@ -179,12 +158,7 @@ final class DivineMode: ObservableObject, HypnographMode {
         cardManager.selectSource(index: index)
     }
 
-    func selectOrToggleSolo(index: Int) {
-        // Divine mode: solo is a noop; just select the card.
-        selectSource(index: index)
-    }
-
-    // MARK: - HypnographMode – candidate / selection
+    // MARK: - HypnographMode – clip / selection
 
     /// In Divine, "New Random Clip" = draw another card onto the table.
     func newRandomClip() {
@@ -197,14 +171,6 @@ final class DivineMode: ObservableObject, HypnographMode {
 
     // MARK: - HypnographMode – mode-specific tweaks
 
-    func cycleEffect() {
-        // No internal per-card effect cycling; rely on render hooks if needed.
-    }
-
-    func toggleHUD() {
-        state.toggleHUD()
-    }
-
     func toggleSolo() {
         // Solo is a noop in Divine.
     }
@@ -212,18 +178,12 @@ final class DivineMode: ObservableObject, HypnographMode {
     func reloadSettings() {
         state.reloadSettings(from: Environment.defaultSettingsURL)
         clearTable()
+        cardManager.addCardAtOffsetAtCenter()
     }
 
     // MARK: - HypnographMode – effects
 
-    func cycleGlobalEffect() {
-        state.renderHooks.cycleGlobalEffect()
-    }
-
-    func cycleSourceEffect() {
-        state.renderHooks.cycleSourceEffect(for: currentSourceIndex)
-    }
-
+    /// Divine only clears the current source's effect + global.
     func clearAllEffects() {
         state.renderHooks.setGlobalEffect(nil)
         state.renderHooks.setSourceEffect(nil, for: currentSourceIndex)
@@ -241,6 +201,7 @@ final class DivineMode: ObservableObject, HypnographMode {
 
     func redeal() {
         clearTable()
+        cardManager.addCardAtOffsetAtCenter()
     }
 
     private func clearTable() {
