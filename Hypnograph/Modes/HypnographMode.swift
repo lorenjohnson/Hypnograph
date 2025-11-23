@@ -83,8 +83,9 @@ protocol HypnographMode: AnyObject {
 
     // MARK: - Candidate / selection
 
-    func nextCandidate()
-    func acceptCandidate()
+    func newRandomClip()
+    // Deprecated: Should just be nextSource()
+    // func acceptCandidate()
     func deleteCurrentSource()
 
     // MARK: - Mode-specific tweaks

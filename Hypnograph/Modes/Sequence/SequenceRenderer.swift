@@ -13,7 +13,7 @@ import CoreGraphics
 final class SequenceRenderer: HypnogramRenderer {
     private let outputURL: URL
     private let outputSize: CGSize
-    
+
     init(
         outputURL: URL,
         outputSize: CGSize
@@ -21,17 +21,12 @@ final class SequenceRenderer: HypnogramRenderer {
         self.outputURL = outputURL
         self.outputSize = outputSize
     }
-    
+
     func enqueue(recipe: HypnogramRecipe, completion: @escaping (Result<URL, Error>) -> Void) {
         // In Sequence mode, each source represents a clip to be played sequentially
         DispatchQueue.global(qos: .userInitiated).async {
             self.renderSequence(recipe: recipe, completion: completion)
         }
-    }
-
-    func enqueueSequence(recipe: HypnogramRecipe, completion: @escaping (Result<URL, Error>) -> Void) {
-        // Alias for enqueue - both work the same way now
-        enqueue(recipe: recipe, completion: completion)
     }
 
     private func renderSequence(recipe: HypnogramRecipe, completion: @escaping (Result<URL, Error>) -> Void) {
@@ -84,12 +79,13 @@ final class SequenceRenderer: HypnogramRenderer {
             }
 
             let timeRange = CMTimeRange(start: clip.startTime, duration: clip.duration)
+            let insertAt = currentTime
 
             do {
                 try videoTrack.insertTimeRange(
                     timeRange,
                     of: sourceVideoTrack,
-                    at: currentTime
+                    at: insertAt
                 )
 
                 let instruction = MultiLayerBlendInstruction(
@@ -97,12 +93,12 @@ final class SequenceRenderer: HypnogramRenderer {
                     blendModes: [],               // No blending for sequential clips
                     transforms: [.identity],      // Identity for sequential clips
                     sourceIndices: [index],       // Map to clip index for effects
-                    timeRange: CMTimeRange(start: currentTime, duration: clip.duration)
+                    timeRange: CMTimeRange(start: insertAt, duration: clip.duration)
                 )
                 instructions.append(instruction)
 
-                currentTime = CMTimeAdd(currentTime, clip.duration)
-                print("SequenceRenderer: added clip \(index) at \(currentTime.seconds)s, duration \(clip.duration.seconds)s")
+                currentTime = CMTimeAdd(insertAt, clip.duration)
+                print("SequenceRenderer: added clip \(index) at \(insertAt.seconds)s, duration \(clip.duration.seconds)s")
             } catch {
                 print("SequenceRenderer: failed to insert clip \(index): \(error)")
                 completion(.failure(error))
@@ -115,16 +111,15 @@ final class SequenceRenderer: HypnogramRenderer {
                     try audioTrack.insertTimeRange(
                         timeRange,
                         of: sourceAudioTrack,
-                        at: currentTime
+                        at: insertAt
                     )
                 } catch {
                     print("SequenceRenderer: failed to insert audio for clip \(index): \(error)")
                 }
             }
         }
-        
+
         let totalDuration = currentTime
-        
         print("SequenceRenderer: total sequence duration: \(totalDuration.seconds)s")
 
         guard !instructions.isEmpty else {
@@ -137,13 +132,13 @@ final class SequenceRenderer: HypnogramRenderer {
             completion(.failure(err))
             return
         }
-        
+
         let videoComposition = AVMutableVideoComposition()
         videoComposition.customVideoCompositorClass = MultiLayerBlendCompositor.self
         videoComposition.renderSize = outputSize
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
         videoComposition.instructions = instructions
-        
+
         // Output folder
         do {
             try FileManager.default.createDirectory(
@@ -156,11 +151,11 @@ final class SequenceRenderer: HypnogramRenderer {
             completion(.failure(error))
             return
         }
-        
+
         let filename = "sequence-\(UUID().uuidString).mp4"
         let outputFileURL = outputURL.appendingPathComponent(filename)
         try? FileManager.default.removeItem(at: outputFileURL)
-        
+
         // Export
         guard let exportSession = AVAssetExportSession(
             asset: composition,
@@ -178,12 +173,12 @@ final class SequenceRenderer: HypnogramRenderer {
             completion(.failure(err))
             return
         }
-        
+
         exportSession.outputURL = outputFileURL
         exportSession.outputFileType = .mp4
         exportSession.shouldOptimizeForNetworkUse = true
         exportSession.videoComposition = videoComposition
-        
+
         print("SequenceRenderer: starting export to \(outputFileURL.path)")
 
         exportSession.exportAsynchronously {
