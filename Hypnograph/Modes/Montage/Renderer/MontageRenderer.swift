@@ -56,7 +56,17 @@ final class MontageRenderer: HypnogramRenderer {
 
         print("MontageRenderer: rendering recipe with \(recipe.sources.count) source(s), target duration \(targetSeconds)s")
 
-        // 2. Build composition via shared builder (same as preview)
+        // 2. Per-layer blend-mode configuration:
+        //    Prefer the serialized MontageConfig, otherwise fall back to names
+        //    derived from the recipe’s sources.
+        let configuredBlendModes: [String]
+        if let config: MontageConfig = recipe.modeConfig(MontageConfig.self) {
+            configuredBlendModes = config.layerBlendModes
+        } else {
+            configuredBlendModes = defaultBlendModes(from: recipe.sources)
+        }
+
+        // 3. Build composition via shared builder (same as preview)
         let buildResult: MontageCompositionBuilder.Result
         do {
             buildResult = try MontageCompositionBuilder.build(
@@ -69,9 +79,8 @@ final class MontageRenderer: HypnogramRenderer {
             return
         }
 
-        let composition  = buildResult.composition
+        let composition   = buildResult.composition
         let videoTrackIDs = buildResult.videoTrackIDs
-        let blendModes    = buildResult.blendModes
         let transforms    = buildResult.transforms
 
         guard !videoTrackIDs.isEmpty else {
@@ -87,7 +96,10 @@ final class MontageRenderer: HypnogramRenderer {
 
         print("MontageRenderer: using \(videoTrackIDs.count) video track(s), duration \(targetSeconds)s")
 
-        // 3. Video composition + custom compositor
+        // Normalize blend-mode list to match the number of video tracks.
+        let blendModes = normalizedBlendModes(configuredBlendModes, count: videoTrackIDs.count)
+
+        // 4. Video composition + custom compositor
         // For full render, source indices are sequential (no solo filtering)
         let sourceIndices = Array(0..<videoTrackIDs.count)
         let instruction = MultiLayerBlendInstruction(
@@ -104,7 +116,7 @@ final class MontageRenderer: HypnogramRenderer {
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
         videoComposition.instructions  = [instruction]
 
-        // 4. Audio mix
+        // 5. Audio mix
         let audioTracks = composition.tracks(withMediaType: .audio)
         print("MontageRenderer: composition has \(audioTracks.count) audio track(s)")
 
@@ -124,7 +136,7 @@ final class MontageRenderer: HypnogramRenderer {
             audioMix = mix
         }
 
-        // 5. Output folder
+        // 6. Output folder
         do {
             try FileManager.default.createDirectory(
                 at: outputURL,
@@ -141,7 +153,7 @@ final class MontageRenderer: HypnogramRenderer {
         let outputURL = outputURL.appendingPathComponent(filename)
         try? FileManager.default.removeItem(at: outputURL)
 
-        // 6. Export
+        // 7. Export
         guard let exportSession = AVAssetExportSession(
             asset: composition,
             presetName: AVAssetExportPreset1920x1080
@@ -197,6 +209,41 @@ final class MontageRenderer: HypnogramRenderer {
                 print("MontageRenderer: unexpected export status: \(exportSession.status) (error: \(String(describing: exportSession.error)))")
                 completion(.failure(error))
             }
+        }
+    }
+
+    // MARK: - Blend-mode helpers
+
+    /// Default per-layer blend modes derived from the recipe’s sources.
+    /// First layer is always source-over.
+    private func defaultBlendModes(from sources: [HypnogramSource]) -> [String] {
+        sources.enumerated().map { index, source in
+            if index == 0 {
+                return "CISourceOverCompositing"
+            } else {
+                return source.blendMode.ciFilterName
+            }
+        }
+    }
+
+    /// Normalize a blend-mode list to match the number of layers/tracks.
+    /// If too short, pad with the last value; if empty, default to source-over.
+    private func normalizedBlendModes(_ modes: [String], count: Int) -> [String] {
+        guard count > 0 else { return [] }
+
+        if modes.isEmpty {
+            return Array(repeating: "CISourceOverCompositing", count: count)
+        }
+
+        if modes.count >= count {
+            return Array(modes.prefix(count))
+        } else {
+            var result = modes
+            let last = modes.last ?? "CISourceOverCompositing"
+            while result.count < count {
+                result.append(last)
+            }
+            return result
         }
     }
 }

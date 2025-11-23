@@ -11,11 +11,21 @@ import CoreMedia
 // MARK: - Mode Types
 
 /// Available mode types for the application
-enum ModeType {
+enum ModeType: String, Codable {
     case montage
     case sequence
     case divine
 }
+
+/// Mode-specific configuration payloads that can be attached to a HypnogramRecipe.
+///
+/// Each mode defines its own config type that conforms to this protocol and can be
+/// serialized into the recipe via JSON (stored as opaque Data).
+protocol ModeConfig: Codable {
+    /// The mode this config belongs to.
+    static var modeType: ModeType { get }
+}
+
 
 // MARK: - Core Data Models
 
@@ -85,11 +95,11 @@ struct BlendMode: Equatable {
 }
 
 /// One source of a hypnogram: clip + optional blend mode + transform + effects.
+///
+/// NOTE: `blendMode` is *used only by Montage mode* for multi-layer compositing.
+/// Other modes can safely ignore it; they don't need to branch on it.
 struct HypnogramSource {
     var clip: VideoClip
-    // TODO: All things blendMode are Montage specific. I would like to make this
-    // something that Montage mode extends on this struct vs forcing every mode to
-    // check for its existence.
     var blendMode: BlendMode
     var transform: CGAffineTransform
     var effects: [RenderHook]
@@ -107,14 +117,61 @@ struct HypnogramSource {
     }
 }
 
-/// A complete “hypnogram” recipe: ordered sources of clip + blend mode
+/// A complete “hypnogram” recipe: ordered sources of clip (+ optional blend mode)
 /// plus the target render duration for the composition.
+///
+/// Additionally, a recipe can carry a *mode-specific* configuration payload, which
+/// is an opaque JSON blob owned by the active mode (e.g. Montage’s blend-mode stack).
 struct HypnogramRecipe {
-    let sources: [HypnogramSource]
-    let targetDuration: CMTime
+    var sources: [HypnogramSource]
+    var targetDuration: CMTime
 
-    init(sources: [HypnogramSource], targetDuration: CMTime) {
+    /// The mode this recipe is primarily configured for (if any).
+    var mode: ModeType?
+
+    /// Opaque JSON for the active mode’s configuration.
+    private var modeConfigData: Data?
+
+    init(
+        sources: [HypnogramSource],
+        targetDuration: CMTime,
+        mode: ModeType? = nil,
+        modeConfigData: Data? = nil
+    ) {
         self.sources = sources
         self.targetDuration = targetDuration
+        self.mode = mode
+        self.modeConfigData = modeConfigData
+    }
+
+    /// Decode a strongly-typed mode configuration if it matches the recipe’s mode.
+    func modeConfig<T: ModeConfig>(_ type: T.Type) -> T? {
+        guard
+            let mode,
+            mode == T.modeType,
+            let data = modeConfigData
+        else {
+            return nil
+        }
+
+        do {
+            return try JSONDecoder().decode(T.self, from: data)
+        } catch {
+            print("HypnogramRecipe: failed to decode mode config \(T.self): \(error)")
+            return nil
+        }
+    }
+
+    /// Attach a strongly-typed mode configuration to this recipe.
+    ///
+    /// This overwrites any existing mode + config on the recipe.
+    mutating func setModeConfig<T: ModeConfig>(_ config: T) {
+        mode = T.modeType
+        do {
+            modeConfigData = try JSONEncoder().encode(config)
+        } catch {
+            print("HypnogramRecipe: failed to encode mode config \(T.self): \(error)")
+            modeConfigData = nil
+        }
     }
 }

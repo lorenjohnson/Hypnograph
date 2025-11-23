@@ -4,6 +4,19 @@ import Combine
 import SwiftUI
 
 
+/// Montage-specific configuration that can be serialized into a HypnogramRecipe.
+///
+/// Right now this just carries the per-layer Core Image blend filter names used
+/// at render time. It is owned conceptually by Montage mode, but lives here so
+/// both the mode and renderer can see it.
+struct MontageConfig: ModeConfig {
+    static let modeType: ModeType = .montage
+
+    /// One CI filter name per source/layer (bottom → top).
+    /// e.g. ["CISourceOverCompositing", "CIScreenBlendMode", ...]
+    var layerBlendModes: [String]
+}
+
 /// Concrete HypnographMode backed by HypnogramState + Montage renderer semantics.
 /// Holds any Montage-specific preview state (like solo pulses).
 final class MontageMode: ObservableObject, HypnographMode {
@@ -37,6 +50,8 @@ final class MontageMode: ObservableObject, HypnographMode {
         self.renderQueue = RenderQueue(renderer: backend)
     }
 
+    // MARK: - Blend mode helpers (preview-time)
+
     private var defaultBlendMode: BlendMode {
         availableBlendModes.first ?? .sourceOver
     }
@@ -47,6 +62,18 @@ final class MontageMode: ObservableObject, HypnographMode {
 
     private var currentBlendModeName: String {
         currentBlendMode.displayName
+    }
+
+    /// Build the CI filter name list for the *current* sources in state.
+    /// First layer is always treated as source-over for compositing purposes.
+    private func currentLayerBlendModes(for sources: [HypnogramSource]) -> [String] {
+        sources.enumerated().map { index, source in
+            if index == 0 {
+                return "CISourceOverCompositing"
+            } else {
+                return source.blendMode.ciFilterName
+            }
+        }
     }
 
     var isSoloActive: Bool {
@@ -173,10 +200,15 @@ final class MontageMode: ObservableObject, HypnographMode {
     }
 
     func save() {
-        guard let recipe = state.sourcesForRender() else {
+        guard var recipe = state.sourcesForRender() else {
             print("renderCurrentHypnogram(): no renderable hypnogram (no selected clips).")
             return
         }
+
+        // Attach Montage-specific blend-mode configuration to the recipe.
+        let blendModes = currentLayerBlendModes(for: recipe.sources)
+        let config = MontageConfig(layerBlendModes: blendModes)
+        recipe.setModeConfig(config)
 
         print("renderCurrentHypnogram(): enqueuing recipe with \(recipe.sources.count) source(s).")
         renderQueue.enqueue(recipe: recipe)

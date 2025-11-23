@@ -149,8 +149,17 @@ struct MontageView: NSViewRepresentable {
 
         let composition   = buildResult.composition
         let videoTrackIDs = buildResult.videoTrackIDs
-        let blendModes    = buildResult.blendModes
         let transforms    = buildResult.transforms
+
+        // Per-layer blend-mode list derived from live sources.
+        // First layer is always source-over.
+        let blendModes: [String] = sources.enumerated().map { index, source in
+            if index == 0 {
+                return "CISourceOverCompositing"
+            } else {
+                return source.blendMode.ciFilterName
+            }
+        }
 
         // Same instruction + custom compositor as renderer
         let instruction = MultiLayerBlendInstruction(
