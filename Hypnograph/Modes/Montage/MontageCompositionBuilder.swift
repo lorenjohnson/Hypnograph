@@ -5,18 +5,19 @@
 //  Created by Loren Johnson on 19.11.25.
 //
 
-
 import Foundation
 import AVFoundation
 import CoreMedia
 import CoreGraphics
 
+/// Shared builder that turns a list of Hypnogram sources into an AVMutableComposition.
+/// This is deliberately *blend-mode agnostic*; it just builds tracks + transforms.
+/// Blend modes are decided by Montage mode and passed separately into the compositor.
 struct MontageCompositionBuilder {
 
     struct Result {
         let composition: AVMutableComposition
         let videoTrackIDs: [CMPersistentTrackID]
-        let blendModes: [String]
         let transforms: [CGAffineTransform]
         let duration: CMTime
     }
@@ -46,7 +47,6 @@ struct MontageCompositionBuilder {
 
         let composition = AVMutableComposition()
         var videoTrackIDs: [CMPersistentTrackID] = []
-        var blendModes: [String] = []
         var transforms: [CGAffineTransform] = []
 
         // Helper to insert a timeRange based on seconds
@@ -71,14 +71,14 @@ struct MontageCompositionBuilder {
             let asset = AVAsset(url: clip.file.url)
 
             guard let srcVideoTrack = asset.tracks(withMediaType: .video).first else {
-                print("CompositionBuilder: source \(index) has no video track; skipping")
+                print("MontageCompositionBuilder: source \(index) has no video track; skipping")
                 continue
             }
 
             let fileDuration = asset.duration
             let fileSeconds  = fileDuration.seconds
             if fileSeconds <= 0 {
-                print("CompositionBuilder: source \(index) has non-positive duration; skipping")
+                print("MontageCompositionBuilder: source \(index) has non-positive duration; skipping")
                 continue
             }
 
@@ -88,7 +88,7 @@ struct MontageCompositionBuilder {
                 withMediaType: .video,
                 preferredTrackID: trackID
             ) else {
-                print("CompositionBuilder: failed to add video track for source \(index)")
+                print("MontageCompositionBuilder: failed to add video track for source \(index)")
                 continue
             }
 
@@ -132,22 +132,15 @@ struct MontageCompositionBuilder {
                     remainingSeconds -= segmentSeconds
                 }
             } catch {
-                print("CompositionBuilder: failed to insert video segments for source \(index): \(error)")
+                print("MontageCompositionBuilder: failed to insert video segments for source \(index): \(error)")
                 continue
             }
 
             // Track ID for compositor
             videoTrackIDs.append(compVideoTrack.trackID)
 
-            // Per-source blend mode: base source is always source-over, others use CI filter.
-            if index == 0 {
-                blendModes.append("CISourceOverCompositing")
-            } else {
-                blendModes.append(source.blendMode.ciFilterName)
-            }
-
             // Orientation (base) + user transform combined; applied in compositor
-            let finalTransform = srcVideoTrack.preferredTransform.concatenating(source.transform)
+            let finalTransform = baseTransform.concatenating(source.transform)
             transforms.append(finalTransform)
 
             // --- Audio mirroring (same looping semantics) ---
@@ -185,10 +178,10 @@ struct MontageCompositionBuilder {
                             audioRemainingSeconds -= seg
                         }
                     } catch {
-                        print("CompositionBuilder: failed to insert audio segments for source \(index): \(error)")
+                        print("MontageCompositionBuilder: failed to insert audio segments for source \(index): \(error)")
                     }
                 } else {
-                    print("CompositionBuilder: failed to add audio track for source \(index)")
+                    print("MontageCompositionBuilder: failed to add audio track for source \(index)")
                 }
             } else {
                 // fine: no audio on this source
@@ -202,7 +195,6 @@ struct MontageCompositionBuilder {
         return Result(
             composition: composition,
             videoTrackIDs: videoTrackIDs,
-            blendModes: blendModes,
             transforms: transforms,
             duration: targetDuration
         )
