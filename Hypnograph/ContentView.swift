@@ -6,17 +6,6 @@ struct ContentView: View {
     @ObservedObject var state: HypnogramState
     @ObservedObject var renderQueue: RenderQueue
     var mode: HypnographMode
-    @State private var modeChangePing = UUID()
-
-    private func modeChangePublisher() -> AnyPublisher<Void, Never> {
-        guard let publisher = (mode as? any ObservableObject)?.objectWillChange as? ObservableObjectPublisher else {
-            return Empty().eraseToAnyPublisher()
-        }
-
-        return publisher
-            .map { _ in () }
-            .eraseToAnyPublisher()
-    }
 
     // MARK: - Global HUD Items
 
@@ -25,7 +14,7 @@ struct ContentView: View {
 
         // Header
         items.append(.text("Hypnograph", order: 10, font: .headline))
-        var modeLabel: String
+        let modeLabel: String
         switch state.currentModeType {
         case .montage:
             modeLabel = "Montage Mode"
@@ -52,7 +41,6 @@ struct ContentView: View {
         items.append(.padding(16, order: 24))
 
         // Source-specific items will be inserted here (order 25-29)
-        // Mode provides: Source index, blend mode, source effect, etc.
 
         // Divider after source-specific items
         items.append(.padding(16, order: 39))
@@ -117,8 +105,5 @@ struct ContentView: View {
         }
         // extra safety: whole scene black
         .background(Color.black)
-        .onReceive(modeChangePublisher()) { _ in
-            modeChangePing = UUID()
-        }
     }
 }

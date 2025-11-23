@@ -14,11 +14,7 @@ import Combine
 /// that play one after another in sequence until the total duration equals targetDuration.
 /// Navigate between sources with arrow keys or 1-5 keys. Global and per-source effects still apply.
 final class SequenceMode: ObservableObject, HypnographMode {
-
-    /// Shared session state
-    private let state: HypnogramState
-
-    /// Render queue + backend for this mode
+    let state: HypnogramState
     let renderQueue: RenderQueue
 
     /// Total accumulated duration of all sources in the sequence
@@ -105,11 +101,11 @@ final class SequenceMode: ObservableObject, HypnographMode {
     }
 
     func compositionCommands() -> [ModeCommand] {
-        return []
+        []
     }
 
     func sourceCommands() -> [ModeCommand] {
-        return []
+        []
     }
 
     // MARK: - HypnographMode – engine behavior
@@ -183,53 +179,33 @@ final class SequenceMode: ObservableObject, HypnographMode {
 
     // MARK: - Mode-specific tweaks
 
-    func cycleEffect() {
-        // No blend modes in sequence mode
-    }
-
-    func toggleHUD() {
-        state.isHUDVisible.toggle()
-    }
-
-    func toggleSolo() {
-        state.soloSource(index: currentSourceIndex)
-    }
-
     func reloadSettings() {
-        state.resetForNextHypnogram()
-        if sequenceSources.isEmpty {
-            fillSequence()
-        }
+        state.reloadSettings(from: Environment.defaultSettingsURL)
+        fillSequence()
     }
 
     // MARK: - Effects
 
-    func cycleGlobalEffect() {
-        state.renderHooks.cycleGlobalEffect()
+    // Default cycleGlobalEffect / cycleSourceEffect / clearAllEffects / names
+    // from HypnographMode are used; they work fine on state.renderHooks.
+
+    // MARK: - Solo / HUD
+
+    var isSoloActive: Bool {
+        state.soloSourceIndex != nil
     }
 
-    func cycleSourceEffect() {
-        state.renderHooks.cycleSourceEffect(for: currentSourceIndex)
+    /// Exposed so SequenceView can know which index is solo'd
+    var soloSourceIndex: Int? {
+        state.soloSourceIndex
     }
 
-    func clearAllEffects() {
-        state.renderHooks.setGlobalEffect(nil)
-        for i in 0..<sequenceSources.count {
-            state.renderHooks.setSourceEffect(nil, for: i)
+    var soloIndicatorText: String? {
+        if let solo = state.soloSourceIndex {
+            return "SOLO \(solo + 1)"
+        } else {
+            return "\(currentSourceIndex + 1)"
         }
-    }
-
-    var globalEffectName: String {
-        state.renderHooks.globalEffectName
-    }
-
-    var sourceEffectName: String {
-        state.renderHooks.sourceEffectName(for: currentSourceIndex)
-    }
-
-    func selectOrToggleSolo(index: Int) {
-        // In sequence mode, number keys just jump; solo is explicit via Toggle Solo
-        selectSource(index: index)
     }
 
     // MARK: - Sequence building
@@ -252,24 +228,5 @@ final class SequenceMode: ObservableObject, HypnographMode {
 
     private func randomSourceDuration() -> Double {
         Double.random(in: 2.0...15.0)
-    }
-
-    // MARK: - Solo / HUD
-
-    var isSoloActive: Bool {
-        state.soloSourceIndex != nil
-    }
-
-    /// Exposed so SequenceView can know which index is solo'd
-    var soloSourceIndex: Int? {
-        state.soloSourceIndex
-    }
-
-    var soloIndicatorText: String? {
-        if let solo = state.soloSourceIndex {
-            return "SOLO \(solo + 1)"
-        } else {
-            return "\(currentSourceIndex + 1)"
-        }
     }
 }

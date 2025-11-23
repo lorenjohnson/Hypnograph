@@ -111,7 +111,6 @@ enum SourceFoldersParam: Codable {
 struct SettingsParams: Codable {
     var autoPrime: Bool
     var autoPrimeTimeout: Double
-    var blendModes: [String]
     var maxSources: Int
     var sourceFolders: SourceFoldersParam
     var outputFolder: String
@@ -126,7 +125,6 @@ struct SettingsParams: Codable {
 struct Settings {
     var autoPrime: Bool
     var autoPrimeTimeout: Double
-    var blendModes: [String]
     var maxSources: Int
 
     /// The *currently active* set of folders (default on startup).
@@ -154,7 +152,6 @@ struct Settings {
     init(
         autoPrime: Bool,
         autoPrimeTimeout: Double = 120,
-        blendModes: [String],
         maxSources: Int,
         outputFolder: String,
         outputHeight: Int = 0,
@@ -164,7 +161,6 @@ struct Settings {
     ) {
         self.autoPrime = autoPrime
         self.autoPrimeTimeout = autoPrimeTimeout
-        self.blendModes = blendModes
         self.maxSources = maxSources
         self.outputDuration = CMTime(
             seconds: outputSeconds,
@@ -241,7 +237,6 @@ struct Settings {
         self.init(
             autoPrime: p.autoPrime,
             autoPrimeTimeout: p.autoPrimeTimeout,
-            blendModes: p.blendModes,
             maxSources: p.maxSources,
             outputFolder: p.outputFolder,
             outputHeight: p.outputHeight,

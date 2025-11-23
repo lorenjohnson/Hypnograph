@@ -182,8 +182,11 @@ struct SequenceView: NSViewRepresentable {
             // Apply effects via custom compositor
             let instruction = MultiLayerBlendInstruction(
                 layerTrackIDs: [videoTrack.trackID],
-                blendModes: [],               // No blending for sequential clips
-                transforms: [.identity],      // Keep original orientation
+                blendModes: Array(
+                    repeating: "CISourceOverCompositing",
+                    count: clips.count
+                ),
+                transforms: [.identity],              // Keep original orientation
                 sourceIndices: [originalIndex],       // Map to original clip index for effects
                 timeRange: CMTimeRange(start: currentTime, duration: clip.duration)
             )

@@ -45,80 +45,58 @@ struct VideoClip {
     }
 }
 
-/// Represents a blend mode (Multiply, SoftLight, Overlay, etc.)
-/// We take a simple name from settings (e.g. "multiply") and can
-/// derive both:
-/// - a stable key/name ("multiply") for UI / JSON
-/// - the CoreImage filter name (e.g. "CIMultiplyBlendMode") for rendering
-struct BlendMode {
-    /// Simple key from settings, e.g. "multiply", "softlight", "overlay".
-    let key: String
+/// Represents a Core Image blend mode used in Montage mode.
+/// We store the CI filter name directly (e.g. "CIScreenBlendMode").
+struct BlendMode: Equatable {
+    /// Full Core Image filter name.
+    let ciFilterName: String
 
-    /// Convenience init to keep existing `BlendMode(name: ...)` calls working.
-    init(name: String) {
-        self.key = name
+    init(ciFilterName: String) {
+        self.ciFilterName = ciFilterName
     }
 
-    /// Optional direct key-based init if you ever need it.
-    init(key: String) {
-        self.key = key
-    }
+    /// Human-readable name derived from the filter name.
+    ///  - "CIScreenBlendMode"      → "Screen"
+    ///  - "CISourceOverCompositing"→ "SourceOver"
+    var displayName: String {
+        var name = ciFilterName
 
-    /// Name used everywhere else (UI label, JSON, etc.).
-    var name: String {
-        key
-    }
+        if name.hasPrefix("CI") {
+            name.removeFirst(2)
+        }
 
-    /// CoreImage filter name for this blend mode.
-    var ciFilterName: String {
-        switch key.lowercased() {
-        case "multiply":
-            return "CIMultiplyBlendMode"
-        case "screen":
-            return "CIScreenBlendMode"
-        case "overlay":
-            return "CIOverlayBlendMode"
-        case "softlight", "soft_light", "soft-light":
-            return "CISoftLightBlendMode"
-        case "hardlight", "hard_light", "hard-light":
-            return "CIHardLightBlendMode"
-        case "darken":
-            return "CIDarkenBlendMode"
-        case "lighten":
-            return "CILightenBlendMode"
-        case "difference":
-            return "CIDifferenceBlendMode"
-        case "exclusion":
-            return "CIExclusionBlendMode"
-        case "colordodge", "color_dodge", "color-dodge":
-            return "CIColorDodgeBlendMode"
-        case "colorburn", "color_burn", "color-burn":
-            return "CIColorBurnBlendMode"
-        case "hue":
-            return "CIHueBlendMode"
-        case "saturation":
-            return "CISaturationBlendMode"
-        case "color":
-            return "CIColorBlendMode"
-        case "luminosity":
-            return "CILuminosityBlendMode"
-        default:
-            // Safe fallback: normal compositing
-            return "CISourceOverCompositing"
+        if name.hasSuffix("BlendMode") {
+            name.removeLast("BlendMode".count)
+        } else if name.hasSuffix("Compositing") {
+            name.removeLast("Compositing".count)
+        }
+
+        // Capitalize first letter for HUD niceness
+        if let first = name.first {
+            let rest = name.dropFirst()
+            return String(first).uppercased() + rest
+        } else {
+            return name
         }
     }
+
+    /// Convenience for a “normal” source-over composition.
+    static let sourceOver = BlendMode(ciFilterName: "CISourceOverCompositing")
 }
 
 /// One source of a hypnogram: clip + optional blend mode + transform + effects.
 struct HypnogramSource {
     var clip: VideoClip
+    // TODO: All things blendMode are Montage specific. I would like to make this
+    // something that Montage mode extends on this struct vs forcing every mode to
+    // check for its existence.
     var blendMode: BlendMode
     var transform: CGAffineTransform
     var effects: [RenderHook]
 
     init(
         clip: VideoClip,
-        blendMode: BlendMode = BlendMode(key: "normal"),
+        blendMode: BlendMode = .sourceOver,
         transform: CGAffineTransform = .identity,
         effects: [RenderHook] = []
     ) {

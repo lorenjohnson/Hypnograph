@@ -3,16 +3,25 @@ import CoreGraphics
 import Combine
 import SwiftUI
 
+
 /// Concrete HypnographMode backed by HypnogramState + Montage renderer semantics.
 /// Holds any Montage-specific preview state (like solo pulses).
 final class MontageMode: ObservableObject, HypnographMode {
-
-    /// Shared session state used by the Montage mode.
-    /// This is the same instance that ContentView observes.
-    private let state: HypnogramState
-
-    /// Render queue + backend for this mode.
+    let state: HypnogramState
     let renderQueue: RenderQueue
+
+    /// Available blend modes for Montage, stored as CI filter names.
+    private let availableBlendModes: [BlendMode] = [
+        BlendMode(ciFilterName: "CIScreenBlendMode"),
+        BlendMode(ciFilterName: "CIOverlayBlendMode"),
+        BlendMode(ciFilterName: "CISoftLightBlendMode"),
+        BlendMode(ciFilterName: "CIMultiplyBlendMode"),
+        BlendMode(ciFilterName: "CIDarkenBlendMode"),
+        BlendMode(ciFilterName: "CILightenBlendMode"),
+        // If you want the full set later, just extend this list.
+        // BlendMode(ciFilterName: "CIDifferenceBlendMode"),
+        // BlendMode(ciFilterName: "CIExclusionBlendMode"),
+    ]
 
     /// Short-lived solo pulse index for visual inspection when switching sources.
     /// This never touches global solo in state; it’s view-only.
@@ -28,13 +37,16 @@ final class MontageMode: ObservableObject, HypnographMode {
         self.renderQueue = RenderQueue(renderer: backend)
     }
 
-    // Expose state bits if you need them (read-only)
-    var currentSourceIndex: Int {
-        state.currentSourceIndex
+    private var defaultBlendMode: BlendMode {
+        availableBlendModes.first ?? .sourceOver
     }
 
-    var currentBlendModeName: String {
-        state.currentBlendModeName
+    private var currentBlendMode: BlendMode {
+        state.currentSource?.blendMode ?? defaultBlendMode
+    }
+
+    private var currentBlendModeName: String {
+        currentBlendMode.displayName
     }
 
     var isSoloActive: Bool {
@@ -47,10 +59,10 @@ final class MontageMode: ObservableObject, HypnographMode {
         } else if let solo = state.soloSourceIndex {
             return "SOLO \(solo + 1)"
         } else {
-            return "\(currentSourceIndex + 1)"
+            return "\(state.currentSourceIndex + 1)"
         }
     }
-    
+
     var maxSources: Int {
         max(1, state.settings.maxSources)
     }
@@ -118,32 +130,26 @@ final class MontageMode: ObservableObject, HypnographMode {
         var items: [HUDItem] = [
             // Source/Layer-specific status (order 25-29 range)
             .text("Source \(state.currentSourceIndex + 1) of \(state.activeSourceCount)", order: 25),
-            .text("Blend mode (M): \(state.currentBlendModeName)", order: 26),
+            .text("Blend mode (M): \(currentBlendModeName)", order: 26),
             .text("Source Effect (F): \(sourceEffectName)", order: 27),
         ]
 
         // Mode-specific shortcuts (after global shortcuts)
-        // Global shortcuts are shown by the app, only show Montage-specific ones here
         items.append(.text("M = Cycle Blend mode", order: 46))
 
         return items
     }
 
     func compositionCommands() -> [ModeCommand] {
-        return []
+        []
     }
 
     func sourceCommands() -> [ModeCommand] {
-        return [
+        [
             ModeCommand(title: "Cycle Blend Mode", key: "m") { [weak self] in
-                self?.cycleEffect()
+                self?.cycleBlendMode()
             }
         ]
-    }
-
-    /// Number keys: momentary solo pulse, never latch persistent solo.
-    func selectOrToggleSolo(index: Int) {
-        selectSource(index: index, pulse: true)
     }
 
     // MARK: - HypnographMode – engine behavior
@@ -213,63 +219,40 @@ final class MontageMode: ObservableObject, HypnographMode {
         }
     }
 
-    // MARK: - Candidate / selection
-
-    func newRandomClip() {
-        _ = state.replaceClip(at: state.currentSourceIndex)
-    }
-
-    func deleteCurrentSource() {
-        state.deleteCurrentSource()
-    }
-
     // MARK: - Mode-specific tweaks
 
-    func cycleEffect() {
-        state.cycleBlendMode()
-    }
+    func cycleBlendMode(at index: Int? = nil) {
+        let idx = index ?? state.currentSourceIndex
+        let count = state.sources.count
 
-    func toggleHUD() {
-        state.isHUDVisible.toggle()
-    }
+        guard idx >= 0,
+              idx < count,
+              !availableBlendModes.isEmpty
+        else { return }
 
-    func toggleSolo() {
-        state.soloSource(index: state.currentSourceIndex)
+        let current = state.sources[idx]
+        let modes = availableBlendModes
+
+        let currentIndex = modes.firstIndex {
+            $0.ciFilterName == current.blendMode.ciFilterName
+        } ?? -1
+
+        let next = positiveMod(currentIndex + 1, modes.count)
+
+        var updated = current
+        updated.blendMode = modes[next]
+        state.sources[idx] = updated
     }
 
     func reloadSettings() {
-        state.resetForNextHypnogram()
+        state.reloadSettings(from: Environment.defaultSettingsURL)
         soloPulseIndex = nil
     }
+}
 
-    // MARK: - Effects
-
-    func cycleGlobalEffect() {
-        state.renderHooks.cycleGlobalEffect()
-    }
-
-    func cycleSourceEffect() {
-        state.renderHooks.cycleSourceEffect(for: state.currentSourceIndex)
-    }
-
-    func clearAllEffects() {
-        // Clear global effect
-        state.renderHooks.setGlobalEffect(nil)
-
-        // Clear all per-source effects
-        for i in 0..<maxSources {
-            state.renderHooks.setSourceEffect(nil, for: i)
-        }
-
-        soloPulseIndex = nil
-        state.clearSolo()
-    }
-
-    var globalEffectName: String {
-        state.renderHooks.globalEffectName
-    }
-
-    var sourceEffectName: String {
-        state.renderHooks.sourceEffectName(for: state.currentSourceIndex)
-    }
+// Local helper to keep indices positive when wrapping.
+private func positiveMod(_ value: Int, _ modulus: Int) -> Int {
+    guard modulus > 0 else { return 0 }
+    let r = value % modulus
+    return r >= 0 ? r : r + modulus
 }

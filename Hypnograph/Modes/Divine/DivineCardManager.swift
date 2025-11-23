@@ -65,7 +65,7 @@ final class DivineCardManager: ObservableObject {
         let jitter: CGFloat = 50
         let dx = CGFloat.random(in: -jitter...jitter)
         let dy = CGFloat.random(in: -jitter...jitter)
-        let offset = CGSize(width: dx, height: dy)   
+        let offset = CGSize(width: dx, height: dy)
         addCardAtOffset(offset: offset)
     }
 
@@ -129,6 +129,14 @@ final class DivineCardManager: ObservableObject {
         return false
     }
 
+    // Small helper to avoid index/assign boilerplate
+    private func updateCard(id: UUID, _ mutate: (inout DivineCard, Int) -> Void) {
+        guard let idx = cards.firstIndex(where: { $0.id == id }) else { return }
+        var card = cards[idx]
+        mutate(&card, idx)
+        cards[idx] = card
+    }
+
     // MARK: - Interaction
 
     func handleTap(id: UUID) {
@@ -184,11 +192,10 @@ final class DivineCardManager: ObservableObject {
     }
 
     func endDrag(id: UUID, translation: CGSize) {
-        guard let idx = cards.firstIndex(where: { $0.id == id }) else { return }
-        var card = cards[idx]
-        card.offset = card.offset + translation
-        card.dragOffset = .zero
-        cards[idx] = card
+        updateCard(id: id) { card, _ in
+            card.offset = card.offset + translation
+            card.dragOffset = .zero
+        }
     }
 
     // MARK: - Playback access for the view
@@ -250,19 +257,15 @@ final class DivineCardManager: ObservableObject {
     }
 
     private func handlePlaybackEnded(for id: UUID) {
-        guard let idx = cards.firstIndex(where: { $0.id == id }) else { return }
-
-        var card = cards[idx]
-        let startTime = card.clip.startTime
-
-        if let image = grabStill(from: card.clip, at: startTime) {
-            card.cgImage = image
+        updateCard(id: id) { card, _ in
+            let startTime = card.clip.startTime
+            if let image = grabStill(from: card.clip, at: startTime) {
+                card.cgImage = image
+            }
+            card.lastSnapshotTime = startTime
+            card.isPlaying = false
+            card.isRevealed = true
         }
-        card.lastSnapshotTime = startTime
-        card.isPlaying = false
-        card.isRevealed = true
-
-        cards[idx] = card
     }
 
     private func makeCard(offset: CGSize) -> DivineCard? {

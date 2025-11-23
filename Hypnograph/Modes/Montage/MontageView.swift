@@ -117,7 +117,7 @@ struct MontageView: NSViewRepresentable {
             let url   = source.clip.file.url.path
             let start = source.clip.startTime.seconds
             let dur   = source.clip.duration.seconds
-            let mode  = source.blendMode.key
+            let mode  = source.blendMode.ciFilterName
             return "\(url)|\(start)|\(dur)|\(mode)"
         }
         .joined(separator: ";;")

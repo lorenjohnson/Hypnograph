@@ -6,8 +6,9 @@ import CoreGraphics
 // MARK: - Divine View Hierarchy
 
 struct DivineView: View {
-    let cards: [DivineCard]
-    let selectedIndex: Int?
+    @ObservedObject var mode: DivineMode
+    @ObservedObject var cardManager: DivineCardManager
+
     let onTap: (UUID) -> Void
     let onLongPress: (UUID) -> Void
     let onDragChanged: (UUID, CGSize) -> Void
@@ -18,8 +19,8 @@ struct DivineView: View {
     let onBackgroundDoubleTap: (CGSize) -> Void
     let playerProvider: (UUID) -> AVPlayer?
 
-    @Binding var sceneScale: CGFloat
-    @Binding var panOffset: CGSize
+    let minZoom: CGFloat
+    let maxZoom: CGFloat
 
     private let cornerRadius: CGFloat = 12
     private let showBorders: Bool = true
@@ -32,6 +33,12 @@ struct DivineView: View {
 
     // Canvas pan drag delta (transient; panOffset is the persisted value)
     @State private var panDrag: CGSize = .zero
+
+    // Use live state, not a snapshot passed in:
+    private var cards: [DivineCard] { cardManager.cards }
+    private var selectedIndex: Int? {
+        cards.isEmpty ? nil : cardManager.currentIndex
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -50,7 +57,7 @@ struct DivineView: View {
                             }
                             .onEnded { value in
                                 guard !isZooming else { return }
-                                panOffset = panOffset + value.translation
+                                mode.panOffset = mode.panOffset + value.translation
                                 panDrag = .zero
                             }
                     )
@@ -91,8 +98,8 @@ struct DivineView: View {
                         .zIndex(Double(idx))
                     }
                 }
-                .offset(panOffset + panDrag)                  // pan the whole canvas
-                .scaleEffect(sceneScale, anchor: pinchAnchor) // zoom the whole canvas
+                .offset(mode.panOffset + panDrag)                  // pan the whole canvas
+                .scaleEffect(mode.sceneScale, anchor: pinchAnchor) // zoom the whole canvas
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .background(Color.black)
@@ -116,7 +123,7 @@ struct DivineView: View {
             .simultaneousGesture(
                 SpatialTapGesture(count: 2).onEnded { value in
                     let offset = canvasOffset(fromScreenPoint: value.location,
-                                            in: geo.size)
+                                              in: geo.size)
                     onBackgroundDoubleTap(offset)
                 }
             )
@@ -129,24 +136,17 @@ struct DivineView: View {
                 if !isZooming {
                     isZooming = true
                     // Start gesture from current external scale
-                    baseScale = sceneScale
+                    baseScale = mode.sceneScale
                 }
                 pinchAnchor = anchorPoint(for: pinchLocation, in: viewSize)
                 let adjusted = 1 + (value - 1) * 0.3
 
-                // Match DivineMode's min/max zoom for consistency
-                let minZoom: CGFloat = 0.5
-                let maxZoom: CGFloat = 3.0
-
-                sceneScale = max(minZoom, min(baseScale * adjusted, maxZoom))
+                mode.sceneScale = max(minZoom, min(baseScale * adjusted, maxZoom))
             }
             .onEnded { value in
                 let adjusted = 1 + (value - 1) * 0.3
 
-                let minZoom: CGFloat = 0.5
-                let maxZoom: CGFloat = 3.0
-
-                sceneScale = max(minZoom, min(baseScale * adjusted, maxZoom))
+                mode.sceneScale = max(minZoom, min(baseScale * adjusted, maxZoom))
                 isZooming = false
             }
     }
@@ -166,8 +166,8 @@ struct DivineView: View {
     }
 
     private func canvasOffset(fromScreenPoint l: CGPoint, in viewport: CGSize) -> CGSize {
-        let s = sceneScale
-        let pan = panOffset + panDrag
+        let s = mode.sceneScale
+        let pan = mode.panOffset + panDrag
 
         let anchor = CGPoint(
             x: pinchAnchor.x * viewport.width,

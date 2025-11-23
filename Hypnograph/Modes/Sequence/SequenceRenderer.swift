@@ -88,9 +88,14 @@ final class SequenceRenderer: HypnogramRenderer {
                     at: insertAt
                 )
 
+                // TODO: Move MultiLayerBlendInstruction to Mode/Renderer or otherwise make a Sequence specific version
+                // to eliminate this dependency between modes.
                 let instruction = MultiLayerBlendInstruction(
                     layerTrackIDs: [videoTrack.trackID],
-                    blendModes: [],               // No blending for sequential clips
+                    blendModes: Array(
+                        repeating: "CISourceOverCompositing",
+                        count: recipe.sources.count
+                    ),
                     transforms: [.identity],      // Identity for sequential clips
                     sourceIndices: [index],       // Map to clip index for effects
                     timeRange: CMTimeRange(start: insertAt, duration: clip.duration)
