@@ -2,6 +2,9 @@
 //  HypnogramState.swift
 //  Hypnograph
 //
+//  Clean unified state: no “candidate” concept, no mirrors,
+//  one authoritative list of HypnogramSource objects.
+//
 //  Created by Loren Johnson on 15.11.25.
 //
 
@@ -10,13 +13,13 @@ import Combine
 import CoreMedia
 import CoreGraphics
 
-/// Manages the current in-progress hypnogram:
+/// Manages the current in-progress hypnogram.
 final class HypnogramState: ObservableObject {
+
     // MARK: - Core configuration
 
     private(set) var settings: Settings
 
-    /// Which named source library is currently active (e.g. "default", "renders", "photos").
     @Published private(set) var currentLibraryKey: String
     @Published private(set) var activeLibraryKeys: Set<String>
 
@@ -25,74 +28,53 @@ final class HypnogramState: ObservableObject {
 
     // MARK: - Mode management
 
-    /// Current mode type (Montage, Sequence, Divine)
     @Published var currentModeType: ModeType = .montage
 
-    // MARK: - Layer state
+    // MARK: - Source list
 
-    /// Index of the source currently being chosen
+    /// Dense, ordered list of all sources.
+    @Published private(set) var sources: [HypnogramSource]
+
+    /// Current selection index
     @Published private(set) var currentSourceIndex: Int = 0
-
-    /// For each source, the accepted / current clip.
-    @Published private(set) var selectedClips: [VideoClip?]
-
-    /// For each source, index into `blendModes` determining its mode.
-    @Published private(set) var sourceBlendIndices: [Int]
 
     // MARK: - UI-ish state
 
-    /// Offset from the current clip's start time, based on the current playhead.
+    /// Optional playhead offset for scrubbing, applies only on explicit user action.
     @Published var currentClipTimeOffset: CMTime?
 
-    /// HUD visibility flag (for the overlay in ContentView).
     @Published var isHUDVisible: Bool = true
 
-    /// Render hooks
+    /// If set, this source is globally solo'd.
+    /// Modes may layer additional view-only solo logic on top (e.g. short pulse).
+    @Published var soloSourceIndex: Int? = nil
+
+    // Render hooks
     let renderHooks = RenderHookManager()
-    // optional: a baseline params object to reuse
     var baseRenderParams = RenderParams()
 
-    // MARK: - Auto-prime timer
-
+    // Auto-prime timer
     private var autoPrimeTimer: Timer?
 
     // MARK: - Init
 
     init(settings: Settings) {
-        // 1) Store raw settings
         self.settings = settings
 
-        // 2) Compute initial library selection without touching `self`
         let defaultKey = settings.defaultSourceLibraryKey
         let initialKeys: Set<String> = [defaultKey]
         let initialFolders = settings.folders(forLibraries: initialKeys)
 
-        // 3) Initialize all stored properties that *don’t* have inline defaults
-
-        // Core configuration
         self.currentLibraryKey = defaultKey
         self.activeLibraryKeys = initialKeys
         self.library = VideoSourcesLibrary(sourceFolders: initialFolders)
         self.blendModes = settings.blendModes.map { BlendMode(key: $0) }
 
-        // Mode management
-        self.currentModeType = .montage
-
-        // Layer state
+        self.sources = []
         self.currentSourceIndex = 0
-        let sources = max(1, settings.maxSources)
-        self.selectedClips      = Array(repeating: nil, count: sources)
-        self.sourceBlendIndices = Array(repeating: 0,  count: sources)
-
-        // UI-ish state
         self.currentClipTimeOffset = nil
-        self.isHUDVisible = true
 
-        // Auto-prime timer
-        self.autoPrimeTimer = nil
-
-        // 4) Now it's safe to call methods that use `self`
-        _ = nextCandidateForCurrentSource()
+        _ = addSource()    // seed initial source
 
         if settings.autoPrime {
             autoPrimeNow()
@@ -100,339 +82,216 @@ final class HypnogramState: ObservableObject {
         }
     }
 
-    // MARK: - Derived properties
+    // MARK: - Convenience
 
-    var maxSources: Int {
-        selectedClips.count
+    private var defaultBlendMode: BlendMode {
+        blendModes.first ?? BlendMode(key: "normal")
     }
 
-    /// Number of sources that currently have a clip (no empties)
-    var activeSourceCount: Int {
-        sources.count
+    var activeSourceCount: Int { sources.count }
+
+    var currentSource: HypnogramSource? {
+        guard currentSourceIndex >= 0, currentSourceIndex < sources.count else { return nil }
+        return sources[currentSourceIndex]
     }
 
-    /// The blend mode currently selected for the active source.
+    var currentClip: VideoClip? {
+        currentSource?.clip
+    }
+
     var currentBlendMode: BlendMode {
-        let idx = sourceBlendIndices[currentSourceIndex]
-        return blendModes[idx]
+        currentSource?.blendMode ?? defaultBlendMode
     }
 
     var currentBlendModeName: String {
-        currentBlendMode.name
+        currentBlendMode.key
     }
 
-    /// Current clip for the active source, if any.
-    var currentCandidateClip: VideoClip? {
-        guard currentSourceIndex >= 0 && currentSourceIndex < selectedClips.count else { return nil }
-        return selectedClips[currentSourceIndex]
-    }
+    // MARK: - Rendering
 
-    /// All sources with a clip.
-    var sources: [HypnogramSource] {
-        var result: [HypnogramSource] = []
-
-        for sourceIndex in 0..<maxSources {
-            let modeIndex = sourceBlendIndices[sourceIndex]
-            let mode = blendModes[modeIndex]
-
-            if let clip = selectedClips[sourceIndex] {
-                result.append(HypnogramSource(clip: clip, blendMode: mode))
-            }
-        }
-
-        return result
-    }
-
-    /// Build a HypnogramRecipe for rendering.
     func sourcesForRender() -> HypnogramRecipe? {
         guard !sources.isEmpty else { return nil }
-
         return HypnogramRecipe(
             sources: sources,
-            targetDuration: self.settings.outputDuration
+            targetDuration: settings.outputDuration
         )
     }
 
-    // MARK: - High-level “intent” API (what the UI calls)
+    // MARK: - High-level API (for modes)
 
-    func nextCandidate() {
-        noteUserInteraction()
-        currentClipTimeOffset = nil
-        _ = nextCandidateForCurrentSource()
+    /// Add a new source with a random clip.
+    @discardableResult
+    func addSource(length: Double? = nil) -> HypnogramSource? {
+        guard let clip = library.randomClip(clipLength: length ?? settings.outputDuration.seconds)
+        else { return nil }
+
+        let newSource = HypnogramSource(
+            clip: clip,
+            blendMode: defaultBlendMode
+        )
+
+        sources.append(newSource)
+        currentSourceIndex = sources.count - 1
+        return newSource
     }
 
-    func acceptCandidate() {
-        noteUserInteraction()
+    /// Replace the clip for an existing source.
+    @discardableResult
+    func replaceClip(at index: Int, length: Double? = nil) -> VideoClip? {
+        guard index >= 0, index < sources.count else { return nil }
+        let duration = length ?? settings.outputDuration.seconds
 
-        if let offset = currentClipTimeOffset,
-           let candidate = currentCandidateClip {
-            // Time is relative to the clip's current startTime.
-            // Convert back to an absolute time in the source file.
-            let absoluteStart = CMTimeAdd(candidate.startTime, offset)
-            acceptCandidateForCurrentSource(usingStartTime: absoluteStart)
-        } else {
-            acceptCandidateForCurrentSource(usingStartTime: nil)
-        }
+        guard let newClip = library.randomClip(clipLength: duration) else { return nil }
 
-        currentClipTimeOffset = nil
+        var src = sources[index]
+        src.clip = newClip
+        sources[index] = src
+        return newClip
     }
 
-    func prevSource() {
-        noteUserInteraction()
-        currentSourceIndex = max(0, currentSourceIndex - 1)
+    func replaceClipForCurrentSource() {
+        replaceClip(at: currentSourceIndex)
     }
 
-    func nextSource() {
-        noteUserInteraction()
-        currentSourceIndex = min(maxSources - 1, currentSourceIndex + 1)
+    /// Adjust only the start time of the clip for a source.
+    func adjustStartTime(at index: Int, to newStart: CMTime) {
+        guard index >= 0, index < sources.count else { return }
+        var src = sources[index]
+        let clip = src.clip
+
+        let fileDuration = clip.file.duration
+        let start = min(newStart.seconds, fileDuration.seconds)
+        let remaining = max(0.0, fileDuration.seconds - start)
+        guard remaining > 0 else { return }
+
+        let newDuration = min(clip.duration.seconds, remaining)
+
+        src.clip = VideoClip(
+            file: clip.file,
+            startTime: CMTime(seconds: start, preferredTimescale: clip.startTime.timescale),
+            duration: CMTime(seconds: newDuration, preferredTimescale: clip.duration.timescale)
+        )
+        sources[index] = src
     }
 
-    func selectSource(index: Int) {
-        noteUserInteraction()
-        let clamped = max(0, min(maxSources - 1, index))
+    func selectSource(_ index: Int) {
+        guard !sources.isEmpty else { return }
+        let clamped = max(0, min(index, sources.count - 1))
         currentSourceIndex = clamped
     }
 
-    func cycleBlendMode() {
-        noteUserInteraction()
-        cycleBlendModeForCurrentSource()
+    func nextSource() {
+        guard !sources.isEmpty else { return }
+        let next = min(sources.count - 1, currentSourceIndex + 1)
+        currentSourceIndex = next
+    }
+
+    func previousSource() {
+        guard !sources.isEmpty else { return }
+        let prev = max(0, currentSourceIndex - 1)
+        currentSourceIndex = prev
+    }
+
+    func cycleBlendMode(at index: Int? = nil) {
+        let idx = index ?? currentSourceIndex
+        guard idx >= 0, idx < sources.count else { return }
+        guard !blendModes.isEmpty else { return }
+
+        let current = sources[idx]
+        let currentIndex = blendModes.firstIndex { $0.key == current.blendMode.key } ?? -1
+        let next = (currentIndex + 1).positiveMod(blendModes.count)
+        var updated = current
+        updated.blendMode = blendModes[next]
+        sources[idx] = updated
+    }
+
+    func deleteSource(at index: Int) {
+        guard index >= 0, index < sources.count else { return }
+        sources.remove(at: index)
+        currentSourceIndex = min(currentSourceIndex, max(0, sources.count - 1))
+
+        if sources.isEmpty {
+            _ = addSource()
+        }
+
+        // If the solo index is now out of range, clear it.
+        if let solo = soloSourceIndex, solo >= sources.count {
+            soloSourceIndex = nil
+        }
+    }
+
+    func deleteCurrentSource() {
+        deleteSource(at: currentSourceIndex)
+    }
+
+    // MARK: - Solo
+
+    /// Toggle solo for a specific source index.
+    /// If the same index is already solo'd, this clears solo.
+    /// If another index is solo'd, this switches solo to the new index.
+    func soloSource(index: Int) {
+        guard !sources.isEmpty else {
+            soloSourceIndex = nil
+            return
+        }
+        let clamped = max(0, min(index, sources.count - 1))
+        if soloSourceIndex == clamped {
+            soloSourceIndex = nil
+        } else {
+            soloSourceIndex = clamped
+        }
+    }
+
+    /// Explicitly clear solo regardless of which source was solo'd.
+    func clearSolo() {
+        soloSourceIndex = nil
+    }
+
+    // MARK: - Priming
+
+    /// Replace the entire list with N fresh sources.
+    func primeRandomSources(count: Int) {
+        sources.removeAll()
+        for _ in 0..<max(1, count) {
+            _ = addSource()
+        }
+        currentSourceIndex = max(0, sources.count - 1)
+        currentClipTimeOffset = nil
     }
 
     func toggleHUD() {
         isHUDVisible.toggle()
     }
 
-    /// Step back a source if possible.
-    func handleEscape() {
-        noteUserInteraction()
-
-        deleteCurrentSource()
-        currentClipTimeOffset = nil
+    func excludeCurrentSource() {
+        guard let clip = currentClip else { return }
+        library.exclude(file: clip.file)
+        replaceClipForCurrentSource()
     }
 
-    /// Generate a completely new auto-primed set.
+    /// Simple reset used by modes that want a clean slate.
+    func resetForNextHypnogram() {
+        sources.removeAll()
+        currentSourceIndex = 0
+        currentClipTimeOffset = nil
+        clearSolo()
+    }
+
+    /// Generate a new auto-primed set.
     func newAutoPrimeSet() {
-        noteUserInteraction()
         autoPrimeNow()
     }
 
-    /// Reload settings from disk and reconfigure the state.
-    func reloadSettings(from url: URL) {
-        do {
-            let newSettings = try SettingsLoader.load(from: url)
-            applySettings(newSettings)
-            print("🔄 Reloaded settings from \(url.path)")
-        } catch {
-            print("⚠️ Failed to reload settings; keeping existing settings. Error: \(error)")
-        }
-    }
-
-    /// After enqueuing a recipe for render, call this to start a fresh one.
-    /// This does *not* auto-prime; caller decides that.
-    func resetForNextHypnogram() {
-        let sourcesCount = maxSources
-
-        selectedClips      = Array(repeating: nil, count: sourcesCount)
-        sourceBlendIndices = Array(repeating: 0,  count: sourcesCount)
-        currentSourceIndex = 0
+    private func autoPrimeNow() {
+        let total = max(1, settings.maxSources)
+        let minCount = min(2, total)
+        let count = Int.random(in: minCount...total)
+        primeRandomSources(count: count)
         currentClipTimeOffset = nil
-
-        _ = nextCandidateForCurrentSource()
     }
-
-    // MARK: - Core actions (lower-level, used internally)
-
-    /// Get a new random clip for the current source.
-    @discardableResult
-    func nextCandidateForCurrentSource() -> VideoClip? {
-        guard let clip = library.randomClip(clipLength: settings.outputDuration.seconds) else {
-            return nil
-        }
-        selectedClips[currentSourceIndex] = clip
-        return clip
-    }
-
-    /// Get a new random clip for the current source with a custom length.
-    @discardableResult
-    func setRandomCandidateForCurrentSource(clipLength: Double) -> VideoClip? {
-        guard let clip = library.randomClip(clipLength: clipLength) else { return nil }
-        selectedClips[currentSourceIndex] = clip
-        return clip
-    }
-
-    /// Explicitly set the clip for a given source index.
-    func setCandidate(_ clip: VideoClip, forSource index: Int? = nil) {
-        let idx = index ?? currentSourceIndex
-        guard idx >= 0 && idx < selectedClips.count else { return }
-        selectedClips[idx] = clip
-    }
-
-    /// Accept the current clip for this source,
-    /// optionally overriding its start time with a custom playhead time,
-    /// and move to the next source if there is one.
-    func acceptCandidateForCurrentSource(usingStartTime customStart: CMTime? = nil) {
-        guard let candidate = selectedClips[currentSourceIndex] else { return }
-
-        let finalClip: VideoClip
-
-        if let customStart = customStart {
-            let fileDuration = candidate.file.duration
-
-            // Ensure customStart isn't beyond the end of the file.
-            let startSeconds = min(customStart.seconds, fileDuration.seconds)
-            let remaining = max(0.0, fileDuration.seconds - startSeconds)
-            guard remaining > 0 else { return }
-
-            // Keep original requested duration, but don't exceed remaining.
-            let newLength = min(candidate.duration.seconds, remaining)
-
-            let newStartTime = CMTime(
-                seconds: startSeconds,
-                preferredTimescale: candidate.startTime.timescale
-            )
-            let newDuration = CMTime(
-                seconds: newLength,
-                preferredTimescale: candidate.duration.timescale
-            )
-
-            finalClip = VideoClip(
-                file: candidate.file,
-                startTime: newStartTime,
-                duration: newDuration
-            )
-        } else {
-            finalClip = candidate
-        }
-
-        selectedClips[currentSourceIndex] = finalClip
-
-        if currentSourceIndex + 1 < maxSources {
-            // Inherit blend mode from this source to the next.
-            let currentBlendIndex = sourceBlendIndices[currentSourceIndex]
-            let nextSourceIndex = currentSourceIndex + 1
-            sourceBlendIndices[nextSourceIndex] = currentBlendIndex
-
-            currentSourceIndex = nextSourceIndex
-            _ = nextCandidateForCurrentSource()
-        } else {
-            // All sources have clips; ready to render.
-        }
-    }
-
-    /// M: Cycle the blend mode for the *current* source.
-    func cycleBlendModeForCurrentSource() {
-        guard !blendModes.isEmpty else { return }
-
-        var idx = sourceBlendIndices[currentSourceIndex]
-        idx = (idx + 1) % blendModes.count
-        sourceBlendIndices[currentSourceIndex] = idx
-    }
-
-    /// Fill the first `activeSourceCount` sources with random clips + random blend modes,
-    /// clear the rest, and position the cursor on the top-most active source.
-    ///
-    /// This is deliberately dumb and stateless: callers decide *when* and *how many*.
-    func primeRandomSources(activeSourceCount: Int) {
-        let totalLayers = maxSources
-        guard totalLayers > 0 else {
-            currentSourceIndex = 0
-            return
-        }
-
-        let clampedCount = max(1, min(activeSourceCount, totalLayers))
-
-        // Clear everything so we don't leak old selections.
-        selectedClips      = Array(repeating: nil, count: totalLayers)
-        sourceBlendIndices = Array(repeating: 0,  count: totalLayers)
-
-        // Fill first clampedCount sources with random clips + random blend modes.
-        for i in 0..<clampedCount {
-            if let clip = library.randomClip(clipLength: settings.outputDuration.seconds) {
-                selectedClips[i] = clip
-            }
-
-            if !blendModes.isEmpty {
-                // 80% chance of first blend mode, else random of the rest.
-                sourceBlendIndices[i] = (Double.random(in: 0...1) < 0.8)
-                    ? 0
-                    : Int.random(in: 1..<blendModes.count)
-            }
-        }
-
-        // Cursor on the top-most active source so M/randomize etc. are meaningful.
-        currentSourceIndex = clampedCount - 1
-    }
-
-    // MARK: - Layer deletion helpers
-
-    /// Delete the current source, keeping arrays dense (no empty slots).
-    func deleteCurrentSource() {
-        deleteLayer(at: currentSourceIndex)
-    }
-
-    /// Remove a source at the given index and keep indices contiguous.
-    private func deleteLayer(at index: Int) {
-        guard index >= 0, index < selectedClips.count else { return }
-
-        selectedClips.remove(at: index)
-        sourceBlendIndices.remove(at: index)
-
-        if selectedClips.isEmpty {
-            // Always maintain at least one source
-            selectedClips = [nil]
-            sourceBlendIndices = [0]
-            currentSourceIndex = 0
-            _ = nextCandidateForCurrentSource()
-            return
-        }
-
-        // Clamp current source to valid range
-        currentSourceIndex = min(currentSourceIndex, selectedClips.count - 1)
-    }
-
-    // MARK: - Exclusions
-
-    func excludeCurrentSource() {
-        guard let clip = currentCandidateClip else { return }
-        library.exclude(file: clip.file)
-        nextCandidate()
-    }
-
-    // MARK: - Settings reload
-
-    private func applySettings(_ newSettings: Settings) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-
-            // Update settings + blend modes
-            self.settings = newSettings
-            self.blendModes = newSettings.blendModes.map { BlendMode(key: $0) }
-
-            // Keep currently active keys if they still exist, else fall back to default.
-            let validKeys = self.activeLibraryKeys.filter { newSettings.sourceLibraries[$0] != nil }
-            let newActive: Set<String> =
-                validKeys.isEmpty ? [newSettings.defaultSourceLibraryKey] : Set(validKeys)
-
-            self.applyActiveLibraries(newActive)
-        }
-    }
-
-    // MARK: - Auto-prime timer
 
     private func noteUserInteraction() {
         scheduleAutoPrimeTimer()
-    }
-
-    private func autoPrimeNow() {
-        guard settings.maxSources > 0 else { return }
-
-        let total = settings.maxSources
-        // 2..maxSources normally; fall back to 1 if maxSources == 1.
-        let minLayers = min(2, total)
-        let activeCount = Int.random(in: minLayers...total)
-
-        primeRandomSources(activeSourceCount: activeCount)
-        currentClipTimeOffset = nil
     }
 
     private func scheduleAutoPrimeTimer() {
@@ -453,35 +312,28 @@ final class HypnogramState: ObservableObject {
         }
     }
 
-    // MARK: - Library switching (multi-select)
+    // MARK: - Library switching
 
     func isLibraryActive(key: String) -> Bool {
         activeLibraryKeys.contains(key)
     }
 
     func toggleLibrary(key: String) {
-        // Ignore unknown keys
         guard settings.sourceLibraries[key] != nil else { return }
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
 
-            var newKeys = self.activeLibraryKeys
+            var keys = self.activeLibraryKeys
 
-            if newKeys.contains(key) {
-                // Turn off, but keep at least one library active.
-                if newKeys.count > 1 {
-                    newKeys.remove(key)
-                } else {
-                    // Don't allow zero; fall back to default.
-                    newKeys = [self.settings.defaultSourceLibraryKey]
-                }
+            if keys.contains(key) {
+                if keys.count > 1 { keys.remove(key) }
+                else { keys = [self.settings.defaultSourceLibraryKey] }
             } else {
-                // Turn on
-                newKeys.insert(key)
+                keys.insert(key)
             }
 
-            self.applyActiveLibraries(newKeys)
+            self.applyActiveLibraries(keys)
         }
     }
 
@@ -492,23 +344,18 @@ final class HypnogramState: ObservableObject {
         }
     }
 
-    /// Internal helper to rebuild the underlying VideoSourcesLibrary and reset state.
     private func applyActiveLibraries(_ keys: Set<String>) {
         let folders = settings.folders(forLibraries: keys)
-
-        // Update active libraries + currentLibraryKey
         activeLibraryKeys = keys
         currentLibraryKey = keys.first ?? settings.defaultSourceLibraryKey
         library = VideoSourcesLibrary(sourceFolders: folders)
 
-        // Reset hypnogram layer state to match current settings
-        let sourcesCount = max(1, settings.maxSources)
-        selectedClips      = Array(repeating: nil, count: sourcesCount)
-        sourceBlendIndices = Array(repeating: 0,  count: sourcesCount)
+        sources.removeAll()
         currentSourceIndex = 0
         currentClipTimeOffset = nil
+        clearSolo()
 
-        _ = nextCandidateForCurrentSource()
+        _ = addSource()
 
         autoPrimeTimer?.invalidate()
         autoPrimeTimer = nil
@@ -516,5 +363,38 @@ final class HypnogramState: ObservableObject {
             autoPrimeNow()
             scheduleAutoPrimeTimer()
         }
+    }
+
+    /// Reload settings from disk and reapply basic configuration.
+    func reloadSettings(from url: URL) {
+        do {
+            let newSettings = try SettingsLoader.load(from: url)
+            self.settings = newSettings
+
+            // Rebuild blend modes
+            self.blendModes = newSettings.blendModes.map { BlendMode(key: $0) }
+
+            // Re-apply active libraries with the new settings
+            applyActiveLibraries(activeLibraryKeys)
+
+            // Restart auto-prime timer with new config
+            autoPrimeTimer?.invalidate()
+            autoPrimeTimer = nil
+            if newSettings.autoPrime {
+                autoPrimeNow()
+                scheduleAutoPrimeTimer()
+            }
+        } catch {
+            print("⚠️ Failed to reload settings from \(url.path): \(error)")
+        }
+    }
+}
+
+// MARK: - Small helper
+
+private extension Int {
+    func positiveMod(_ n: Int) -> Int {
+        let r = self % n
+        return r >= 0 ? r : r + n
     }
 }

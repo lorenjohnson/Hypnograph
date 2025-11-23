@@ -4,7 +4,7 @@ import Combine
 import SwiftUI
 
 /// Concrete HypnographMode backed by HypnogramState + Montage renderer semantics.
-/// Holds any Montage-specific preview state (like solo).
+/// Holds any Montage-specific preview state (like solo pulses).
 final class MontageMode: ObservableObject, HypnographMode {
 
     /// Shared session state used by the Montage mode.
@@ -14,10 +14,9 @@ final class MontageMode: ObservableObject, HypnographMode {
     /// Render queue + backend for this mode.
     let renderQueue: RenderQueue
 
-    /// If set, preview only this source (solo).
-    /// `nil` = normal multi-source preview.
-    @Published private(set) var soloLayerIndex: Int? = nil
-    private var persistentSoloIndex: Int? = nil
+    /// Short-lived solo pulse index for visual inspection when switching sources.
+    /// This never touches global solo in state; it’s view-only.
+    @Published private var soloPulseIndex: Int? = nil
     private var soloPulseWorkItem: DispatchWorkItem?
 
     init(state: HypnogramState) {
@@ -39,15 +38,21 @@ final class MontageMode: ObservableObject, HypnographMode {
     }
 
     var isSoloActive: Bool {
-        soloLayerIndex != nil
+        soloPulseIndex != nil || state.soloSourceIndex != nil
     }
 
     var soloIndicatorText: String? {
-        if let solo = soloLayerIndex {
+        if let pulse = soloPulseIndex {
+            return "SOLO \(pulse + 1)"
+        } else if let solo = state.soloSourceIndex {
             return "SOLO \(solo + 1)"
         } else {
             return "\(currentSourceIndex + 1)"
         }
+    }
+    
+    var maxSources: Int {
+        max(1, state.settings.maxSources)
     }
 
     // MARK: - Preview / solo
@@ -56,11 +61,17 @@ final class MontageMode: ObservableObject, HypnographMode {
     private func sourcesForDisplay(using state: HypnogramState) -> (sources: [HypnogramSource], sourceIndices: [Int]) {
         let all = state.sources
 
-        if let solo = soloLayerIndex {
+        if let pulse = soloPulseIndex {
+            guard pulse >= 0, pulse < all.count else {
+                return (all, Array(0..<all.count))
+            }
+            // Pulse solo: momentary view-only solo.
+            return ([all[pulse]], [pulse])
+        } else if let solo = state.soloSourceIndex {
             guard solo >= 0, solo < all.count else {
                 return (all, Array(0..<all.count))
             }
-            // Solo mode: return only the soloed source with its original index
+            // Persistent solo: use state solo.
             return ([all[solo]], [solo])
         } else {
             // Normal mode: all sources with sequential indices
@@ -68,16 +79,15 @@ final class MontageMode: ObservableObject, HypnographMode {
         }
     }
 
-    /// Solo the current source (or clear solo if already soloed).
-    func toggleSoloCurrentSource() {
-        let idx = state.currentSourceIndex
-        if persistentSoloIndex == idx {
-            persistentSoloIndex = nil
-        } else {
-            persistentSoloIndex = idx
-        }
+    private func startSoloPulse(for index: Int) {
         soloPulseWorkItem?.cancel()
-        soloLayerIndex = persistentSoloIndex
+        soloPulseIndex = index
+
+        let work = DispatchWorkItem { [weak self] in
+            self?.soloPulseIndex = nil
+        }
+        soloPulseWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: work)
     }
 
     // MARK: - HypnographMode – display wiring
@@ -131,27 +141,29 @@ final class MontageMode: ObservableObject, HypnographMode {
         ]
     }
 
+    /// Number keys: momentary solo pulse, never latch persistent solo.
     func selectOrToggleSolo(index: Int) {
-        // Number keys: only momentary solo pulse, never latch persistent solo.
-        selectSource(index: index)
+        selectSource(index: index, pulse: true)
     }
 
     // MARK: - HypnographMode – engine behavior
 
     func new() {
-        soloLayerIndex = nil
-        persistentSoloIndex = nil
+        soloPulseIndex = nil
+        state.clearSolo()
         state.newAutoPrimeSet()
     }
 
     func addSource() {
         let activeCount = state.activeSourceCount
-        guard activeCount < state.maxSources else { return }
+        print("MontageMode.addSource", activeCount)
+        // Always allow appending; no hard cap here.
+        if let _ = state.addSource() {
+            // Newly added source is auto-selected by state.addSource()
+            startSoloPulse(for: state.currentSourceIndex)
+        }
 
-        state.selectSource(index: activeCount)
-        _ = state.nextCandidateForCurrentSource()
-        soloLayerIndex = nil
-        persistentSoloIndex = nil
+        soloPulseIndex = nil
     }
 
     func save() {
@@ -164,8 +176,7 @@ final class MontageMode: ObservableObject, HypnographMode {
         renderQueue.enqueue(recipe: recipe)
 
         state.resetForNextHypnogram()
-
-        soloLayerIndex = nil
+        soloPulseIndex = nil
 
         if state.settings.autoPrime {
             state.newAutoPrimeSet()
@@ -173,19 +184,18 @@ final class MontageMode: ObservableObject, HypnographMode {
     }
 
     // Source navigation
-
     func nextSource() {
         let activeCount = state.activeSourceCount
         guard activeCount > 0 else { return }
-        let nextIndex = min(activeCount - 1, state.currentSourceIndex + 1)
-        selectSource(index: nextIndex, pulse: true)
+        state.nextSource()
+        startSoloPulse(for: state.currentSourceIndex)
     }
 
     func previousSource() {
         let activeCount = state.activeSourceCount
         guard activeCount > 0 else { return }
-        let prevIndex = max(0, state.currentSourceIndex - 1)
-        selectSource(index: prevIndex, pulse: true)
+        state.previousSource()
+        startSoloPulse(for: state.currentSourceIndex)
     }
 
     func selectSource(index: Int) {
@@ -196,59 +206,40 @@ final class MontageMode: ObservableObject, HypnographMode {
     }
 
     private func selectSource(index: Int, pulse: Bool) {
-        state.selectSource(index: index)
-
-        // If persistent solo is enabled, keep it aligned to selection.
-        if persistentSoloIndex != nil {
-            persistentSoloIndex = index
-        }
-
-        soloPulseWorkItem?.cancel()
+        state.selectSource(index)
 
         if pulse {
-            soloLayerIndex = index
-            let work = DispatchWorkItem { [weak self] in
-                guard let self else { return }
-                self.soloLayerIndex = self.persistentSoloIndex
-            }
-            soloPulseWorkItem = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: work)
-        } else {
-            soloLayerIndex = persistentSoloIndex
+            startSoloPulse(for: index)
         }
     }
 
-    // Candidate / selection
+    // MARK: - Candidate / selection
 
-    func nextCandidate() {
-        state.nextCandidate()
-    }
-
-    func acceptCandidate() {
-        state.acceptCandidate()
+    func newRandomClip() {
+        _ = state.replaceClip(at: state.currentSourceIndex)
     }
 
     func deleteCurrentSource() {
-        state.handleEscape()
+        state.deleteCurrentSource()
     }
 
-    // Mode-specific tweaks
+    // MARK: - Mode-specific tweaks
 
     func cycleEffect() {
         state.cycleBlendMode()
     }
 
     func toggleHUD() {
-        state.toggleHUD()
+        state.isHUDVisible.toggle()
     }
 
     func toggleSolo() {
-        toggleSoloCurrentSource()
+        state.soloSource(index: state.currentSourceIndex)
     }
 
     func reloadSettings() {
-        state.reloadSettings(from: Environment.defaultSettingsURL)
-        soloLayerIndex = nil
+        state.resetForNextHypnogram()
+        soloPulseIndex = nil
     }
 
     // MARK: - Effects
@@ -266,12 +257,12 @@ final class MontageMode: ObservableObject, HypnographMode {
         state.renderHooks.setGlobalEffect(nil)
 
         // Clear all per-source effects
-        for i in 0..<state.maxSources {
+        for i in 0..<maxSources {
             state.renderHooks.setSourceEffect(nil, for: i)
         }
 
-        // Montage-specific: also clear solo mode
-        soloLayerIndex = nil
+        soloPulseIndex = nil
+        state.clearSolo()
     }
 
     var globalEffectName: String {

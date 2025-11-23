@@ -57,10 +57,9 @@ struct ContentView: View {
         // Divider after source-specific items
         items.append(.padding(16, order: 39))
 
-        items.append(.text("Current Source", order: 11, font: .subheadline))
+        items.append(.text("Current Source", order: 40, font: .subheadline))
         // Global keyboard shortcuts
-        items.append(.text("N = Next Candidate", order: 42))
-        items.append(.text("Return = Accept Candidate", order: 43))
+        items.append(.text("N = New random clip", order: 42))
         items.append(.text("Delete = Delete Source", order: 44))
 
         items.append(.padding(16, order: 49))

@@ -304,7 +304,11 @@ struct AppCommands: Commands {
         self.appDelegate = appDelegate
         self.cycleModeHandler = cycleMode
     }
-
+    
+    private var maxSources: Int {
+        max(1, state.settings.maxSources)
+    }
+    
     private var currentMode: HypnographMode {
         switch state.currentModeType {
         case .montage:
@@ -465,7 +469,7 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut(.leftArrow, modifiers: [])
 
-            ForEach(0..<state.maxSources, id: \.self) { idx in
+            ForEach(0..<maxSources, id: \.self) { idx in
                 Button("Select Source \(idx + 1)") {
                     selectOrToggleSolo(index: idx)
                 }
@@ -504,15 +508,11 @@ struct AppCommands: Commands {
             .keyboardShortcut("f", modifiers: [])
 
             // Global navigation & candidate commands
-            Button("New Candidate") {
-                currentMode.nextCandidate()
+            Button("New Random Clip") {
+                // currentMode.nextCandidate()
+                currentMode.newRandomClip()
             }
             .keyboardShortcut("n", modifiers: [])
-
-            Button("Accept Candidate") {
-                currentMode.acceptCandidate()
-            }
-            .keyboardShortcut(.return, modifiers: [])
 
             Divider()
 
