@@ -172,11 +172,6 @@ final class SequenceMode: ObservableObject, HypnographMode {
         _ = state.replaceClip(at: currentSourceIndex, length: randomSourceDuration())
     }
 
-    func deleteCurrentSource() {
-        guard currentSourceIndex < sequenceSources.count else { return }
-        state.deleteCurrentSource()
-    }
-
     // MARK: - Mode-specific tweaks
 
     func reloadSettings() {
