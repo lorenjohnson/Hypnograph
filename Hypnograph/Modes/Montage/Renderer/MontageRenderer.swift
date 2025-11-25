@@ -2,7 +2,10 @@
 //  MontageRenderer.swift
 //  Hypnograph
 //
-//  Created by Loren Johnson on 17.11.25.
+//  Final export backend for Montage mode.
+//
+//  Uses the same MontageTimelineBuilder + MultiLayerBlendCompositor
+//  pipeline as the preview, but writes to disk via AVAssetExportSession.
 //
 
 import Foundation
@@ -10,104 +13,117 @@ import AVFoundation
 import CoreMedia
 import CoreGraphics
 
+/// CI filter name for “normal” source-over compositing.
+/// Used by compositors (e.g. MultiLayerBlendCompositor) for the *bottom* layer
+/// and wherever a simple source-over is needed.
+let kBlendModeSourceOver = "CISourceOverCompositing"
+/// Default per-layer blend mode for Montage (above layer 0).
+let kBlendModeDefaultMontage = "CIScreenBlendMode"
+
 final class MontageRenderer: HypnogramRenderer {
-    private let outputURL: URL
+
+    /// Folder where rendered files are written.
+    private let outputFolder: URL
+
+    /// Target render size.
     private let outputSize: CGSize
 
-    init(
-        outputURL: URL,
-        outputSize: CGSize
-    ) {
-        self.outputURL = outputURL
+    init(outputURL: URL, outputSize: CGSize) {
+        // Treat `outputURL` from Settings as the *folder* for renders.
+        self.outputFolder = outputURL
         self.outputSize = outputSize
     }
 
-    func enqueue(recipe: HypnogramRecipe, completion: @escaping (Result<URL, Error>) -> Void) {
+    // MARK: - HypnogramRenderer
+
+    func enqueue(
+        recipe: HypnogramRecipe,
+        completion: @escaping (Result<URL, Error>) -> Void
+    ) {
         DispatchQueue.global(qos: .userInitiated).async {
-            self.render(recipe: recipe, completion: completion)
+            do {
+                let url = try self.render(recipe: recipe)
+                DispatchQueue.main.async {
+                    completion(.success(url))
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
+            }
         }
     }
 
-    private func render(recipe: HypnogramRecipe, completion: @escaping (Result<URL, Error>) -> Void) {
-        // 1. Basic sanity check
+    // MARK: - Core render
+
+    private func render(recipe: HypnogramRecipe) throws -> URL {
         guard !recipe.sources.isEmpty else {
-            let err = NSError(
-                domain: "MontageRenderer",
-                code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Empty HypnogramRecipe"]
-            )
-            print("MontageRenderer: \(err)")
-            completion(.failure(err))
-            return
+            throw MontageRendererError.noSources
         }
 
         let targetDuration = recipe.targetDuration
-        let targetSeconds = targetDuration.seconds
-        guard targetSeconds > 0 else {
-            let err = NSError(
-                domain: "MontageRenderer",
-                code: 6,
-                userInfo: [NSLocalizedDescriptionKey: "Non-positive targetDuration in recipe"]
-            )
-            print("MontageRenderer: \(err)")
-            completion(.failure(err))
-            return
+        guard targetDuration.seconds > 0 else {
+            throw MontageRendererError.invalidTargetDuration
         }
 
-        print("MontageRenderer: rendering recipe with \(recipe.sources.count) source(s), target duration \(targetSeconds)s")
+        print("🎬 MontageRenderer: starting render with \(recipe.sources.count) source(s), duration \(targetDuration.seconds)s")
 
-        // 2. Per-layer blend-mode configuration:
-        //    Prefer the serialized MontageConfig, otherwise fall back to names
-        //    derived from the recipe’s sources.
-        let configuredBlendModes: [String]
-        if let config: MontageConfig = recipe.modeConfig(MontageConfig.self) {
-            configuredBlendModes = config.layerBlendModes
-        } else {
-            configuredBlendModes = defaultBlendModes(from: recipe.sources)
-        }
+        // For export, keep the compositor completely detached from any
+        // preview / SwiftUI-driven hooks or frame buffers.
+        let savedHooks = GlobalRenderHooks.manager
+        GlobalRenderHooks.manager = nil
+        defer { GlobalRenderHooks.manager = savedHooks }
 
-        // 3. Build composition via shared builder (same as preview)
-        let buildResult: MontageCompositionBuilder.Result
+        let buildResult: MontageTimelineBuilder.Result
+
         do {
-            buildResult = try MontageCompositionBuilder.build(
+            buildResult = try MontageTimelineBuilder.build(
                 sources: recipe.sources,
                 targetDuration: targetDuration
             )
+        } catch let error as MontageTimelineBuilder.BuildError {
+            switch error {
+            case .noValidVideoTracks:
+                // All sources are likely still images.
+                // Build a dummy timebase composition with empty video tracks,
+                // one per source, and let the compositor draw the stills.
+                print("🎬 MontageRenderer: no valid video tracks; using dummy still composition")
+                buildResult = Self.buildDummyStillComposition(
+                    sources: recipe.sources,
+                    targetDuration: targetDuration
+                )
+            default:
+                print("❌ MontageRenderer: composition build failed: \(error)")
+                throw MontageRendererError.compositionBuildFailed(error)
+            }
         } catch {
-            print("MontageRenderer: composition build failed: \(error)")
-            completion(.failure(error))
-            return
+            print("❌ MontageRenderer: composition build failed: \(error)")
+            throw MontageRendererError.compositionBuildFailed(error)
         }
 
         let composition   = buildResult.composition
         let videoTrackIDs = buildResult.videoTrackIDs
         let transforms    = buildResult.transforms
 
-        guard !videoTrackIDs.isEmpty else {
-            let err = NSError(
-                domain: "MontageRenderer",
-                code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "No valid video tracks in composition"]
-            )
-            print("MontageRenderer: \(err)")
-            completion(.failure(err))
-            return
-        }
+        print("🎬 MontageRenderer: composition duration = \(composition.duration.seconds)s, layerTrackIDs = \(videoTrackIDs)")
 
-        print("MontageRenderer: using \(videoTrackIDs.count) video track(s), duration \(targetSeconds)s")
+        // Per-layer blend modes derived from recipe.mode?.sourceData if present.
+        let blendModes = resolveBlendModes(
+            from: recipe,
+            layerCount: videoTrackIDs.count
+        )
 
-        // Normalize blend-mode list to match the number of video tracks.
-        let blendModes = normalizedBlendModes(configuredBlendModes, count: videoTrackIDs.count)
-
-        // 4. Video composition + custom compositor
-        // For full render, source indices are sequential (no solo filtering)
+        // IMPORTANT: For export we mimic preview’s mapping:
+        // one track per displayed layer, in the same order.
         let sourceIndices = Array(0..<videoTrackIDs.count)
-        let instruction = MultiLayerBlendInstruction(
+
+        let instruction = MultiLayerBlendInstruction.make(
             layerTrackIDs: videoTrackIDs,
             blendModes: blendModes,
             transforms: transforms,
             sourceIndices: sourceIndices,
-            timeRange: CMTimeRange(start: .zero, duration: targetDuration)
+            timeRange: CMTimeRange(start: .zero, duration: targetDuration),
+            sources: recipe.sources
         )
 
         let videoComposition = AVMutableVideoComposition()
@@ -116,134 +132,165 @@ final class MontageRenderer: HypnogramRenderer {
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
         videoComposition.instructions  = [instruction]
 
-        // 5. Audio mix
-        let audioTracks = composition.tracks(withMediaType: .audio)
-        print("MontageRenderer: composition has \(audioTracks.count) audio track(s)")
+        let outputURL = try prepareOutputURL()
 
-        var audioMix: AVAudioMix?
-        if !audioTracks.isEmpty {
-            let mix = AVMutableAudioMix()
-            var params: [AVMutableAudioMixInputParameters] = []
-
-            for (i, track) in audioTracks.enumerated() {
-                let p = AVMutableAudioMixInputParameters(track: track)
-                p.setVolume(1.0, at: .zero)
-                params.append(p)
-                print("MontageRenderer: audio track \(i) id=\(track.trackID) duration=\(track.timeRange.duration.seconds)s")
-            }
-
-            mix.inputParameters = params
-            audioMix = mix
-        }
-
-        // 6. Output folder
-        do {
-            try FileManager.default.createDirectory(
-                at: outputURL,
-                withIntermediateDirectories: true,
-                attributes: nil
-            )
-        } catch {
-            print("MontageRenderer: failed to create output folder: \(error)")
-            completion(.failure(error))
-            return
-        }
-
-        let filename = "hypnogram-\(UUID().uuidString).mp4"
-        let outputURL = outputURL.appendingPathComponent(filename)
-        try? FileManager.default.removeItem(at: outputURL)
-
-        // 7. Export
-        guard let exportSession = AVAssetExportSession(
-            asset: composition,
-            presetName: AVAssetExportPreset1920x1080
-        ) ?? AVAssetExportSession(
+        guard let export = AVAssetExportSession(
             asset: composition,
             presetName: AVAssetExportPresetHighestQuality
         ) else {
-            let err = NSError(
-                domain: "MontageRenderer",
-                code: 3,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to create AVAssetExportSession"]
-            )
-            print("MontageRenderer: \(err)")
-            completion(.failure(err))
-            return
+            print("❌ MontageRenderer: failed to create AVAssetExportSession")
+            throw MontageRendererError.exportSessionCreationFailed
         }
 
-        exportSession.outputURL = outputURL
-        exportSession.outputFileType = .mp4
-        exportSession.shouldOptimizeForNetworkUse = true
-        exportSession.videoComposition = videoComposition
+        export.outputURL = outputURL
+        export.outputFileType = .mov
+        export.videoComposition = videoComposition
 
-        if let mix = audioMix {
-            exportSession.audioMix = mix
-            print("MontageRenderer: attached audio mix with \(mix.inputParameters.count) input(s)")
-        } else {
-            print("MontageRenderer: no audio mix attached")
+        print("🎬 MontageRenderer: export started → \(outputURL.path)")
+
+        let semaphore = DispatchSemaphore(value: 0)
+
+        export.exportAsynchronously {
+            semaphore.signal()
         }
 
-        print("MontageRenderer: starting export to \(outputURL.path)")
+        // Block this background queue until export finishes.
+        semaphore.wait()
 
-        exportSession.exportAsynchronously {
-            switch exportSession.status {
-            case .completed:
-                print("MontageRenderer: export completed → \(outputURL.path)")
-                completion(.success(outputURL))
+        // After export finishes, inspect status and error.
+        if export.status != .completed {
+            let status = export.status
+            let err = export.error
 
-            case .failed, .cancelled:
-                let error = exportSession.error ?? NSError(
-                    domain: "MontageRenderer",
-                    code: 4,
-                    userInfo: [NSLocalizedDescriptionKey: "Export failed or cancelled"]
-                )
-                print("MontageRenderer: export failed/cancelled: \(error)")
-                completion(.failure(error))
+            print("❌ MontageRenderer: export finished with status=\(status.rawValue), error=\(String(describing: err))")
 
-            default:
-                let error = exportSession.error ?? NSError(
-                    domain: "MontageRenderer",
-                    code: 5,
-                    userInfo: [NSLocalizedDescriptionKey: "Unexpected export status: \(exportSession.status)"]
-                )
-                print("MontageRenderer: unexpected export status: \(exportSession.status) (error: \(String(describing: exportSession.error)))")
-                completion(.failure(error))
+            // Best-effort: remove any partial or black file.
+            let fm = FileManager.default
+            if fm.fileExists(atPath: outputURL.path) {
+                try? fm.removeItem(at: outputURL)
             }
+
+            throw MontageRendererError.exportFailedStatus(status, underlying: err)
         }
+
+        print("✅ MontageRenderer: export completed → \(outputURL.lastPathComponent)")
+        return outputURL
     }
 
-    // MARK: - Blend-mode helpers
+    // MARK: - Helpers
 
-    /// Default per-layer blend modes derived from the recipe’s sources.
-    /// First layer is always source-over.
-    private func defaultBlendModes(from sources: [HypnogramSource]) -> [String] {
-        sources.enumerated().map { index, source in
-            if index == 0 {
-                return "CISourceOverCompositing"
+    /// Resolve blend modes for all layers:
+    /// - If recipe has mode `.montage` and per-source `"blendMode"` entries, use them.
+    /// - Otherwise, fall back to SourceOver for layer 0 and CIScreenBlendMode above.
+    private func resolveBlendModes(
+        from recipe: HypnogramRecipe,
+        layerCount: Int
+    ) -> [String] {
+        var result: [String] = []
+
+        for idx in 0..<layerCount {
+            let fallback = (idx == 0) ? kBlendModeSourceOver : kBlendModeDefaultMontage
+
+            guard
+                let mode = recipe.mode,
+                mode.name == .montage,
+                idx < mode.sourceData.count
+            else {
+                result.append(fallback)
+                continue
+            }
+
+            let data = mode.sourceData[idx]
+            let stored = data["blendMode"]
+
+            if let stored, !stored.isEmpty {
+                result.append(stored)
             } else {
-                return source.blendMode.ciFilterName
+                result.append(fallback)
             }
         }
+
+        return result
     }
 
-    /// Normalize a blend-mode list to match the number of layers/tracks.
-    /// If too short, pad with the last value; if empty, default to source-over.
-    private func normalizedBlendModes(_ modes: [String], count: Int) -> [String] {
-        guard count > 0 else { return [] }
+    /// Ensure output folder exists and generate a unique filename.
+    private func prepareOutputURL() throws -> URL {
+        let fm = FileManager.default
 
-        if modes.isEmpty {
-            return Array(repeating: "CISourceOverCompositing", count: count)
+        // Create folder if needed
+        if !fm.fileExists(atPath: outputFolder.path) {
+            try fm.createDirectory(at: outputFolder, withIntermediateDirectories: true)
         }
 
-        if modes.count >= count {
-            return Array(modes.prefix(count))
-        } else {
-            var result = modes
-            let last = modes.last ?? "CISourceOverCompositing"
-            while result.count < count {
-                result.append(last)
+        let timestamp = Self.timestampString()
+        let filename = "Hypnogram-\(timestamp).mov"
+        let url = outputFolder.appendingPathComponent(filename)
+
+        // If something is already there with that name, remove it before exporting.
+        if fm.fileExists(atPath: url.path) {
+            try fm.removeItem(at: url)
+        }
+
+        return url
+    }
+
+    private static func timestampString() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        return formatter.string(from: Date())
+    }
+
+    /// Build a dummy AVMutableComposition for the case where there are no
+    /// video-backed sources (all still images).
+    ///
+    /// We:
+    /// - create a composition with an empty time range of `targetDuration`
+    /// - add one empty video track per source
+    /// - use the source transforms directly (no preferredTransform)
+    ///
+    /// The compositor then uses `MultiLayerBlendInstruction.make(...)` to
+    /// attach CIImages for image-backed sources and ignores the empty tracks.
+    private static func buildDummyStillComposition(
+        sources: [HypnogramSource],
+        targetDuration: CMTime
+    ) -> MontageTimelineBuilder.Result {
+        let composition = AVMutableComposition()
+
+        // Ensure the composition has non-zero duration.
+        composition.insertEmptyTimeRange(
+            CMTimeRange(start: .zero, duration: targetDuration)
+        )
+
+        var videoTrackIDs: [CMPersistentTrackID] = []
+        var transforms: [CGAffineTransform] = []
+
+        for (index, source) in sources.enumerated() {
+            let trackID = CMPersistentTrackID(index + 1)
+            if let compVideoTrack = composition.addMutableTrack(
+                withMediaType: .video,
+                preferredTrackID: trackID
+            ) {
+                compVideoTrack.preferredTransform = .identity
+                videoTrackIDs.append(compVideoTrack.trackID)
+                transforms.append(source.transform)
             }
-            return result
         }
+
+        return MontageTimelineBuilder.Result(
+            composition: composition,
+            videoTrackIDs: videoTrackIDs,
+            transforms: transforms,
+            duration: targetDuration
+        )
     }
+}
+
+// MARK: - Errors
+
+enum MontageRendererError: Error {
+    case noSources
+    case invalidTargetDuration
+    case compositionBuildFailed(Error)
+    case exportSessionCreationFailed
+    case exportFailedStatus(AVAssetExportSession.Status, underlying: Error?)
 }

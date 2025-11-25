@@ -26,6 +26,9 @@ final class DivineMode: ObservableObject, HypnographMode {
     let state: HypnogramState
     let renderQueue: RenderQueue
 
+    /// Placeholder renderer for protocol completeness (not actually used yet).
+    private let renderer = DivineNoopRenderer()
+
     let cardManager: DivineCardManager
 
     // MARK: - View transform (zoom + pan) exposed to the view
@@ -37,9 +40,9 @@ final class DivineMode: ObservableObject, HypnographMode {
     private let maxZoom: CGFloat = 3.0
     private let zoomStep: CGFloat = 1.1
 
-    init(state: HypnogramState) {
+    init(state: HypnogramState, renderQueue: RenderQueue) {
         self.state = state
-        self.renderQueue = RenderQueue(renderer: DivineNoopRenderer())
+        self.renderQueue = renderQueue
         self.cardManager = DivineCardManager(state: state)
     }
 

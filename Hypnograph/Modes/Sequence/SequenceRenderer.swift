@@ -2,7 +2,9 @@
 //  SequenceRenderer.swift
 //  Hypnograph
 //
-//  Created by Loren Johnson on 20.11.25.
+//  Final export backend for Sequence mode.
+//
+//  Concatenates clips one after another to match the recipe's targetDuration.
 //
 
 import Foundation
@@ -11,205 +13,204 @@ import CoreMedia
 import CoreGraphics
 
 final class SequenceRenderer: HypnogramRenderer {
-    private let outputURL: URL
+
+    /// Folder where rendered files are written.
+    private let outputFolder: URL
+
+    /// Target render size (not strictly needed here, but kept for symmetry).
     private let outputSize: CGSize
 
-    init(
-        outputURL: URL,
-        outputSize: CGSize
-    ) {
-        self.outputURL = outputURL
+    init(outputURL: URL, outputSize: CGSize) {
+        self.outputFolder = outputURL
         self.outputSize = outputSize
     }
 
-    func enqueue(recipe: HypnogramRecipe, completion: @escaping (Result<URL, Error>) -> Void) {
-        // In Sequence mode, each source represents a clip to be played sequentially
+    // MARK: - HypnogramRenderer
+
+    func enqueue(
+        recipe: HypnogramRecipe,
+        completion: @escaping (Result<URL, Error>) -> Void
+    ) {
         DispatchQueue.global(qos: .userInitiated).async {
-            self.renderSequence(recipe: recipe, completion: completion)
+            do {
+                let url = try self.render(recipe: recipe)
+                DispatchQueue.main.async {
+                    completion(.success(url))
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
+            }
         }
     }
 
-    private func renderSequence(recipe: HypnogramRecipe, completion: @escaping (Result<URL, Error>) -> Void) {
+    // MARK: - Core render
 
-        guard !recipe.sources.isEmpty else {
-            let err = NSError(
-                domain: "SequenceRenderer",
-                code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Empty recipe"]
-            )
-            print("SequenceRenderer: \(err)")
-            completion(.failure(err))
-            return
+    private func render(recipe: HypnogramRecipe) throws -> URL {
+        let sources = recipe.sources
+        guard !sources.isEmpty else {
+            throw SequenceRendererError.noSources
         }
 
-        print("SequenceRenderer: rendering sequence with \(recipe.sources.count) clip(s)")
+        let targetDuration = recipe.targetDuration
+        guard targetDuration.seconds > 0 else {
+            throw SequenceRendererError.invalidTargetDuration
+        }
 
-        // Build composition by concatenating clips (each source is one clip in the sequence)
+        // Build a simple linear AVMutableComposition where each source
+        // is laid out back-to-back on a single video track.
         let composition = AVMutableComposition()
-
         guard let videoTrack = composition.addMutableTrack(
             withMediaType: .video,
             preferredTrackID: kCMPersistentTrackID_Invalid
         ) else {
-            let err = NSError(
-                domain: "SequenceRenderer",
-                code: 3,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to add video track to composition"]
-            )
-            print("SequenceRenderer: \(err)")
-            completion(.failure(err))
-            return
+            throw SequenceRendererError.cannotCreateTrack
         }
 
-        let audioTrack = composition.addMutableTrack(
-            withMediaType: .audio,
-            preferredTrackID: kCMPersistentTrackID_Invalid
-        )
-
-        var currentTime = CMTime.zero
-        var instructions: [AVVideoCompositionInstructionProtocol] = []
-
-        for (index, source) in recipe.sources.enumerated() {
+        var cursor = CMTime.zero
+        for source in sources {
             let clip = source.clip
             let asset = AVURLAsset(url: clip.file.url)
 
-            guard let sourceVideoTrack = asset.tracks(withMediaType: .video).first else {
-                print("SequenceRenderer: warning - no video track in clip \(index), skipping")
+            guard let track = asset.tracks(withMediaType: .video).first else {
                 continue
             }
 
+            // Time range inside the source file.
             let timeRange = CMTimeRange(start: clip.startTime, duration: clip.duration)
-            let insertAt = currentTime
+
+            // Don’t exceed targetDuration overall.
+            if cursor >= targetDuration {
+                break
+            }
+
+            let remaining = targetDuration - cursor
+            let actualDuration = min(timeRange.duration, remaining)
+            let trimmedRange = CMTimeRange(start: timeRange.start, duration: actualDuration)
 
             do {
                 try videoTrack.insertTimeRange(
-                    timeRange,
-                    of: sourceVideoTrack,
-                    at: insertAt
+                    trimmedRange,
+                    of: track,
+                    at: cursor
                 )
-
-                // TODO: Move MultiLayerBlendInstruction to Mode/Renderer or otherwise make a Sequence specific version
-                // to eliminate this dependency between modes.
-                let instruction = MultiLayerBlendInstruction(
-                    layerTrackIDs: [videoTrack.trackID],
-                    blendModes: Array(
-                        repeating: "CISourceOverCompositing",
-                        count: recipe.sources.count
-                    ),
-                    transforms: [.identity],      // Identity for sequential clips
-                    sourceIndices: [index],       // Map to clip index for effects
-                    timeRange: CMTimeRange(start: insertAt, duration: clip.duration)
-                )
-                instructions.append(instruction)
-
-                currentTime = CMTimeAdd(insertAt, clip.duration)
-                print("SequenceRenderer: added clip \(index) at \(insertAt.seconds)s, duration \(clip.duration.seconds)s")
             } catch {
-                print("SequenceRenderer: failed to insert clip \(index): \(error)")
-                completion(.failure(error))
-                return
+                throw SequenceRendererError.trackInsertFailed(error)
             }
 
-            if let sourceAudioTrack = asset.tracks(withMediaType: .audio).first,
-               let audioTrack {
-                do {
-                    try audioTrack.insertTimeRange(
-                        timeRange,
-                        of: sourceAudioTrack,
-                        at: insertAt
-                    )
-                } catch {
-                    print("SequenceRenderer: failed to insert audio for clip \(index): \(error)")
-                }
-            }
+            cursor = cursor + actualDuration
         }
 
-        let totalDuration = currentTime
-        print("SequenceRenderer: total sequence duration: \(totalDuration.seconds)s")
-
-        guard !instructions.isEmpty else {
-            let err = NSError(
-                domain: "SequenceRenderer",
-                code: 7,
-                userInfo: [NSLocalizedDescriptionKey: "No valid instructions built for sequence render"]
-            )
-            print("SequenceRenderer: \(err)")
-            completion(.failure(err))
-            return
+        // If nothing ended up inserted, bail.
+        if cursor == .zero {
+            throw SequenceRendererError.noUsableClips
         }
 
+        // Optional: basic videoComposition to enforce target size.
         let videoComposition = AVMutableVideoComposition()
-        videoComposition.customVideoCompositorClass = MultiLayerBlendCompositor.self
         videoComposition.renderSize = outputSize
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
-        videoComposition.instructions = instructions
 
-        // Output folder
-        do {
-            try FileManager.default.createDirectory(
-                at: outputURL,
-                withIntermediateDirectories: true,
-                attributes: nil
-            )
-        } catch {
-            print("SequenceRenderer: failed to create output folder: \(error)")
-            completion(.failure(error))
-            return
-        }
+        let instruction = AVMutableVideoCompositionInstruction()
+        instruction.timeRange = CMTimeRange(start: .zero, duration: cursor)
 
-        let filename = "sequence-\(UUID().uuidString).mp4"
-        let outputFileURL = outputURL.appendingPathComponent(filename)
-        try? FileManager.default.removeItem(at: outputFileURL)
+        let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: videoTrack)
+        // Fit into renderSize (simple aspect fit)
+        let naturalSize = videoTrack.naturalSize
+        let transform = aspectFitTransform(
+            from: naturalSize,
+            to: outputSize
+        )
+        layerInstruction.setTransform(transform, at: .zero)
 
-        // Export
-        guard let exportSession = AVAssetExportSession(
-            asset: composition,
-            presetName: AVAssetExportPreset1920x1080
-        ) ?? AVAssetExportSession(
+        instruction.layerInstructions = [layerInstruction]
+        videoComposition.instructions = [instruction]
+
+        let outputURL = try prepareOutputURL()
+
+        guard let export = AVAssetExportSession(
             asset: composition,
             presetName: AVAssetExportPresetHighestQuality
         ) else {
-            let err = NSError(
-                domain: "SequenceRenderer",
-                code: 4,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to create AVAssetExportSession"]
-            )
-            print("SequenceRenderer: \(err)")
-            completion(.failure(err))
-            return
+            throw SequenceRendererError.exportSessionCreationFailed
         }
 
-        exportSession.outputURL = outputFileURL
-        exportSession.outputFileType = .mp4
-        exportSession.shouldOptimizeForNetworkUse = true
-        exportSession.videoComposition = videoComposition
+        export.outputURL = outputURL
+        export.outputFileType = .mov
+        export.videoComposition = videoComposition
 
-        print("SequenceRenderer: starting export to \(outputFileURL.path)")
-
-        exportSession.exportAsynchronously {
-            switch exportSession.status {
-            case .completed:
-                print("SequenceRenderer: export completed → \(outputFileURL.path)")
-                completion(.success(outputFileURL))
-
-            case .failed, .cancelled:
-                let error = exportSession.error ?? NSError(
-                    domain: "SequenceRenderer",
-                    code: 5,
-                    userInfo: [NSLocalizedDescriptionKey: "Export failed or cancelled"]
-                )
-                print("SequenceRenderer: export failed/cancelled: \(error)")
-                completion(.failure(error))
-
-            default:
-                let error = exportSession.error ?? NSError(
-                    domain: "SequenceRenderer",
-                    code: 6,
-                    userInfo: [NSLocalizedDescriptionKey: "Unexpected export status: \(exportSession.status)"]
-                )
-                print("SequenceRenderer: unexpected export status: \(exportSession.status)")
-                completion(.failure(error))
-            }
+        let semaphore = DispatchSemaphore(value: 1)
+        semaphore.wait()
+        export.exportAsynchronously {
+            semaphore.signal()
         }
+        semaphore.wait()
+
+        if let error = export.error {
+            throw SequenceRendererError.exportFailed(error)
+        }
+
+        return outputURL
     }
+
+    // MARK: - Helpers
+
+    private func aspectFitTransform(from sourceSize: CGSize, to destSize: CGSize) -> CGAffineTransform {
+        guard sourceSize.width > 0, sourceSize.height > 0 else {
+            return .identity
+        }
+
+        let scale = min(destSize.width / sourceSize.width,
+                        destSize.height / sourceSize.height)
+
+        let scaledWidth  = sourceSize.width * scale
+        let scaledHeight = sourceSize.height * scale
+
+        let tx = (destSize.width  - scaledWidth)  / 2.0
+        let ty = (destSize.height - scaledHeight) / 2.0
+
+        var transform = CGAffineTransform.identity
+        transform = transform.scaledBy(x: scale, y: scale)
+        transform = transform.translatedBy(x: tx / scale, y: ty / scale)
+
+        return transform
+    }
+
+    /// Ensure output folder exists and generate a unique filename.
+    private func prepareOutputURL() throws -> URL {
+        let fm = FileManager.default
+
+        if !fm.fileExists(atPath: outputFolder.path) {
+            try fm.createDirectory(at: outputFolder, withIntermediateDirectories: true)
+        }
+
+        let timestamp = Self.timestampString()
+        let filename = "Sequence-\(timestamp).mov"
+        let url = outputFolder.appendingPathComponent(filename)
+
+        if fm.fileExists(atPath: url.path) {
+            try fm.removeItem(at: url)
+        }
+
+        return url
+    }
+
+    private static func timestampString() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        return formatter.string(from: Date())
+    }
+}
+
+// MARK: - Errors
+
+enum SequenceRendererError: Error {
+    case noSources
+    case invalidTargetDuration
+    case cannotCreateTrack
+    case trackInsertFailed(Error)
+    case noUsableClips
+    case exportSessionCreationFailed
+    case exportFailed(Error)
 }

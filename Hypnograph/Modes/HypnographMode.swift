@@ -9,6 +9,13 @@ import Foundation
 import CoreGraphics
 import SwiftUI
 
+/// Available mode types for the application
+enum ModeType: String, Codable {
+    case montage
+    case sequence
+    case divine
+}
+
 /// Represents a mode-specific command with keyboard shortcut
 struct ModeCommand {
     let title: String
@@ -41,8 +48,8 @@ protocol HypnographMode: AnyObject {
     /// Shared session state backing this mode.
     var state: HypnogramState { get }
 
-    /// The render queue managed by this mode.
-    /// (The app may observe it for HUD, quitting, etc.)
+    /// The render queue managed by this mode (shared across modes).
+    /// The app may observe it for HUD, quitting, etc.
     var renderQueue: RenderQueue { get }
 
     // MARK: - Status / identity
@@ -83,7 +90,7 @@ protocol HypnographMode: AnyObject {
     /// Create a new random setup for this mode.
     func new()
 
-    /// Save / render the current hypnogram using the mode's queue.
+    /// Save / render the current hypnogram using the mode's own renderer + queue.
     func save()
 
     // MARK: - Source navigation
@@ -141,6 +148,7 @@ extension HypnographMode {
             return nil
         }
     }
+
     // MARK: - Lifecycle
 
     func new() {
@@ -152,21 +160,8 @@ extension HypnographMode {
         }
     }
 
-    func save() {
-        guard let recipe = state.sourcesForRender() else {
-            print("HypnographMode.save(): no renderable hypnogram (no sources).")
-            return
-        }
-
-        renderQueue.enqueue(recipe: recipe)
-
-        state.resetForNextHypnogram()
-        state.clearSolo()
-
-        if state.settings.autoPrime {
-            state.newAutoPrimeSet()
-        }
-    }
+    // NOTE: no default `save()` here – each mode must provide its own save()
+    // so it can choose an appropriate renderer.
 
     // MARK: - Source navigation
 
@@ -197,6 +192,10 @@ extension HypnographMode {
     }
 
     // MARK: - Mode-specific tweaks
+
+    func toggleWatchMode() {
+        state.toggleWatchMode()
+    }
 
     func toggleHUD() {
         state.toggleHUD()
