@@ -14,12 +14,14 @@ enum DreamStyle: String, Codable {
     case sequence
 }
 
-final class DreamMode: ObservableObject, HypnographMode {
+final class DreamMode: HypnographMode {
     let state: HypnographState
     let renderQueue: RenderQueue
 
     @Published var style: DreamStyle = .montage
-    @Published var montageRecipe: HypnogramRecipe
+
+    /// Blend modes for montage style, indexed by source index
+    @Published private var blendModes: [Int: String] = [:]
 
     private let montageRenderer: MontageRenderer
     private let sequenceRenderer: SequenceRenderer
@@ -41,12 +43,6 @@ final class DreamMode: ObservableObject, HypnographMode {
     init(state: HypnographState, renderQueue: RenderQueue) {
         self.state = state
         self.renderQueue = renderQueue
-
-        self.montageRecipe = HypnogramRecipe(
-            sources: [],
-            targetDuration: state.settings.outputDuration,
-            mode: HypnogramMode(name: .dream)
-        )
 
         self.montageRenderer = MontageRenderer(
             outputURL: state.settings.outputURL,
@@ -153,66 +149,49 @@ final class DreamMode: ObservableObject, HypnographMode {
         let recipe = makeDisplayRecipe(state: state)
 
         return AnyView(
-            Group {
-                switch style {
-                case .montage:
-                    MontageView(
-                        recipe: recipe,
-                        outputSize: state.settings.outputSize,
-                        currentSourceTime: Binding(
-                            get: { state.currentClipTimeOffset },
-                            set: { state.currentClipTimeOffset = $0 }
-                        )
-                    )
-                case .sequence:
-                    SequenceView(
-                        recipe: recipe,
-                        outputSize: state.settings.outputSize,
-                        currentIndex: state.currentSourceIndex,
-                        soloIndex: state.soloSourceIndex
-                    )
-                }
-            }
-            .id(style == .montage ? "dream-montage" : "dream-sequence")
+            DreamView(
+                recipe: recipe,
+                style: style,
+                outputSize: state.settings.outputSize,
+                currentSourceIndex: state.currentSourceIndex,
+                currentSourceTime: Binding(
+                    get: { state.currentClipTimeOffset },
+                    set: { state.currentClipTimeOffset = $0 }
+                )
+            )
+            .id("dream-\(style.rawValue)")
         )
     }
 
     private func makeDisplayRecipe(state: HypnographState) -> HypnogramRecipe {
+        // Both styles use the same recipe structure, just different target durations
+        let targetDuration: CMTime
         switch style {
+        case .montage:
+            targetDuration = state.settings.outputDuration
         case .sequence:
             let total = sequenceTotalDuration()
-            let duration = total.seconds > 0 ? total : state.settings.outputDuration
-            return HypnogramRecipe(
-                sources: state.sources,
-                targetDuration: duration,
-                mode: HypnogramMode(name: .dream, sourceData: [])
-            )
+            targetDuration = total.seconds > 0 ? total : state.settings.outputDuration
+        }
 
-        case .montage:
-            var full = montageRecipe
-            full.sources = state.sources
-            full.targetDuration = state.settings.outputDuration
+        // Build mode payload with blend modes
+        let modeData = buildModeData(for: state.sources)
 
-            guard let soloIdx = state.soloSourceIndex,
-                  soloIdx >= 0,
-                  soloIdx < full.sources.count
-            else {
-                return full
+        return HypnogramRecipe(
+            sources: state.sources,
+            targetDuration: targetDuration,
+            mode: HypnogramMode(name: .dream, sourceData: modeData)
+        )
+    }
+
+    /// Build mode-specific data (blend modes) for the given sources
+    private func buildModeData(for sources: [HypnogramSource]) -> [[String: String]] {
+        return sources.enumerated().map { index, _ in
+            if index == 0 {
+                return ["blendMode": kBlendModeSourceOver]
+            } else {
+                return ["blendMode": blendModes[index] ?? kBlendModeDefaultMontage]
             }
-
-            var display = full
-            display.sources = [full.sources[soloIdx]]
-
-            if var mode = display.mode {
-                if soloIdx < mode.sourceData.count {
-                    mode.sourceData = [mode.sourceData[soloIdx]]
-                } else {
-                    mode.sourceData = [[:]]
-                }
-                display.mode = mode
-            }
-
-            return display
         }
     }
 
@@ -221,69 +200,51 @@ final class DreamMode: ObservableObject, HypnographMode {
     func new() {
         switch style {
         case .montage:
-            state.clearSolo()
             state.newRandomHypnogram()
-            montageRecipe = HypnogramRecipe(
-                sources: [],
-                targetDuration: state.settings.outputDuration,
-                mode: HypnogramMode(name: .dream)
-            )
+            blendModes.removeAll()
         case .sequence:
             newRandomSequence()
         }
     }
 
     func save() {
+        // Get the renderable recipe (filters out excluded sources)
+        guard var renderRecipe = state.sourcesForRender() else {
+            print("DreamMode[\(style.rawValue)]: no renderable hypnogram.")
+            return
+        }
+
+        // Set target duration based on style
         switch style {
         case .montage:
-            guard var renderRecipe = state.sourcesForRender() else {
-                print("DreamMode[montage]: no renderable hypnogram.")
-                return
-            }
+            renderRecipe.targetDuration = state.settings.outputDuration
+        case .sequence:
+            let total = sequenceTotalDuration()
+            renderRecipe.targetDuration = total.seconds > 0 ? total : state.settings.outputDuration
+        }
 
-            if var modePayload = montageRecipe.mode {
-                modePayload.sourceData.ensureCount(renderRecipe.sources.count)
-                modePayload.sourceData = Array(modePayload.sourceData.prefix(renderRecipe.sources.count))
-                renderRecipe.mode = modePayload
-            } else {
-                renderRecipe.mode = HypnogramMode(name: .dream, sourceData: [])
-            }
+        // Attach mode-specific data (blend modes)
+        let modeData = buildModeData(for: renderRecipe.sources)
+        renderRecipe.mode = HypnogramMode(name: .dream, sourceData: modeData)
 
-            print("DreamMode[montage]: enqueueing recipe with \(renderRecipe.sources.count) source(s).")
-            renderQueue.enqueue(renderer: montageRenderer, recipe: renderRecipe)
+        // Choose renderer based on style
+        let renderer: HypnogramRenderer = (style == .montage) ? montageRenderer : sequenceRenderer
 
-            DispatchQueue.main.async {
+        print("DreamMode[\(style.rawValue)]: enqueueing recipe with \(renderRecipe.sources.count) source(s), duration: \(renderRecipe.targetDuration.seconds)s")
+        renderQueue.enqueue(renderer: renderer, recipe: renderRecipe)
+
+        // Reset for next hypnogram
+        DispatchQueue.main.async {
+            switch self.style {
+            case .montage:
                 self.state.resetForNextHypnogram()
-                self.montageRecipe = HypnogramRecipe(
-                    sources: [],
-                    targetDuration: self.state.settings.outputDuration,
-                    mode: HypnogramMode(name: .dream)
-                )
-
+                self.blendModes.removeAll()
                 if self.state.settings.watch {
                     self.state.newRandomHypnogram()
                 }
+            case .sequence:
+                self.newRandomSequence()
             }
-
-        case .sequence:
-            guard !state.sources.isEmpty else {
-                print("DreamMode[sequence]: no sources to save")
-                return
-            }
-
-            let total = sequenceTotalDuration()
-            let duration = total.seconds > 0 ? total : state.settings.outputDuration
-
-            let recipe = HypnogramRecipe(
-                sources: state.sources,
-                targetDuration: duration,
-                mode: HypnogramMode(name: .dream, sourceData: [])
-            )
-
-            print("DreamMode[sequence]: enqueueing sequence with \(state.sources.count) source(s), total duration: \(duration.seconds)s")
-            renderQueue.enqueue(renderer: sequenceRenderer, recipe: recipe)
-
-            newRandomSequence()
         }
     }
 
@@ -291,8 +252,6 @@ final class DreamMode: ObservableObject, HypnographMode {
 
     func reloadSettings() {
         state.reloadSettings(from: Environment.defaultSettingsURL)
-        state.clearSolo()
-        montageRecipe.targetDuration = state.settings.outputDuration
 
         if style == .sequence {
             newRandomSequence()
@@ -303,7 +262,7 @@ final class DreamMode: ObservableObject, HypnographMode {
 
     private func blendModeForSourceIndex(_ idx: Int) -> String {
         if idx == 0 { return kBlendModeSourceOver }
-        return montageRecipe.modeValue(for: .blendMode, sourceIndex: idx) ?? kBlendModeDefaultMontage
+        return blendModes[idx] ?? kBlendModeDefaultMontage
     }
 
     private func currentBlendModeDisplayName() -> String {
@@ -318,25 +277,17 @@ final class DreamMode: ObservableObject, HypnographMode {
         let idx = index ?? state.currentSourceIndex
         guard idx > 0 else { return } // bottom layer stays SourceOver
 
-        let current = montageRecipe.modeValue(for: .blendMode, sourceIndex: idx)
-            ?? kBlendModeDefaultMontage
-
+        let current = blendModes[idx] ?? kBlendModeDefaultMontage
         let currentIndex = availableBlendModes.firstIndex(of: current) ?? -1
         let next = positiveMod(currentIndex + 1, availableBlendModes.count)
 
-        montageRecipe.setModeValue(
-            availableBlendModes[next],
-            key: .blendMode,
-            sourceIndex: idx,
-            modeName: .dream
-        )
+        blendModes[idx] = availableBlendModes[next]
     }
 
     // MARK: - Sequence helpers
 
     private func newRandomSequence() {
         state.resetForNextHypnogram()
-        state.clearSolo()
 
         let desiredCount = min(initialSequenceSourceCount, maxSequenceSources)
         for _ in 0..<desiredCount {

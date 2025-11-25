@@ -4,7 +4,6 @@
     "default": "~/Movies/Hypnograph/sources",
     "From Finder Helper": []
   },
-  "maxSources": 5,
   "outputSeconds": 60,
   "outputWidth": 1920,
   "outputHeight": 1080,

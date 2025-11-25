@@ -42,9 +42,6 @@ final class HypnographState: ObservableObject {
 
     @Published var isHUDVisible: Bool = true
 
-    /// If set, this source is globally solo'd.
-    @Published var soloSourceIndex: Int? = nil
-
     /// Watch mode is not yet implemented but is intended as the sit-back and watch random Hypnograms
     /// generate like watching TV. If it crosses modes it would only randomly select between modes
     /// that have a watchable flag set.
@@ -163,30 +160,18 @@ final class HypnographState: ObservableObject {
         guard !sources.isEmpty else { return }
         let clamped = max(0, min(index, sources.count - 1))
         currentSourceIndex = clamped
-
-        if soloSourceIndex != nil {
-            soloSourceIndex = clamped
-        }
     }
 
     func nextSource() {
         guard !sources.isEmpty else { return }
         let next = min(sources.count - 1, currentSourceIndex + 1)
         currentSourceIndex = next
-
-        if soloSourceIndex != nil {
-            soloSourceIndex = next
-        }
     }
 
     func previousSource() {
         guard !sources.isEmpty else { return }
         let prev = max(0, currentSourceIndex - 1)
         currentSourceIndex = prev
-
-        if soloSourceIndex != nil {
-            soloSourceIndex = prev
-        }
     }
 
     func deleteSource(at index: Int) {
@@ -197,33 +182,10 @@ final class HypnographState: ObservableObject {
         if sources.isEmpty {
             _ = addSource()
         }
-
-        if let solo = soloSourceIndex, solo >= sources.count {
-            soloSourceIndex = nil
-        }
     }
 
     func deleteCurrentSource() {
         deleteSource(at: currentSourceIndex)
-    }
-
-    // MARK: - Solo
-
-    func soloSource(index: Int) {
-        guard !sources.isEmpty else {
-            soloSourceIndex = nil
-            return
-        }
-        let clamped = max(0, min(index, sources.count - 1))
-        if soloSourceIndex == clamped {
-            soloSourceIndex = nil
-        } else {
-            soloSourceIndex = clamped
-        }
-    }
-
-    func clearSolo() {
-        soloSourceIndex = nil
     }
 
     // MARK: - Priming
@@ -247,12 +209,11 @@ final class HypnographState: ObservableObject {
         sources.removeAll()
         currentSourceIndex = 0
         currentClipTimeOffset = nil
-        clearSolo()
     }
 
     func newRandomHypnogram() {
         resetForNextHypnogram()
-        let total = max(1, settings.maxSources)
+        let total = max(1, settings.maxSourcesForNew)
         let minCount = min(2, total)
         let count = Int.random(in: minCount...total)
         for _ in 0..<max(1, count) {
@@ -324,7 +285,6 @@ final class HypnographState: ObservableObject {
         sources.removeAll()
         currentSourceIndex = 0
         currentClipTimeOffset = nil
-        clearSolo()
 
         _ = addSource()
 

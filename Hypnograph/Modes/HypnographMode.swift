@@ -43,12 +43,8 @@ struct ModeCommand {
 /// Most methods have sensible defaults implemented in the extension
 /// that simply wire through to `state`. Concrete modes can override
 /// anything they need to specialize.
-protocol HypnographMode: AnyObject {
-    /// Shared session state backing this mode.
+protocol HypnographMode: ObservableObject {
     var state: HypnographState { get }
-
-    /// The render queue managed by this mode (shared across modes).
-    /// The app may observe it for HUD, quitting, etc.
     var renderQueue: RenderQueue { get }
 
     /// Short text to display when solo is active (e.g., "SOLO 1").
@@ -104,7 +100,6 @@ protocol HypnographMode: AnyObject {
     // MARK: - Mode-specific tweaks
 
     func toggleHUD()
-    func toggleSolo()
     func reloadSettings()
 
     // MARK: - Effects
@@ -121,9 +116,7 @@ protocol HypnographMode: AnyObject {
 
 extension HypnographMode {
     var soloIndicatorText: String? {
-        if let solo = state.soloSourceIndex {
-            return "SOLO \(solo + 1)"
-        } else if !state.sources.isEmpty {
+        if !state.sources.isEmpty {
             return "\(state.currentSourceIndex + 1)"
         } else {
             return nil
@@ -176,10 +169,6 @@ extension HypnographMode {
 
     func toggleHUD() {
         state.toggleHUD()
-    }
-
-    func toggleSolo() {
-        state.soloSource(index: state.currentSourceIndex)
     }
 
     func reloadSettings() {

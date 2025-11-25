@@ -2,10 +2,10 @@ import SwiftUI
 import AVFoundation
 import Combine
 
-struct ContentView: View {
+struct ContentView<Mode: HypnographMode>: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var renderQueue: RenderQueue
-    var mode: HypnographMode
+    @ObservedObject var mode: Mode
 
     // MARK: - Global HUD Items
 

@@ -22,7 +22,7 @@ final class DivineNoopRenderer: HypnogramRenderer {
 }
 
 /// Tarot-style stills mode with drag-and-drop cards.
-final class DivineMode: ObservableObject, HypnographMode {
+final class DivineMode: HypnographMode {
     let state: HypnographState
     let renderQueue: RenderQueue
 
@@ -45,16 +45,6 @@ final class DivineMode: ObservableObject, HypnographMode {
         self.renderQueue = renderQueue
         self.cardManager = DivineCardManager(state: state)
     }
-
-    // MARK: - HypnographMode core props
-
-    /// Map "source index" to current card index.
-    var currentSourceIndex: Int {
-        cardManager.currentIndex
-    }
-
-    /// No solo overlay in Divine.
-    var soloIndicatorText: String? { nil }
 
     // MARK: - HypnographMode – display wiring
 
@@ -171,10 +161,6 @@ final class DivineMode: ObservableObject, HypnographMode {
 
     // MARK: - HypnographMode – mode-specific tweaks
 
-    func toggleSolo() {
-        // Solo is a noop in Divine.
-    }
-
     func reloadSettings() {
         state.reloadSettings(from: Environment.defaultSettingsURL)
         clearTable()
@@ -186,7 +172,7 @@ final class DivineMode: ObservableObject, HypnographMode {
     /// Divine only clears the current source's effect + global.
     func clearAllEffects() {
         state.renderHooks.setGlobalEffect(nil)
-        state.renderHooks.setSourceEffect(nil, for: currentSourceIndex)
+        state.renderHooks.setSourceEffect(nil, for: cardManager.currentIndex)
     }
 
     var globalEffectName: String {
@@ -194,7 +180,7 @@ final class DivineMode: ObservableObject, HypnographMode {
     }
 
     var sourceEffectName: String {
-        state.renderHooks.sourceEffectName(for: currentSourceIndex)
+        state.renderHooks.sourceEffectName(for: cardManager.currentIndex)
     }
 
     // MARK: - Divine-specific helpers
