@@ -1,5 +1,5 @@
 //
-//  MontageCompositionBuilder.swift
+//  MontageTimelineBuilder.swift
 //  Hypnograph
 //
 //  Created by Loren Johnson on 19.11.25.
@@ -13,7 +13,7 @@ import CoreGraphics
 /// Shared builder that turns a list of Hypnogram sources into an AVMutableComposition.
 /// This is deliberately *blend-mode agnostic*; it just builds tracks + transforms.
 /// Blend modes are decided by Montage mode and passed separately into the compositor.
-struct MontageCompositionBuilder {
+struct MontageTimelineBuilder {
 
     struct Result {
         let composition: AVMutableComposition
@@ -65,20 +65,56 @@ struct MontageCompositionBuilder {
             insertTime = insertTime + duration
         }
 
-        // One track per source, looped to fill `targetDuration`.
+        // One track per source.
+        //  - video: real media segments, looped to fill `targetDuration`
+        //  - image: dummy track used only as a timebase / layer handle
         for (index, source) in sources.enumerated() {
-            let clip  = source.clip
-            let asset = AVAsset(url: clip.file.url)
+            let clip = source.clip
+            let file = clip.file
+
+            // ---------------------------------------------------------
+            // IMAGE SOURCES: create a dummy video track as a timebase.
+            // ---------------------------------------------------------
+            if file.mediaKind == .image {
+                let trackID = CMPersistentTrackID(index + 1)
+                guard let compVideoTrack = composition.addMutableTrack(
+                    withMediaType: .video,
+                    preferredTrackID: trackID
+                ) else {
+                    print("MontageTimelineBuilder: failed to add dummy video track for image source \(index)")
+                    continue
+                }
+
+                // Keep composition tracks untransformed; apply user transform downstream.
+                compVideoTrack.preferredTransform = .identity
+
+                // Insert an empty range covering the entire target duration so
+                // the track has a defined timebase.
+                let fullRange = CMTimeRange(start: .zero, duration: targetDuration)
+                compVideoTrack.insertEmptyTimeRange(fullRange)
+
+                videoTrackIDs.append(compVideoTrack.trackID)
+                // Only user transform; no preferredTransform for images
+                transforms.append(source.transform)
+
+                // No audio for images; continue to next source.
+                continue
+            }
+
+            // ---------------------------------------------------------
+            // VIDEO SOURCES: existing behavior.
+            // ---------------------------------------------------------
+            let asset = AVAsset(url: file.url)
 
             guard let srcVideoTrack = asset.tracks(withMediaType: .video).first else {
-                print("MontageCompositionBuilder: source \(index) has no video track; skipping")
+                print("MontageTimelineBuilder: source \(index) has no video track; skipping")
                 continue
             }
 
             let fileDuration = asset.duration
             let fileSeconds  = fileDuration.seconds
             if fileSeconds <= 0 {
-                print("MontageCompositionBuilder: source \(index) has non-positive duration; skipping")
+                print("MontageTimelineBuilder: source \(index) has non-positive duration; skipping")
                 continue
             }
 
@@ -88,7 +124,7 @@ struct MontageCompositionBuilder {
                 withMediaType: .video,
                 preferredTrackID: trackID
             ) else {
-                print("MontageCompositionBuilder: failed to add video track for source \(index)")
+                print("MontageTimelineBuilder: failed to add video track for source \(index)")
                 continue
             }
 
@@ -132,7 +168,7 @@ struct MontageCompositionBuilder {
                     remainingSeconds -= segmentSeconds
                 }
             } catch {
-                print("MontageCompositionBuilder: failed to insert video segments for source \(index): \(error)")
+                print("MontageTimelineBuilder: failed to insert video segments for source \(index): \(error)")
                 continue
             }
 
@@ -178,19 +214,36 @@ struct MontageCompositionBuilder {
                             audioRemainingSeconds -= seg
                         }
                     } catch {
-                        print("MontageCompositionBuilder: failed to insert audio segments for source \(index): \(error)")
+                        print("MontageTimelineBuilder: failed to insert audio segments for source \(index): \(error)")
                     }
                 } else {
-                    print("MontageCompositionBuilder: failed to add audio track for source \(index)")
+                    print("MontageTimelineBuilder: failed to add audio track for source \(index)")
                 }
             } else {
                 // fine: no audio on this source
             }
         }
 
+        // If we ended up with no video tracks at all, fail explicitly.
         guard !videoTrackIDs.isEmpty else {
             throw BuildError.noValidVideoTracks
         }
+
+        // 🔴 CRITICAL FIX:
+        // For image-only timelines (and any other edge case where no real media
+        // extended the composition), AVMutableComposition.duration can remain 0.
+        // That breaks AVAssetExportSession with "Operation Stopped".
+        //
+        // If that happens, explicitly insert an empty range on the *composition*
+        // itself so the timeline has a non-zero duration.
+        if composition.duration.seconds <= 0 {
+            print("⚠️ MontageTimelineBuilder: composition duration was 0s; inserting empty time range for \(targetSeconds)s")
+            let fullRange = CMTimeRange(start: .zero, duration: targetDuration)
+            composition.insertEmptyTimeRange(fullRange)
+        }
+
+        // Debug log
+        print("🟫 layerTrackIDs:", videoTrackIDs)
 
         return Result(
             composition: composition,

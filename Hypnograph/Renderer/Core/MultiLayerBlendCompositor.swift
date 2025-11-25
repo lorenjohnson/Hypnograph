@@ -31,7 +31,7 @@ final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
 
     /// Shared compositing helper (aspect-fill + blend filters).
     private let compositor = AspectFillStackCompositor()
-    
+
     var sourcePixelBufferAttributes: [String : Any]? {
         [
             kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)
@@ -82,29 +82,47 @@ final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
             let modes         = instruction.blendModes
             let sourceIndices = instruction.sourceIndices
             let transforms    = instruction.sourceTransforms
+            let stillImages   = instruction.stillImages
 
             // Gather CIImages for all available source frames in order.
             var images: [CIImage] = []
 
             for (index, trackID) in trackIDs.enumerated() {
-                guard let buffer = request.sourceFrame(byTrackID: trackID) else {
-                    continue
+                // Prefer a time-invariant still image if provided
+                let maybeStill = index < stillImages.count ? stillImages[index] : nil
+
+                var image: CIImage?
+
+                if let still = maybeStill {
+                    image = still
+                } else if let buffer = request.sourceFrame(byTrackID: trackID) {
+                    image = CIImage(cvPixelBuffer: buffer)
                 }
 
-                var image = CIImage(cvPixelBuffer: buffer)
+                guard var img = image else {
+                    let error = NSError(
+                        domain: "MultiLayerBlendCompositor",
+                        code: -4,
+                        userInfo: [NSLocalizedDescriptionKey:
+                            "No image for layer \(index) at time \(request.compositionTime.seconds)"]
+                    )
+                    print("❌ MultiLayerBlendCompositor: \(error.localizedDescription)")
+                    request.finish(with: error)
+                    return
+                }
 
                 // Apply the original track orientation based on preferredTransform.
                 if index < transforms.count {
                     let transform = transforms[index]
                     if let exifOrientation = exifOrientation(from: transform) {
-                        image = image.oriented(forExifOrientation: exifOrientation)
+                        img = img.oriented(forExifOrientation: exifOrientation)
                     } else {
-                        image = image.transformed(by: transform)
+                        img = img.transformed(by: transform)
                     }
                 }
 
-                // Apply per-source effects BEFORE compositing
-                // Use the ORIGINAL source index, not the track position
+                // Apply per-source effects BEFORE compositing.
+                // Use the ORIGINAL source index, not the track position.
                 if let manager = GlobalRenderHooks.manager {
                     let originalSourceIndex = index < sourceIndices.count ? sourceIndices[index] : index
                     var sourceContext = RenderContext(
@@ -112,13 +130,29 @@ final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
                         time: request.compositionTime,
                         isPreview: true,
                         outputSize: targetSize,
-                        frameBuffer: manager.frameBuffer, // Use manager's persistent buffer
+                        frameBuffer: manager.frameBuffer,
                         params: RenderParams()
                     )
-                    image = manager.applyToSource(sourceIndex: originalSourceIndex, context: &sourceContext, image: image)
+                    img = manager.applyToSource(
+                        sourceIndex: originalSourceIndex,
+                        context: &sourceContext,
+                        image: img
+                    )
                 }
 
-                images.append(image)
+                images.append(img)
+            }
+
+            guard !images.isEmpty else {
+                let error = NSError(
+                    domain: "MultiLayerBlendCompositor",
+                    code: -5,
+                    userInfo: [NSLocalizedDescriptionKey:
+                        "No input images produced at time \(request.compositionTime.seconds)"]
+                )
+                print("❌ MultiLayerBlendCompositor: \(error.localizedDescription)")
+                request.finish(with: error)
+                return
             }
 
             // Destination pixel buffer from render context.
@@ -128,14 +162,8 @@ final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
                     code: -3,
                     userInfo: [NSLocalizedDescriptionKey: "Failed to allocate destination buffer"]
                 )
+                print("❌ MultiLayerBlendCompositor: \(error.localizedDescription)")
                 request.finish(with: error)
-                return
-            }
-
-            // If nothing came through, clear to black and finish.
-            guard !images.isEmpty else {
-                self.ciContext.clear(dstBuffer)
-                request.finish(withComposedVideoFrame: dstBuffer)
                 return
             }
 
@@ -146,10 +174,16 @@ final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
                 targetSize: targetSize
             )
 
-            // Extra guard: if the output extent is empty, bail to black.
+            // Extra guard: if the output extent is empty, fail the frame.
             guard !composedImage.extent.isEmpty else {
-                self.ciContext.clear(dstBuffer)
-                request.finish(withComposedVideoFrame: dstBuffer)
+                let error = NSError(
+                    domain: "MultiLayerBlendCompositor",
+                    code: -6,
+                    userInfo: [NSLocalizedDescriptionKey:
+                        "Composed image has empty extent at time \(request.compositionTime.seconds)"]
+                )
+                print("❌ MultiLayerBlendCompositor: \(error.localizedDescription)")
+                request.finish(with: error)
                 return
             }
 
@@ -157,28 +191,19 @@ final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
 
             let imageToRender: CIImage
             if let manager = GlobalRenderHooks.manager {
-                // Safety check: ensure composed image is valid before applying effects
-                guard !composedImage.extent.isEmpty else {
-                    print("MultiLayerBlendCompositor: composedImage has empty extent at time \(request.compositionTime)")
-                    request.finish(with: NSError(domain: "Compositor", code: -1, userInfo: nil))
-                    return
-                }
-
                 var context = RenderContext(
                     frameIndex: 0, // TODO: thread a real frame index if you want later
                     time: request.compositionTime,
                     isPreview: true,              // this compositing path is used for preview here
                     outputSize: targetSize,
-                    frameBuffer: manager.frameBuffer, // Use manager's persistent buffer
+                    frameBuffer: manager.frameBuffer,
                     params: RenderParams()         // baseline params (unused for now)
                 )
 
                 let effectResult = manager.applyGlobal(to: &context, image: composedImage)
 
-                // Safety check: ensure effect didn't produce empty image
                 if effectResult.extent.isEmpty {
-                    print("MultiLayerBlendCompositor: Effect produced empty image at time \(request.compositionTime)")
-                    imageToRender = composedImage // Fall back to original
+                    imageToRender = composedImage
                 } else {
                     imageToRender = effectResult
                 }
@@ -187,7 +212,6 @@ final class MultiLayerBlendCompositor: NSObject, AVVideoCompositing {
             }
 
             // Render CIImage → pixel buffer via CIContext (backed by Metal if available).
-            // No flip needed - pixel buffers are already correctly oriented.
             self.ciContext.render(
                 imageToRender,
                 to: dstBuffer,

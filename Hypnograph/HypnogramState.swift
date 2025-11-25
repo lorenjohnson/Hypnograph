@@ -48,6 +48,8 @@ final class HypnogramState: ObservableObject {
     /// Modes may layer additional view-only solo logic on top (e.g. short pulse).
     @Published var soloSourceIndex: Int? = nil
 
+    @Published var watchMode: Bool = false
+
     // Render hooks
     let renderHooks = RenderHookManager()
     var baseRenderParams = RenderParams()
@@ -232,6 +234,10 @@ final class HypnogramState: ObservableObject {
 
     func toggleHUD() {
         isHUDVisible.toggle()
+    }
+
+    func toggleWatchMode() {
+        watchMode.toggle()
     }
 
     func excludeCurrentSource() {

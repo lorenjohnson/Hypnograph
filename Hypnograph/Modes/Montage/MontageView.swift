@@ -8,7 +8,9 @@ import CoreGraphics
 /// Core Image compositor as the final render.
 struct MontageView: NSViewRepresentable {
     let sources: [HypnogramSource]
-    let sourceIndices: [Int] // Maps source position → original source index
+    let sourceIndices: [Int] // Maps source position → original source index (for now only used by mode/state)
+    let blendModes: [String] // One per displayed source (bottom → top)
+
     @Binding var currentSourceTime: CMTime?
     let outputDuration: CMTime
     let outputSize: CGSize
@@ -43,12 +45,12 @@ struct MontageView: NSViewRepresentable {
             return
         }
 
-        // Build a simple identity string so we only rebuild when sources change.
-        let newID = compositionIdentity(for: sources)
+        // Build a simple identity string so we only rebuild when sources *or blend modes* change.
+        let newID = compositionIdentity(for: sources, blendModes: blendModes)
 
         if newID != c.compositionID || c.player == nil {
             // Rebuild composition + player item
-            guard let item = makeDisplay(for: sources, renderSize: outputSize) else {
+            guard let item = makeDisplay(for: sources, blendModes: blendModes, renderSize: outputSize) else {
                 Self.tearDown(coordinator: c, view: nsView)
                 currentSourceTime = nil
                 return
@@ -83,7 +85,11 @@ struct MontageView: NSViewRepresentable {
                 forInterval: interval,
                 queue: .main
             ) { time in
-                currentSourceTime = time
+                // Bounce onto the next runloop tick so we don't mutate
+                // @Published / bindings *inside* a view update pass.
+                DispatchQueue.main.async {
+                    currentSourceTime = time
+                }
             }
 
             // Loop when reaching the end
@@ -111,16 +117,20 @@ struct MontageView: NSViewRepresentable {
 
     // MARK: - Helpers
 
-    /// Build an identity string so we know when sources change.
-    private func compositionIdentity(for sources: [HypnogramSource]) -> String {
-        sources.map { source in
+    /// Build an identity string so we know when sources or blend modes change.
+    private func compositionIdentity(
+        for sources: [HypnogramSource],
+        blendModes: [String]
+    ) -> String {
+        let pairs: [String] = sources.enumerated().map { index, source in
             let url   = source.clip.file.url.path
             let start = source.clip.startTime.seconds
             let dur   = source.clip.duration.seconds
-            let mode  = source.blendMode.ciFilterName
+            let mode  = index < blendModes.count ? blendModes[index] : kBlendModeDefaultMontage
             return "\(url)|\(start)|\(dur)|\(mode)"
         }
-        .joined(separator: ";;")
+
+        return pairs.joined(separator: ";;")
     }
 
     /// Build an AVPlayerItem using AVMutableComposition + our custom
@@ -128,6 +138,7 @@ struct MontageView: NSViewRepresentable {
     /// *same* looping + duration semantics as the final renderer.
     private func makeDisplay(
         for sources: [HypnogramSource],
+        blendModes: [String],
         renderSize: CGSize
     ) -> AVPlayerItem? {
         let targetSeconds = outputDuration.seconds
@@ -136,12 +147,27 @@ struct MontageView: NSViewRepresentable {
             return nil
         }
 
-        let buildResult: MontageCompositionBuilder.Result
+        let buildResult: MontageTimelineBuilder.Result
+
         do {
-            buildResult = try MontageCompositionBuilder.build(
+            buildResult = try MontageTimelineBuilder.build(
                 sources: sources,
                 targetDuration: outputDuration
             )
+        } catch let error as MontageTimelineBuilder.BuildError {
+            switch error {
+            case .noValidVideoTracks:
+                // All visible sources are likely still images.
+                // Build a dummy timebase composition with empty video tracks,
+                // one per source, and let the compositor draw the stills.
+                buildResult = Self.buildDummyStillComposition(
+                    sources: sources,
+                    targetDuration: outputDuration
+                )
+            default:
+                print("Preview: composition build failed: \(error)")
+                return nil
+            }
         } catch {
             print("Preview: composition build failed: \(error)")
             return nil
@@ -151,23 +177,23 @@ struct MontageView: NSViewRepresentable {
         let videoTrackIDs = buildResult.videoTrackIDs
         let transforms    = buildResult.transforms
 
-        // Per-layer blend-mode list derived from live sources.
+        // Per-layer blend-mode list derived from mode-managed blendModes.
         // First layer is always source-over.
-        let blendModes: [String] = sources.enumerated().map { index, source in
-            if index == 0 {
-                return "CISourceOverCompositing"
-            } else {
-                return source.blendMode.ciFilterName
-            }
+        let resolvedBlendModes: [String] = blendModes.enumerated().map { index, name in
+            index == 0 ? kBlendModeSourceOver : name
         }
 
-        // Same instruction + custom compositor as renderer
-        let instruction = MultiLayerBlendInstruction(
+        // For preview, keep the mapping simple: one track per displayed source
+        // in the same order, so we can safely index into `sources`.
+        let localSourceIndices = Array(0..<videoTrackIDs.count)
+
+        let instruction = MultiLayerBlendInstruction.make(
             layerTrackIDs: videoTrackIDs,
-            blendModes: blendModes,
+            blendModes: resolvedBlendModes,
             transforms: transforms,
-            sourceIndices: sourceIndices,
-            timeRange: CMTimeRange(start: .zero, duration: outputDuration)
+            sourceIndices: localSourceIndices,
+            timeRange: CMTimeRange(start: .zero, duration: outputDuration),
+            sources: sources
         )
 
         let videoComposition = AVMutableVideoComposition()
@@ -180,6 +206,50 @@ struct MontageView: NSViewRepresentable {
         item.videoComposition = videoComposition
 
         return item
+    }
+
+    /// Build a dummy AVMutableComposition for the case where there are no
+    /// video-backed sources (all still images).
+    ///
+    /// We:
+    /// - create a composition with an empty time range of `targetDuration`
+    /// - add one empty video track per source
+    /// - use the source transforms directly (no preferredTransform)
+    ///
+    /// The compositor then uses `MultiLayerBlendInstruction.make(...)` to
+    /// attach CIImages for image-backed sources and ignores the empty tracks.
+    private static func buildDummyStillComposition(
+        sources: [HypnogramSource],
+        targetDuration: CMTime
+    ) -> MontageTimelineBuilder.Result {
+        let composition = AVMutableComposition()
+
+        // Ensure the composition has non-zero duration so AVPlayer drives time.
+        composition.insertEmptyTimeRange(
+            CMTimeRange(start: .zero, duration: targetDuration)
+        )
+
+        var videoTrackIDs: [CMPersistentTrackID] = []
+        var transforms: [CGAffineTransform] = []
+
+        for (index, source) in sources.enumerated() {
+            let trackID = CMPersistentTrackID(index + 1)
+            if let compVideoTrack = composition.addMutableTrack(
+                withMediaType: .video,
+                preferredTrackID: trackID
+            ) {
+                compVideoTrack.preferredTransform = .identity
+                videoTrackIDs.append(compVideoTrack.trackID)
+                transforms.append(source.transform)
+            }
+        }
+
+        return MontageTimelineBuilder.Result(
+            composition: composition,
+            videoTrackIDs: videoTrackIDs,
+            transforms: transforms,
+            duration: targetDuration
+        )
     }
 
     private static func tearDown(coordinator c: Coordinator, view: AVPlayerView) {

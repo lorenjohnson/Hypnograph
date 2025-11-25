@@ -82,6 +82,7 @@ struct HypnographApp: App {
 
     private let settings: Settings
     @StateObject private var state: HypnogramState
+    @StateObject private var renderQueue: RenderQueue
     @StateObject private var montageMode: MontageMode
     @StateObject private var sequenceMode: SequenceMode
     @StateObject private var divineMode: DivineMode
@@ -117,12 +118,16 @@ struct HypnographApp: App {
         self.settings = settings
         let state = HypnogramState(settings: settings)
 
+        // Shared render queue for all modes
+        let renderQueue = RenderQueue()
+
         GlobalRenderHooks.manager = state.renderHooks
 
         _state = StateObject(wrappedValue: state)
-        _montageMode = StateObject(wrappedValue: MontageMode(state: state))
-        _sequenceMode = StateObject(wrappedValue: SequenceMode(state: state))
-        _divineMode = StateObject(wrappedValue: DivineMode(state: state))
+        _renderQueue = StateObject(wrappedValue: renderQueue)
+        _montageMode = StateObject(wrappedValue: MontageMode(state: state, renderQueue: renderQueue))
+        _sequenceMode = StateObject(wrappedValue: SequenceMode(state: state, renderQueue: renderQueue))
+        _divineMode = StateObject(wrappedValue: DivineMode(state: state, renderQueue: renderQueue))
     }
 
     // Current mode based on state
@@ -141,13 +146,10 @@ struct HypnographApp: App {
         switch state.currentModeType {
         case .montage:
             state.currentModeType = .sequence
-            appDelegate.renderQueue = sequenceMode.renderQueue
         case .sequence:
             state.currentModeType = .divine
-            appDelegate.renderQueue = divineMode.renderQueue
         case .divine:
             state.currentModeType = .montage
-            appDelegate.renderQueue = montageMode.renderQueue
         }
     }
 
@@ -155,7 +157,7 @@ struct HypnographApp: App {
         WindowGroup {
             ContentView(
                 state: state,
-                renderQueue: currentMode.renderQueue,
+                renderQueue: renderQueue,
                 mode: currentMode
             )
             .onAppear {
@@ -173,8 +175,8 @@ struct HypnographApp: App {
                     appDelegate.mainWindow = window
                 }
 
-                // Set initial render queue for termination handling
-                appDelegate.renderQueue = currentMode.renderQueue
+                // Set render queue for termination handling
+                appDelegate.renderQueue = renderQueue
             }
         }
         .commands {
@@ -295,21 +297,27 @@ struct AppCommands: Commands {
 
             Button("Montage Mode") {
                 state.currentModeType = .montage
-                appDelegate?.renderQueue = montageMode.renderQueue
             }
             .keyboardShortcut("1", modifiers: [.command, .shift])
 
             Button("Sequence Mode") {
                 state.currentModeType = .sequence
-                appDelegate?.renderQueue = sequenceMode.renderQueue
             }
             .keyboardShortcut("2", modifiers: [.command, .shift])
 
             Button("Divine Mode") {
                 state.currentModeType = .divine
-                appDelegate?.renderQueue = divineMode.renderQueue
             }
             .keyboardShortcut("3", modifiers: [.command, .shift])
+            
+            Divider()
+            
+            Button {
+                state.toggleWatchMode()
+            } label: {
+                Text(state.watchMode ? "✓  Watch Mode" : "Watch Mode")
+            }
+            .keyboardShortcut("w", modifiers: [])
         }
 
         CommandMenu("Source Libraries") {
@@ -331,7 +339,7 @@ struct AppCommands: Commands {
                     Button {
                         state.toggleLibrary(key: key)
                     } label: {
-                        Text(state.isLibraryActive(key: key) ? "✓ \(key)" : key)
+                        Text(state.isLibraryActive(key: key) ? "✓  \(key)" : key)
                     }
                 }
 

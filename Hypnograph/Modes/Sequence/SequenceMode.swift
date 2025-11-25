@@ -17,6 +17,9 @@ final class SequenceMode: ObservableObject, HypnographMode {
     let state: HypnogramState
     let renderQueue: RenderQueue
 
+    /// Mode-specific renderer for Sequence exports.
+    private let renderer: SequenceRenderer
+
     /// Total accumulated duration of all sources in the sequence
     var totalDuration: CMTime {
         sequenceSources.reduce(CMTime.zero) { $0 + $1.duration }
@@ -38,13 +41,13 @@ final class SequenceMode: ObservableObject, HypnographMode {
     /// Max sources for this mode (independent of settings.maxSources if you want)
     var maxSources: Int = 20
 
-    init(state: HypnogramState) {
+    init(state: HypnogramState, renderQueue: RenderQueue) {
         self.state = state
-        let backend = SequenceRenderer(
+        self.renderQueue = renderQueue
+        self.renderer = SequenceRenderer(
             outputURL: state.settings.outputURL,
             outputSize: state.settings.outputSize
         )
-        self.renderQueue = RenderQueue(renderer: backend)
 
         // Forward state changes so SwiftUI updates, while reading directly from state.
         state.objectWillChange
@@ -133,7 +136,7 @@ final class SequenceMode: ObservableObject, HypnographMode {
         )
 
         print("SequenceMode: enqueuing sequence with \(sequenceSources.count) source(s), total duration: \(totalDuration.seconds)s")
-        renderQueue.enqueue(recipe: recipe)
+        renderQueue.enqueue(renderer: renderer, recipe: recipe)
 
         // Reset for next sequence
         fillSequence()

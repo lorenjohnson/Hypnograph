@@ -8,23 +8,23 @@
 import Foundation
 
 /// Manages a queue of rendering jobs for Hypnogram.
-/// Wraps a HypnogramRenderer and keeps track of active jobs.
+/// Keeps track of active jobs, but is agnostic about which renderer is used.
 final class RenderQueue: ObservableObject {
-    let renderer: HypnogramRenderer
 
     /// Number of currently active jobs (being processed).
-    @Published private(set) var activeJobs: Int = 0
+    private(set) var activeJobs: Int = 0
 
     /// Called on the main thread whenever `activeJobs` drops to 0.
     /// The app can use this to e.g. reply to `applicationShouldTerminate`.
     var onAllJobsFinished: (() -> Void)?
 
-    init(renderer: HypnogramRenderer) {
-        self.renderer = renderer
-    }
+    init() { }
 
-    /// Enqueue a new HypnogramRecipe for rendering.
-    func enqueue(recipe: HypnogramRecipe) {
+    /// Enqueue a new HypnogramRecipe for rendering with the given renderer.
+    func enqueue(
+        renderer: HypnogramRenderer,
+        recipe: HypnogramRecipe
+    ) {
         activeJobs += 1
 
         renderer.enqueue(recipe: recipe) { [weak self] result in

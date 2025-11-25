@@ -52,15 +52,6 @@ final class DivineCardManager: ObservableObject {
     }
 
     func addCardAtOffsetAtCenter() {
-        // Previously: Truly random around canvas but not too close to edges
-        // let padding: CGFloat = 20
-        // let halfW: CGFloat = max((viewportSize.width - cardSize.width) / 2 - padding, 0)
-        // let halfH: CGFloat = max((viewportSize.height - cardSize.height) / 2 - padding, 0)
-        // let offset = CGSize(
-        //     width: halfW > 0 ? CGFloat.random(in: (-halfW)...halfW) : 0,
-        //     height: halfH > 0 ? CGFloat.random(in: (-halfH)...halfH) : 0
-        // )
-        //
         // Jitter radius around center (0–50px)
         let jitter: CGFloat = 50
         let dx = CGFloat.random(in: -jitter...jitter)
@@ -151,8 +142,6 @@ final class DivineCardManager: ObservableObject {
         }
 
         // Not overlapped — safe to flip.
-        // Bring to front (visually won't change because nothing covered it)
-        // but aligns z-order internally.
         let effectiveIndex: Int
         if idx == cards.count - 1 {
             effectiveIndex = idx
@@ -169,7 +158,18 @@ final class DivineCardManager: ObservableObject {
         let newIdx = bringToFront(at: idx)
         var card = cards[newIdx]
 
-        // Ensure we have a player and wire playback-end semantics.
+        // --- Image-only clips: just reveal the still, no AVPlayer / spinner ---
+        if card.clip.file.mediaKind == .image {
+            if card.cgImage == nil {
+                card.cgImage = grabStill(from: card.clip)
+            }
+            card.isRevealed = true
+            card.isPlaying = false
+            cards[newIdx] = card
+            return
+        }
+
+        // --- Video clips: existing "press to play" semantics ---
         let player = playerManager.player(for: card) { [weak self] in
             self?.handlePlaybackEnded(for: card.id)
         }
@@ -212,16 +212,15 @@ final class DivineCardManager: ObservableObject {
         guard index >= 0 && index < cards.count else { return }
 
         var card = cards[index]
-        // Only use an existing player if there is one.
+        let file = card.clip.file
         let player = playerManager.player(forID: card.id)
 
         switch (card.isRevealed, card.isPlaying) {
         case (false, _):
             // Face-down → reveal still using last snapshot if available
             let snapshotTime = card.lastSnapshotTime ?? card.clip.startTime
-            if card.cgImage == nil,
-               let image = grabStill(from: card.clip, at: snapshotTime) {
-                card.cgImage = image
+            if card.cgImage == nil {
+                card.cgImage = grabStill(from: card.clip, at: snapshotTime)
             }
             card.isRevealed = true
             card.isPlaying = false
@@ -238,9 +237,8 @@ final class DivineCardManager: ObservableObject {
             player?.pause()
             let snapshotTime = player?.currentTime() ?? card.clip.startTime
             card.lastSnapshotTime = snapshotTime
-            if let image = grabStill(from: card.clip, at: snapshotTime) {
-                card.cgImage = image
-            }
+            // For images, snapshot is just the source image; grabStill handles both.
+            card.cgImage = grabStill(from: card.clip, at: snapshotTime)
             card.isPlaying = false
             card.isRevealed = true
         }
@@ -259,9 +257,8 @@ final class DivineCardManager: ObservableObject {
     private func handlePlaybackEnded(for id: UUID) {
         updateCard(id: id) { card, _ in
             let startTime = card.clip.startTime
-            if let image = grabStill(from: card.clip, at: startTime) {
-                card.cgImage = image
-            }
+            // Works for both video + image sources.
+            card.cgImage = grabStill(from: card.clip, at: startTime)
             card.lastSnapshotTime = startTime
             card.isPlaying = false
             card.isRevealed = true
@@ -289,18 +286,29 @@ final class DivineCardManager: ObservableObject {
 
     // MARK: - Still grabbing
 
+    /// Unified still-grab for Divine:
+    /// - video clips: AVAssetImageGenerator at `time`
+    /// - image clips: CGImage loaded once from disk (cached)
     private func grabStill(from clip: VideoClip, at time: CMTime? = nil) -> CGImage? {
-        let asset = AVURLAsset(url: clip.file.url)
+        let file = clip.file
+
+        // Image-backed sources: load CGImage once and cache it.
+        if file.mediaKind == .image {
+            return StillImageCache.cgImage(for: file.url)
+        }
+
+        // Video-backed sources: use AVAssetImageGenerator.
+        let asset = AVURLAsset(url: file.url)
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
-        let time = time ?? clip.startTime
+        let t = time ?? clip.startTime
 
         do {
             var actual = CMTime.zero
-            let imageRef = try generator.copyCGImage(at: time, actualTime: &actual)
+            let imageRef = try generator.copyCGImage(at: t, actualTime: &actual)
             return imageRef
         } catch {
-            print("DivineMode: failed to grab still: \(error)")
+            print("DivineMode: failed to grab still from video: \(error)")
             return nil
         }
     }

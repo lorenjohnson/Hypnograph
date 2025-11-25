@@ -106,7 +106,37 @@ struct RenderContext {
     /// Access to previous frames for motion-based effects
     let frameBuffer: FrameBuffer
 
+    /// Hook-tunable parameters
     var params: RenderParams
+
+    /// Index of the source currently being processed (if any).
+    /// - `nil` when rendering the final composed frame or when no specific source is in scope.
+    var sourceIndex: Int?
+
+    init(
+        frameIndex: Int,
+        time: CMTime,
+        isPreview: Bool,
+        outputSize: CGSize,
+        frameBuffer: FrameBuffer,
+        params: RenderParams,
+        sourceIndex: Int? = nil
+    ) {
+        self.frameIndex = frameIndex
+        self.time = time
+        self.isPreview = isPreview
+        self.outputSize = outputSize
+        self.frameBuffer = frameBuffer
+        self.params = params
+        self.sourceIndex = sourceIndex
+    }
+
+    /// Convenience for creating a copy with a specific source index.
+    func withSourceIndex(_ index: Int?) -> RenderContext {
+        var copy = self
+        copy.sourceIndex = index
+        return copy
+    }
 }
 
 // MARK: - Render Hook Protocol
@@ -217,6 +247,9 @@ final class RenderHookManager {
 
     /// Apply global effect to the final composed image
     func applyGlobal(to context: inout RenderContext, image: CIImage) -> CIImage {
+        // Global effect is not tied to a particular source.
+        context.sourceIndex = nil
+
         // Apply global effect if set
         guard let effect = globalEffect else {
             // Even if no effect, still update buffer for future use
@@ -241,6 +274,8 @@ final class RenderHookManager {
             return image
         }
 
+        // Mark which source is being processed so hooks can branch if they want.
+        context.sourceIndex = sourceIndex
         return effect.willRenderFrame(&context, image: image)
     }
 

@@ -3,77 +3,87 @@ import CoreGraphics
 import Combine
 import SwiftUI
 
-
-/// Montage-specific configuration that can be serialized into a HypnogramRecipe.
-///
-/// Right now this just carries the per-layer Core Image blend filter names used
-/// at render time. It is owned conceptually by Montage mode, but lives here so
-/// both the mode and renderer can see it.
-struct MontageConfig: ModeConfig {
-    static let modeType: ModeType = .montage
-
-    /// One CI filter name per source/layer (bottom → top).
-    /// e.g. ["CISourceOverCompositing", "CIScreenBlendMode", ...]
-    var layerBlendModes: [String]
-}
-
 /// Concrete HypnographMode backed by HypnogramState + Montage renderer semantics.
-/// Holds any Montage-specific preview state (like solo pulses).
+/// Holds any Montage-specific preview state (like solo pulses and per-source mode data).
 final class MontageMode: ObservableObject, HypnographMode {
     let state: HypnogramState
     let renderQueue: RenderQueue
 
-    /// Available blend modes for Montage, stored as CI filter names.
-    private let availableBlendModes: [BlendMode] = [
-        BlendMode(ciFilterName: "CIScreenBlendMode"),
-        BlendMode(ciFilterName: "CIOverlayBlendMode"),
-        BlendMode(ciFilterName: "CISoftLightBlendMode"),
-        BlendMode(ciFilterName: "CIMultiplyBlendMode"),
-        BlendMode(ciFilterName: "CIDarkenBlendMode"),
-        BlendMode(ciFilterName: "CILightenBlendMode"),
-        // If you want the full set later, just extend this list.
-        // BlendMode(ciFilterName: "CIDifferenceBlendMode"),
-        // BlendMode(ciFilterName: "CIExclusionBlendMode"),
+    /// Mode-specific renderer for Montage exports.
+    private let renderer: MontageRenderer
+
+    /// Available blend modes for Montage, stored as Core Image filter names.
+    private let availableBlendModes: [String] = [
+        "CIScreenBlendMode",
+        "CIOverlayBlendMode",
+        "CISoftLightBlendMode",
+        "CIMultiplyBlendMode",
+        "CIDarkenBlendMode",
+        "CILightenBlendMode",
     ]
+
+    /// Mode-specific per-source data, same shape as `HypnogramMode.sourceData`.
+    /// We keep `"blendMode"` here under `values["blendMode"]`.
+    ///
+    /// This is exactly the structure we later serialize into the recipe.
+    private var modeSourceData: [ModeSourceData] = []
 
     /// Short-lived solo pulse index for visual inspection when switching sources.
     /// This never touches global solo in state; it’s view-only.
     @Published private var soloPulseIndex: Int? = nil
     private var soloPulseWorkItem: DispatchWorkItem?
 
-    init(state: HypnogramState) {
+    init(state: HypnogramState, renderQueue: RenderQueue) {
         self.state = state
-        let backend = MontageRenderer(
+        self.renderQueue = renderQueue
+        self.renderer = MontageRenderer(
             outputURL: state.settings.outputURL,
             outputSize: state.settings.outputSize
         )
-        self.renderQueue = RenderQueue(renderer: backend)
     }
 
-    // MARK: - Blend mode helpers (preview-time)
+    // MARK: - ModeSourceData helpers
 
-    private var defaultBlendMode: BlendMode {
-        availableBlendModes.first ?? .sourceOver
-    }
-
-    private var currentBlendMode: BlendMode {
-        state.currentSource?.blendMode ?? defaultBlendMode
-    }
-
-    private var currentBlendModeName: String {
-        currentBlendMode.displayName
-    }
-
-    /// Build the CI filter name list for the *current* sources in state.
-    /// First layer is always treated as source-over for compositing purposes.
-    private func currentLayerBlendModes(for sources: [HypnogramSource]) -> [String] {
-        sources.enumerated().map { index, source in
-            if index == 0 {
-                return "CISourceOverCompositing"
-            } else {
-                return source.blendMode.ciFilterName
-            }
+    /// Keep `modeSourceData` aligned 1:1 with `state.sources`.
+    private func syncModeSourceDataToSources() {
+        let count = state.sources.count
+        if modeSourceData.count < count {
+            modeSourceData.append(contentsOf: repeatElement([:], count: count - modeSourceData.count))
+        } else if modeSourceData.count > count {
+            modeSourceData.removeLast(modeSourceData.count - count)
         }
+    }
+
+    /// Resolve the CI filter name to use for a given source index.
+    ///
+    /// - Index 0: always treated as SourceOver in the compositor.
+    /// - Others: use stored value if present; otherwise default Montage blend.
+    private func blendModeForSourceIndex(_ idx: Int) -> String {
+        syncModeSourceDataToSources()
+
+        if idx == 0 {
+            return kBlendModeSourceOver
+        }
+
+        let stored = modeSourceData[idx]["blendMode"]
+        return stored ?? kBlendModeDefaultMontage
+    }
+
+    /// Blend modes for the *displayed* set, mapped via indices.
+    private func blendModesForDisplay(sourceIndices: [Int]) -> [String] {
+        sourceIndices.map { blendModeForSourceIndex($0) }
+    }
+
+    /// Filter name for the currently selected source.
+    private var currentBlendModeFilterName: String {
+        blendModeForSourceIndex(state.currentSourceIndex)
+    }
+
+    /// Very simple display name: "CIScreenBlendMode" → "Screen"
+    private var currentBlendModeDisplayName: String {
+        currentBlendModeFilterName
+            .replacingOccurrences(of: "CI", with: "")
+            .replacingOccurrences(of: "BlendMode", with: "")
     }
 
     var isSoloActive: Bool {
@@ -90,32 +100,21 @@ final class MontageMode: ObservableObject, HypnographMode {
         }
     }
 
-    var maxSources: Int {
-        max(1, state.settings.maxSources)
-    }
-
     // MARK: - Preview / solo
 
-    /// Returns sources for display along with their original indices
+    /// Returns sources for display along with their original indices.
     private func sourcesForDisplay(using state: HypnogramState) -> (sources: [HypnogramSource], sourceIndices: [Int]) {
         let all = state.sources
 
-        if let pulse = soloPulseIndex {
-            guard pulse >= 0, pulse < all.count else {
-                return (all, Array(0..<all.count))
-            }
-            // Pulse solo: momentary view-only solo.
+        if let pulse = soloPulseIndex, pulse < all.count {
             return ([all[pulse]], [pulse])
-        } else if let solo = state.soloSourceIndex {
-            guard solo >= 0, solo < all.count else {
-                return (all, Array(0..<all.count))
-            }
-            // Persistent solo: use state solo.
-            return ([all[solo]], [solo])
-        } else {
-            // Normal mode: all sources with sequential indices
-            return (all, Array(0..<all.count))
         }
+
+        if let solo = state.soloSourceIndex, solo < all.count {
+            return ([all[solo]], [solo])
+        }
+
+        return (all, Array(0..<all.count))
     }
 
     private func startSoloPulse(for index: Int) {
@@ -126,7 +125,7 @@ final class MontageMode: ObservableObject, HypnographMode {
             self?.soloPulseIndex = nil
         }
         soloPulseWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: work)
     }
 
     // MARK: - HypnographMode – display wiring
@@ -136,10 +135,13 @@ final class MontageMode: ObservableObject, HypnographMode {
         renderQueue: RenderQueue
     ) -> AnyView {
         let (sources, sourceIndices) = sourcesForDisplay(using: state)
+        let blendModes = blendModesForDisplay(sourceIndices: sourceIndices)
+
         return AnyView(
             MontageView(
                 sources: sources,
                 sourceIndices: sourceIndices,
+                blendModes: blendModes,
                 currentSourceTime: Binding(
                     get: { state.currentClipTimeOffset },
                     set: { state.currentClipTimeOffset = $0 }
@@ -155,15 +157,12 @@ final class MontageMode: ObservableObject, HypnographMode {
         renderQueue: RenderQueue
     ) -> [HUDItem] {
         var items: [HUDItem] = [
-            // Source/Layer-specific status (order 25-29 range)
             .text("Source \(state.currentSourceIndex + 1) of \(state.activeSourceCount)", order: 25),
-            .text("Blend mode (M): \(currentBlendModeName)", order: 26),
+            .text("Blend mode (M): \(currentBlendModeDisplayName)", order: 26),
             .text("Source Effect (F): \(sourceEffectName)", order: 27),
         ]
 
-        // Mode-specific shortcuts (after global shortcuts)
         items.append(.text("M = Cycle Blend mode", order: 46))
-
         return items
     }
 
@@ -185,18 +184,30 @@ final class MontageMode: ObservableObject, HypnographMode {
         soloPulseIndex = nil
         state.clearSolo()
         state.newAutoPrimeSet()
+        modeSourceData.removeAll()
     }
 
     func addSource() {
         let activeCount = state.activeSourceCount
         print("MontageMode.addSource", activeCount)
-        // Always allow appending; no hard cap here.
+
         if let _ = state.addSource() {
             // Newly added source is auto-selected by state.addSource()
+            // modeSourceData will be synced lazily on first use.
             startSoloPulse(for: state.currentSourceIndex)
         }
 
         soloPulseIndex = nil
+    }
+
+    func deleteCurrentSource() {
+        let idx = state.currentSourceIndex
+        state.deleteCurrentSource()
+
+        // Keep per-layer mode data aligned by removing the same index.
+        if idx >= 0, idx < modeSourceData.count {
+            modeSourceData.remove(at: idx)
+        }
     }
 
     func save() {
@@ -205,41 +216,48 @@ final class MontageMode: ObservableObject, HypnographMode {
             return
         }
 
-        // Attach Montage-specific blend-mode configuration to the recipe.
-        let blendModes = currentLayerBlendModes(for: recipe.sources)
-        let config = MontageConfig(layerBlendModes: blendModes)
-        recipe.setModeConfig(config)
+        // Ensure one entry per source
+        syncModeSourceDataToSources()
+        let trimmed = Array(modeSourceData.prefix(recipe.sources.count))
+
+        // Attach Montage mode payload to the recipe
+        let montageMode = HypnogramMode(
+            name: .montage,
+            sourceData: trimmed
+        )
+        recipe.mode = montageMode
 
         print("renderCurrentHypnogram(): enqueuing recipe with \(recipe.sources.count) source(s).")
-        renderQueue.enqueue(recipe: recipe)
 
-        state.resetForNextHypnogram()
-        soloPulseIndex = nil
+        renderQueue.enqueue(renderer: renderer, recipe: recipe)
 
-        if state.settings.autoPrime {
-            state.newAutoPrimeSet()
+        DispatchQueue.main.async {
+            self.state.resetForNextHypnogram()
+            self.soloPulseIndex = nil
+            self.modeSourceData.removeAll()
+
+            if self.state.settings.autoPrime {
+                self.state.newAutoPrimeSet()
+            }
         }
     }
 
     // Source navigation
     func nextSource() {
-        let activeCount = state.activeSourceCount
-        guard activeCount > 0 else { return }
+        guard state.activeSourceCount > 0 else { return }
         state.nextSource()
         startSoloPulse(for: state.currentSourceIndex)
     }
 
     func previousSource() {
-        let activeCount = state.activeSourceCount
-        guard activeCount > 0 else { return }
+        guard state.activeSourceCount > 0 else { return }
         state.previousSource()
         startSoloPulse(for: state.currentSourceIndex)
     }
 
     func selectSource(index: Int) {
-        let activeCount = state.activeSourceCount
-        guard activeCount > 0 else { return }
-        let clamped = max(0, min(activeCount - 1, index))
+        guard state.activeSourceCount > 0 else { return }
+        let clamped = max(0, min(state.activeSourceCount - 1, index))
         selectSource(index: clamped, pulse: true)
     }
 
@@ -254,31 +272,27 @@ final class MontageMode: ObservableObject, HypnographMode {
     // MARK: - Mode-specific tweaks
 
     func cycleBlendMode(at index: Int? = nil) {
+        guard !availableBlendModes.isEmpty else { return }
+
         let idx = index ?? state.currentSourceIndex
-        let count = state.sources.count
+        guard idx > 0 else {
+            // We never cycle bottom layer; it's SourceOver.
+            return
+        }
 
-        guard idx >= 0,
-              idx < count,
-              !availableBlendModes.isEmpty
-        else { return }
+        syncModeSourceDataToSources()
 
-        let current = state.sources[idx]
-        let modes = availableBlendModes
+        let current = modeSourceData[idx]["blendMode"] ?? kBlendModeDefaultMontage
+        let currentIndex = availableBlendModes.firstIndex(of: current) ?? -1
+        let next = positiveMod(currentIndex + 1, availableBlendModes.count)
 
-        let currentIndex = modes.firstIndex {
-            $0.ciFilterName == current.blendMode.ciFilterName
-        } ?? -1
-
-        let next = positiveMod(currentIndex + 1, modes.count)
-
-        var updated = current
-        updated.blendMode = modes[next]
-        state.sources[idx] = updated
+        modeSourceData[idx]["blendMode"] = availableBlendModes[next]
     }
 
     func reloadSettings() {
         state.reloadSettings(from: Environment.defaultSettingsURL)
         soloPulseIndex = nil
+        modeSourceData.removeAll()
     }
 }
 
