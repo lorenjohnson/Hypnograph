@@ -4,19 +4,14 @@ import AVFoundation
 
 extension NSWindow {
     func makeHypnographBorderless(on screen: NSScreen, contentSize: CGSize) {
-        // Use full screen frame (not visibleFrame) so we extend under the menu bar / notch.
         let fullFrame = screen.frame
-
-        // Take the entire frame so black background fills the whole display.
         let frame = fullFrame
 
-        // Remove title bar & traffic lights
         styleMask.remove(.titled)
         styleMask.remove(.closable)
         styleMask.remove(.miniaturizable)
-        styleMask.remove(.resizable)   // keep if you want manual resize
+        styleMask.remove(.resizable)
 
-        // Ensure we don't participate in macOS fullscreen Spaces
         collectionBehavior = [.fullScreenNone, .canJoinAllSpaces]
 
         titleVisibility = .hidden
@@ -28,7 +23,6 @@ extension NSWindow {
 
         isOpaque = true
         backgroundColor = .black
-        // Normal window level so other apps can appear in front.
         level = .normal
 
         setFrame(frame, display: true, animate: false)
@@ -53,7 +47,6 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
 
         print("Hypnograph: delaying termination until \(queue.activeJobs) render job(s) complete")
 
-        // When all jobs finish, tell AppKit it's okay to quit.
         queue.onAllJobsFinished = { [weak sender] in
             DispatchQueue.main.async {
                 sender?.reply(toApplicationShouldTerminate: true)
@@ -62,15 +55,6 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
 
         return .terminateLater
     }
-
-    // If you ever want to float the window above apps again:
-    // func applicationDidBecomeActive(_ notification: Notification) {
-    //     mainWindow?.level = .statusBar
-    // }
-
-    // func applicationDidResignActive(_ notification: Notification) {
-    //     mainWindow?.level = .normal
-    // }
 }
 
 // MARK: - Main App
@@ -83,15 +67,12 @@ struct HypnographApp: App {
     private let settings: Settings
     @StateObject private var state: HypnographState
     @StateObject private var renderQueue: RenderQueue
-    @StateObject private var montageMode: MontageMode
-    @StateObject private var sequenceMode: SequenceMode
+    @StateObject private var dreamMode: DreamMode
     @StateObject private var divineMode: DivineMode
 
     init() {
-        // Ensure user settings file exists (copy from bundle if missing)
         Environment.ensureDefaultSettingsFileExists()
 
-        // Always load from Application Support
         let settingsURL = Environment.defaultSettingsURL
 
         let settings: Settings
@@ -99,7 +80,6 @@ struct HypnographApp: App {
             settings = try SettingsLoader.load(from: settingsURL)
             print("Loaded settings from \(settingsURL.path)")
         } catch {
-            // Absolutely minimal fallback
             print("⚠️ Failed to load settings, using emergency fallback: \(error)")
 
             settings = Settings(
@@ -113,29 +93,23 @@ struct HypnographApp: App {
             )
         }
 
-        // Shared state
         self.settings = settings
         let state = HypnographState(settings: settings)
-
-        // Shared render queue for all modes
         let renderQueue = RenderQueue()
 
         GlobalRenderHooks.manager = state.renderHooks
 
         _state = StateObject(wrappedValue: state)
         _renderQueue = StateObject(wrappedValue: renderQueue)
-        _montageMode = StateObject(wrappedValue: MontageMode(state: state, renderQueue: renderQueue))
-        _sequenceMode = StateObject(wrappedValue: SequenceMode(state: state, renderQueue: renderQueue))
+        _dreamMode = StateObject(wrappedValue: DreamMode(state: state, renderQueue: renderQueue))
         _divineMode = StateObject(wrappedValue: DivineMode(state: state, renderQueue: renderQueue))
     }
 
     // Current mode based on state
     var currentMode: HypnographMode {
         switch state.currentModeType {
-        case .montage:
-            return montageMode
-        case .sequence:
-            return sequenceMode
+        case .dream:
+            return dreamMode
         case .divine:
             return divineMode
         }
@@ -143,12 +117,10 @@ struct HypnographApp: App {
 
     func cycleMode() {
         switch state.currentModeType {
-        case .montage:
-            state.currentModeType = .sequence
-        case .sequence:
+        case .dream:
             state.currentModeType = .divine
         case .divine:
-            state.currentModeType = .montage
+            state.currentModeType = .dream
         }
     }
 
@@ -164,7 +136,6 @@ struct HypnographApp: App {
                     guard let window = NSApp.windows.first else { return }
 
                     let screens = NSScreen.screens
-                    // Prefer external monitor if present
                     let targetScreen = (screens.count > 1 ? screens[1] : screens[0])
 
                     window.makeHypnographBorderless(
@@ -174,15 +145,13 @@ struct HypnographApp: App {
                     appDelegate.mainWindow = window
                 }
 
-                // Set render queue for termination handling
                 appDelegate.renderQueue = renderQueue
             }
         }
         .commands {
             AppCommands(
                 state: state,
-                montageMode: montageMode,
-                sequenceMode: sequenceMode,
+                dreamMode: dreamMode,
                 divineMode: divineMode,
                 appDelegate: appDelegate,
                 cycleMode: cycleMode
@@ -195,23 +164,20 @@ struct HypnographApp: App {
 
 struct AppCommands: Commands {
     @ObservedObject private var state: HypnographState
-    @ObservedObject private var montageMode: MontageMode
-    @ObservedObject private var sequenceMode: SequenceMode
+    @ObservedObject private var dreamMode: DreamMode
     @ObservedObject private var divineMode: DivineMode
     private weak var appDelegate: HypnographAppDelegate?
     private let cycleModeHandler: () -> Void
 
     init(
         state: HypnographState,
-        montageMode: MontageMode,
-        sequenceMode: SequenceMode,
+        dreamMode: DreamMode,
         divineMode: DivineMode,
         appDelegate: HypnographAppDelegate?,
         cycleMode: @escaping () -> Void
     ) {
         _state = ObservedObject(initialValue: state)
-        _montageMode = ObservedObject(initialValue: montageMode)
-        _sequenceMode = ObservedObject(initialValue: sequenceMode)
+        _dreamMode = ObservedObject(initialValue: dreamMode)
         _divineMode = ObservedObject(initialValue: divineMode)
         self.appDelegate = appDelegate
         self.cycleModeHandler = cycleMode
@@ -223,10 +189,8 @@ struct AppCommands: Commands {
 
     private var currentMode: HypnographMode {
         switch state.currentModeType {
-        case .montage:
-            return montageMode
-        case .sequence:
-            return sequenceMode
+        case .dream:
+            return dreamMode
         case .divine:
             return divineMode
         }
@@ -266,10 +230,8 @@ struct AppCommands: Commands {
             }
         }
 
-        // Remove "New Window" and the default "New" options
         CommandGroup(replacing: .newItem) { }
 
-        // Add custom "New Hypnogram"
         CommandGroup(after: .newItem) {
             Button("New") {
                 currentMode.new()
@@ -277,7 +239,6 @@ struct AppCommands: Commands {
             .keyboardShortcut(.space, modifiers: [])
         }
 
-        // Add custom Save behavior
         CommandGroup(replacing: .saveItem) {
             Button("Save") {
                 currentMode.save()
@@ -285,7 +246,6 @@ struct AppCommands: Commands {
             .keyboardShortcut("s", modifiers: [.command])
         }
 
-        // Extend the default View menu with mode controls
         CommandGroup(after: .sidebar) {
             Divider()
 
@@ -294,23 +254,18 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("`", modifiers: [])
 
-            Button("Montage Mode") {
-                state.currentModeType = .montage
+            Button("Dream Mode") {
+                state.currentModeType = .dream
             }
             .keyboardShortcut("1", modifiers: [.command, .shift])
-
-            Button("Sequence Mode") {
-                state.currentModeType = .sequence
-            }
-            .keyboardShortcut("2", modifiers: [.command, .shift])
 
             Button("Divine Mode") {
                 state.currentModeType = .divine
             }
-            .keyboardShortcut("3", modifiers: [.command, .shift])
-            
+            .keyboardShortcut("2", modifiers: [.command, .shift])
+
             Divider()
-            
+
             Button {
                 state.toggleWatchMode()
             } label: {
@@ -320,7 +275,6 @@ struct AppCommands: Commands {
         }
 
         CommandMenu("Source Libraries") {
-            // Prefer explicit order if present; otherwise just use keys.
             let keys: [String] = {
                 let order = state.settings.sourceLibraryOrder
                 if !order.isEmpty {
@@ -411,10 +365,10 @@ struct AppCommands: Commands {
                 Divider()
             }
 
+            // ⬇️ Solo is now *menu only* – no more "s" shortcut.
             Button("Toggle Solo") {
                 currentMode.toggleSolo()
             }
-            .keyboardShortcut("s", modifiers: [])
 
             Button("Cycle Effect") {
                 currentMode.cycleSourceEffect()
@@ -437,15 +391,6 @@ struct AppCommands: Commands {
                 state.excludeCurrentSource()
             }
             .keyboardShortcut("x", modifiers: [])
-
-            Divider()
-
-            if state.currentModeType == .divine {
-                Button("Re-deal Divine Cards") {
-                    (currentMode as? DivineMode)?.redeal()
-                }
-                .keyboardShortcut("r", modifiers: [])
-            }
         }
     }
 }
