@@ -81,15 +81,16 @@ struct HypnographApp: App {
             print("Loaded settings from \(settingsURL.path)")
         } catch {
             print("⚠️ Failed to load settings, using emergency fallback: \(error)")
-
             settings = Settings(
-                watch: true,
-                maxSources: 3,
                 outputFolder: "~/Movies/Hypnograph/Renders",
+                sourceFolders: SourceFoldersParam.array([
+                    "~/Movies/Hypnograph/sources"
+                ]),
+                watch: true,
+                maxSourcesForNew: 3,
                 outputHeight: 1080,
                 outputSeconds: 30,
-                outputWidth: 1920,
-                sourceFolders: [ "~/Movies/Hypnograph/Sources" ]
+                outputWidth: 1920
             )
         }
 
@@ -105,16 +106,6 @@ struct HypnographApp: App {
         _divineMode = StateObject(wrappedValue: DivineMode(state: state, renderQueue: renderQueue))
     }
 
-    // Current mode based on state
-    var currentMode: HypnographMode {
-        switch state.currentModeType {
-        case .dream:
-            return dreamMode
-        case .divine:
-            return divineMode
-        }
-    }
-
     func cycleMode() {
         switch state.currentModeType {
         case .dream:
@@ -126,11 +117,22 @@ struct HypnographApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(
-                state: state,
-                renderQueue: renderQueue,
-                mode: currentMode
-            )
+            Group {
+                switch state.currentModeType {
+                case .dream:
+                    ContentView(
+                        state: state,
+                        renderQueue: renderQueue,
+                        mode: dreamMode
+                    )
+                case .divine:
+                    ContentView(
+                        state: state,
+                        renderQueue: renderQueue,
+                        mode: divineMode
+                    )
+                }
+            }
             .onAppear {
                 DispatchQueue.main.async {
                     guard let window = NSApp.windows.first else { return }
@@ -183,11 +185,7 @@ struct AppCommands: Commands {
         self.cycleModeHandler = cycleMode
     }
 
-    private var maxSources: Int {
-        max(1, state.settings.maxSources)
-    }
-
-    private var currentMode: HypnographMode {
+    private var currentMode: any HypnographMode {
         switch state.currentModeType {
         case .dream:
             return dreamMode
@@ -337,7 +335,7 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut(.leftArrow, modifiers: [])
 
-            ForEach(0..<maxSources, id: \.self) { idx in
+            ForEach(0..<9, id: \.self) { idx in
                 Button("Select Source \(idx + 1)") {
                     currentMode.selectSource(index: idx)
                 }
@@ -363,11 +361,6 @@ struct AppCommands: Commands {
                 }
 
                 Divider()
-            }
-
-            // ⬇️ Solo is now *menu only* – no more "s" shortcut.
-            Button("Toggle Solo") {
-                currentMode.toggleSolo()
             }
 
             Button("Cycle Effect") {
