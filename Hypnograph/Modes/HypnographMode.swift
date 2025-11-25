@@ -11,8 +11,7 @@ import SwiftUI
 
 /// Available mode types for the application
 enum ModeType: String, Codable {
-    case montage
-    case sequence
+    case dream
     case divine
 }
 

@@ -193,7 +193,7 @@ final class MontageRenderer: HypnogramRenderer {
 
             guard
                 let mode = recipe.mode,
-                mode.name == .montage,
+                mode.name == .dream,
                 idx < mode.sourceData.count
             else {
                 result.append(fallback)

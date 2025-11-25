@@ -16,10 +16,8 @@ struct ContentView: View {
         items.append(.text("Hypnograph", order: 10, font: .headline))
         let modeLabel: String
         switch state.currentModeType {
-        case .montage:
-            modeLabel = "Montage Mode"
-        case .sequence:
-            modeLabel = "Sequence Mode"
+        case .dream:
+            modeLabel = "Dream Mode"
         case .divine:
             modeLabel = "Divine Mode"
         }
@@ -82,7 +80,7 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(Array(allHUDItems().enumerated()), id: \.offset) { index, item in
                         item.render()
-                            .id(index) // Use the enumeration index as the unique ID
+                            .id(index)
                     }
                 }
                 .foregroundColor(.white)
@@ -103,7 +101,6 @@ struct ContentView: View {
                     .padding()
             }
         }
-        // extra safety: whole scene black
         .background(Color.black)
     }
 }

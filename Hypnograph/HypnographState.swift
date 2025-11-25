@@ -27,7 +27,7 @@ final class HypnographState: ObservableObject {
 
     // MARK: - Mode management
 
-    @Published var currentModeType: ModeType = .montage
+    @Published var currentModeType: ModeType = .dream
 
     // MARK: - Source list
 
@@ -45,8 +45,9 @@ final class HypnographState: ObservableObject {
     /// If set, this source is globally solo'd.
     @Published var soloSourceIndex: Int? = nil
 
-    /// Watch mode is not yet implemented but is intended as the sit-back and watch random Hypnograms (perhaps across modes)
-    // generate like watching TV. IF it crosses modes it would only randomly select between modes that have a watchable flag set.
+    /// Watch mode is not yet implemented but is intended as the sit-back and watch random Hypnograms
+    /// generate like watching TV. If it crosses modes it would only randomly select between modes
+    /// that have a watchable flag set.
     @Published var watchMode: Bool = false
 
     // Render hooks
@@ -93,7 +94,6 @@ final class HypnographState: ObservableObject {
     var currentClip: VideoClip? {
         currentSource?.clip
     }
-
 
     // MARK: - Rendering
 
@@ -164,7 +164,6 @@ final class HypnographState: ObservableObject {
         let clamped = max(0, min(index, sources.count - 1))
         currentSourceIndex = clamped
 
-        // If we're currently in solo mode, keep solo locked to the selection.
         if soloSourceIndex != nil {
             soloSourceIndex = clamped
         }
@@ -175,7 +174,6 @@ final class HypnographState: ObservableObject {
         let next = min(sources.count - 1, currentSourceIndex + 1)
         currentSourceIndex = next
 
-        // If we're currently in solo mode, keep solo locked to the selection.
         if soloSourceIndex != nil {
             soloSourceIndex = next
         }
@@ -186,7 +184,6 @@ final class HypnographState: ObservableObject {
         let prev = max(0, currentSourceIndex - 1)
         currentSourceIndex = prev
 
-        // If we're currently in solo mode, keep solo locked to the selection.
         if soloSourceIndex != nil {
             soloSourceIndex = prev
         }
@@ -201,7 +198,6 @@ final class HypnographState: ObservableObject {
             _ = addSource()
         }
 
-        // If the solo index is now out of range, clear it.
         if let solo = soloSourceIndex, solo >= sources.count {
             soloSourceIndex = nil
         }
@@ -213,9 +209,6 @@ final class HypnographState: ObservableObject {
 
     // MARK: - Solo
 
-    /// Toggle solo for a specific source index.
-    /// If the same index is already solo'd, this clears solo.
-    /// If another index is solo'd, this switches solo to the new index.
     func soloSource(index: Int) {
         guard !sources.isEmpty else {
             soloSourceIndex = nil
@@ -229,7 +222,6 @@ final class HypnographState: ObservableObject {
         }
     }
 
-    /// Explicitly clear solo regardless of which source was solo'd.
     func clearSolo() {
         soloSourceIndex = nil
     }
@@ -350,10 +342,8 @@ final class HypnographState: ObservableObject {
             let newSettings = try SettingsLoader.load(from: url)
             self.settings = newSettings
 
-            // Re-apply active libraries with the new settings
             applyActiveLibraries(activeLibraryKeys)
 
-            // Restart auto-prime timer with new config
             watchTimer?.invalidate()
             watchTimer = nil
             if newSettings.watch {
