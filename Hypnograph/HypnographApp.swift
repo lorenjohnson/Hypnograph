@@ -81,7 +81,7 @@ struct HypnographApp: App {
     private var appDelegate
 
     private let settings: Settings
-    @StateObject private var state: HypnogramState
+    @StateObject private var state: HypnographState
     @StateObject private var renderQueue: RenderQueue
     @StateObject private var montageMode: MontageMode
     @StateObject private var sequenceMode: SequenceMode
@@ -103,8 +103,7 @@ struct HypnographApp: App {
             print("⚠️ Failed to load settings, using emergency fallback: \(error)")
 
             settings = Settings(
-                autoPrime: true,
-                autoPrimeTimeout: 30,
+                watch: true,
                 maxSources: 3,
                 outputFolder: "~/Movies/Hypnograph/Renders",
                 outputHeight: 1080,
@@ -116,7 +115,7 @@ struct HypnographApp: App {
 
         // Shared state
         self.settings = settings
-        let state = HypnogramState(settings: settings)
+        let state = HypnographState(settings: settings)
 
         // Shared render queue for all modes
         let renderQueue = RenderQueue()
@@ -195,7 +194,7 @@ struct HypnographApp: App {
 // MARK: - Commands
 
 struct AppCommands: Commands {
-    @ObservedObject private var state: HypnogramState
+    @ObservedObject private var state: HypnographState
     @ObservedObject private var montageMode: MontageMode
     @ObservedObject private var sequenceMode: SequenceMode
     @ObservedObject private var divineMode: DivineMode
@@ -203,7 +202,7 @@ struct AppCommands: Commands {
     private let cycleModeHandler: () -> Void
 
     init(
-        state: HypnogramState,
+        state: HypnographState,
         montageMode: MontageMode,
         sequenceMode: SequenceMode,
         divineMode: DivineMode,

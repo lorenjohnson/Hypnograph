@@ -18,14 +18,14 @@ final class DivineCardManager: ObservableObject {
     @Published private(set) var cards: [DivineCard] = []
     @Published private(set) var currentIndex: Int = 0
 
-    private let state: HypnogramState
+    private let state: HypnographState
     private let playerManager = DivinePlayerManager()
 
     // Layout context for initial card placement
     private var viewportSize: CGSize = .zero
     private var cardSize: CGSize = .zero
 
-    init(state: HypnogramState) {
+    init(state: HypnographState) {
         self.state = state
         addCardAtOffsetAtCenter()
     }

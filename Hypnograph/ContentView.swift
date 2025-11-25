@@ -3,7 +3,7 @@ import AVFoundation
 import Combine
 
 struct ContentView: View {
-    @ObservedObject var state: HypnogramState
+    @ObservedObject var state: HypnographState
     @ObservedObject var renderQueue: RenderQueue
     var mode: HypnographMode
 

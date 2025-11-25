@@ -109,8 +109,7 @@ enum SourceFoldersParam: Codable {
 //  First stage: raw decoded JSON (no tilde expansion, no logic)
 // -------------------------------------------------------------
 struct SettingsParams: Codable {
-    var autoPrime: Bool
-    var autoPrimeTimeout: Double
+    var watch: Bool
     var maxSources: Int
     var sourceFolders: SourceFoldersParam
     var outputFolder: String
@@ -123,8 +122,7 @@ struct SettingsParams: Codable {
 //  Normalized Settings used by the app everywhere
 // -------------------------------------------------------------
 struct Settings {
-    var autoPrime: Bool
-    var autoPrimeTimeout: Double
+    var watch: Bool
     var maxSources: Int
 
     /// The *currently active* set of folders (default on startup).
@@ -150,8 +148,7 @@ struct Settings {
 
     // Main initializer with normalization for the "simple" case (single library).
     init(
-        autoPrime: Bool,
-        autoPrimeTimeout: Double = 120,
+        watch: Bool,
         maxSources: Int,
         outputFolder: String,
         outputHeight: Int = 0,
@@ -159,8 +156,7 @@ struct Settings {
         outputWidth: Int = 0,
         sourceFolders: [String]
     ) {
-        self.autoPrime = autoPrime
-        self.autoPrimeTimeout = autoPrimeTimeout
+        self.watch = watch
         self.maxSources = maxSources
         self.outputDuration = CMTime(
             seconds: outputSeconds,
@@ -235,8 +231,7 @@ struct Settings {
 
         // Call through to the simple initializer to reuse width/height/etc. logic.
         self.init(
-            autoPrime: p.autoPrime,
-            autoPrimeTimeout: p.autoPrimeTimeout,
+            watch: p.watch,
             maxSources: p.maxSources,
             outputFolder: p.outputFolder,
             outputHeight: p.outputHeight,

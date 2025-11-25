@@ -10,11 +10,20 @@ import AVKit
 import AVFoundation
 import CoreMedia
 
-/// Preview view for sequence mode - displays the current clip in the sequence
+/// Display view for sequence mode - plays clips in order / solo.
 struct SequenceView: NSViewRepresentable {
-    @ObservedObject var mode: SequenceMode
+    /// Recipe produced by SequenceMode.displayRecipe(using:).
+    let recipe: HypnogramRecipe
+
+    /// Target render size for preview.
     let outputSize: CGSize
-    
+
+    /// Currently selected source index in the *full* sequence.
+    let currentIndex: Int
+
+    /// Optional globally solo’d source index in the *full* sequence.
+    let soloIndex: Int?
+
     class Coordinator {
         var player: AVPlayer?
         var endObserverToken: Any?
@@ -22,11 +31,11 @@ struct SequenceView: NSViewRepresentable {
         var clipStartTimes: [CMTime] = []
         var lastSeekIndex: Int?
     }
-    
+
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
-    
+
     func makeNSView(context: Context) -> AVPlayerView {
         let view = AVPlayerView()
         view.controlsStyle = .none
@@ -34,35 +43,49 @@ struct SequenceView: NSViewRepresentable {
         view.player = AVPlayer()
         return view
     }
-    
+
     func updateNSView(_ nsView: AVPlayerView, context: Context) {
         let c = context.coordinator
-        
-        let clips = mode.sequenceSources
-        let isSolo = mode.isSoloActive
-        let currentIndex = mode.currentSourceIndex
-        let displayClips: [(VideoClip, Int)]
-        let targetIndex: Int
 
-        if isSolo, let solo = mode.soloSourceIndex, solo < clips.count {
-            displayClips = [(clips[solo], solo)] // solo uses original index
-            targetIndex = 0
+        // Work from the recipe's sources, just like MontageView works from its recipe.
+        let allSources = recipe.sources
+        guard !allSources.isEmpty else {
+            Self.tearDown(coordinator: c, view: nsView)
+            return
+        }
+
+        let clips = allSources.map { $0.clip }
+
+        // Decide what to display based on solo vs full sequence.
+        let isSolo = (soloIndex != nil)
+        let displayClips: [(VideoClip, Int)]
+        let targetIndexInDisplay: Int
+
+        if let solo = soloIndex,
+           solo >= 0,
+           solo < clips.count {
+            // Solo: only that clip, but keep original index for effects.
+            displayClips = [(clips[solo], solo)]
+            targetIndexInDisplay = 0
         } else {
+            // Full sequence: all clips, target index is current selection.
             displayClips = Array(clips.enumerated()).map { ($0.element, $0.offset) }
-            targetIndex = currentIndex
+            targetIndexInDisplay = max(0, min(currentIndex, clips.count - 1))
         }
 
         let shouldLoop = isSolo
-        
-        // No clips → clear player
+
+        // No clips (defensive) → clear player.
         guard !displayClips.isEmpty else {
             Self.tearDown(coordinator: c, view: nsView)
             return
         }
-        
-        let clipIDs = displayClips.enumerated().map { clipIdentity(for: $0.element.0, index: $0.offset) }
-        
-        // Only rebuild if the clip changed
+
+        let clipIDs = displayClips.enumerated().map {
+            clipIdentity(for: $0.element.0, index: $0.offset)
+        }
+
+        // Only rebuild if the sequence changed or we don't have a player yet.
         if clipIDs != c.clipIDs || c.player == nil {
             guard let build = buildSequenceItem(for: displayClips) else {
                 Self.tearDown(coordinator: c, view: nsView)
@@ -71,7 +94,7 @@ struct SequenceView: NSViewRepresentable {
 
             let item = build.item
             c.clipStartTimes = build.startTimes
-            
+
             let player: AVPlayer
             if let existing = c.player {
                 player = existing
@@ -80,49 +103,52 @@ struct SequenceView: NSViewRepresentable {
                 player = AVPlayer(playerItem: item)
                 c.player = player
             }
-            
+
             nsView.player = player
             c.clipIDs = clipIDs
             c.lastSeekIndex = nil
-            
+
             configureLooping(shouldLoop: shouldLoop, coordinator: c, item: item)
             player.seek(to: .zero)
             player.playImmediately(atRate: 1.0)
         } else {
-            // Same sequence, just make sure it's playing
+            // Same sequence, just make sure it's playing.
             c.player?.playImmediately(atRate: 1.0)
             if let item = c.player?.currentItem {
                 configureLooping(shouldLoop: shouldLoop, coordinator: c, item: item)
             }
         }
 
-        // Seek to the start of the requested clip when the selection changes
-        if targetIndex != c.lastSeekIndex,
-           targetIndex < c.clipStartTimes.count {
-            let seekTime = c.clipStartTimes[targetIndex]
+        // Seek to the requested clip when the selection changes.
+        if targetIndexInDisplay != c.lastSeekIndex,
+           targetIndexInDisplay < c.clipStartTimes.count {
+            let seekTime = c.clipStartTimes[targetIndexInDisplay]
             c.player?.seek(
                 to: seekTime,
                 toleranceBefore: .zero,
                 toleranceAfter: .zero
             )
-            c.lastSeekIndex = targetIndex
+            c.lastSeekIndex = targetIndexInDisplay
         }
     }
-    
+
     static func dismantleNSView(_ nsView: AVPlayerView, coordinator: Coordinator) {
         tearDown(coordinator: coordinator, view: nsView)
     }
-    
+
     // MARK: - Helpers
-    
+
     private func clipIdentity(for clip: VideoClip, index: Int) -> String {
         let url = clip.file.url.path
         let start = clip.startTime.seconds
         let dur = clip.duration.seconds
         return "\(index)|\(url)|\(start)|\(dur)"
     }
-    
-    private func buildSequenceItem(for clips: [(VideoClip, Int)]) -> (item: AVPlayerItem, startTimes: [CMTime])? {
+
+    /// `clips` here are (clip, originalIndex) pairs.
+    private func buildSequenceItem(
+        for clips: [(VideoClip, Int)]
+    ) -> (item: AVPlayerItem, startTimes: [CMTime])? {
         let composition = AVMutableComposition()
 
         guard let videoTrack = composition.addMutableTrack(
@@ -179,7 +205,7 @@ struct SequenceView: NSViewRepresentable {
 
             startTimes.append(currentTime)
 
-            // Apply effects via custom compositor
+            // Apply effects via custom compositor, mapping back to original source index.
             let instruction = MultiLayerBlendInstruction(
                 layerTrackIDs: [videoTrack.trackID],
                 blendModes: Array(
@@ -212,8 +238,12 @@ struct SequenceView: NSViewRepresentable {
         return (item, startTimes)
     }
 
-    private func configureLooping(shouldLoop: Bool, coordinator c: Coordinator, item: AVPlayerItem) {
-        // Clear previous observer if no longer looping
+    private func configureLooping(
+        shouldLoop: Bool,
+        coordinator c: Coordinator,
+        item: AVPlayerItem
+    ) {
+        // Clear previous observer if no longer looping.
         if !shouldLoop, let token = c.endObserverToken {
             NotificationCenter.default.removeObserver(token)
             c.endObserverToken = nil
@@ -231,7 +261,7 @@ struct SequenceView: NSViewRepresentable {
             p.playImmediately(atRate: 1.0)
         }
     }
-    
+
     private static func tearDown(coordinator c: Coordinator, view: AVPlayerView) {
         if let token = c.endObserverToken {
             NotificationCenter.default.removeObserver(token)
