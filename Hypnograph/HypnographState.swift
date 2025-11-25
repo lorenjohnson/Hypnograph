@@ -163,18 +163,33 @@ final class HypnographState: ObservableObject {
         guard !sources.isEmpty else { return }
         let clamped = max(0, min(index, sources.count - 1))
         currentSourceIndex = clamped
+
+        // If we're currently in solo mode, keep solo locked to the selection.
+        if soloSourceIndex != nil {
+            soloSourceIndex = clamped
+        }
     }
 
     func nextSource() {
         guard !sources.isEmpty else { return }
         let next = min(sources.count - 1, currentSourceIndex + 1)
         currentSourceIndex = next
+
+        // If we're currently in solo mode, keep solo locked to the selection.
+        if soloSourceIndex != nil {
+            soloSourceIndex = next
+        }
     }
 
     func previousSource() {
         guard !sources.isEmpty else { return }
         let prev = max(0, currentSourceIndex - 1)
         currentSourceIndex = prev
+
+        // If we're currently in solo mode, keep solo locked to the selection.
+        if soloSourceIndex != nil {
+            soloSourceIndex = prev
+        }
     }
 
     func deleteSource(at index: Int) {
