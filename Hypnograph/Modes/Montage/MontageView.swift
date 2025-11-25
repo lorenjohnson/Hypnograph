@@ -7,13 +7,13 @@ import CoreGraphics
 /// Single composited preview using the same AVFoundation + custom
 /// Core Image compositor as the final render.
 struct MontageView: NSViewRepresentable {
-    let sources: [HypnogramSource]
-    let sourceIndices: [Int] // Maps source position → original source index (for now only used by mode/state)
-    let blendModes: [String] // One per displayed source (bottom → top)
+    /// Unified blueprint for this preview (can be a solo subset recipe).
+    let recipe: HypnogramRecipe
+
+    /// Preview render size (currently comes from Settings.outputSize).
+    let outputSize: CGSize
 
     @Binding var currentSourceTime: CMTime?
-    let outputDuration: CMTime
-    let outputSize: CGSize
     let playRate: Float = 0.8
 
     class Coordinator {
@@ -39,18 +39,19 @@ struct MontageView: NSViewRepresentable {
         let c = context.coordinator
 
         // No sources → clear player and time.
-        guard !sources.isEmpty else {
+        guard !recipe.sources.isEmpty else {
             Self.tearDown(coordinator: c, view: nsView)
             currentSourceTime = nil
             return
         }
 
-        // Build a simple identity string so we only rebuild when sources *or blend modes* change.
-        let newID = compositionIdentity(for: sources, blendModes: blendModes)
+        // Build a simple identity string so we only rebuild when sources,
+        // blend modes, or duration change.
+        let newID = compositionIdentity(for: recipe)
 
         if newID != c.compositionID || c.player == nil {
             // Rebuild composition + player item
-            guard let item = makeDisplay(for: sources, blendModes: blendModes, renderSize: outputSize) else {
+            guard let item = makeDisplay(from: recipe, renderSize: outputSize) else {
                 Self.tearDown(coordinator: c, view: nsView)
                 currentSourceTime = nil
                 return
@@ -117,12 +118,11 @@ struct MontageView: NSViewRepresentable {
 
     // MARK: - Helpers
 
-    /// Build an identity string so we know when sources or blend modes change.
-    private func compositionIdentity(
-        for sources: [HypnogramSource],
-        blendModes: [String]
-    ) -> String {
-        let pairs: [String] = sources.enumerated().map { index, source in
+    /// Build an identity string so we know when sources, blend modes, or duration change.
+    private func compositionIdentity(for recipe: HypnogramRecipe) -> String {
+        let blendModes = resolvedBlendModes(from: recipe)
+
+        let pairs: [String] = recipe.sources.enumerated().map { index, source in
             let url   = source.clip.file.url.path
             let start = source.clip.startTime.seconds
             let dur   = source.clip.duration.seconds
@@ -130,18 +130,39 @@ struct MontageView: NSViewRepresentable {
             return "\(url)|\(start)|\(dur)|\(mode)"
         }
 
-        return pairs.joined(separator: ";;")
+        let durationPart = "dur=\(recipe.targetDuration.seconds)"
+        return pairs.joined(separator: ";;") + "||" + durationPart
+    }
+
+    /// Resolve per-layer blend modes from the recipe's mode payload.
+    ///
+    /// - Index 0: always SourceOver.
+    /// - Others: use stored value if present; otherwise default Montage blend.
+    private func resolvedBlendModes(from recipe: HypnogramRecipe) -> [String] {
+        let count = recipe.sources.count
+        let modeData = recipe.mode?.sourceData ?? []
+
+        return (0..<count).map { idx in
+            if idx == 0 {
+                return kBlendModeSourceOver
+            }
+
+            let stored = (idx < modeData.count) ? modeData[idx]["blendMode"] : nil
+            return stored ?? kBlendModeDefaultMontage
+        }
     }
 
     /// Build an AVPlayerItem using AVMutableComposition + our custom
     /// MultiLayerBlendCompositor (Core Image compositor), using the
     /// *same* looping + duration semantics as the final renderer.
     private func makeDisplay(
-        for sources: [HypnogramSource],
-        blendModes: [String],
+        from recipe: HypnogramRecipe,
         renderSize: CGSize
     ) -> AVPlayerItem? {
-        let targetSeconds = outputDuration.seconds
+        let sources = recipe.sources
+        let targetDuration = recipe.targetDuration
+
+        let targetSeconds = targetDuration.seconds
         guard targetSeconds > 0 else {
             print("Preview: non-positive targetDuration; skipping")
             return nil
@@ -152,7 +173,7 @@ struct MontageView: NSViewRepresentable {
         do {
             buildResult = try MontageTimelineBuilder.build(
                 sources: sources,
-                targetDuration: outputDuration
+                targetDuration: targetDuration
             )
         } catch let error as MontageTimelineBuilder.BuildError {
             switch error {
@@ -162,7 +183,7 @@ struct MontageView: NSViewRepresentable {
                 // one per source, and let the compositor draw the stills.
                 buildResult = Self.buildDummyStillComposition(
                     sources: sources,
-                    targetDuration: outputDuration
+                    targetDuration: targetDuration
                 )
             default:
                 print("Preview: composition build failed: \(error)")
@@ -177,11 +198,8 @@ struct MontageView: NSViewRepresentable {
         let videoTrackIDs = buildResult.videoTrackIDs
         let transforms    = buildResult.transforms
 
-        // Per-layer blend-mode list derived from mode-managed blendModes.
-        // First layer is always source-over.
-        let resolvedBlendModes: [String] = blendModes.enumerated().map { index, name in
-            index == 0 ? kBlendModeSourceOver : name
-        }
+        // Per-layer blend-mode list derived from mode payload.
+        let resolvedBlendModes = resolvedBlendModes(from: recipe)
 
         // For preview, keep the mapping simple: one track per displayed source
         // in the same order, so we can safely index into `sources`.
@@ -192,7 +210,7 @@ struct MontageView: NSViewRepresentable {
             blendModes: resolvedBlendModes,
             transforms: transforms,
             sourceIndices: localSourceIndices,
-            timeRange: CMTimeRange(start: .zero, duration: outputDuration),
+            timeRange: CMTimeRange(start: .zero, duration: targetDuration),
             sources: sources
         )
 

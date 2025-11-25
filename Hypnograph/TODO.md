@@ -7,7 +7,7 @@ General:
 - General Mode domain diligence. I think there is some duplication here that can still be sorted through.
 - Saving in Sequence Mode isn't working
 - Ability to rotate, reposition and re-size a video (Adjust mode? = Toggles on when user hit the "a" key?)
-- Sort-out AutoPrime: Video should not switch when actively working on it. Double check autoPrime setting snd timer, and maybe turn off by default in my settings but make sure there is a hotkey for enabling it
+- Sort-out Watch: Make a hotkey for toggling it and make segment lengths random up to the configured maxSeconds, as well as look at randomizing between "watchable" modes
   - Rename or eliminate maxSources as it in fact is maxLayers for Montage mode and/or maxClips for Sequence mode all in the context of autoPrime
 - Finder action not installing correctly yet, explore/fix that, including identify right place to store it in project
 - "Favorite" Sources list/s maybe for use with Divine mode? Generally ability to switch between video clip libraries
@@ -24,8 +24,9 @@ Divine Mode:
 
 Montage Mode:
 
+- CMD-# toggles the blend mode applied to that # source
+- A global reset all layers to blend mode Screen?
 - Sensing relative brightness and contrast to pick better blend modes automatically?
-- A global reset all layers to blend mode X? 
 
 Sequence Mode:
 

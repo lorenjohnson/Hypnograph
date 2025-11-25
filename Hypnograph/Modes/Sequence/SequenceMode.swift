@@ -14,34 +14,28 @@ import Combine
 /// that play one after another in sequence until the total duration equals targetDuration.
 /// Navigate between sources with arrow keys or 1-5 keys. Global and per-source effects still apply.
 final class SequenceMode: ObservableObject, HypnographMode {
-    let state: HypnogramState
+    let state: HypnographState
     let renderQueue: RenderQueue
 
     /// Mode-specific renderer for Sequence exports.
     private let renderer: SequenceRenderer
 
-    /// Total accumulated duration of all sources in the sequence
+    /// Total accumulated duration of all sources in the sequence.
     var totalDuration: CMTime {
-        sequenceSources.reduce(CMTime.zero) { $0 + $1.duration }
+        state.sources
+            .map { $0.clip }
+            .reduce(.zero) { $0 + $1.duration }
     }
 
-    /// Desired starting source count
+    /// Desired starting source count.
     private let initialSourceCount = 5
 
     private var cancellables = Set<AnyCancellable>()
 
-    var sequenceSources: [VideoClip] {
-        state.sources.map { $0.clip }
-    }
-
-    var currentSourceIndex: Int {
-        state.currentSourceIndex
-    }
-
-    /// Max sources for this mode (independent of settings.maxSources if you want)
+    /// Max sources for this mode (independent of settings.maxSources if you want).
     var maxSources: Int = 20
 
-    init(state: HypnogramState, renderQueue: RenderQueue) {
+    init(state: HypnographState, renderQueue: RenderQueue) {
         self.state = state
         self.renderQueue = renderQueue
         self.renderer = SequenceRenderer(
@@ -55,45 +49,69 @@ final class SequenceMode: ObservableObject, HypnographMode {
             .store(in: &cancellables)
     }
 
+    // MARK: - Display recipe (pattern-matched with MontageMode)
+
+    /// Compute the recipe to use for *display*.
+    ///
+    /// For Sequence, the core "composition" is just the ordered list of sources
+    /// plus the accumulated target duration. We keep this recipe conceptually
+    /// parallel to Montage: it's the thing both preview and export work from.
+    func displayRecipe(using state: HypnographState) -> HypnogramRecipe {
+        HypnogramRecipe(
+            sources: state.sources,
+            targetDuration: totalDuration,
+            mode: HypnogramMode(name: .sequence, sourceData: [])
+        )
+    }
+
     // MARK: - HypnographMode – display wiring
 
     func makeDisplayView(
-        state: HypnogramState,
+        state: HypnographState,
         renderQueue: RenderQueue
     ) -> AnyView {
-        // Ensure we have something to show when the user switches into the mode
-        if sequenceSources.isEmpty {
+        // Ensure we have something to show when the user switches into the mode.
+        if state.sources.isEmpty {
             fillSequence()
         }
 
+        let recipe = displayRecipe(using: state)
+        let currentIndex = state.currentSourceIndex
+        let soloIndex = state.soloSourceIndex
+
         return AnyView(
             SequenceView(
-                mode: self,
-                outputSize: state.settings.outputSize
+                recipe: recipe,
+                outputSize: state.settings.outputSize,
+                currentIndex: currentIndex,
+                soloIndex: soloIndex
             )
         )
     }
 
     func hudItems(
-        state: HypnogramState,
+        state: HypnographState,
         renderQueue: RenderQueue
     ) -> [HUDItem] {
         var items: [HUDItem] = []
 
+        let clips = state.sources.map { $0.clip }
+        let currentIndex = state.currentSourceIndex
+
         // Sequence status
-        items.append(.text("Sources: \(sequenceSources.count)", order: 25))
-        items.append(.text("Current: \(currentSourceIndex + 1)/\(sequenceSources.count)", order: 26))
+        items.append(.text("Sources: \(clips.count)", order: 25))
+        items.append(.text("Current: \(clips.isEmpty ? 0 : currentIndex + 1)/\(max(clips.count, 1))", order: 26))
 
         let totalSecs = totalDuration.seconds
         items.append(.text(String(format: "Duration: %.1fs", totalSecs), order: 27))
         items.append(.text("Press N for new clip", order: 28))
 
         // Current source info
-        if currentSourceIndex < sequenceSources.count {
-            let clip = sequenceSources[currentSourceIndex]
+        if currentIndex >= 0 && currentIndex < clips.count {
+            let clip = clips[currentIndex]
             items.append(.padding(8, order: 29))
-            items.append(.text("Source \(currentSourceIndex + 1): \(clip.duration.seconds)s", order: 30))
-            items.append(.text("Source Effect: \(state.renderHooks.sourceEffectName(for: currentSourceIndex))", order: 31))
+            items.append(.text("Source \(currentIndex + 1): \(clip.duration.seconds)s", order: 30))
+            items.append(.text("Source Effect: \(state.renderHooks.sourceEffectName(for: currentIndex))", order: 31))
         }
 
         // Mode-specific shortcuts
@@ -103,59 +121,49 @@ final class SequenceMode: ObservableObject, HypnographMode {
         return items
     }
 
-    func compositionCommands() -> [ModeCommand] {
-        []
-    }
-
-    func sourceCommands() -> [ModeCommand] {
-        []
-    }
+    func compositionCommands() -> [ModeCommand] { [] }
+    func sourceCommands() -> [ModeCommand] { [] }
 
     // MARK: - HypnographMode – engine behavior
 
     func new() {
-        // Generate a new sequence
+        // Generate a new sequence and clear solo.
         fillSequence()
     }
 
     func save() {
-        guard !sequenceSources.isEmpty else {
+        guard !state.sources.isEmpty else {
             print("SequenceMode: no sources to save")
             return
         }
 
-        // Convert sequence sources to HypnogramRecipe format
-        // Each source becomes a single-source that will be concatenated during rendering
-        let sources = sequenceSources.map { source in
-            HypnogramSource(clip: source)
-        }
-
         let recipe = HypnogramRecipe(
-            sources: sources,
-            targetDuration: totalDuration  // Use actual total duration of all sources
+            sources: state.sources,
+            targetDuration: totalDuration,
+            mode: HypnogramMode(name: .sequence, sourceData: [])
         )
 
-        print("SequenceMode: enqueuing sequence with \(sequenceSources.count) source(s), total duration: \(totalDuration.seconds)s")
+        print("SequenceMode: enqueuing sequence with \(state.sources.count) source(s), total duration: \(totalDuration.seconds)s")
         renderQueue.enqueue(renderer: renderer, recipe: recipe)
 
-        // Reset for next sequence
+        // Reset for next sequence.
         fillSequence()
     }
 
     // MARK: - Source navigation
 
     func nextSource() {
-        guard !sequenceSources.isEmpty else { return }
+        guard !state.sources.isEmpty else { return }
         state.nextSource()
     }
 
     func previousSource() {
-        guard !sequenceSources.isEmpty else { return }
+        guard !state.sources.isEmpty else { return }
         state.previousSource()
     }
 
     func selectSource(index: Int) {
-        guard !sequenceSources.isEmpty else { return }
+        guard !state.sources.isEmpty else { return }
         state.selectSource(index)
     }
 
@@ -163,16 +171,15 @@ final class SequenceMode: ObservableObject, HypnographMode {
         let activeCount = state.activeSourceCount
         guard activeCount < maxSources else { return }
 
-        if let _ = state.addSource(length: randomSourceDuration()) {
-            // addSource auto-selects the new source
-        }
+        _ = state.addSource(length: randomSourceDuration())
+        // addSource auto-selects the new source.
     }
 
-    // MARK: - Clip randomisation (was "candidate")
+    // MARK: - Clip randomisation
 
     func newRandomClip() {
-        guard !sequenceSources.isEmpty else { return }
-        _ = state.replaceClip(at: currentSourceIndex, length: randomSourceDuration())
+        guard !state.sources.isEmpty else { return }
+        _ = state.replaceClip(at: state.currentSourceIndex, length: randomSourceDuration())
     }
 
     // MARK: - Mode-specific tweaks
@@ -182,35 +189,12 @@ final class SequenceMode: ObservableObject, HypnographMode {
         fillSequence()
     }
 
-    // MARK: - Effects
-
-    // Default cycleGlobalEffect / cycleSourceEffect / clearAllEffects / names
-    // from HypnographMode are used; they work fine on state.renderHooks.
-
-    // MARK: - Solo / HUD
-
-    var isSoloActive: Bool {
-        state.soloSourceIndex != nil
-    }
-
-    /// Exposed so SequenceView can know which index is solo'd
-    var soloSourceIndex: Int? {
-        state.soloSourceIndex
-    }
-
-    var soloIndicatorText: String? {
-        if let solo = state.soloSourceIndex {
-            return "SOLO \(solo + 1)"
-        } else {
-            return "\(currentSourceIndex + 1)"
-        }
-    }
-
     // MARK: - Sequence building
 
-    /// Fill the sequence with random sources until we reach our starting count
+    /// Fill the sequence with random sources until we reach our starting count.
     private func fillSequence() {
         state.resetForNextHypnogram()
+        state.clearSolo()
 
         let desiredCount = min(initialSourceCount, maxSources)
         for _ in 0..<desiredCount {
@@ -218,10 +202,10 @@ final class SequenceMode: ObservableObject, HypnographMode {
         }
 
         let active = state.activeSourceCount
-        let clampedIndex = max(0, min(active - 1, currentSourceIndex))
+        let clampedIndex = max(0, min(active - 1, state.currentSourceIndex))
         state.selectSource(clampedIndex)
 
-        print("SequenceMode: generated sequence with \(sequenceSources.count) sources, total duration: \(totalDuration.seconds)s")
+        print("SequenceMode: generated sequence with \(state.sources.count) sources, total duration: \(totalDuration.seconds)s")
     }
 
     private func randomSourceDuration() -> Double {

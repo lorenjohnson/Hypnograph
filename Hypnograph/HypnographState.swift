@@ -1,5 +1,5 @@
 //
-//  HypnogramState.swift
+//  HypnographState.swift
 //  Hypnograph
 //
 //  Clean unified state: no “candidate” concept, no mirrors,
@@ -14,7 +14,7 @@ import CoreMedia
 import CoreGraphics
 
 /// Manages the current in-progress hypnogram.
-final class HypnogramState: ObservableObject {
+final class HypnographState: ObservableObject {
 
     // MARK: - Core configuration
 
@@ -37,17 +37,16 @@ final class HypnogramState: ObservableObject {
     /// Current selection index
     @Published private(set) var currentSourceIndex: Int = 0
 
-    // MARK: - UI-ish state
-
     /// Optional playhead offset for scrubbing, applies only on explicit user action.
     @Published var currentClipTimeOffset: CMTime?
 
     @Published var isHUDVisible: Bool = true
 
     /// If set, this source is globally solo'd.
-    /// Modes may layer additional view-only solo logic on top (e.g. short pulse).
     @Published var soloSourceIndex: Int? = nil
 
+    /// Watch mode is not yet implemented but is intended as the sit-back and watch random Hypnograms (perhaps across modes)
+    // generate like watching TV. IF it crosses modes it would only randomly select between modes that have a watchable flag set.
     @Published var watchMode: Bool = false
 
     // Render hooks
@@ -55,7 +54,7 @@ final class HypnogramState: ObservableObject {
     var baseRenderParams = RenderParams()
 
     // Auto-prime timer
-    private var autoPrimeTimer: Timer?
+    private var watchTimer: Timer?
 
     // MARK: - Init
 
@@ -76,9 +75,9 @@ final class HypnogramState: ObservableObject {
 
         _ = addSource()    // seed initial source
 
-        if settings.autoPrime {
-            autoPrimeNow()
-            scheduleAutoPrimeTimer()
+        if settings.watch {
+            newRandomHypnogram()
+            scheduleWatchTimer()
         }
     }
 
@@ -222,16 +221,6 @@ final class HypnogramState: ObservableObject {
 
     // MARK: - Priming
 
-    /// Replace the entire list with N fresh sources.
-    func primeRandomSources(count: Int) {
-        sources.removeAll()
-        for _ in 0..<max(1, count) {
-            _ = addSource()
-        }
-        currentSourceIndex = max(0, sources.count - 1)
-        currentClipTimeOffset = nil
-    }
-
     func toggleHUD() {
         isHUDVisible.toggle()
     }
@@ -254,38 +243,36 @@ final class HypnogramState: ObservableObject {
         clearSolo()
     }
 
-    /// Generate a new auto-primed set.
-    func newAutoPrimeSet() {
-        autoPrimeNow()
-    }
-
-    private func autoPrimeNow() {
+    func newRandomHypnogram() {
+        resetForNextHypnogram()
         let total = max(1, settings.maxSources)
         let minCount = min(2, total)
         let count = Int.random(in: minCount...total)
-        primeRandomSources(count: count)
-        currentClipTimeOffset = nil
+        for _ in 0..<max(1, count) {
+            _ = addSource()
+        }
+        currentSourceIndex = max(0, sources.count - 1)
     }
 
     private func noteUserInteraction() {
-        scheduleAutoPrimeTimer()
+        scheduleWatchTimer()
     }
 
-    private func scheduleAutoPrimeTimer() {
-        guard settings.autoPrime, settings.autoPrimeTimeout > 0 else {
-            autoPrimeTimer?.invalidate()
-            autoPrimeTimer = nil
+    private func scheduleWatchTimer() {
+        guard settings.watch, settings.outputDuration.seconds > 0 else {
+            watchTimer?.invalidate()
+            watchTimer = nil
             return
         }
 
-        autoPrimeTimer?.invalidate()
-        autoPrimeTimer = Timer.scheduledTimer(
-            withTimeInterval: settings.autoPrimeTimeout,
+        watchTimer?.invalidate()
+        watchTimer = Timer.scheduledTimer(
+            withTimeInterval: settings.outputDuration.seconds,
             repeats: false
         ) { [weak self] _ in
             guard let self else { return }
-            self.autoPrimeNow()
-            self.scheduleAutoPrimeTimer()
+            self.newRandomHypnogram()
+            self.scheduleWatchTimer()
         }
     }
 
@@ -334,11 +321,11 @@ final class HypnogramState: ObservableObject {
 
         _ = addSource()
 
-        autoPrimeTimer?.invalidate()
-        autoPrimeTimer = nil
-        if settings.autoPrime {
-            autoPrimeNow()
-            scheduleAutoPrimeTimer()
+        watchTimer?.invalidate()
+        watchTimer = nil
+        if settings.watch {
+            newRandomHypnogram()
+            scheduleWatchTimer()
         }
     }
 
@@ -352,11 +339,11 @@ final class HypnogramState: ObservableObject {
             applyActiveLibraries(activeLibraryKeys)
 
             // Restart auto-prime timer with new config
-            autoPrimeTimer?.invalidate()
-            autoPrimeTimer = nil
-            if newSettings.autoPrime {
-                autoPrimeNow()
-                scheduleAutoPrimeTimer()
+            watchTimer?.invalidate()
+            watchTimer = nil
+            if newSettings.watch {
+                newRandomHypnogram()
+                scheduleWatchTimer()
             }
         } catch {
             print("⚠️ Failed to reload settings from \(url.path): \(error)")

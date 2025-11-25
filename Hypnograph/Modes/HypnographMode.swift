@@ -46,19 +46,11 @@ struct ModeCommand {
 /// anything they need to specialize.
 protocol HypnographMode: AnyObject {
     /// Shared session state backing this mode.
-    var state: HypnogramState { get }
+    var state: HypnographState { get }
 
     /// The render queue managed by this mode (shared across modes).
     /// The app may observe it for HUD, quitting, etc.
     var renderQueue: RenderQueue { get }
-
-    // MARK: - Status / identity
-
-    /// Index of the currently focused source/clip.
-    var currentSourceIndex: Int { get }
-
-    /// Whether solo is active for the current selection.
-    var isSoloActive: Bool { get }
 
     /// Short text to display when solo is active (e.g., "SOLO 1").
     var soloIndicatorText: String? { get }
@@ -68,14 +60,14 @@ protocol HypnographMode: AnyObject {
     /// Root preview/display view for this mode.
     /// ContentView doesn't know which concrete view it is.
     func makeDisplayView(
-        state: HypnogramState,
+        state: HypnographState,
         renderQueue: RenderQueue
     ) -> AnyView
 
     /// Mode-specific HUD items.
     /// Returns an array of HUDItems that will be merged with global items.
     func hudItems(
-        state: HypnogramState,
+        state: HypnographState,
         renderQueue: RenderQueue
     ) -> [HUDItem]
 
@@ -126,19 +118,9 @@ protocol HypnographMode: AnyObject {
     var sourceEffectName: String { get }
 }
 
-// MARK: - Default behavior backed by HypnogramState
+// MARK: - Default behavior backed by HypnographState
 
 extension HypnographMode {
-    // MARK: - Status / identity
-
-    var currentSourceIndex: Int {
-        state.currentSourceIndex
-    }
-
-    var isSoloActive: Bool {
-        state.soloSourceIndex != nil
-    }
-
     var soloIndicatorText: String? {
         if let solo = state.soloSourceIndex {
             return "SOLO \(solo + 1)"
@@ -153,11 +135,7 @@ extension HypnographMode {
 
     func new() {
         state.resetForNextHypnogram()
-        state.clearSolo()
-
-        if state.settings.autoPrime {
-            state.newAutoPrimeSet()
-        }
+        state.newRandomHypnogram()
     }
 
     // NOTE: no default `save()` here – each mode must provide its own save()
@@ -237,7 +215,7 @@ extension HypnographMode {
     // MARK: - Default HUD / commands
 
     func hudItems(
-        state: HypnogramState,
+        state: HypnographState,
         renderQueue: RenderQueue
     ) -> [HUDItem] {
         []

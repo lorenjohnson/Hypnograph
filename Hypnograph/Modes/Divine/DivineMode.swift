@@ -23,7 +23,7 @@ final class DivineNoopRenderer: HypnogramRenderer {
 
 /// Tarot-style stills mode with drag-and-drop cards.
 final class DivineMode: ObservableObject, HypnographMode {
-    let state: HypnogramState
+    let state: HypnographState
     let renderQueue: RenderQueue
 
     /// Placeholder renderer for protocol completeness (not actually used yet).
@@ -40,7 +40,7 @@ final class DivineMode: ObservableObject, HypnographMode {
     private let maxZoom: CGFloat = 3.0
     private let zoomStep: CGFloat = 1.1
 
-    init(state: HypnogramState, renderQueue: RenderQueue) {
+    init(state: HypnographState, renderQueue: RenderQueue) {
         self.state = state
         self.renderQueue = renderQueue
         self.cardManager = DivineCardManager(state: state)
@@ -53,16 +53,13 @@ final class DivineMode: ObservableObject, HypnographMode {
         cardManager.currentIndex
     }
 
-    /// Divine mode doesn't use solo; treat it as always off.
-    var isSoloActive: Bool { false }
-
     /// No solo overlay in Divine.
     var soloIndicatorText: String? { nil }
 
     // MARK: - HypnographMode – display wiring
 
     func makeDisplayView(
-        state: HypnogramState,
+        state: HypnographState,
         renderQueue: RenderQueue
     ) -> AnyView {
         return AnyView(
@@ -96,7 +93,7 @@ final class DivineMode: ObservableObject, HypnographMode {
         )
     }
 
-    func hudItems(state: HypnogramState, renderQueue: RenderQueue) -> [HUDItem] {
+    func hudItems(state: HypnographState, renderQueue: RenderQueue) -> [HUDItem] {
         [
             .text("Space: Clear table", order: 27),
         ]

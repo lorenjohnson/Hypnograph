@@ -1,6 +1,5 @@
 {
-  "autoPrime": true,
-  "autoPrimeTimeout": 120,
+  "watch": true,
   "sourceFolders": {
     "default": "~/Movies/Hypnograph/sources",
     "From Finder Helper": []

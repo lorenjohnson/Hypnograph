@@ -3,16 +3,14 @@ import CoreGraphics
 import Combine
 import SwiftUI
 
-/// Concrete HypnographMode backed by HypnogramState + Montage renderer semantics.
-/// Holds any Montage-specific preview state (like solo pulses and per-source mode data).
+/// Concrete HypnographMode backed by HypnographState + Montage renderer semantics.
+/// Holds any Montage-specific preview state and owns a HypnogramRecipe for this mode.
 final class MontageMode: ObservableObject, HypnographMode {
-    let state: HypnogramState
+    let state: HypnographState
     let renderQueue: RenderQueue
-
-    /// Mode-specific renderer for Montage exports.
+    @Published var recipe: HypnogramRecipe
     private let renderer: MontageRenderer
 
-    /// Available blend modes for Montage, stored as Core Image filter names.
     private let availableBlendModes: [String] = [
         "CIScreenBlendMode",
         "CIOverlayBlendMode",
@@ -22,138 +20,24 @@ final class MontageMode: ObservableObject, HypnographMode {
         "CILightenBlendMode",
     ]
 
-    /// Mode-specific per-source data, same shape as `HypnogramMode.sourceData`.
-    /// We keep `"blendMode"` here under `values["blendMode"]`.
-    ///
-    /// This is exactly the structure we later serialize into the recipe.
-    private var modeSourceData: [ModeSourceData] = []
-
-    /// Short-lived solo pulse index for visual inspection when switching sources.
-    /// This never touches global solo in state; it’s view-only.
-    @Published private var soloPulseIndex: Int? = nil
-    private var soloPulseWorkItem: DispatchWorkItem?
-
-    init(state: HypnogramState, renderQueue: RenderQueue) {
+    init(state: HypnographState, renderQueue: RenderQueue) {
         self.state = state
         self.renderQueue = renderQueue
+        self.recipe = HypnogramRecipe(
+            sources: [],
+            targetDuration: state.settings.outputDuration,
+            mode: HypnogramMode(name: .montage)
+        )
         self.renderer = MontageRenderer(
             outputURL: state.settings.outputURL,
             outputSize: state.settings.outputSize
         )
     }
 
-    // MARK: - ModeSourceData helpers
-
-    /// Keep `modeSourceData` aligned 1:1 with `state.sources`.
-    private func syncModeSourceDataToSources() {
-        let count = state.sources.count
-        if modeSourceData.count < count {
-            modeSourceData.append(contentsOf: repeatElement([:], count: count - modeSourceData.count))
-        } else if modeSourceData.count > count {
-            modeSourceData.removeLast(modeSourceData.count - count)
-        }
-    }
-
-    /// Resolve the CI filter name to use for a given source index.
-    ///
-    /// - Index 0: always treated as SourceOver in the compositor.
-    /// - Others: use stored value if present; otherwise default Montage blend.
-    private func blendModeForSourceIndex(_ idx: Int) -> String {
-        syncModeSourceDataToSources()
-
-        if idx == 0 {
-            return kBlendModeSourceOver
-        }
-
-        let stored = modeSourceData[idx]["blendMode"]
-        return stored ?? kBlendModeDefaultMontage
-    }
-
-    /// Blend modes for the *displayed* set, mapped via indices.
-    private func blendModesForDisplay(sourceIndices: [Int]) -> [String] {
-        sourceIndices.map { blendModeForSourceIndex($0) }
-    }
-
-    /// Filter name for the currently selected source.
-    private var currentBlendModeFilterName: String {
-        blendModeForSourceIndex(state.currentSourceIndex)
-    }
-
-    /// Very simple display name: "CIScreenBlendMode" → "Screen"
-    private var currentBlendModeDisplayName: String {
-        currentBlendModeFilterName
-            .replacingOccurrences(of: "CI", with: "")
-            .replacingOccurrences(of: "BlendMode", with: "")
-    }
-
-    var isSoloActive: Bool {
-        soloPulseIndex != nil || state.soloSourceIndex != nil
-    }
-
-    var soloIndicatorText: String? {
-        if let pulse = soloPulseIndex {
-            return "SOLO \(pulse + 1)"
-        } else if let solo = state.soloSourceIndex {
-            return "SOLO \(solo + 1)"
-        } else {
-            return "\(state.currentSourceIndex + 1)"
-        }
-    }
-
-    // MARK: - Preview / solo
-
-    /// Returns sources for display along with their original indices.
-    private func sourcesForDisplay(using state: HypnogramState) -> (sources: [HypnogramSource], sourceIndices: [Int]) {
-        let all = state.sources
-
-        if let pulse = soloPulseIndex, pulse < all.count {
-            return ([all[pulse]], [pulse])
-        }
-
-        if let solo = state.soloSourceIndex, solo < all.count {
-            return ([all[solo]], [solo])
-        }
-
-        return (all, Array(0..<all.count))
-    }
-
-    private func startSoloPulse(for index: Int) {
-        soloPulseWorkItem?.cancel()
-        soloPulseIndex = index
-
-        let work = DispatchWorkItem { [weak self] in
-            self?.soloPulseIndex = nil
-        }
-        soloPulseWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: work)
-    }
-
-    // MARK: - HypnographMode – display wiring
-
-    func makeDisplayView(
-        state: HypnogramState,
-        renderQueue: RenderQueue
-    ) -> AnyView {
-        let (sources, sourceIndices) = sourcesForDisplay(using: state)
-        let blendModes = blendModesForDisplay(sourceIndices: sourceIndices)
-
-        return AnyView(
-            MontageView(
-                sources: sources,
-                sourceIndices: sourceIndices,
-                blendModes: blendModes,
-                currentSourceTime: Binding(
-                    get: { state.currentClipTimeOffset },
-                    set: { state.currentClipTimeOffset = $0 }
-                ),
-                outputDuration: state.settings.outputDuration,
-                outputSize: state.settings.outputSize
-            )
-        )
-    }
+    // MARK: - HUD
 
     func hudItems(
-        state: HypnogramState,
+        state: HypnographState,
         renderQueue: RenderQueue
     ) -> [HUDItem] {
         var items: [HUDItem] = [
@@ -178,66 +62,152 @@ final class MontageMode: ObservableObject, HypnographMode {
         ]
     }
 
+    // MARK: - HypnographMode – display wiring
+
+    func makeDisplayView(
+        state: HypnographState,
+        renderQueue: RenderQueue
+    ) -> AnyView {
+        let displayRecipe = displayRecipe(using: state)
+
+        return AnyView(
+            MontageView(
+                recipe: displayRecipe,
+                outputSize: state.settings.outputSize,
+                currentSourceTime: Binding(
+                    get: { state.currentClipTimeOffset },
+                    set: { state.currentClipTimeOffset = $0 }
+                )
+            )
+        )
+    }
+
+    /// Compute the recipe to use for *preview*:
+    /// - if state.soloSourceIndex is set and valid → show just that source
+    /// - else → show full composition
+    private func displayRecipe(using state: HypnographState) -> HypnogramRecipe {
+        // For now, treat `state.sources` as canonical for clips,
+        // and `recipe.mode.sourceData` as the mode-specific payload.
+        var full = recipe
+        full.sources = state.sources
+        full.targetDuration = state.settings.outputDuration
+
+        let total = full.sources.count
+        guard total > 0 else { return full }
+
+        guard let soloIdx = state.soloSourceIndex,
+              soloIdx >= 0,
+              soloIdx < total
+        else {
+            return full
+        }
+
+        // Build a 1-source solo recipe for preview.
+        var display = full
+        display.sources = [full.sources[soloIdx]]
+
+        if var mode = display.mode {
+            if soloIdx < mode.sourceData.count {
+                mode.sourceData = [mode.sourceData[soloIdx]]
+            } else {
+                mode.sourceData = [[:]]
+            }
+            display.mode = mode
+        }
+
+        return display
+    }
+
+    // MARK: - Blend mode helpers
+
+    /// Resolve the CI filter name to use for a given source index.
+    /// - Index 0: always treated as SourceOver in the compositor.
+    /// - Others: use stored value if present; otherwise default Montage blend.
+    private func blendModeForSourceIndex(_ idx: Int) -> String {
+        if idx == 0 {
+            return kBlendModeSourceOver
+        }
+
+        let stored = recipe.modeValue(for: .blendMode, sourceIndex: idx)
+        return stored ?? kBlendModeDefaultMontage
+    }
+
+    /// Filter name for the currently selected source.
+    private var currentBlendModeFilterName: String {
+        blendModeForSourceIndex(state.currentSourceIndex)
+    }
+
+    /// Very simple display name: "CIScreenBlendMode" → "Screen"
+    private var currentBlendModeDisplayName: String {
+        currentBlendModeFilterName
+            .replacingOccurrences(of: "CI", with: "")
+            .replacingOccurrences(of: "BlendMode", with: "")
+    }
+
     // MARK: - HypnographMode – engine behavior
 
     func new() {
-        soloPulseIndex = nil
         state.clearSolo()
-        state.newAutoPrimeSet()
-        modeSourceData.removeAll()
+        state.newRandomHypnogram()
+
+        recipe = HypnogramRecipe(
+            sources: [],
+            targetDuration: state.settings.outputDuration,
+            mode: HypnogramMode(name: .montage)
+        )
     }
 
     func addSource() {
         let activeCount = state.activeSourceCount
         print("MontageMode.addSource", activeCount)
 
-        if let _ = state.addSource() {
-            // Newly added source is auto-selected by state.addSource()
-            // modeSourceData will be synced lazily on first use.
-            startSoloPulse(for: state.currentSourceIndex)
-        }
-
-        soloPulseIndex = nil
+        _ = state.addSource()
+        // No pulse for now.
     }
 
     func deleteCurrentSource() {
         let idx = state.currentSourceIndex
         state.deleteCurrentSource()
 
-        // Keep per-layer mode data aligned by removing the same index.
-        if idx >= 0, idx < modeSourceData.count {
-            modeSourceData.remove(at: idx)
+        // Remove corresponding mode data index, if present.
+        if var m = recipe.mode {
+            if idx >= 0, idx < m.sourceData.count {
+                m.sourceData.remove(at: idx)
+            }
+            recipe.mode = m
         }
     }
 
     func save() {
-        guard var recipe = state.sourcesForRender() else {
+        // Let state compute the renderable sources (it may skip unselected, etc).
+        guard var renderRecipe = state.sourcesForRender() else {
             print("renderCurrentHypnogram(): no renderable hypnogram (no selected clips).")
             return
         }
 
-        // Ensure one entry per source
-        syncModeSourceDataToSources()
-        let trimmed = Array(modeSourceData.prefix(recipe.sources.count))
+        // Attach Montage mode payload from this mode’s recipe.
+        if var modePayload = recipe.mode {
+            modePayload.sourceData.ensureCount(renderRecipe.sources.count)
+            modePayload.sourceData = Array(modePayload.sourceData.prefix(renderRecipe.sources.count))
+            renderRecipe.mode = modePayload
+        } else {
+            renderRecipe.mode = HypnogramMode(name: .montage, sourceData: [])
+        }
 
-        // Attach Montage mode payload to the recipe
-        let montageMode = HypnogramMode(
-            name: .montage,
-            sourceData: trimmed
-        )
-        recipe.mode = montageMode
+        print("renderCurrentHypnogram(): enqueuing recipe with \(renderRecipe.sources.count) source(s).")
 
-        print("renderCurrentHypnogram(): enqueuing recipe with \(recipe.sources.count) source(s).")
-
-        renderQueue.enqueue(renderer: renderer, recipe: recipe)
+        renderQueue.enqueue(renderer: renderer, recipe: renderRecipe)
 
         DispatchQueue.main.async {
             self.state.resetForNextHypnogram()
-            self.soloPulseIndex = nil
-            self.modeSourceData.removeAll()
+            self.recipe = HypnogramRecipe(
+                sources: [],
+                targetDuration: self.state.settings.outputDuration,
+                mode: HypnogramMode(name: .montage)
+            )
 
-            if self.state.settings.autoPrime {
-                self.state.newAutoPrimeSet()
+            if self.state.settings.watch {
+                self.state.newRandomHypnogram()
             }
         }
     }
@@ -246,27 +216,18 @@ final class MontageMode: ObservableObject, HypnographMode {
     func nextSource() {
         guard state.activeSourceCount > 0 else { return }
         state.nextSource()
-        startSoloPulse(for: state.currentSourceIndex)
+        // Solo behavior will be handled inside HypnographState (see below).
     }
 
     func previousSource() {
         guard state.activeSourceCount > 0 else { return }
         state.previousSource()
-        startSoloPulse(for: state.currentSourceIndex)
     }
 
     func selectSource(index: Int) {
         guard state.activeSourceCount > 0 else { return }
         let clamped = max(0, min(state.activeSourceCount - 1, index))
-        selectSource(index: clamped, pulse: true)
-    }
-
-    private func selectSource(index: Int, pulse: Bool) {
-        state.selectSource(index)
-
-        if pulse {
-            startSoloPulse(for: index)
-        }
+        state.selectSource(clamped)
     }
 
     // MARK: - Mode-specific tweaks
@@ -280,19 +241,26 @@ final class MontageMode: ObservableObject, HypnographMode {
             return
         }
 
-        syncModeSourceDataToSources()
+        let current = recipe.modeValue(for: .blendMode, sourceIndex: idx)
+            ?? kBlendModeDefaultMontage
 
-        let current = modeSourceData[idx]["blendMode"] ?? kBlendModeDefaultMontage
         let currentIndex = availableBlendModes.firstIndex(of: current) ?? -1
         let next = positiveMod(currentIndex + 1, availableBlendModes.count)
 
-        modeSourceData[idx]["blendMode"] = availableBlendModes[next]
+        recipe.setModeValue(
+            availableBlendModes[next],
+            key: .blendMode,
+            sourceIndex: idx,
+            modeName: .montage
+        )
     }
 
     func reloadSettings() {
         state.reloadSettings(from: Environment.defaultSettingsURL)
-        soloPulseIndex = nil
-        modeSourceData.removeAll()
+        state.clearSolo()
+
+        recipe.targetDuration = state.settings.outputDuration
+        // Keep mode data; user’s blend choices don’t need to be nuked on settings reload.
     }
 }
 
