@@ -212,6 +212,11 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("h", modifiers: [])
 
+            Button(state.isPaused ? "Play" : "Pause") {
+                currentMode.togglePause()
+            }
+            .keyboardShortcut("p", modifiers: [])
+
             Button("Restart Session (Reload Settings)") {
                 currentMode.reloadSettings()
             }
@@ -250,7 +255,7 @@ struct AppCommands: Commands {
                     dreamMode.saveSnapshot()
                 }
             }
-            .keyboardShortcut("s", modifiers: [.command, .shift])
+            .keyboardShortcut("s", modifiers: [])
         }
 
         CommandGroup(after: .sidebar) {
@@ -259,7 +264,7 @@ struct AppCommands: Commands {
             Button("Cycle Mode") {
                 cycleModeHandler()
             }
-            .keyboardShortcut("`", modifiers: [])
+            .keyboardShortcut("~", modifiers: [])
 
             Button("Dream Mode") {
                 state.currentModeType = .dream

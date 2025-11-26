@@ -110,17 +110,16 @@ final class DreamMode: HypnographMode {
 
         case .sequence:
             let totalSecs = sequenceTotalDuration().seconds
-            let idx = state.currentSourceIndex
             items.append(.text(String(format: "Duration: %.1fs", totalSecs), order: 27))
 
             if let clip = state.currentClip {
                 items.append(.padding(8, order: 29))
-                items.append(.text("Source \(idx + 1): \(clip.duration.seconds)s", order: 41))
-                items.append(.text("Source Effect: \(state.renderHooks.sourceEffectName(for: idx))", order: 42))
+                items.append(.text("Source \(state.currentSourceIndex + 1): \(clip.duration.seconds)s", order: 41))
             }
 
             items.append(.text("←/→ = Navigate sources", order: 46))
         }
+        items.append(.text("Source Effect (F): \(state.renderHooks.sourceEffectName(for: state.currentSourceIndex))", order: 42))
 
         items.append(.text("S = Toggle Montage/Sequence", order: 47))
         return items
@@ -133,7 +132,7 @@ final class DreamMode: HypnographMode {
             ModeCommand(title: "Cycle Blend Mode", key: "m") { [weak self] in
                 self?.cycleBlendMode()
             },
-            ModeCommand(title: "Toggle Style (Montage/Sequence)", key: "s") { [weak self] in
+            ModeCommand(title: "Toggle Style (Montage/Sequence)", key: "`") { [weak self] in
                 self?.toggleStyle()
             }
         ]
@@ -158,11 +157,16 @@ final class DreamMode: HypnographMode {
                 recipe: recipe,
                 style: style,
                 outputSize: state.settings.outputSize,
-                currentSourceIndex: state.currentSourceIndex,
+                currentSourceIndex: Binding(
+                    get: { state.currentSourceIndex },
+                    set: { state.currentSourceIndex = $0 }
+                ),
                 currentSourceTime: Binding(
                     get: { state.currentClipTimeOffset },
                     set: { state.currentClipTimeOffset = $0 }
-                )
+                ),
+                isPaused: state.isPaused,
+                effectsChangeCounter: state.effectsChangeCounter
             )
             .id("dream-\(style.rawValue)")
         )
@@ -336,16 +340,16 @@ final class DreamMode: HypnographMode {
 
     func cycleBlendMode(at index: Int? = nil) {
         state.noteUserInteraction()
-        guard !availableBlendModes.isEmpty else { return }
 
         let idx = index ?? state.currentSourceIndex
         guard idx > 0 else { return } // bottom layer stays SourceOver
 
-        let current = blendModes[idx] ?? kBlendModeDefaultMontage
-        let currentIndex = availableBlendModes.firstIndex(of: current) ?? -1
-        let next = positiveMod(currentIndex + 1, availableBlendModes.count)
+        // Cycle blend mode in the manager (triggers re-render via onEffectChanged callback)
+        state.renderHooks.cycleBlendMode(for: idx)
 
-        blendModes[idx] = availableBlendModes[next]
+        // Also update local state for HUD display and save
+        let newMode = state.renderHooks.blendMode(for: idx)
+        blendModes[idx] = newMode
     }
 
     // MARK: - Sequence helpers

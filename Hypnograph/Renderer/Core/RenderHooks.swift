@@ -170,12 +170,11 @@ final class EffectRegistry {
             BlackAndWhiteLowHook(),
             BlackAndWhiteHighHook(),
             HueWobbleHook(),
-            DatamoshHook(intensity: 0.9),
             RGBSplitSimpleHook(offsetAmount: 15.0, animated: true),
-            ScanlinesHook(lineWidth: 2.0, intensity: 0.4),
-            PixelSortHook(intensity: 0.8),
-            VHSDecayHook(intensity: 0.7),
-            MirrorKaleidoHook(intensity: 0.8)
+            ScanlinesHook(lineWidth: 6.0, intensity: 0.8),
+            PixelSortHook(intensity: 10.0),
+            DatamoshHook(intensity: 20.0),
+            DatamoshHook2(intensity: 0.6, blurAmount: 4.0, timeScale: 0.02)
         ]
     }
 
@@ -208,6 +207,13 @@ final class RenderHookManager {
     /// Per-source effects (indexed by source index)
     private var sourceEffects: [Int: RenderHook] = [:]
 
+    /// Per-source blend modes (indexed by source index)
+    /// Source 0 is always kBlendModeSourceOver, others default to kBlendModeDefaultMontage
+    private var blendModes: [Int: String] = [:]
+
+    /// Callback invoked whenever effects or blend modes change (for triggering re-render when paused)
+    var onEffectChanged: (() -> Void)?
+
     // MARK: - Global Effect
 
     var globalEffectName: String {
@@ -216,6 +222,7 @@ final class RenderHookManager {
 
     func setGlobalEffect(_ effect: RenderHook?) {
         globalEffect = effect
+        onEffectChanged?()
     }
 
     func cycleGlobalEffect() {
@@ -224,6 +231,7 @@ final class RenderHookManager {
         let nextIndex = (currentIndex + 1) % names.count
         let nextName = names[nextIndex]
         globalEffect = EffectRegistry.shared.effect(named: nextName)
+        onEffectChanged?()
     }
 
     // MARK: - Per-Source Effects
@@ -234,6 +242,7 @@ final class RenderHookManager {
 
     func setSourceEffect(_ effect: RenderHook?, for sourceIndex: Int) {
         sourceEffects[sourceIndex] = effect
+        onEffectChanged?()
     }
 
     func cycleSourceEffect(for sourceIndex: Int) {
@@ -243,6 +252,7 @@ final class RenderHookManager {
         let nextIndex = (currentIndex + 1) % names.count
         let nextName = names[nextIndex]
         sourceEffects[sourceIndex] = EffectRegistry.shared.effect(named: nextName)
+        onEffectChanged?()
     }
 
     // MARK: - Application
@@ -283,6 +293,42 @@ final class RenderHookManager {
 
     func clearFrameBuffer() {
         frameBuffer.clear()
+    }
+
+    // MARK: - Blend Modes
+
+    func blendMode(for sourceIndex: Int) -> String {
+        // Source 0 is always source-over (base layer)
+        if sourceIndex == 0 {
+            return kBlendModeSourceOver
+        }
+        return blendModes[sourceIndex] ?? kBlendModeDefaultMontage
+    }
+
+    func setBlendMode(_ mode: String, for sourceIndex: Int, silent: Bool = false) {
+        blendModes[sourceIndex] = mode
+        if !silent {
+            onEffectChanged?()
+        }
+    }
+
+    func cycleBlendMode(for sourceIndex: Int) {
+        // Don't cycle source 0 - it's always source-over
+        guard sourceIndex > 0 else { return }
+
+        let modes = [
+            "CIScreenBlendMode",
+            "CIOverlayBlendMode",
+            "CISoftLightBlendMode",
+            "CIMultiplyBlendMode",
+            "CIDarkenBlendMode",
+            "CILightenBlendMode",
+        ]
+        let currentMode = blendMode(for: sourceIndex)
+        let currentIndex = modes.firstIndex(of: currentMode) ?? 0
+        let nextIndex = (currentIndex + 1) % modes.count
+        blendModes[sourceIndex] = modes[nextIndex]
+        onEffectChanged?()
     }
 }
 

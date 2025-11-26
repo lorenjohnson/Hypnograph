@@ -43,13 +43,19 @@ final class HypnographState: ObservableObject {
     /// Dense, ordered list of all sources.
     @Published var sources: [HypnogramSource]
 
-    /// Current selection index
-    @Published private(set) var currentSourceIndex: Int = 0
+    /// Current selection index (auto-updated during sequence playback)
+    @Published var currentSourceIndex: Int = 0
 
     /// Optional playhead offset for scrubbing, applies only on explicit user action.
     @Published var currentClipTimeOffset: CMTime?
 
     @Published var isHUDVisible: Bool = true
+
+    /// Pause/play state for video playback (Dream mode)
+    @Published var isPaused: Bool = false
+
+    /// Incremented whenever effects change - used to trigger re-render when paused
+    @Published var effectsChangeCounter: Int = 0
 
     // Render hooks
     let renderHooks = RenderHookManager()
@@ -94,11 +100,16 @@ final class HypnographState: ObservableObject {
         self.currentSourceIndex = 0
         self.currentClipTimeOffset = nil
 
-        _ = addSource()    // seed initial source
+        // Always start with a full random hypnogram
+        newRandomHypnogram()
 
         if settings.watch {
-            newRandomHypnogram()
             scheduleWatchTimer()
+        }
+
+        // Set up callback to increment counter when effects or blend modes change
+        renderHooks.onEffectChanged = { [weak self] in
+            self?.effectsChangeCounter += 1
         }
     }
 
@@ -221,6 +232,10 @@ final class HypnographState: ObservableObject {
 
     func toggleHUD() {
         isHUDVisible.toggle()
+    }
+
+    func togglePause() {
+        isPaused.toggle()
     }
 
     func toggleWatchMode() {

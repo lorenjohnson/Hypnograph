@@ -100,6 +100,7 @@ protocol HypnographMode: ObservableObject {
     // MARK: - Mode-specific tweaks
 
     func toggleHUD()
+    func togglePause()
     func reloadSettings()
 
     // MARK: - Effects
@@ -109,7 +110,6 @@ protocol HypnographMode: ObservableObject {
     func clearAllEffects()
 
     var globalEffectName: String { get }
-    var sourceEffectName: String { get }
 }
 
 // MARK: - Default behavior backed by HypnographState
@@ -171,6 +171,10 @@ extension HypnographMode {
         state.toggleHUD()
     }
 
+    func togglePause() {
+        state.togglePause()
+    }
+
     func reloadSettings() {
         state.reloadSettings(from: Environment.defaultSettingsURL)
     }
@@ -197,10 +201,6 @@ extension HypnographMode {
 
     var globalEffectName: String {
         state.renderHooks.globalEffectName
-    }
-
-    var sourceEffectName: String {
-        state.renderHooks.sourceEffectName(for: state.currentSourceIndex)
     }
 
     // MARK: - Default HUD / commands
