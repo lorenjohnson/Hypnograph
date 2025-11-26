@@ -90,6 +90,7 @@ struct Settings: Codable {
     var outputWidth: Int
     var snapshotsFolder: String
     var activeLibrariesPerMode: [String: [String]]
+    var allowStillImages: Bool  // Temporary: set to false to test if still images cause performance issues
 
     // Single source of truth for defaults
     private enum Defaults {
@@ -104,12 +105,13 @@ struct Settings: Codable {
             "~/Movies/Hypnograph/sources"
         ])
         static let activeLibrariesPerMode: [String: [String]] = [:]
+        static let allowStillImages: Bool = true
     }
 
     private enum CodingKeys: String, CodingKey {
         case outputFolder, sourceFolders
         case watch, maxSourcesForNew, outputHeight, outputSeconds, outputWidth, snapshotsFolder
-        case activeLibrariesPerMode
+        case activeLibrariesPerMode, allowStillImages
     }
     init(
         outputFolder: String,
@@ -120,7 +122,8 @@ struct Settings: Codable {
         outputSeconds: Int = Defaults.outputSeconds,
         outputWidth: Int = Defaults.outputWidth,
         snapshotsFolder: String = Defaults.snapshotsFolder,
-        activeLibrariesPerMode: [String: [String]] = Defaults.activeLibrariesPerMode
+        activeLibrariesPerMode: [String: [String]] = Defaults.activeLibrariesPerMode,
+        allowStillImages: Bool = Defaults.allowStillImages
     ) {
         self.outputFolder = outputFolder
         self.sourceFolders = sourceFolders
@@ -131,6 +134,7 @@ struct Settings: Codable {
         self.outputWidth = outputWidth
         self.snapshotsFolder = snapshotsFolder
         self.activeLibrariesPerMode = activeLibrariesPerMode
+        self.allowStillImages = allowStillImages
     }
 
     init(from decoder: Decoder) throws {
@@ -154,6 +158,8 @@ struct Settings: Codable {
             ?? Defaults.snapshotsFolder
         activeLibrariesPerMode = try c.decodeIfPresent([String: [String]].self, forKey: .activeLibrariesPerMode)
             ?? Defaults.activeLibrariesPerMode
+        allowStillImages = try c.decodeIfPresent(Bool.self, forKey: .allowStillImages)
+            ?? Defaults.allowStillImages
     }
 
     // MARK: - Derived values

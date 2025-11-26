@@ -178,14 +178,17 @@ extension HypnographMode {
     // MARK: - Effects
 
     func cycleGlobalEffect() {
+        state.noteUserInteraction()
         state.renderHooks.cycleGlobalEffect()
     }
 
     func cycleSourceEffect() {
+        state.noteUserInteraction()
         state.renderHooks.cycleSourceEffect(for: state.currentSourceIndex)
     }
 
     func clearAllEffects() {
+        state.noteUserInteraction()
         state.renderHooks.setGlobalEffect(nil)
         for i in 0..<state.activeSourceCount {
             state.renderHooks.setSourceEffect(nil, for: i)

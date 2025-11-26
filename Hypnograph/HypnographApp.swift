@@ -276,7 +276,7 @@ struct AppCommands: Commands {
             Button {
                 state.toggleWatchMode()
             } label: {
-                Text(state.watchMode ? "✓  Watch Mode" : "Watch Mode")
+                Text(state.settings.watch ? "✓  Watch" : "Watch")
             }
             .keyboardShortcut("w", modifiers: [])
         }

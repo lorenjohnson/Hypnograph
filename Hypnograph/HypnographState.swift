@@ -51,17 +51,15 @@ final class HypnographState: ObservableObject {
 
     @Published var isHUDVisible: Bool = true
 
-    /// Watch mode is not yet implemented but is intended as the sit-back and watch random Hypnograms
-    /// generate like watching TV. If it crosses modes it would only randomly select between modes
-    /// that have a watchable flag set.
-    @Published var watchMode: Bool = false
-
     // Render hooks
     let renderHooks = RenderHookManager()
     var baseRenderParams = RenderParams()
 
-    // Auto-prime timer
+    // Watch timer - generates new hypnograms at intervals when watch mode is enabled
     private var watchTimer: Timer?
+
+    // Callback to trigger mode-specific new() when watch timer fires
+    var onWatchTimerFired: (() -> Void)?
 
     // MARK: - Init
 
@@ -87,7 +85,10 @@ final class HypnographState: ObservableObject {
 
         self.currentLibraryKey = defaultKey
         self.activeLibraryKeys = activeKeys
-        self.library = VideoSourcesLibrary(sourceFolders: settings.folders(forLibraries: activeKeys))
+        self.library = VideoSourcesLibrary(
+            sourceFolders: settings.folders(forLibraries: activeKeys),
+            allowStillImages: settings.allowStillImages
+        )
 
         self.sources = []
         self.currentSourceIndex = 0
@@ -129,6 +130,7 @@ final class HypnographState: ObservableObject {
     /// Add a new source with a random clip.
     @discardableResult
     func addSource(length: Double? = nil) -> HypnogramSource? {
+        noteUserInteraction()
         guard let clip = library.randomClip(clipLength: length ?? settings.outputDuration.seconds)
         else { return nil }
 
@@ -142,6 +144,7 @@ final class HypnographState: ObservableObject {
     /// Replace the clip for an existing source.
     @discardableResult
     func replaceClip(at index: Int, length: Double? = nil) -> VideoClip? {
+        noteUserInteraction()
         guard index >= 0, index < sources.count else { return nil }
         let duration = length ?? settings.outputDuration.seconds
 
@@ -179,24 +182,28 @@ final class HypnographState: ObservableObject {
     }
 
     func selectSource(_ index: Int) {
+        noteUserInteraction()
         guard !sources.isEmpty else { return }
         let clamped = max(0, min(index, sources.count - 1))
         currentSourceIndex = clamped
     }
 
     func nextSource() {
+        noteUserInteraction()
         guard !sources.isEmpty else { return }
         let next = min(sources.count - 1, currentSourceIndex + 1)
         currentSourceIndex = next
     }
 
     func previousSource() {
+        noteUserInteraction()
         guard !sources.isEmpty else { return }
         let prev = max(0, currentSourceIndex - 1)
         currentSourceIndex = prev
     }
 
     func deleteSource(at index: Int) {
+        noteUserInteraction()
         guard index >= 0, index < sources.count else { return }
         sources.remove(at: index)
         currentSourceIndex = min(currentSourceIndex, max(0, sources.count - 1))
@@ -217,10 +224,12 @@ final class HypnographState: ObservableObject {
     }
 
     func toggleWatchMode() {
-        watchMode.toggle()
+        settings.watch.toggle()
+        scheduleWatchTimer()
     }
 
     func excludeCurrentSource() {
+        noteUserInteraction()
         guard let clip = currentClip else { return }
         library.exclude(file: clip.file)
         replaceClipForCurrentSource()
@@ -244,11 +253,12 @@ final class HypnographState: ObservableObject {
         currentSourceIndex = max(0, sources.count - 1)
     }
 
-    private func noteUserInteraction() {
+    /// Reset the watch timer when user interacts with the app
+    func noteUserInteraction() {
         scheduleWatchTimer()
     }
 
-    private func scheduleWatchTimer() {
+    func scheduleWatchTimer() {
         guard settings.watch, settings.outputDuration.seconds > 0 else {
             watchTimer?.invalidate()
             watchTimer = nil
@@ -261,7 +271,12 @@ final class HypnographState: ObservableObject {
             repeats: false
         ) { [weak self] _ in
             guard let self else { return }
-            self.newRandomHypnogram()
+            // Call mode-specific new() if available, otherwise fall back to newRandomHypnogram()
+            if let callback = self.onWatchTimerFired {
+                callback()
+            } else {
+                self.newRandomHypnogram()
+            }
             self.scheduleWatchTimer()
         }
     }
@@ -308,7 +323,10 @@ final class HypnographState: ObservableObject {
         let folders = settings.folders(forLibraries: keys)
         activeLibraryKeys = keys
         currentLibraryKey = keys.first ?? settings.defaultSourceLibraryKey
-        library = VideoSourcesLibrary(sourceFolders: folders)
+        library = VideoSourcesLibrary(
+            sourceFolders: folders,
+            allowStillImages: settings.allowStillImages
+        )
 
         // Save to current mode's library state if requested
         if saveToMode {

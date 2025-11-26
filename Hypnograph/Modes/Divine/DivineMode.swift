@@ -52,6 +52,11 @@ final class DivineMode: HypnographMode {
         state: HypnographState,
         renderQueue: RenderQueue
     ) -> AnyView {
+        // Ensure at least one card exists (deferred from init to use correct per-mode library)
+        if cardManager.cards.isEmpty {
+            cardManager.addCardAtOffsetAtCenter()
+        }
+
         return AnyView(
             DivineView(
                 mode: self,

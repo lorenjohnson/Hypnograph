@@ -245,15 +245,15 @@ final class CompositionBuilder {
         enableEffects: Bool
     ) async -> Result<BuildResult, RenderError> {
 
-        // Load all sources
-        var loadedSources: [(source: HypnogramSource, loaded: LoadedSource)] = []
+        // Load all sources (track original index for correct seeking)
+        var loadedSources: [(source: HypnogramSource, loaded: LoadedSource, originalIndex: Int)] = []
 
         for (index, source) in recipe.sources.enumerated() {
             let result = await sourceLoader.load(source: source)
 
             switch result {
             case .success(let loaded):
-                loadedSources.append((source, loaded))
+                loadedSources.append((source, loaded, index))
             case .failure(let error):
                 error.log(context: "CompositionBuilder.sequence[\(index)]")
                 continue
@@ -294,7 +294,7 @@ final class CompositionBuilder {
         var clipStartTimes: [CMTime] = []
         var instructions: [RenderInstruction] = []
 
-        for (index, (source, loaded)) in loadedSources.enumerated() {
+        for (source, loaded, originalIndex) in loadedSources {
             let clipDuration = source.clip.duration
 
             clipStartTimes.append(currentTime)
@@ -308,7 +308,7 @@ final class CompositionBuilder {
                     layerTrackIDs: [videoTrack.trackID],
                     blendModes: [kBlendModeSourceOver],
                     transforms: [loaded.transform],
-                    sourceIndices: [index],
+                    sourceIndices: [originalIndex],  // Use original recipe index for correct seeking
                     enableEffects: enableEffects,
                     stillImages: [loaded.ciImage]
                 )
@@ -316,7 +316,7 @@ final class CompositionBuilder {
             } else {
                 // For videos: insert media
                 guard let srcVideoTrack = loaded.videoTrack else {
-                    print("🔴 Video source \(index) has no video track")
+                    print("🔴 Video source \(originalIndex) has no video track")
                     continue
                 }
 
@@ -325,7 +325,7 @@ final class CompositionBuilder {
                 do {
                     try videoTrack.insertTimeRange(sourceRange, of: srcVideoTrack, at: currentTime)
                 } catch {
-                    print("🔴 Failed to insert clip \(index): \(error)")
+                    print("🔴 Failed to insert clip \(originalIndex): \(error)")
                     continue
                 }
 
@@ -334,7 +334,7 @@ final class CompositionBuilder {
                     do {
                         try audioTrack.insertTimeRange(sourceRange, of: srcAudioTrack, at: currentTime)
                     } catch {
-                        print("⚠️  Failed to insert audio for clip \(index): \(error)")
+                        print("⚠️  Failed to insert audio for clip \(originalIndex): \(error)")
                     }
                 }
 
@@ -343,7 +343,7 @@ final class CompositionBuilder {
                     layerTrackIDs: [videoTrack.trackID],
                     blendModes: [kBlendModeSourceOver],
                     transforms: [loaded.transform],
-                    sourceIndices: [index],
+                    sourceIndices: [originalIndex],  // Use original recipe index for correct seeking
                     enableEffects: enableEffects,
                     stillImages: [nil]
                 )

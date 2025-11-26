@@ -9,6 +9,9 @@ final class VideoSourcesLibrary {
     /// Files that have failed validation at selection time (in-memory only).
     private var badURLs = Set<URL>()
 
+    /// Whether to allow still images (for performance testing)
+    private let allowStillImages: Bool
+
     let allowedPhotoExtensions = Set([
         "jpeg", "jpg", "png", "heic", "gif"
     ])
@@ -19,7 +22,8 @@ final class VideoSourcesLibrary {
         "3gp", "3g2"
     ])
 
-    init(sourceFolders: [String]) {
+    init(sourceFolders: [String], allowStillImages: Bool = true) {
+        self.allowStillImages = allowStillImages
         if sourceFolders.isEmpty {
             // No explicit sources → default to Photos library videos
             loadFilesFromPhotosLibrary()
@@ -71,8 +75,8 @@ final class VideoSourcesLibrary {
                                 duration: duration
                             )
                         )
-                    } else if allowedPhotoExtensions.contains(ext) {
-                        // Same for stills: no decode yet, just register.
+                    } else if allowStillImages && allowedPhotoExtensions.contains(ext) {
+                        // Only load still images if allowed (for performance testing)
                         let syntheticDuration = CMTime(seconds: 5.0, preferredTimescale: 600)
                         results.append(
                             VideoFile(
@@ -97,7 +101,8 @@ final class VideoSourcesLibrary {
                             duration: duration
                         )
                     )
-                } else if allowedPhotoExtensions.contains(ext) {
+                } else if allowStillImages && allowedPhotoExtensions.contains(ext) {
+                    // Only load still images if allowed (for performance testing)
                     let syntheticDuration = CMTime(seconds: 5.0, preferredTimescale: 600)
                     results.append(
                         VideoFile(
@@ -171,7 +176,8 @@ final class VideoSourcesLibrary {
                         duration: duration
                     )
                 )
-            } else if allowedPhotoExtensions.contains(ext) {
+            } else if allowStillImages && allowedPhotoExtensions.contains(ext) {
+                // Only load still images if allowed (for performance testing)
                 let syntheticDuration = CMTime(seconds: 5.0, preferredTimescale: 600)
                 results.append(
                     VideoFile(
