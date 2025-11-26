@@ -22,33 +22,33 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
 
     override init() {
         super.init()
-        print("🎨 FrameCompositor: Initialized")
+        // Compositor initialized - logging removed for performance
     }
 
     // MARK: - AVVideoCompositing Protocol
-    
+
     var sourcePixelBufferAttributes: [String : Any]? {
         return [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
             kCVPixelBufferOpenGLCompatibilityKey as String: true
         ]
     }
-    
+
     var requiredPixelBufferAttributesForRenderContext: [String : Any] {
         return [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
             kCVPixelBufferOpenGLCompatibilityKey as String: true
         ]
     }
-    
+
     func renderContextChanged(_ newRenderContext: AVVideoCompositionRenderContext) {
         // Nothing to do - we're stateless
     }
-    
+
     // MARK: - Frame Rendering
-    
+
     func startRequest(_ request: AVAsynchronousVideoCompositionRequest) {
-        print("🎨 FrameCompositor.startRequest: time=\(request.compositionTime.seconds)s")
+        // Per-frame logging removed for performance (30fps = 30 logs/sec)
         renderQueue.async { [weak self] in
             guard let self = self else {
                 print("🔴 FrameCompositor: self is nil")
@@ -97,14 +97,14 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
             } else {
                 // Get frame from video track
                 guard let sourceBuffer = request.sourceFrame(byTrackID: trackID) else {
-                    print("⚠️  FrameCompositor: No source frame for track \(trackID)")
+                    // Missing frame - skip this layer silently (happens during seeks)
                     continue
                 }
                 layerImage = CIImage(cvPixelBuffer: sourceBuffer)
             }
 
             guard var img = layerImage else {
-                print("⚠️  FrameCompositor: No image for layer \(index)")
+                // No image for layer - skip silently
                 continue
             }
 
