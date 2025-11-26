@@ -30,7 +30,8 @@ final class DivineCardManager: ObservableObject {
 
     init(state: HypnographState) {
         self.state = state
-        addCardAtOffsetAtCenter()
+        // Don't add initial card here - it will use wrong library before per-mode settings load
+        // Initial card is added when mode is first displayed (see DivineMode.makeDisplayView)
     }
 
     // MARK: - Layout

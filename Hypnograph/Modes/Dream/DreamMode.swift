@@ -57,6 +57,11 @@ final class DreamMode: HypnographMode {
             outputSize: state.settings.outputSize,
             strategy: .sequence
         )
+
+        // Set up watch timer callback to respect current style
+        state.onWatchTimerFired = { [weak self] in
+            self?.new()
+        }
     }
 
     // MARK: - Shared helpers
@@ -83,6 +88,7 @@ final class DreamMode: HypnographMode {
     // MARK: - Style
 
     func toggleStyle() {
+        state.noteUserInteraction()
         style = (style == .montage) ? .sequence : .montage
     }
 
@@ -206,6 +212,12 @@ final class DreamMode: HypnographMode {
         }
     }
 
+    // Override addSource to use appropriate length for sequence mode
+    func addSource() {
+        let length = preferredClipLength()
+        _ = state.addSource(length: length)
+    }
+
     /// Save a snapshot of the current frame from the frame buffer
     func saveSnapshot() {
         // Grab the current frame from the frame buffer (which stores the fully composited frame)
@@ -292,9 +304,7 @@ final class DreamMode: HypnographMode {
             case .montage:
                 self.state.resetForNextHypnogram()
                 self.blendModes.removeAll()
-                if self.state.settings.watch {
-                    self.state.newRandomHypnogram()
-                }
+                self.state.newRandomHypnogram()  // Always generate new hypnogram after save
             case .sequence:
                 self.newRandomSequence()
             }
@@ -325,6 +335,7 @@ final class DreamMode: HypnographMode {
     }
 
     func cycleBlendMode(at index: Int? = nil) {
+        state.noteUserInteraction()
         guard !availableBlendModes.isEmpty else { return }
 
         let idx = index ?? state.currentSourceIndex
