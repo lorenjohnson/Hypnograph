@@ -270,7 +270,29 @@ final class DivineCardManager: ObservableObject {
 
     private func makeCard(offset: CGSize) -> DivineCard? {
         let clipLength = max(3.0, state.settings.outputDuration.seconds)
-        guard let clip = state.library.randomClip(clipLength: clipLength) else { return nil }
+
+        // Get all source files currently on the table
+        let usedFiles = Set(cards.map { $0.clip.file.url })
+
+        // Try to get a unique clip (not already on the table)
+        var clip: VideoClip?
+        let maxAttempts = 100 // Prevent infinite loop if library is small
+
+        for _ in 0..<maxAttempts {
+            if let candidate = state.library.randomClip(clipLength: clipLength) {
+                if !usedFiles.contains(candidate.file.url) {
+                    clip = candidate
+                    break
+                }
+            }
+        }
+
+        // If we couldn't find a unique clip after maxAttempts, return nil
+        guard let clip = clip else {
+            print("⚠️ DivineMode: Could not find a unique card (all sources may be in use)")
+            return nil
+        }
+
         let cgImage = grabStill(from: clip)
         let flipped = allowReversed ? Bool.random() : false
 
