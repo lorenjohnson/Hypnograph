@@ -135,7 +135,17 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
 
             // Blend with previous layers
             if let base = composited {
-                let blendMode = instruction.blendModes[index]
+                // Get blend mode from manager if available (for dynamic changes),
+                // otherwise fall back to instruction (for export)
+                let blendMode: String
+                if instruction.enableEffects,
+                   let manager = GlobalRenderHooks.manager {
+                    let sourceIndex = instruction.sourceIndices[index]
+                    blendMode = manager.blendMode(for: sourceIndex)
+                } else {
+                    blendMode = instruction.blendModes[index]
+                }
+
                 img = blend(layer: img, over: base, mode: blendMode)
                 composited = img
             } else {

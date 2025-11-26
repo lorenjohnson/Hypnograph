@@ -37,7 +37,7 @@ struct DatamoshHook: RenderHook {
         let chaos = (wave1 + wave2 + wave3) / 3.0
 
         // Randomly choose very old frames (creates long smears)
-        let seed = Int(t * 10.0) // Changes every 0.1 seconds
+        let seed = Int(t * 100.0) // Changes every 0.1 seconds
         let randomOffset = (seed * 7919) % max(1, availableFrames - 1) // Prime number for better distribution
         let offset = max(1, min(randomOffset, availableFrames - 1))
 
@@ -76,7 +76,7 @@ struct DatamoshHook: RenderHook {
         }
 
         // Add displacement for extra meltiness
-        if chaos > 0.3 {
+        if chaos > 1.0 {
             guard let displace = CIFilter(name: "CIDisplacementDistortion") else {
                 return result
             }
@@ -101,5 +101,4 @@ struct DatamoshHook: RenderHook {
 
         return result.cropped(to: CGRect(origin: .zero, size: context.outputSize))
     }
-
 }

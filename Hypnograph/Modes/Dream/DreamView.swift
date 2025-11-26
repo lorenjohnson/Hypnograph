@@ -17,13 +17,19 @@ struct DreamView: NSViewRepresentable {
     
     /// Preview render size
     let outputSize: CGSize
-    
-    /// Current source index (used for seeking in sequence style)
-    let currentSourceIndex: Int
-    
+
+    /// Current source index (used for seeking in sequence style, auto-updated during playback)
+    @Binding var currentSourceIndex: Int
+
     /// Binding to track current playback time (montage style only)
     @Binding var currentSourceTime: CMTime?
-    
+
+    /// Whether playback is paused
+    let isPaused: Bool
+
+    /// Counter that increments when effects change (triggers re-render when paused)
+    let effectsChangeCounter: Int
+
     let playRate: Float = 0.8
     
     class Coordinator {
@@ -32,8 +38,11 @@ struct DreamView: NSViewRepresentable {
         var endObserverToken: Any?
         var compositionID: String?
         var clipStartTimes: [CMTime] = []
-        var lastSeekIndex: Int?
         var currentTask: Task<Void, Never>?
+        var lastPauseState: Bool?  // Track pause state to avoid redundant play/pause calls
+        var lastEffectsCounter: Int?  // Track effects changes to force re-render when paused
+        var lastObservedIndex: Int = 0  // Last index observed from playback (for auto-update)
+        var lastRequestedIndex: Int = 0  // Last index requested by user (for manual seek)
     }
     
     func makeCoordinator() -> Coordinator {
@@ -102,7 +111,19 @@ struct DreamView: NSViewRepresentable {
                         nsView.player = player
                         c.compositionID = newID
                         c.clipStartTimes = buildResult.clipStartTimes
-                        c.lastSeekIndex = nil
+                        c.lastPauseState = nil  // Reset pause state tracking
+                        c.lastEffectsCounter = effectsChangeCounter  // Track current effects state
+                        c.lastObservedIndex = 0
+                        c.lastRequestedIndex = currentSourceIndex
+
+                        // Sync blend modes from recipe to manager for dynamic rendering
+                        // Use silent=true to avoid triggering re-render during initialization
+                        if let manager = GlobalRenderHooks.manager {
+                            let blendModes = self.resolvedBlendModes(from: recipe)
+                            for (index, mode) in blendModes.enumerated() {
+                                manager.setBlendMode(mode, for: index, silent: true)
+                            }
+                        }
 
                         // Remove previous observers
                         if let token = c.timeObserverToken {
@@ -122,12 +143,35 @@ struct DreamView: NSViewRepresentable {
                             setupSequenceObservers(player: player, item: buildResult.playerItem, coordinator: c)
                         }
 
-                        player.seek(to: previousTime)
-                        player.playImmediately(atRate: playRate)
+                        // For sequence mode, seek to the current source
+                        if style == .sequence, currentSourceIndex < buildResult.clipStartTimes.count {
+                            let seekTime = buildResult.clipStartTimes[currentSourceIndex]
+                            player.seek(to: seekTime)
+                            c.lastRequestedIndex = currentSourceIndex
+                            c.lastObservedIndex = currentSourceIndex
+                        } else {
+                            player.seek(to: previousTime)
+                        }
+
+                        // Respect pause state
+                        if isPaused {
+                            player.pause()
+                        } else {
+                            player.playImmediately(atRate: playRate)
+                        }
+                        c.lastPauseState = isPaused
 
                     case .failure(let error):
                         error.log(context: "DreamView")
-                        Self.tearDown(coordinator: c, view: nsView)
+                        // Don't tear down completely - keep existing player if available
+                        // This allows recovery without full restart
+                        if c.player == nil {
+                            // No player exists, create a black placeholder
+                            print("⚠️  DreamView: No player available after build failure, creating placeholder")
+                        } else {
+                            // Keep existing player running - user can try again
+                            print("⚠️  DreamView: Build failed but keeping existing player")
+                        }
                         if currentSourceTime != nil {
                             currentSourceTime = nil
                         }
@@ -135,21 +179,51 @@ struct DreamView: NSViewRepresentable {
                 }
             }
         } else {
-            // In sequence style, seek to current source when selection changes
-            if style == .sequence,
-               currentSourceIndex != c.lastSeekIndex,
-               currentSourceIndex < c.clipStartTimes.count {
-                let seekTime = c.clipStartTimes[currentSourceIndex]
-                c.player?.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
-                    if finished {
-                        // Only start playing after seek completes
-                        c.player?.playImmediately(atRate: self.playRate)
+            // Handle pause state changes without rebuilding composition
+            if c.lastPauseState != isPaused {
+                if isPaused {
+                    c.player?.pause()
+                } else {
+                    c.player?.playImmediately(atRate: playRate)
+                }
+                c.lastPauseState = isPaused
+            }
+
+            // Handle effects/blend mode changes while paused - force re-render of current frame
+            if c.lastEffectsCounter != effectsChangeCounter {
+                c.lastEffectsCounter = effectsChangeCounter
+
+                // If paused, seek to force frame re-render
+                // We need to seek to a slightly different time, then back, to force AVFoundation
+                // to actually request a new frame (seeking to the same time is a no-op)
+                if isPaused, let player = c.player {
+                    let currentTime = player.currentTime()
+                    let nudgeAmount = CMTime(value: 1, timescale: 600) // ~0.0017 seconds
+                    let nudgedTime = CMTimeAdd(currentTime, nudgeAmount)
+
+                    // Seek forward slightly, then back to original time
+                    player.seek(to: nudgedTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak player] _ in
+                        player?.seek(to: currentTime, toleranceBefore: .zero, toleranceAfter: .zero)
                     }
                 }
-                c.lastSeekIndex = currentSourceIndex
-            } else {
-                // No seek needed, just play
-                c.player?.playImmediately(atRate: playRate)
+            }
+
+            // In sequence style, seek when user manually changes source
+            // User navigation always seeks, even during playback
+            if style == .sequence,
+               currentSourceIndex != c.lastRequestedIndex,
+               currentSourceIndex < c.clipStartTimes.count {
+                let seekTime = c.clipStartTimes[currentSourceIndex]
+                c.player?.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero) { [self] finished in
+                    if finished {
+                        // Continue playing at current rate (respects pause state)
+                        if !self.isPaused {
+                            c.player?.playImmediately(atRate: self.playRate)
+                        }
+                    }
+                }
+                c.lastRequestedIndex = currentSourceIndex
+                c.lastObservedIndex = currentSourceIndex
             }
         }
     }
@@ -161,13 +235,12 @@ struct DreamView: NSViewRepresentable {
     // MARK: - Helpers
     
     private func compositionIdentity(for recipe: HypnogramRecipe, style: DreamStyle) -> String {
-        let blendModes = resolvedBlendModes(from: recipe)
+        // Blend modes are now dynamic (managed by RenderHookManager), so don't include them in identity
         let pairs: [String] = recipe.sources.enumerated().map { index, source in
             let url = source.clip.file.url.path
             let start = source.clip.startTime.seconds
             let dur = source.clip.duration.seconds
-            let mode = index < blendModes.count ? blendModes[index] : kBlendModeDefaultMontage
-            return "\(url)|\(start)|\(dur)|\(mode)"
+            return "\(url)|\(start)|\(dur)"
         }
         let durationPart = "dur=\(recipe.targetDuration.seconds)"
         let stylePart = "style=\(style.rawValue)"
@@ -204,15 +277,18 @@ struct DreamView: NSViewRepresentable {
             }
         }
 
-        // Loop at end
+        // Loop at end - respect pause state
         c.endObserverToken = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
             object: item,
             queue: .main
-        ) { [weak player] _ in
-            guard let p = player else { return }
+        ) { [weak player, weak c] _ in
+            guard let p = player, let c = c else { return }
             p.seek(to: .zero)
-            p.playImmediately(atRate: 0.8)
+            // Only play if not paused
+            if c.lastPauseState != true {
+                p.playImmediately(atRate: 0.8)
+            }
         }
     }
 
@@ -221,8 +297,54 @@ struct DreamView: NSViewRepresentable {
         item: AVPlayerItem,
         coordinator c: Coordinator
     ) {
-        // Sequence doesn't loop by default - just plays through
-        // Could add looping here if desired
+        // Track playback time to update currentSourceIndex as clips play
+        let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
+        c.timeObserverToken = player.addPeriodicTimeObserver(
+            forInterval: interval,
+            queue: .main
+        ) { [weak c] time in
+            guard let c = c, !c.clipStartTimes.isEmpty else { return }
+
+            // Find which clip is currently playing based on time
+            var playingIndex = 0
+            for (index, startTime) in c.clipStartTimes.enumerated() {
+                if time >= startTime {
+                    playingIndex = index
+                } else {
+                    break
+                }
+            }
+
+            // Update observed index if it changed
+            if c.lastObservedIndex != playingIndex {
+                c.lastObservedIndex = playingIndex
+
+                // Only update currentSourceIndex if user hasn't manually navigated elsewhere
+                // This allows the HUD to track playback automatically, but manual navigation takes precedence
+                if self.currentSourceIndex == c.lastRequestedIndex {
+                    self.currentSourceIndex = playingIndex
+                    c.lastRequestedIndex = playingIndex
+                }
+            }
+        }
+
+        // Loop sequence mode at end - respect pause state
+        c.endObserverToken = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: item,
+            queue: .main
+        ) { [weak player, weak c] _ in
+            guard let p = player, let c = c else { return }
+            p.seek(to: .zero)
+            // Reset to first clip when looping
+            c.lastObservedIndex = 0
+            c.lastRequestedIndex = 0
+            self.currentSourceIndex = 0
+            // Only play if not paused
+            if c.lastPauseState != true {
+                p.playImmediately(atRate: 0.8)
+            }
+        }
     }
 
     // MARK: - Teardown
@@ -242,7 +364,8 @@ struct DreamView: NSViewRepresentable {
         c.player = nil
         c.compositionID = nil
         c.clipStartTimes = []
-        c.lastSeekIndex = nil
+        c.lastObservedIndex = 0
+        c.lastRequestedIndex = 0
         view.player = nil
     }
 }

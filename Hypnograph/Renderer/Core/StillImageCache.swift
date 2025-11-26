@@ -36,6 +36,13 @@ enum StillImageCache {
 
         if let cached = ciCache[url] { return cached }
 
+        // Check file existence first to avoid noisy errors
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            print("❌ StillImageCache: File not found: \(url.lastPathComponent)")
+            ciCache[url] = nil
+            return nil
+        }
+
         // First try CIImage directly
         if let ci = CIImage(
             contentsOf: url,
@@ -46,13 +53,15 @@ enum StillImageCache {
         }
 
         // Fallback via CGImage (handles formats CIImage sometimes hates)
+        // Note: cgImage() will also check file existence, but we already did above
         if let cg = cgImage(for: url) {
             let ci = CIImage(cgImage: cg)
             ciCache[url] = ci
             return ci
         }
 
-        print("❌ StillImageCache: failed to decode CIImage from \(url.lastPathComponent)")
+        // Only log once per URL (cache the nil result)
+        print("❌ StillImageCache: Failed to decode CIImage from \(url.lastPathComponent)")
         ciCache[url] = nil
         return nil
     }
@@ -62,8 +71,17 @@ enum StillImageCache {
 
         if let cached = cgCache[url] { return cached }
 
+        // Suppress CGImageSource errors by checking file existence first
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            print("❌ StillImageCache: File not found: \(url.lastPathComponent)")
+            cgCache[url] = nil
+            return nil
+        }
+
         guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
               let img = CGImageSourceCreateImageAtIndex(src, 0, nil) else {
+            // Only log once per URL (cache the nil result)
+            print("❌ StillImageCache: Failed to decode CGImage from \(url.lastPathComponent)")
             cgCache[url] = nil
             return nil
         }
