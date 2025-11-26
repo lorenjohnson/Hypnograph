@@ -105,7 +105,6 @@ final class DreamMode: HypnographMode {
         case .sequence:
             let totalSecs = sequenceTotalDuration().seconds
             let idx = state.currentSourceIndex
-            items.append(.text("Current: \(sourceCount == 0 ? 0 : idx + 1)/\(max(sourceCount, 1))", order: 26))
             items.append(.text(String(format: "Duration: %.1fs", totalSecs), order: 27))
 
             if let clip = state.currentClip {

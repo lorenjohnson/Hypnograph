@@ -47,8 +47,6 @@ final class RenderEngine {
         config: Config
     ) async -> Result<PlayerItemResult, RenderError> {
 
-        print("🎬 RenderEngine: Making player item...")
-
         // Build composition
         let buildResult = await compositionBuilder.build(
             recipe: recipe,
@@ -71,8 +69,6 @@ final class RenderEngine {
         // Create player item
         let playerItem = AVPlayerItem(asset: build.composition)
         playerItem.videoComposition = build.videoComposition
-
-        print("✅ RenderEngine: Player item created - \(build.composition.duration.seconds)s")
 
         let result = PlayerItemResult(
             playerItem: playerItem,
@@ -118,12 +114,6 @@ final class RenderEngine {
         // Configure video composition with compositor BEFORE creating export session
         build.videoComposition.customVideoCompositorClass = FrameCompositor.self
 
-        print("🎬 RenderEngine.export: Video composition configured:")
-        print("   - renderSize: \(build.videoComposition.renderSize)")
-        print("   - frameDuration: \(build.videoComposition.frameDuration.seconds)s")
-        print("   - instructions: \(build.videoComposition.instructions.count)")
-        print("   - compositor: \(String(describing: build.videoComposition.customVideoCompositorClass))")
-
         // Create export session
         guard let exportSession = AVAssetExportSession(
             asset: build.composition,
@@ -140,38 +130,38 @@ final class RenderEngine {
         exportSession.videoComposition = build.videoComposition
         exportSession.shouldOptimizeForNetworkUse = false
 
-        print("🎬 RenderEngine.export: Export session configured, starting export...")
+        print("🎬 Exporting to \(outputURL.lastPathComponent)...")
 
         // Export with progress tracking
         await exportSession.export()
 
         switch exportSession.status {
         case .completed:
-            print("✅ RenderEngine.export: Complete - \(outputURL.lastPathComponent)")
+            print("✅ Export complete: \(outputURL.lastPathComponent)")
             return .success(outputURL)
 
         case .failed:
             let error = exportSession.error ?? NSError(domain: "RenderEngine", code: 3,
                 userInfo: [NSLocalizedDescriptionKey: "Export failed with unknown error"])
-            print("🔴 RenderEngine.export: Failed - \(error)")
+            print("🔴 Export failed: \(error)")
 
             // Check if file was actually created despite the error
             if FileManager.default.fileExists(atPath: outputURL.path) {
-                print("⚠️  RenderEngine.export: File exists despite error - treating as success")
+                print("⚠️  File exists despite error - treating as success")
                 return .success(outputURL)
             }
 
             return .failure(.exportFailed(underlying: error))
 
         case .cancelled:
-            print("⚠️  RenderEngine.export: Cancelled")
+            print("⚠️  Export cancelled")
             return .failure(.exportFailed(
                 underlying: NSError(domain: "RenderEngine", code: 4,
                     userInfo: [NSLocalizedDescriptionKey: "Export cancelled"])
             ))
 
         default:
-            print("🔴 RenderEngine.export: Unknown status - \(exportSession.status.rawValue)")
+            print("🔴 Export unknown status: \(exportSession.status.rawValue)")
             return .failure(.exportFailed(
                 underlying: NSError(domain: "RenderEngine", code: 5,
                     userInfo: [NSLocalizedDescriptionKey: "Export ended with unknown status"])

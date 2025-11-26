@@ -10,6 +10,12 @@ import AVFoundation
 import CoreGraphics
 import CoreImage
 
+/// CI filter name for "normal" source-over compositing.
+let kBlendModeSourceOver = "CISourceOverCompositing"
+
+/// Default per-layer blend mode for Montage (above layer 0).
+let kBlendModeDefaultMontage = "CIScreenBlendMode"
+
 /// Builds compositions for preview and export
 final class CompositionBuilder {
     
@@ -40,9 +46,9 @@ final class CompositionBuilder {
         frameRate: Int = 30,
         enableEffects: Bool = true  // Enable effects by default (can disable for export if needed)
     ) async -> Result<BuildResult, RenderError> {
-        
-        print("🏗️  CompositionBuilder: Building \(strategy)...")
-        
+
+        print("🏗️  CompositionBuilder: Building \(strategy) with \(recipe.sources.count) sources")
+
         // Validate
         guard !recipe.sources.isEmpty else {
             return .failure(.noSources)
@@ -51,8 +57,6 @@ final class CompositionBuilder {
         guard outputSize.width > 0 && outputSize.height > 0 else {
             return .failure(.invalidOutputSize(outputSize))
         }
-
-        print("🏗️  CompositionBuilder: Building with \(recipe.sources.count) sources")
 
         // Build based on strategy
         switch strategy {
@@ -84,13 +88,10 @@ final class CompositionBuilder {
         enableEffects: Bool
     ) async -> Result<BuildResult, RenderError> {
 
-        print("🏗️  CompositionBuilder.montage: Building \(recipe.sources.count) layers")
-
         // Load all sources
         var loadedSources: [(source: HypnogramSource, loaded: LoadedSource)] = []
 
         for (index, source) in recipe.sources.enumerated() {
-            print("🏗️  Loading source \(index): \(source.clip.file.url.lastPathComponent)")
             let result = await sourceLoader.load(source: source)
 
             switch result {
@@ -107,7 +108,7 @@ final class CompositionBuilder {
             return .failure(.allSourcesFailedToLoad)
         }
 
-        print("🏗️  CompositionBuilder.montage: Loaded \(loadedSources.count)/\(recipe.sources.count) sources")
+        print("🏗️  Montage: Loaded \(loadedSources.count)/\(recipe.sources.count) sources")
 
         // Create composition
         let composition = AVMutableComposition()
@@ -128,7 +129,6 @@ final class CompositionBuilder {
 
             if loaded.isStillImage {
                 // For still images: create empty track, store CIImage
-                print("✅ Inserted still image source \(index) - \(targetDuration.seconds)s")
                 stillImages.append(loaded.ciImage)
             } else {
                 // For videos: insert media, looping if needed
@@ -156,7 +156,6 @@ final class CompositionBuilder {
                     }
                 }
 
-                print("✅ Inserted video source \(index) - \(loopCount) loop(s), total \(currentTime.seconds)s")
                 stillImages.append(nil as CIImage?)
 
                 // Add audio track if available (mirror video looping)
@@ -187,7 +186,6 @@ final class CompositionBuilder {
                         }
                     }
 
-                    print("🔊 Inserted audio for source \(index) - \(audioLoopCount) loop(s)")
                 }
             }
 
@@ -207,7 +205,6 @@ final class CompositionBuilder {
         // If we have still images, we need to ensure composition has duration
         // (empty tracks don't extend composition duration)
         if composition.duration.seconds <= 0 {
-            print("⚠️  CompositionBuilder.montage: Inserting empty time range for \(targetDuration.seconds)s")
             composition.insertEmptyTimeRange(CMTimeRange(start: .zero, duration: targetDuration))
         }
 
@@ -235,7 +232,7 @@ final class CompositionBuilder {
             clipStartTimes: [.zero]
         )
 
-        print("✅ CompositionBuilder.montage: Complete - \(trackIDs.count) layers @ \(targetDuration.seconds)s")
+        print("✅ Montage: \(trackIDs.count) layers @ \(targetDuration.seconds)s")
         return .success(result)
     }
 
@@ -248,13 +245,10 @@ final class CompositionBuilder {
         enableEffects: Bool
     ) async -> Result<BuildResult, RenderError> {
 
-        print("🏗️  CompositionBuilder.sequence: Building \(recipe.sources.count) clips")
-
         // Load all sources
         var loadedSources: [(source: HypnogramSource, loaded: LoadedSource)] = []
 
         for (index, source) in recipe.sources.enumerated() {
-            print("🏗️  Loading source \(index): \(source.clip.file.url.lastPathComponent)")
             let result = await sourceLoader.load(source: source)
 
             switch result {
@@ -270,7 +264,7 @@ final class CompositionBuilder {
             return .failure(.allSourcesFailedToLoad)
         }
 
-        print("🏗️  CompositionBuilder.sequence: Loaded \(loadedSources.count)/\(recipe.sources.count) sources")
+        print("🏗️  Sequence: Loaded \(loadedSources.count)/\(recipe.sources.count) sources")
 
         // Create composition with video and audio tracks
         let composition = AVMutableComposition()
@@ -308,7 +302,6 @@ final class CompositionBuilder {
             if loaded.isStillImage {
                 // For still images: insert empty time range, store CIImage in instruction
                 composition.insertEmptyTimeRange(CMTimeRange(start: currentTime, duration: clipDuration))
-                print("✅ Inserted still image clip \(index) at \(currentTime.seconds)s - \(clipDuration.seconds)s")
 
                 let instruction = RenderInstruction(
                     timeRange: CMTimeRange(start: currentTime, duration: clipDuration),
@@ -331,7 +324,6 @@ final class CompositionBuilder {
 
                 do {
                     try videoTrack.insertTimeRange(sourceRange, of: srcVideoTrack, at: currentTime)
-                    print("✅ Inserted video clip \(index) at \(currentTime.seconds)s - \(clipDuration.seconds)s")
                 } catch {
                     print("🔴 Failed to insert clip \(index): \(error)")
                     continue
@@ -341,7 +333,6 @@ final class CompositionBuilder {
                 if let srcAudioTrack = loaded.audioTrack {
                     do {
                         try audioTrack.insertTimeRange(sourceRange, of: srcAudioTrack, at: currentTime)
-                        print("🔊 Inserted audio for clip \(index)")
                     } catch {
                         print("⚠️  Failed to insert audio for clip \(index): \(error)")
                     }
@@ -379,7 +370,7 @@ final class CompositionBuilder {
             clipStartTimes: clipStartTimes
         )
 
-        print("✅ CompositionBuilder.sequence: Complete - \(instructions.count) clips, total \(currentTime.seconds)s")
+        print("✅ Sequence: \(instructions.count) clips, total \(currentTime.seconds)s")
         return .success(result)
     }
 }
