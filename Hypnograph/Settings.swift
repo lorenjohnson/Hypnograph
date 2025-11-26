@@ -88,23 +88,28 @@ struct Settings: Codable {
     var outputHeight: Int
     var outputSeconds: Int
     var outputWidth: Int
+    var snapshotsFolder: String
+    var activeLibrariesPerMode: [String: [String]]
 
     // Single source of truth for defaults
     private enum Defaults {
         static let watch: Bool = true
         static let maxSourcesForNew = 5
         static let outputFolder = "~/Movies/Hypnograph/renders"
+        static let snapshotsFolder = "~/Movies/Hypnograph/snapshots"
         static let outputHeight = 1080
         static let outputSeconds = 60
         static let outputWidth = 1920
         static let sourceFolders = SourceFoldersParam.array([
             "~/Movies/Hypnograph/sources"
         ])
+        static let activeLibrariesPerMode: [String: [String]] = [:]
     }
 
     private enum CodingKeys: String, CodingKey {
         case outputFolder, sourceFolders
-        case watch, maxSourcesForNew, outputHeight, outputSeconds, outputWidth
+        case watch, maxSourcesForNew, outputHeight, outputSeconds, outputWidth, snapshotsFolder
+        case activeLibrariesPerMode
     }
     init(
         outputFolder: String,
@@ -113,7 +118,9 @@ struct Settings: Codable {
         maxSourcesForNew: Int = Defaults.maxSourcesForNew,
         outputHeight: Int = Defaults.outputHeight,
         outputSeconds: Int = Defaults.outputSeconds,
-        outputWidth: Int = Defaults.outputWidth
+        outputWidth: Int = Defaults.outputWidth,
+        snapshotsFolder: String = Defaults.snapshotsFolder,
+        activeLibrariesPerMode: [String: [String]] = Defaults.activeLibrariesPerMode
     ) {
         self.outputFolder = outputFolder
         self.sourceFolders = sourceFolders
@@ -122,6 +129,8 @@ struct Settings: Codable {
         self.outputHeight = outputHeight
         self.outputSeconds = outputSeconds
         self.outputWidth = outputWidth
+        self.snapshotsFolder = snapshotsFolder
+        self.activeLibrariesPerMode = activeLibrariesPerMode
     }
 
     init(from decoder: Decoder) throws {
@@ -141,6 +150,10 @@ struct Settings: Codable {
             ?? Defaults.outputSeconds
         outputWidth = try c.decodeIfPresent(Int.self, forKey: .outputWidth)
             ?? Defaults.outputWidth
+        snapshotsFolder = try c.decodeIfPresent(String.self, forKey: .snapshotsFolder)
+            ?? Defaults.snapshotsFolder
+        activeLibrariesPerMode = try c.decodeIfPresent([String: [String]].self, forKey: .activeLibrariesPerMode)
+            ?? Defaults.activeLibrariesPerMode
     }
 
     // MARK: - Derived values
@@ -156,6 +169,13 @@ struct Settings: Codable {
     var outputURL: URL {
         URL(
             fileURLWithPath: (outputFolder as NSString).expandingTildeInPath,
+            isDirectory: true
+        )
+    }
+
+    var snapshotsURL: URL {
+        URL(
+            fileURLWithPath: (snapshotsFolder as NSString).expandingTildeInPath,
             isDirectory: true
         )
     }

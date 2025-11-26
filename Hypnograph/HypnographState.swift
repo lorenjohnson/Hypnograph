@@ -20,6 +20,9 @@ final class HypnographState: ObservableObject {
 
     private(set) var settings: Settings
 
+    // Per-mode library state
+    private var perModeLibraryKeys: [ModeType: Set<String>] = [:]
+
     @Published private(set) var currentLibraryKey: String
     @Published private(set) var activeLibraryKeys: Set<String>
 
@@ -27,7 +30,13 @@ final class HypnographState: ObservableObject {
 
     // MARK: - Mode management
 
-    @Published var currentModeType: ModeType = .dream
+    @Published var currentModeType: ModeType = .dream {
+        didSet {
+            if oldValue != currentModeType {
+                switchToModeLibraries(currentModeType)
+            }
+        }
+    }
 
     // MARK: - Source list
 
@@ -61,11 +70,24 @@ final class HypnographState: ObservableObject {
 
         let defaultKey = settings.defaultSourceLibraryKey
         let initialKeys: Set<String> = [defaultKey]
-        let initialFolders = settings.folders(forLibraries: initialKeys)
+
+        // Initialize per-mode library state from settings or use defaults
+        var loadedPerModeKeys: [ModeType: Set<String>] = [:]
+        for mode in [ModeType.dream, ModeType.divine] {
+            if let savedKeys = settings.activeLibrariesPerMode[mode.rawValue] {
+                loadedPerModeKeys[mode] = Set(savedKeys)
+            } else {
+                loadedPerModeKeys[mode] = initialKeys
+            }
+        }
+        self.perModeLibraryKeys = loadedPerModeKeys
+
+        // Get active keys for the initial mode (dream)
+        let activeKeys = loadedPerModeKeys[.dream] ?? initialKeys
 
         self.currentLibraryKey = defaultKey
-        self.activeLibraryKeys = initialKeys
-        self.library = VideoSourcesLibrary(sourceFolders: initialFolders)
+        self.activeLibraryKeys = activeKeys
+        self.library = VideoSourcesLibrary(sourceFolders: settings.folders(forLibraries: activeKeys))
 
         self.sources = []
         self.currentSourceIndex = 0
@@ -265,22 +287,34 @@ final class HypnographState: ObservableObject {
                 keys.insert(key)
             }
 
-            self.applyActiveLibraries(keys)
+            self.applyActiveLibraries(keys, saveToMode: true)
         }
     }
 
     func useOnlyDefaultLibrary() {
         let defaultKey = settings.defaultSourceLibraryKey
         DispatchQueue.main.async { [weak self] in
-            self?.applyActiveLibraries([defaultKey])
+            self?.applyActiveLibraries([defaultKey], saveToMode: true)
         }
     }
 
-    private func applyActiveLibraries(_ keys: Set<String>) {
+    /// Switch to the library configuration for a specific mode
+    private func switchToModeLibraries(_ mode: ModeType) {
+        let keys = perModeLibraryKeys[mode] ?? [settings.defaultSourceLibraryKey]
+        applyActiveLibraries(keys, saveToMode: false)
+    }
+
+    private func applyActiveLibraries(_ keys: Set<String>, saveToMode: Bool) {
         let folders = settings.folders(forLibraries: keys)
         activeLibraryKeys = keys
         currentLibraryKey = keys.first ?? settings.defaultSourceLibraryKey
         library = VideoSourcesLibrary(sourceFolders: folders)
+
+        // Save to current mode's library state if requested
+        if saveToMode {
+            perModeLibraryKeys[currentModeType] = keys
+            savePerModeLibrariesToSettings()
+        }
 
         sources.removeAll()
         currentSourceIndex = 0
@@ -296,13 +330,35 @@ final class HypnographState: ObservableObject {
         }
     }
 
+    /// Save per-mode library selections to settings file
+    private func savePerModeLibrariesToSettings() {
+        // Convert perModeLibraryKeys to [String: [String]] for settings
+        var librariesDict: [String: [String]] = [:]
+        for (mode, keys) in perModeLibraryKeys {
+            librariesDict[mode.rawValue] = Array(keys)
+        }
+
+        settings.activeLibrariesPerMode = librariesDict
+
+        // Save to disk
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(settings)
+            try data.write(to: Environment.defaultSettingsURL)
+            print("✅ Saved per-mode library settings to \(Environment.defaultSettingsURL.path)")
+        } catch {
+            print("⚠️ Failed to save per-mode library settings: \(error)")
+        }
+    }
+
     /// Reload settings from disk and reapply basic configuration.
     func reloadSettings(from url: URL) {
         do {
             let newSettings = try SettingsLoader.load(from: url)
             self.settings = newSettings
 
-            applyActiveLibraries(activeLibraryKeys)
+            applyActiveLibraries(activeLibraryKeys, saveToMode: false)
 
             watchTimer?.invalidate()
             watchTimer = nil

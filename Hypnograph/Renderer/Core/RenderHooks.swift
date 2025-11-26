@@ -170,10 +170,12 @@ final class EffectRegistry {
             BlackAndWhiteLowHook(),
             BlackAndWhiteHighHook(),
             HueWobbleHook(),
-            DatamoshHook(intensity: 0.7, maxFrameOffset: 60),
+            DatamoshHook(intensity: 0.9),
             RGBSplitSimpleHook(offsetAmount: 15.0, animated: true),
-            ScanlinesHook(lineWidth: 2.0, intensity: 0.4)
-            // Add more effects here as they're created
+            ScanlinesHook(lineWidth: 2.0, intensity: 0.4),
+            PixelSortHook(intensity: 0.8),
+            VHSDecayHook(intensity: 0.7),
+            MirrorKaleidoHook(intensity: 0.8)
         ]
     }
 

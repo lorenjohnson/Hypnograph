@@ -66,7 +66,7 @@ struct HypnographApp: App {
 
     private let settings: Settings
     @StateObject private var state: HypnographState
-    @StateObject private var renderQueue: RenderQueue
+    private let renderQueue: RenderQueue  // Not @StateObject - we don't want to trigger view updates
     @StateObject private var dreamMode: DreamMode
     @StateObject private var divineMode: DivineMode
 
@@ -90,18 +90,20 @@ struct HypnographApp: App {
                 maxSourcesForNew: 3,
                 outputHeight: 1080,
                 outputSeconds: 30,
-                outputWidth: 1920
+                outputWidth: 1920,
+                snapshotsFolder: "~/Movies/Hypnograph/snapshots",
+                activeLibrariesPerMode: [:]
             )
         }
 
         self.settings = settings
         let state = HypnographState(settings: settings)
         let renderQueue = RenderQueue()
+        self.renderQueue = renderQueue
 
         GlobalRenderHooks.manager = state.renderHooks
 
         _state = StateObject(wrappedValue: state)
-        _renderQueue = StateObject(wrappedValue: renderQueue)
         _dreamMode = StateObject(wrappedValue: DreamMode(state: state, renderQueue: renderQueue))
         _divineMode = StateObject(wrappedValue: DivineMode(state: state, renderQueue: renderQueue))
     }
@@ -220,7 +222,6 @@ struct AppCommands: Commands {
             Button("Show Settings Folder") {
                 Environment.showSettingsFolderInFinder()
             }
-            .keyboardShortcut("s", modifiers: [.command, .shift])
 
             Button("Install hypnograph CLI and Finder Action") {
                 Environment.installCLI()
@@ -242,6 +243,14 @@ struct AppCommands: Commands {
                 currentMode.save()
             }
             .keyboardShortcut("s", modifiers: [.command])
+
+            Button("Save Snapshot") {
+                // Only DreamMode supports snapshots
+                if let dreamMode = currentMode as? DreamMode {
+                    dreamMode.saveSnapshot()
+                }
+            }
+            .keyboardShortcut("s", modifiers: [.command, .shift])
         }
 
         CommandGroup(after: .sidebar) {

@@ -1,0 +1,207 @@
+//
+//  FrameCompositor.swift
+//  Hypnograph
+//
+//  Stateless frame compositor - receives instructions, outputs frames
+//  Minimal skeleton: single layer, no blending, no effects
+//
+
+import Foundation
+import AVFoundation
+import CoreImage
+import CoreVideo
+
+final class FrameCompositor: NSObject, AVVideoCompositing {
+
+    // MARK: - Properties
+
+    private let renderContext = CIContext()
+    private let renderQueue = DispatchQueue(label: "com.hypnograph.framecompositor", qos: .userInteractive)
+
+    // MARK: - Initialization
+
+    override init() {
+        super.init()
+        print("🎨 FrameCompositor: Initialized")
+    }
+
+    // MARK: - AVVideoCompositing Protocol
+    
+    var sourcePixelBufferAttributes: [String : Any]? {
+        return [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferOpenGLCompatibilityKey as String: true
+        ]
+    }
+    
+    var requiredPixelBufferAttributesForRenderContext: [String : Any] {
+        return [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferOpenGLCompatibilityKey as String: true
+        ]
+    }
+    
+    func renderContextChanged(_ newRenderContext: AVVideoCompositionRenderContext) {
+        // Nothing to do - we're stateless
+    }
+    
+    // MARK: - Frame Rendering
+    
+    func startRequest(_ request: AVAsynchronousVideoCompositionRequest) {
+        print("🎨 FrameCompositor.startRequest: time=\(request.compositionTime.seconds)s")
+        renderQueue.async { [weak self] in
+            guard let self = self else {
+                print("🔴 FrameCompositor: self is nil")
+                request.finish(with: NSError(domain: "FrameCompositor", code: 1, userInfo: nil))
+                return
+            }
+
+            self.renderFrame(request: request)
+        }
+    }
+    
+    func cancelAllPendingVideoCompositionRequests() {
+        // Nothing to cancel - we process synchronously
+    }
+    
+    // MARK: - Core Rendering
+    
+    private func renderFrame(request: AVAsynchronousVideoCompositionRequest) {
+        guard let instruction = request.videoCompositionInstruction as? RenderInstruction else {
+            print("🔴 FrameCompositor: Invalid instruction type")
+            request.finish(with: NSError(domain: "FrameCompositor", code: 2, userInfo: nil))
+            return
+        }
+
+        guard let outputBuffer = request.renderContext.newPixelBuffer() else {
+            print("🔴 FrameCompositor: Failed to create output buffer")
+            request.finish(with: NSError(domain: "FrameCompositor", code: 3, userInfo: nil))
+            return
+        }
+
+        let outputSize = CGSize(
+            width: CVPixelBufferGetWidth(outputBuffer),
+            height: CVPixelBufferGetHeight(outputBuffer)
+        )
+
+        // Composite all layers
+        var composited: CIImage?
+
+        for (index, trackID) in instruction.layerTrackIDs.enumerated() {
+            var layerImage: CIImage?
+
+            // Check if this layer is a still image
+            if index < instruction.stillImages.count, let stillImage = instruction.stillImages[index] {
+                // Use the still image directly
+                layerImage = stillImage
+            } else {
+                // Get frame from video track
+                guard let sourceBuffer = request.sourceFrame(byTrackID: trackID) else {
+                    print("⚠️  FrameCompositor: No source frame for track \(trackID)")
+                    continue
+                }
+                layerImage = CIImage(cvPixelBuffer: sourceBuffer)
+            }
+
+            guard var img = layerImage else {
+                print("⚠️  FrameCompositor: No image for layer \(index)")
+                continue
+            }
+
+            // Apply transform (orientation correction)
+            let transform = instruction.transforms[index]
+            img = img.transformed(by: transform)
+
+            // Aspect-fill to output size
+            img = aspectFill(image: img, to: outputSize)
+
+            // Apply per-source effects if enabled
+            if instruction.enableEffects, let manager = GlobalRenderHooks.manager {
+                let sourceIndex = instruction.sourceIndices[index]
+                var sourceContext = RenderContext(
+                    frameIndex: 0,
+                    time: request.compositionTime,
+                    isPreview: true,
+                    outputSize: outputSize,
+                    frameBuffer: manager.frameBuffer,
+                    params: RenderParams()
+                )
+                img = manager.applyToSource(
+                    sourceIndex: sourceIndex,
+                    context: &sourceContext,
+                    image: img
+                )
+            }
+
+            // Blend with previous layers
+            if let base = composited {
+                let blendMode = instruction.blendModes[index]
+                img = blend(layer: img, over: base, mode: blendMode)
+                composited = img
+            } else {
+                composited = img
+            }
+        }
+
+        guard var finalImage = composited else {
+            print("🔴 FrameCompositor: No layers composited")
+            request.finish(with: NSError(domain: "FrameCompositor", code: 5, userInfo: nil))
+            return
+        }
+
+        // Apply global effects if enabled
+        if instruction.enableEffects, let manager = GlobalRenderHooks.manager {
+            var context = RenderContext(
+                frameIndex: 0,
+                time: request.compositionTime,
+                isPreview: true,
+                outputSize: outputSize,
+                frameBuffer: manager.frameBuffer,
+                params: RenderParams()
+            )
+
+            let effectResult = manager.applyGlobal(to: &context, image: finalImage)
+            if !effectResult.extent.isEmpty {
+                finalImage = effectResult
+            }
+        }
+
+        // Store the final composited frame in the frame buffer for snapshots
+        if instruction.enableEffects, let manager = GlobalRenderHooks.manager {
+            manager.frameBuffer.addFrame(finalImage, at: request.compositionTime)
+        }
+
+        // Render to output buffer
+        renderContext.render(finalImage, to: outputBuffer)
+
+        // Finish request
+        request.finish(withComposedVideoFrame: outputBuffer)
+    }
+    
+    // MARK: - Helpers
+
+    private func aspectFill(image: CIImage, to size: CGSize) -> CIImage {
+        let imageSize = image.extent.size
+        let scale = max(size.width / imageSize.width, size.height / imageSize.height)
+
+        let scaledImage = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        let scaledSize = scaledImage.extent.size
+
+        let x = (size.width - scaledSize.width) / 2
+        let y = (size.height - scaledSize.height) / 2
+
+        let translated = scaledImage.transformed(by: CGAffineTransform(translationX: x, y: y))
+
+        return translated.cropped(to: CGRect(origin: .zero, size: size))
+    }
+
+    private func blend(layer: CIImage, over base: CIImage, mode: String) -> CIImage {
+        // Use Core Image blend filters
+        let filter = CIFilter(name: mode)
+        filter?.setValue(layer, forKey: kCIInputImageKey)
+        filter?.setValue(base, forKey: kCIInputBackgroundImageKey)
+
+        return filter?.outputImage ?? layer
+    }
+}
+

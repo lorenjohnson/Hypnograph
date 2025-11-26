@@ -1,0 +1,386 @@
+//
+//  CompositionBuilder.swift
+//  Hypnograph
+//
+//  Builds AVComposition + instructions from recipe
+//
+
+import Foundation
+import AVFoundation
+import CoreGraphics
+import CoreImage
+
+/// Builds compositions for preview and export
+final class CompositionBuilder {
+    
+    // MARK: - Types
+    
+    struct BuildResult {
+        let composition: AVMutableComposition
+        let videoComposition: AVMutableVideoComposition
+        let instructions: [RenderInstruction]
+        let clipStartTimes: [CMTime]  // for sequence seeking
+    }
+    
+    enum TimelineStrategy {
+        case montage(targetDuration: CMTime)
+        case sequence  // concatenate clips
+    }
+    
+    // MARK: - Dependencies
+    
+    private let sourceLoader = SourceLoader()
+    
+    // MARK: - Build
+    
+    func build(
+        recipe: HypnogramRecipe,
+        strategy: TimelineStrategy,
+        outputSize: CGSize,
+        frameRate: Int = 30,
+        enableEffects: Bool = true  // Enable effects by default (can disable for export if needed)
+    ) async -> Result<BuildResult, RenderError> {
+        
+        print("🏗️  CompositionBuilder: Building \(strategy)...")
+        
+        // Validate
+        guard !recipe.sources.isEmpty else {
+            return .failure(.noSources)
+        }
+
+        guard outputSize.width > 0 && outputSize.height > 0 else {
+            return .failure(.invalidOutputSize(outputSize))
+        }
+
+        print("🏗️  CompositionBuilder: Building with \(recipe.sources.count) sources")
+
+        // Build based on strategy
+        switch strategy {
+        case .montage(let targetDuration):
+            return await buildMontage(
+                recipe: recipe,
+                targetDuration: targetDuration,
+                outputSize: outputSize,
+                frameRate: frameRate,
+                enableEffects: enableEffects
+            )
+        case .sequence:
+            return await buildSequence(
+                recipe: recipe,
+                outputSize: outputSize,
+                frameRate: frameRate,
+                enableEffects: enableEffects
+            )
+        }
+    }
+
+    // MARK: - Montage Builder
+
+    private func buildMontage(
+        recipe: HypnogramRecipe,
+        targetDuration: CMTime,
+        outputSize: CGSize,
+        frameRate: Int,
+        enableEffects: Bool
+    ) async -> Result<BuildResult, RenderError> {
+
+        print("🏗️  CompositionBuilder.montage: Building \(recipe.sources.count) layers")
+
+        // Load all sources
+        var loadedSources: [(source: HypnogramSource, loaded: LoadedSource)] = []
+
+        for (index, source) in recipe.sources.enumerated() {
+            print("🏗️  Loading source \(index): \(source.clip.file.url.lastPathComponent)")
+            let result = await sourceLoader.load(source: source)
+
+            switch result {
+            case .success(let loaded):
+                loadedSources.append((source, loaded))
+            case .failure(let error):
+                error.log(context: "CompositionBuilder.montage[\(index)]")
+                // Skip failed sources for now (in Phase 3 we'll replace with fallback)
+                continue
+            }
+        }
+
+        guard !loadedSources.isEmpty else {
+            return .failure(.allSourcesFailedToLoad)
+        }
+
+        print("🏗️  CompositionBuilder.montage: Loaded \(loadedSources.count)/\(recipe.sources.count) sources")
+
+        // Create composition
+        let composition = AVMutableComposition()
+        var trackIDs: [CMPersistentTrackID] = []
+        var transforms: [CGAffineTransform] = []
+        var blendModes: [String] = []
+        var sourceIndices: [Int] = []
+        var stillImages: [CIImage?] = []
+
+        for (index, (source, loaded)) in loadedSources.enumerated() {
+            guard let track = composition.addMutableTrack(
+                withMediaType: .video,
+                preferredTrackID: kCMPersistentTrackID_Invalid
+            ) else {
+                print("🔴 Failed to create track \(index)")
+                continue
+            }
+
+            if loaded.isStillImage {
+                // For still images: create empty track, store CIImage
+                print("✅ Inserted still image source \(index) - \(targetDuration.seconds)s")
+                stillImages.append(loaded.ciImage)
+            } else {
+                // For videos: insert media, looping if needed
+                guard let videoTrack = loaded.videoTrack else {
+                    print("🔴 Video source \(index) has no video track")
+                    continue
+                }
+
+                let clipDuration = source.clip.duration
+                var currentTime = CMTime.zero
+                var loopCount = 0
+
+                while currentTime < targetDuration {
+                    let remainingDuration = CMTimeSubtract(targetDuration, currentTime)
+                    let insertDuration = CMTimeMinimum(clipDuration, remainingDuration)
+                    let insertRange = CMTimeRange(start: source.clip.startTime, duration: insertDuration)
+
+                    do {
+                        try track.insertTimeRange(insertRange, of: videoTrack, at: currentTime)
+                        currentTime = CMTimeAdd(currentTime, insertDuration)
+                        loopCount += 1
+                    } catch {
+                        print("🔴 Failed to insert source \(index) loop \(loopCount): \(error)")
+                        break
+                    }
+                }
+
+                print("✅ Inserted video source \(index) - \(loopCount) loop(s), total \(currentTime.seconds)s")
+                stillImages.append(nil as CIImage?)
+
+                // Add audio track if available (mirror video looping)
+                if let audioTrack = loaded.audioTrack {
+                    guard let compAudioTrack = composition.addMutableTrack(
+                        withMediaType: .audio,
+                        preferredTrackID: kCMPersistentTrackID_Invalid
+                    ) else {
+                        print("⚠️  Failed to create audio track for source \(index)")
+                        continue
+                    }
+
+                    var audioTime = CMTime.zero
+                    var audioLoopCount = 0
+
+                    while audioTime < targetDuration {
+                        let remainingDuration = CMTimeSubtract(targetDuration, audioTime)
+                        let insertDuration = CMTimeMinimum(clipDuration, remainingDuration)
+                        let insertRange = CMTimeRange(start: source.clip.startTime, duration: insertDuration)
+
+                        do {
+                            try compAudioTrack.insertTimeRange(insertRange, of: audioTrack, at: audioTime)
+                            audioTime = CMTimeAdd(audioTime, insertDuration)
+                            audioLoopCount += 1
+                        } catch {
+                            print("🔴 Failed to insert audio for source \(index) loop \(audioLoopCount): \(error)")
+                            break
+                        }
+                    }
+
+                    print("🔊 Inserted audio for source \(index) - \(audioLoopCount) loop(s)")
+                }
+            }
+
+            trackIDs.append(track.trackID)
+            transforms.append(loaded.transform)
+            sourceIndices.append(index)
+
+            // Get blend mode from recipe
+            let blendMode = recipe.mode?.value(for: .blendMode, sourceIndex: index) ?? kBlendModeSourceOver
+            blendModes.append(blendMode)
+        }
+
+        guard !trackIDs.isEmpty else {
+            return .failure(.allSourcesFailedToLoad)
+        }
+
+        // If we have still images, we need to ensure composition has duration
+        // (empty tracks don't extend composition duration)
+        if composition.duration.seconds <= 0 {
+            print("⚠️  CompositionBuilder.montage: Inserting empty time range for \(targetDuration.seconds)s")
+            composition.insertEmptyTimeRange(CMTimeRange(start: .zero, duration: targetDuration))
+        }
+
+        // Create instruction
+        let instruction = RenderInstruction(
+            timeRange: CMTimeRange(start: .zero, duration: targetDuration),
+            layerTrackIDs: trackIDs,
+            blendModes: blendModes,
+            transforms: transforms,
+            sourceIndices: sourceIndices,
+            enableEffects: enableEffects,
+            stillImages: stillImages
+        )
+
+        // Create video composition
+        let videoComposition = AVMutableVideoComposition()
+        videoComposition.frameDuration = CMTime(value: 1, timescale: CMTimeScale(frameRate))
+        videoComposition.renderSize = outputSize
+        videoComposition.instructions = [instruction]
+
+        let result = BuildResult(
+            composition: composition,
+            videoComposition: videoComposition,
+            instructions: [instruction],
+            clipStartTimes: [.zero]
+        )
+
+        print("✅ CompositionBuilder.montage: Complete - \(trackIDs.count) layers @ \(targetDuration.seconds)s")
+        return .success(result)
+    }
+
+    // MARK: - Sequence Builder
+
+    private func buildSequence(
+        recipe: HypnogramRecipe,
+        outputSize: CGSize,
+        frameRate: Int,
+        enableEffects: Bool
+    ) async -> Result<BuildResult, RenderError> {
+
+        print("🏗️  CompositionBuilder.sequence: Building \(recipe.sources.count) clips")
+
+        // Load all sources
+        var loadedSources: [(source: HypnogramSource, loaded: LoadedSource)] = []
+
+        for (index, source) in recipe.sources.enumerated() {
+            print("🏗️  Loading source \(index): \(source.clip.file.url.lastPathComponent)")
+            let result = await sourceLoader.load(source: source)
+
+            switch result {
+            case .success(let loaded):
+                loadedSources.append((source, loaded))
+            case .failure(let error):
+                error.log(context: "CompositionBuilder.sequence[\(index)]")
+                continue
+            }
+        }
+
+        guard !loadedSources.isEmpty else {
+            return .failure(.allSourcesFailedToLoad)
+        }
+
+        print("🏗️  CompositionBuilder.sequence: Loaded \(loadedSources.count)/\(recipe.sources.count) sources")
+
+        // Create composition with video and audio tracks
+        let composition = AVMutableComposition()
+
+        guard let videoTrack = composition.addMutableTrack(
+            withMediaType: .video,
+            preferredTrackID: kCMPersistentTrackID_Invalid
+        ) else {
+            return .failure(.compositionBuildFailed(
+                underlying: NSError(domain: "CompositionBuilder", code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to create video track"])
+            ))
+        }
+
+        guard let audioTrack = composition.addMutableTrack(
+            withMediaType: .audio,
+            preferredTrackID: kCMPersistentTrackID_Invalid
+        ) else {
+            return .failure(.compositionBuildFailed(
+                underlying: NSError(domain: "CompositionBuilder", code: 3,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to create audio track"])
+            ))
+        }
+
+        // Insert clips sequentially
+        var currentTime = CMTime.zero
+        var clipStartTimes: [CMTime] = []
+        var instructions: [RenderInstruction] = []
+
+        for (index, (source, loaded)) in loadedSources.enumerated() {
+            let clipDuration = source.clip.duration
+
+            clipStartTimes.append(currentTime)
+
+            if loaded.isStillImage {
+                // For still images: insert empty time range, store CIImage in instruction
+                composition.insertEmptyTimeRange(CMTimeRange(start: currentTime, duration: clipDuration))
+                print("✅ Inserted still image clip \(index) at \(currentTime.seconds)s - \(clipDuration.seconds)s")
+
+                let instruction = RenderInstruction(
+                    timeRange: CMTimeRange(start: currentTime, duration: clipDuration),
+                    layerTrackIDs: [videoTrack.trackID],
+                    blendModes: [kBlendModeSourceOver],
+                    transforms: [loaded.transform],
+                    sourceIndices: [index],
+                    enableEffects: enableEffects,
+                    stillImages: [loaded.ciImage]
+                )
+                instructions.append(instruction)
+            } else {
+                // For videos: insert media
+                guard let srcVideoTrack = loaded.videoTrack else {
+                    print("🔴 Video source \(index) has no video track")
+                    continue
+                }
+
+                let sourceRange = CMTimeRange(start: source.clip.startTime, duration: clipDuration)
+
+                do {
+                    try videoTrack.insertTimeRange(sourceRange, of: srcVideoTrack, at: currentTime)
+                    print("✅ Inserted video clip \(index) at \(currentTime.seconds)s - \(clipDuration.seconds)s")
+                } catch {
+                    print("🔴 Failed to insert clip \(index): \(error)")
+                    continue
+                }
+
+                // Insert audio if available
+                if let srcAudioTrack = loaded.audioTrack {
+                    do {
+                        try audioTrack.insertTimeRange(sourceRange, of: srcAudioTrack, at: currentTime)
+                        print("🔊 Inserted audio for clip \(index)")
+                    } catch {
+                        print("⚠️  Failed to insert audio for clip \(index): \(error)")
+                    }
+                }
+
+                let instruction = RenderInstruction(
+                    timeRange: CMTimeRange(start: currentTime, duration: clipDuration),
+                    layerTrackIDs: [videoTrack.trackID],
+                    blendModes: [kBlendModeSourceOver],
+                    transforms: [loaded.transform],
+                    sourceIndices: [index],
+                    enableEffects: enableEffects,
+                    stillImages: [nil]
+                )
+                instructions.append(instruction)
+            }
+
+            currentTime = CMTimeAdd(currentTime, clipDuration)
+        }
+
+        guard !instructions.isEmpty else {
+            return .failure(.allSourcesFailedToLoad)
+        }
+
+        // Create video composition
+        let videoComposition = AVMutableVideoComposition()
+        videoComposition.frameDuration = CMTime(value: 1, timescale: CMTimeScale(frameRate))
+        videoComposition.renderSize = outputSize
+        videoComposition.instructions = instructions
+
+        let result = BuildResult(
+            composition: composition,
+            videoComposition: videoComposition,
+            instructions: instructions,
+            clipStartTimes: clipStartTimes
+        )
+
+        print("✅ CompositionBuilder.sequence: Complete - \(instructions.count) clips, total \(currentTime.seconds)s")
+        return .success(result)
+    }
+}
+

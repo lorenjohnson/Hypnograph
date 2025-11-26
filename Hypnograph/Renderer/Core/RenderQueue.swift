@@ -9,9 +9,10 @@ import Foundation
 
 /// Manages a queue of rendering jobs for Hypnogram.
 /// Keeps track of active jobs, but is agnostic about which renderer is used.
-final class RenderQueue: ObservableObject {
+final class RenderQueue {
 
     /// Number of currently active jobs (being processed).
+    /// Not @Published to avoid triggering view updates during rendering
     private(set) var activeJobs: Int = 0
 
     /// Called on the main thread whenever `activeJobs` drops to 0.
@@ -23,25 +24,30 @@ final class RenderQueue: ObservableObject {
     /// Enqueue a new HypnogramRecipe for rendering with the given renderer.
     func enqueue(
         renderer: HypnogramRenderer,
-        recipe: HypnogramRecipe
+        recipe: HypnogramRecipe,
+        completion: ((Result<URL, Error>) -> Void)? = nil
     ) {
         activeJobs += 1
 
         renderer.enqueue(recipe: recipe) { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                self.activeJobs -= 1
+            guard let self = self else { return }
 
-                switch result {
-                case .success(let url):
-                    print("Render job finished: \(url.path)")
-                case .failure(let error):
-                    print("Render job failed: \(error.localizedDescription)")
-                }
+            // Completion is already called on MainActor by UnifiedRenderer
+            // Update state directly since we're already on MainActor
+            self.activeJobs -= 1
 
-                if self.activeJobs == 0 {
-                    self.onAllJobsFinished?()
-                }
+            switch result {
+            case .success(let url):
+                print("Render job finished: \(url.path)")
+            case .failure(let error):
+                print("Render job failed: \(error.localizedDescription)")
+            }
+
+            // Call per-job completion if provided
+            completion?(result)
+
+            if self.activeJobs == 0 {
+                self.onAllJobsFinished?()
             }
         }
     }
