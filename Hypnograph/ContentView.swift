@@ -4,7 +4,7 @@ import Combine
 
 struct ContentView<Mode: HypnographMode>: View {
     @ObservedObject var state: HypnographState
-    @ObservedObject var renderQueue: RenderQueue
+    var renderQueue: RenderQueue  // Not @ObservedObject - we don't want to trigger view updates
     @ObservedObject var mode: Mode
 
     // MARK: - Global HUD Items
@@ -22,7 +22,7 @@ struct ContentView<Mode: HypnographMode>: View {
             modeLabel = "Divine Mode"
         }
         items.append(.text(modeLabel, order: 11, font: .subheadline))
-        items.append(.padding(8, order: 12))
+        items.append(.padding(8, order: 15))
 
         // Queue status
         if renderQueue.activeJobs > 0 {
@@ -45,8 +45,8 @@ struct ContentView<Mode: HypnographMode>: View {
 
         items.append(.text("Current Source", order: 40, font: .subheadline))
         // Global keyboard shortcuts
-        items.append(.text("N = New random clip", order: 42))
-        items.append(.text("Delete = Delete Source", order: 44))
+        items.append(.text("N = New random clip", order: 45))
+        items.append(.text("Delete = Delete Source", order: 47))
 
         items.append(.padding(16, order: 49))
 

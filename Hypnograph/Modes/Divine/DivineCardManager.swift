@@ -21,6 +21,9 @@ final class DivineCardManager: ObservableObject {
     private let state: HypnographState
     private let playerManager = DivinePlayerManager()
 
+    // TODO: Move into settings, e.g.: "modes:" [ { "Divine": { "allowReversed": true } } ]
+    private var allowReversed: Bool = false
+
     // Layout context for initial card placement
     private var viewportSize: CGSize = .zero
     private var cardSize: CGSize = .zero
@@ -269,7 +272,7 @@ final class DivineCardManager: ObservableObject {
         let clipLength = max(3.0, state.settings.outputDuration.seconds)
         guard let clip = state.library.randomClip(clipLength: clipLength) else { return nil }
         let cgImage = grabStill(from: clip)
-        let flipped = Bool.random()
+        let flipped = allowReversed ? Bool.random() : false
 
         return DivineCard(
             clip: clip,
@@ -277,7 +280,6 @@ final class DivineCardManager: ObservableObject {
             isRevealed: false,
             isPlaying: false,
             isFlipped: flipped,
-            rotationQuarterTurns: 0,
             offset: offset,
             dragOffset: .zero,
             lastSnapshotTime: clip.startTime

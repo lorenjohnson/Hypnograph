@@ -33,6 +33,7 @@ struct DreamView: NSViewRepresentable {
         var compositionID: String?
         var clipStartTimes: [CMTime] = []
         var lastSeekIndex: Int?
+        var currentTask: Task<Void, Never>?
     }
     
     func makeCoordinator() -> Coordinator {
@@ -49,68 +50,107 @@ struct DreamView: NSViewRepresentable {
     
     func updateNSView(_ nsView: AVPlayerView, context: Context) {
         let c = context.coordinator
-        
+
         guard !recipe.sources.isEmpty else {
             Self.tearDown(coordinator: c, view: nsView)
-            currentSourceTime = nil
+            if currentSourceTime != nil {
+                currentSourceTime = nil
+            }
             return
         }
-        
+
         let newID = compositionIdentity(for: recipe, style: style)
-        
+
         if newID != c.compositionID || c.player == nil {
-            guard let build = makePlayerItem(from: recipe, style: style) else {
-                Self.tearDown(coordinator: c, view: nsView)
-                currentSourceTime = nil
-                return
+            // Cancel any pending build
+            c.currentTask?.cancel()
+
+            // Build player item asynchronously using RenderEngine
+            c.currentTask = Task {
+                let engine = RenderEngine()
+                let strategy: CompositionBuilder.TimelineStrategy = (style == .montage)
+                    ? .montage(targetDuration: recipe.targetDuration)
+                    : .sequence
+
+                let config = RenderEngine.Config(
+                    outputSize: outputSize,
+                    frameRate: 30,
+                    enableGlobalHooks: true
+                )
+
+                let result = await engine.makePlayerItem(
+                    recipe: recipe,
+                    strategy: strategy,
+                    config: config
+                )
+
+                guard !Task.isCancelled else { return }
+
+                await MainActor.run {
+                    switch result {
+                    case .success(let buildResult):
+                        let previousTime = c.player?.currentTime() ?? .zero
+                        let player: AVPlayer
+                        if let existing = c.player {
+                            player = existing
+                            player.replaceCurrentItem(with: buildResult.playerItem)
+                        } else {
+                            player = AVPlayer(playerItem: buildResult.playerItem)
+                            c.player = player
+                        }
+
+                        nsView.player = player
+                        c.compositionID = newID
+                        c.clipStartTimes = buildResult.clipStartTimes
+                        c.lastSeekIndex = nil
+
+                        // Remove previous observers
+                        if let token = c.timeObserverToken {
+                            player.removeTimeObserver(token)
+                            c.timeObserverToken = nil
+                        }
+                        if let token = c.endObserverToken {
+                            NotificationCenter.default.removeObserver(token)
+                            c.endObserverToken = nil
+                        }
+
+                        // Setup observers based on style
+                        switch style {
+                        case .montage:
+                            setupMontageObservers(player: player, item: buildResult.playerItem, coordinator: c)
+                        case .sequence:
+                            setupSequenceObservers(player: player, item: buildResult.playerItem, coordinator: c)
+                        }
+
+                        player.seek(to: previousTime)
+                        player.playImmediately(atRate: playRate)
+
+                    case .failure(let error):
+                        error.log(context: "DreamView")
+                        Self.tearDown(coordinator: c, view: nsView)
+                        if currentSourceTime != nil {
+                            currentSourceTime = nil
+                        }
+                    }
+                }
             }
-            
-            let previousTime = c.player?.currentTime() ?? .zero
-            let player: AVPlayer
-            if let existing = c.player {
-                player = existing
-                player.replaceCurrentItem(with: build.item)
-            } else {
-                player = AVPlayer(playerItem: build.item)
-                c.player = player
-            }
-            
-            nsView.player = player
-            c.compositionID = newID
-            c.clipStartTimes = build.clipStartTimes
-            c.lastSeekIndex = nil
-            
-            // Remove previous observers
-            if let token = c.timeObserverToken {
-                player.removeTimeObserver(token)
-                c.timeObserverToken = nil
-            }
-            if let token = c.endObserverToken {
-                NotificationCenter.default.removeObserver(token)
-                c.endObserverToken = nil
-            }
-            
-            // Setup observers based on style
-            switch style {
-            case .montage:
-                setupMontageObservers(player: player, item: build.item, coordinator: c)
-            case .sequence:
-                setupSequenceObservers(player: player, item: build.item, coordinator: c)
-            }
-            
-            player.seek(to: previousTime)
-            player.playImmediately(atRate: playRate)
         } else {
-            c.player?.playImmediately(atRate: playRate)
-        }
-        
-        // In sequence style, seek to current source when selection changes
-        if style == .sequence,
-           currentSourceIndex != c.lastSeekIndex,
-           currentSourceIndex < c.clipStartTimes.count {
-            let seekTime = c.clipStartTimes[currentSourceIndex]
-            c.player?.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero)
-            c.lastSeekIndex = currentSourceIndex
+            // In sequence style, seek to current source when selection changes
+            if style == .sequence,
+               currentSourceIndex != c.lastSeekIndex,
+               currentSourceIndex < c.clipStartTimes.count {
+                let seekTime = c.clipStartTimes[currentSourceIndex]
+                c.player?.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
+                    if finished {
+                        // Only start playing after seek completes
+                        c.player?.playImmediately(atRate: self.playRate)
+                    }
+                }
+                c.lastSeekIndex = currentSourceIndex
+            } else {
+                // No seek needed, just play
+                c.player?.playImmediately(atRate: playRate)
+            }
         }
     }
     
@@ -347,8 +387,8 @@ struct DreamView: NSViewRepresentable {
             forInterval: interval,
             queue: .main
         ) { time in
-            // Update binding on next runloop to avoid mutating during view update
-            DispatchQueue.main.async {
+            // Only update if the time actually changed to avoid triggering unnecessary publishes
+            if self.currentSourceTime != time {
                 self.currentSourceTime = time
             }
         }

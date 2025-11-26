@@ -14,7 +14,6 @@ struct DivineCard: Identifiable {
     var isRevealed: Bool
     var isPlaying: Bool
     var isFlipped: Bool
-    var rotationQuarterTurns: Int
     var offset: CGSize
     var dragOffset: CGSize
     var lastSnapshotTime: CMTime?
@@ -26,7 +25,6 @@ struct DivineCard: Identifiable {
         isRevealed: Bool = false,
         isPlaying: Bool = false,
         isFlipped: Bool = false,
-        rotationQuarterTurns: Int = 0,
         offset: CGSize = .zero,
         dragOffset: CGSize = .zero,
         lastSnapshotTime: CMTime? = nil
@@ -37,7 +35,6 @@ struct DivineCard: Identifiable {
         self.isRevealed = isRevealed
         self.isPlaying = isPlaying
         self.isFlipped = isFlipped
-        self.rotationQuarterTurns = rotationQuarterTurns
         self.offset = offset
         self.dragOffset = dragOffset
         self.lastSnapshotTime = lastSnapshotTime
