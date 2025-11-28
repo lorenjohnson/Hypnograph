@@ -92,6 +92,41 @@ final class DreamMode: HypnographMode {
         style = (style == .montage) ? .sequence : .montage
     }
 
+    // MARK: - Source Navigation (with flash solo in montage mode)
+
+    private var flashSoloTimer: Timer?
+
+    func nextSource() {
+        state.nextSource()
+        triggerFlashSoloIfNeeded()
+    }
+
+    func previousSource() {
+        state.previousSource()
+        triggerFlashSoloIfNeeded()
+    }
+
+    func selectSource(index: Int) {
+        state.selectSource(index)
+        triggerFlashSoloIfNeeded()
+    }
+
+    private func triggerFlashSoloIfNeeded() {
+        // Only flash solo in montage mode and if setting is enabled
+        guard style == .montage else { return }
+
+        // Cancel any existing timer
+        flashSoloTimer?.invalidate()
+
+        // Set flash solo to current source
+        state.renderHooks.setFlashSolo(state.currentSourceIndex)
+
+        // Clear after delay
+        flashSoloTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
+            self?.state.renderHooks.setFlashSolo(nil)
+        }
+    }
+
     // MARK: - HUD
 
     func hudItems(
@@ -352,20 +387,32 @@ final class DreamMode: HypnographMode {
         blendModes[idx] = newMode
     }
 
+    // MARK: - Effects
+
+    /// Clear all effects AND reset blend modes to Screen (default)
+    func clearAllEffects() {
+        state.noteUserInteraction()
+        state.renderHooks.setGlobalEffect(nil)
+        for i in 0..<state.activeSourceCount {
+            state.renderHooks.setSourceEffect(nil, for: i)
+        }
+        // Also reset blend modes to Screen
+        state.renderHooks.clearAllBlendModes()
+        blendModes.removeAll()
+    }
+
     // MARK: - Sequence helpers
 
     private func newRandomSequence() {
         state.resetForNextHypnogram()
-
         let desiredCount = min(initialSequenceSourceCount, maxSequenceSources)
         for _ in 0..<desiredCount {
-            _ = state.addSource(length: Double.random(in: 2.0...15.0))
+            let length = Double.random(in: 2.0...15.0)
+            if let clip = state.library.randomClip(clipLength: length) {
+                state.addSource(HypnogramSource(clip: clip))
+            }
         }
-
-        let active = state.activeSourceCount
-        let clampedIndex = max(0, min(active - 1, state.currentSourceIndex))
-        state.selectSource(clampedIndex)
-
+        state.currentSourceIndex = 0
         print("DreamMode[sequence]: generated sequence with \(state.sources.count) sources, total duration: \(sequenceTotalDuration().seconds)s")
     }
 }

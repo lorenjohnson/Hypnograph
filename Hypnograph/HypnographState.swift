@@ -263,9 +263,10 @@ final class HypnographState: ObservableObject {
         let minCount = min(2, total)
         let count = Int.random(in: minCount...total)
         for _ in 0..<max(1, count) {
-            _ = addSource()
+            if let clip = library.randomClip(clipLength: settings.outputDuration.seconds) {
+                addSource(HypnogramSource(clip: clip))
+            }
         }
-        currentSourceIndex = max(0, sources.count - 1)
     }
 
     /// Reset the watch timer when user interacts with the app
