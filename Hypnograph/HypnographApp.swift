@@ -35,6 +35,7 @@ extension NSWindow {
 final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     weak var renderQueue: RenderQueue?
     weak var mainWindow: NSWindow?
+    var gameControllerManager: GameControllerManager?
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let queue = renderQueue else {
@@ -150,6 +151,14 @@ struct HypnographApp: App {
                 }
 
                 appDelegate.renderQueue = renderQueue
+
+                // Initialize game controller support
+                appDelegate.gameControllerManager = GameControllerManager(
+                    state: state,
+                    dreamMode: dreamMode,
+                    divineMode: divineMode,
+                    cycleMode: cycleMode
+                )
             }
         }
         .commands {
