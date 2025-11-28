@@ -88,6 +88,13 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
         var composited: CIImage?
 
         for (index, trackID) in instruction.layerTrackIDs.enumerated() {
+            // Check flash solo - skip layers that shouldn't be rendered
+            if instruction.enableEffects,
+               let manager = GlobalRenderHooks.manager,
+               !manager.shouldRenderSource(at: instruction.sourceIndices[index]) {
+                continue
+            }
+
             var layerImage: CIImage?
 
             // Check if this layer is a still image

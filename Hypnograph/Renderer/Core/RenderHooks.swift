@@ -211,6 +211,10 @@ final class RenderHookManager {
     /// Source 0 is always kBlendModeSourceOver, others default to kBlendModeDefaultMontage
     private var blendModes: [Int: String] = [:]
 
+    /// Flash solo: when set, only this source index is rendered (others hidden)
+    /// Used for brief visual feedback when switching layers in montage mode
+    private(set) var flashSoloIndex: Int?
+
     /// Callback invoked whenever effects or blend modes change (for triggering re-render when paused)
     var onEffectChanged: (() -> Void)?
 
@@ -329,6 +333,28 @@ final class RenderHookManager {
         let nextIndex = (currentIndex + 1) % modes.count
         blendModes[sourceIndex] = modes[nextIndex]
         onEffectChanged?()
+    }
+
+    /// Reset all blend modes to Screen (default for montage)
+    func clearAllBlendModes() {
+        blendModes.removeAll()
+        onEffectChanged?()
+    }
+
+    // MARK: - Flash Solo
+
+    /// Set flash solo to show only the specified source index
+    func setFlashSolo(_ sourceIndex: Int?) {
+        flashSoloIndex = sourceIndex
+        onEffectChanged?()
+    }
+
+    /// Check if a given source should be visible (respects flash solo)
+    func shouldRenderSource(at sourceIndex: Int) -> Bool {
+        guard let soloIndex = flashSoloIndex else {
+            return true  // No flash solo active, render all
+        }
+        return sourceIndex == soloIndex
     }
 }
 

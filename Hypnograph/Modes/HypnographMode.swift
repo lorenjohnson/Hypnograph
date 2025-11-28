@@ -117,7 +117,7 @@ protocol HypnographMode: ObservableObject {
 extension HypnographMode {
     var soloIndicatorText: String? {
         if !state.sources.isEmpty {
-            return "\(state.currentSourceIndex + 1)"
+            return "\(state.currentSourceIndex + 1)/\(state.sources.count)"
         } else {
             return nil
         }

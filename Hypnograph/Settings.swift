@@ -247,4 +247,3 @@ enum SettingsLoader {
         return try JSONDecoder().decode(Settings.self, from: data)
     }
 }
-
