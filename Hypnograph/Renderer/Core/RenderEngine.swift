@@ -9,6 +9,7 @@
 import Foundation
 import AVFoundation
 import CoreGraphics
+import CoreImage
 
 /// Unified render engine for preview and export
 final class RenderEngine {
@@ -38,6 +39,8 @@ final class RenderEngine {
     struct PlayerItemResult {
         let playerItem: AVPlayerItem
         let clipStartTimes: [CMTime]
+        /// Still images for each source index (for sequence mode override when seeking to still images)
+        let stillImagesBySourceIndex: [Int: CIImage]
     }
 
     /// Build a player item for preview
@@ -70,9 +73,21 @@ final class RenderEngine {
         let playerItem = AVPlayerItem(asset: build.composition)
         playerItem.videoComposition = build.videoComposition
 
+        // Extract still images by source index from instructions (for sequence mode)
+        var stillImagesBySourceIndex: [Int: CIImage] = [:]
+        for instruction in build.instructions {
+            for (layerIndex, sourceIndex) in instruction.sourceIndices.enumerated() {
+                if layerIndex < instruction.stillImages.count,
+                   let stillImage = instruction.stillImages[layerIndex] {
+                    stillImagesBySourceIndex[sourceIndex] = stillImage
+                }
+            }
+        }
+
         let result = PlayerItemResult(
             playerItem: playerItem,
-            clipStartTimes: build.clipStartTimes
+            clipStartTimes: build.clipStartTimes,
+            stillImagesBySourceIndex: stillImagesBySourceIndex
         )
 
         return .success(result)
