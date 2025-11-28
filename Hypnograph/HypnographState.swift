@@ -263,9 +263,7 @@ final class HypnographState: ObservableObject {
         let minCount = min(2, total)
         let count = Int.random(in: minCount...total)
         for _ in 0..<max(1, count) {
-            if let clip = library.randomClip(clipLength: settings.outputDuration.seconds) {
-                addSource(HypnogramSource(clip: clip))
-            }
+            addSource()
         }
     }
 

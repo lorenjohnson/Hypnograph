@@ -408,9 +408,7 @@ final class DreamMode: HypnographMode {
         let desiredCount = min(initialSequenceSourceCount, maxSequenceSources)
         for _ in 0..<desiredCount {
             let length = Double.random(in: 2.0...15.0)
-            if let clip = state.library.randomClip(clipLength: length) {
-                state.addSource(HypnogramSource(clip: clip))
-            }
+            state.addSource(length: length)
         }
         state.currentSourceIndex = 0
         print("DreamMode[sequence]: generated sequence with \(state.sources.count) sources, total duration: \(sequenceTotalDuration().seconds)s")
