@@ -187,24 +187,45 @@ final class DreamMode: HypnographMode {
 
         let recipe = makeDisplayRecipe(state: state)
 
-        return AnyView(
-            DreamView(
-                recipe: recipe,
-                style: style,
-                outputSize: state.settings.outputSize,
-                currentSourceIndex: Binding(
-                    get: { state.currentSourceIndex },
-                    set: { state.currentSourceIndex = $0 }
-                ),
-                currentSourceTime: Binding(
-                    get: { state.currentClipTimeOffset },
-                    set: { state.currentClipTimeOffset = $0 }
-                ),
-                isPaused: state.isPaused,
-                effectsChangeCounter: state.effectsChangeCounter
+        switch style {
+        case .montage:
+            // Montage uses the original DreamView with AVComposition
+            return AnyView(
+                DreamView(
+                    recipe: recipe,
+                    style: style,
+                    outputSize: state.settings.outputSize,
+                    currentSourceIndex: Binding(
+                        get: { state.currentSourceIndex },
+                        set: { state.currentSourceIndex = $0 }
+                    ),
+                    currentSourceTime: Binding(
+                        get: { state.currentClipTimeOffset },
+                        set: { state.currentClipTimeOffset = $0 }
+                    ),
+                    isPaused: state.isPaused,
+                    effectsChangeCounter: state.effectsChangeCounter
+                )
+                .id("dream-montage")
             )
-            .id("dream-\(style.rawValue)")
-        )
+
+        case .sequence:
+            // Sequence uses the new SequencePlayerView with independent source handling
+            return AnyView(
+                SequencePlayerView(
+                    recipe: recipe,
+                    outputSize: state.settings.outputSize,
+                    currentSourceIndex: Binding(
+                        get: { state.currentSourceIndex },
+                        set: { state.currentSourceIndex = $0 }
+                    ),
+                    isPaused: state.isPaused,
+                    effectsChangeCounter: state.effectsChangeCounter,
+                    playRate: 0.8
+                )
+                .id("dream-sequence-\(state.sources.count)")
+            )
+        }
     }
 
     private func makeDisplayRecipe(state: HypnographState) -> HypnogramRecipe {

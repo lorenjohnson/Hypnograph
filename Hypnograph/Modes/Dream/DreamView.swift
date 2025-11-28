@@ -4,24 +4,23 @@ import AVFoundation
 import CoreMedia
 import CoreGraphics
 
-/// Unified display view for Dream mode, supporting both montage and sequence styles.
-///
-/// - **Montage style**: All sources composited together, looping at targetDuration
-/// - **Sequence style**: All sources concatenated in timeline, seek to current source
+/// Display view for Dream mode montage style.
+/// All sources are composited together, looping at targetDuration.
+/// Note: Sequence mode now uses SequencePlayerView instead.
 struct DreamView: NSViewRepresentable {
     /// The recipe containing all sources and target duration
     let recipe: HypnogramRecipe
-    
-    /// Display style: montage (layered) or sequence (timeline)
+
+    /// Display style (kept for compatibility, but this view is only used for montage)
     let style: DreamStyle
-    
+
     /// Preview render size
     let outputSize: CGSize
 
-    /// Current source index (used for seeking in sequence style, auto-updated during playback)
+    /// Current source index (for flash solo in montage mode)
     @Binding var currentSourceIndex: Int
 
-    /// Binding to track current playback time (montage style only)
+    /// Binding to track current playback time
     @Binding var currentSourceTime: CMTime?
 
     /// Whether playback is paused
@@ -31,18 +30,15 @@ struct DreamView: NSViewRepresentable {
     let effectsChangeCounter: Int
 
     let playRate: Float = 0.8
-    
+
     class Coordinator {
         var player: AVPlayer?
         var timeObserverToken: Any?
         var endObserverToken: Any?
         var compositionID: String?
-        var clipStartTimes: [CMTime] = []
         var currentTask: Task<Void, Never>?
         var lastPauseState: Bool?  // Track pause state to avoid redundant play/pause calls
         var lastEffectsCounter: Int?  // Track effects changes to force re-render when paused
-        var lastObservedIndex: Int = 0  // Last index observed from playback (for auto-update)
-        var lastRequestedIndex: Int = 0  // Last index requested by user (for manual seek)
     }
     
     func makeCoordinator() -> Coordinator {
@@ -77,9 +73,8 @@ struct DreamView: NSViewRepresentable {
             // Build player item asynchronously using RenderEngine
             c.currentTask = Task {
                 let engine = RenderEngine()
-                let strategy: CompositionBuilder.TimelineStrategy = (style == .montage)
-                    ? .montage(targetDuration: recipe.targetDuration)
-                    : .sequence
+                // DreamView is now only used for montage mode
+                let strategy: CompositionBuilder.TimelineStrategy = .montage(targetDuration: recipe.targetDuration)
 
                 let config = RenderEngine.Config(
                     outputSize: outputSize,
@@ -110,11 +105,8 @@ struct DreamView: NSViewRepresentable {
 
                         nsView.player = player
                         c.compositionID = newID
-                        c.clipStartTimes = buildResult.clipStartTimes
                         c.lastPauseState = nil  // Reset pause state tracking
                         c.lastEffectsCounter = effectsChangeCounter  // Track current effects state
-                        c.lastObservedIndex = 0
-                        c.lastRequestedIndex = currentSourceIndex
 
                         // Sync blend modes from recipe to manager for dynamic rendering
                         // Use silent=true to avoid triggering re-render during initialization
@@ -135,23 +127,11 @@ struct DreamView: NSViewRepresentable {
                             c.endObserverToken = nil
                         }
 
-                        // Setup observers based on style
-                        switch style {
-                        case .montage:
-                            setupMontageObservers(player: player, item: buildResult.playerItem, coordinator: c)
-                        case .sequence:
-                            setupSequenceObservers(player: player, item: buildResult.playerItem, coordinator: c)
-                        }
+                        // Setup montage observers
+                        setupMontageObservers(player: player, item: buildResult.playerItem, coordinator: c)
 
-                        // For sequence mode, seek to the current source
-                        if style == .sequence, currentSourceIndex < buildResult.clipStartTimes.count {
-                            let seekTime = buildResult.clipStartTimes[currentSourceIndex]
-                            player.seek(to: seekTime)
-                            c.lastRequestedIndex = currentSourceIndex
-                            c.lastObservedIndex = currentSourceIndex
-                        } else {
-                            player.seek(to: previousTime)
-                        }
+                        // Seek to previous time
+                        player.seek(to: previousTime)
 
                         // Respect pause state
                         if isPaused {
@@ -164,12 +144,9 @@ struct DreamView: NSViewRepresentable {
                     case .failure(let error):
                         error.log(context: "DreamView")
                         // Don't tear down completely - keep existing player if available
-                        // This allows recovery without full restart
                         if c.player == nil {
-                            // No player exists, create a black placeholder
-                            print("⚠️  DreamView: No player available after build failure, creating placeholder")
+                            print("⚠️  DreamView: No player available after build failure")
                         } else {
-                            // Keep existing player running - user can try again
                             print("⚠️  DreamView: Build failed but keeping existing player")
                         }
                         if currentSourceTime != nil {
@@ -194,36 +171,15 @@ struct DreamView: NSViewRepresentable {
                 c.lastEffectsCounter = effectsChangeCounter
 
                 // If paused, seek to force frame re-render
-                // We need to seek to a slightly different time, then back, to force AVFoundation
-                // to actually request a new frame (seeking to the same time is a no-op)
                 if isPaused, let player = c.player {
                     let currentTime = player.currentTime()
-                    let nudgeAmount = CMTime(value: 1, timescale: 600) // ~0.0017 seconds
+                    let nudgeAmount = CMTime(value: 1, timescale: 600)
                     let nudgedTime = CMTimeAdd(currentTime, nudgeAmount)
 
-                    // Seek forward slightly, then back to original time
                     player.seek(to: nudgedTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak player] _ in
                         player?.seek(to: currentTime, toleranceBefore: .zero, toleranceAfter: .zero)
                     }
                 }
-            }
-
-            // In sequence style, seek when user manually changes source
-            // User navigation always seeks, even during playback
-            if style == .sequence,
-               currentSourceIndex != c.lastRequestedIndex,
-               currentSourceIndex < c.clipStartTimes.count {
-                let seekTime = c.clipStartTimes[currentSourceIndex]
-                c.player?.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero) { [self] finished in
-                    if finished {
-                        // Continue playing at current rate (respects pause state)
-                        if !self.isPaused {
-                            c.player?.playImmediately(atRate: self.playRate)
-                        }
-                    }
-                }
-                c.lastRequestedIndex = currentSourceIndex
-                c.lastObservedIndex = currentSourceIndex
             }
         }
     }
@@ -292,61 +248,6 @@ struct DreamView: NSViewRepresentable {
         }
     }
 
-    private func setupSequenceObservers(
-        player: AVPlayer,
-        item: AVPlayerItem,
-        coordinator c: Coordinator
-    ) {
-        // Track playback time to update currentSourceIndex as clips play
-        let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
-        c.timeObserverToken = player.addPeriodicTimeObserver(
-            forInterval: interval,
-            queue: .main
-        ) { [weak c] time in
-            guard let c = c, !c.clipStartTimes.isEmpty else { return }
-
-            // Find which clip is currently playing based on time
-            var playingIndex = 0
-            for (index, startTime) in c.clipStartTimes.enumerated() {
-                if time >= startTime {
-                    playingIndex = index
-                } else {
-                    break
-                }
-            }
-
-            // Update observed index if it changed
-            if c.lastObservedIndex != playingIndex {
-                c.lastObservedIndex = playingIndex
-
-                // Only update currentSourceIndex if user hasn't manually navigated elsewhere
-                // This allows the HUD to track playback automatically, but manual navigation takes precedence
-                if self.currentSourceIndex == c.lastRequestedIndex {
-                    self.currentSourceIndex = playingIndex
-                    c.lastRequestedIndex = playingIndex
-                }
-            }
-        }
-
-        // Loop sequence mode at end - respect pause state
-        c.endObserverToken = NotificationCenter.default.addObserver(
-            forName: .AVPlayerItemDidPlayToEndTime,
-            object: item,
-            queue: .main
-        ) { [weak player, weak c] _ in
-            guard let p = player, let c = c else { return }
-            p.seek(to: .zero)
-            // Reset to first clip when looping
-            c.lastObservedIndex = 0
-            c.lastRequestedIndex = 0
-            self.currentSourceIndex = 0
-            // Only play if not paused
-            if c.lastPauseState != true {
-                p.playImmediately(atRate: 0.8)
-            }
-        }
-    }
-
     // MARK: - Teardown
 
     private static func tearDown(coordinator c: Coordinator, view: AVPlayerView) {
@@ -363,9 +264,6 @@ struct DreamView: NSViewRepresentable {
         c.player?.pause()
         c.player = nil
         c.compositionID = nil
-        c.clipStartTimes = []
-        c.lastObservedIndex = 0
-        c.lastRequestedIndex = 0
         view.player = nil
     }
 }
