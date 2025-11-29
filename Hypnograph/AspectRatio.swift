@@ -32,6 +32,22 @@ struct AspectRatio: Codable, Equatable, CustomStringConvertible {
     static let presets: [AspectRatio] = [
         .ratio16x9, .ratio4x3, .ratio21x9, .ratio1x1, .ratio9x16, .ratio235, .ratio185
     ]
+
+    /// Presets shown in the menu (subset of all presets, most common use cases)
+    static let menuPresets: [AspectRatio] = [
+        .ratio16x9, .ratio9x16, .ratio4x3, .ratio1x1
+    ]
+
+    /// Label for menu display with orientation hint
+    var menuLabel: String {
+        switch displayString {
+        case "16:9": return "16:9 (Landscape)"
+        case "9:16": return "9:16 (Portrait)"
+        case "4:3": return "4:3"
+        case "1:1": return "1:1 (Square)"
+        default: return displayString
+        }
+    }
     
     // MARK: - Initialization
     

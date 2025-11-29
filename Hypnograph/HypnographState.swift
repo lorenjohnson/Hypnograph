@@ -57,6 +57,12 @@ final class HypnographState: ObservableObject {
     /// Incremented whenever effects change - used to trigger re-render when paused
     @Published var effectsChangeCounter: Int = 0
 
+    /// Current aspect ratio for composition
+    @Published var aspectRatio: AspectRatio
+
+    /// Current max output dimension (720, 1080, 2160)
+    @Published var maxOutputDimension: Int
+
     // Render hooks
     let renderHooks = RenderHookManager()
     var baseRenderParams = RenderParams()
@@ -102,6 +108,10 @@ final class HypnographState: ObservableObject {
         )
         self.currentSourceIndex = 0
         self.currentClipTimeOffset = nil
+
+        // Initialize aspect ratio and resolution from settings
+        self.aspectRatio = settings.aspectRatio
+        self.maxOutputDimension = settings.maxOutputDimension
 
         // Always start with a full random hypnogram
         newRandomHypnogram()
@@ -401,17 +411,7 @@ final class HypnographState: ObservableObject {
         }
 
         settings.activeLibrariesPerMode = librariesDict
-
-        // Save to disk
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(settings)
-            try data.write(to: Environment.defaultSettingsURL)
-            print("✅ Saved per-mode library settings to \(Environment.defaultSettingsURL.path)")
-        } catch {
-            print("⚠️ Failed to save per-mode library settings: \(error)")
-        }
+        saveSettingsToDisk()
     }
 
     /// Reload settings from disk and reapply basic configuration.
@@ -419,6 +419,10 @@ final class HypnographState: ObservableObject {
         do {
             let newSettings = try SettingsLoader.load(from: url)
             self.settings = newSettings
+
+            // Sync aspect ratio and max dimension
+            self.aspectRatio = newSettings.aspectRatio
+            self.maxOutputDimension = newSettings.maxOutputDimension
 
             applyActiveLibraries(activeLibraryKeys, saveToModule: false)
 
@@ -430,6 +434,35 @@ final class HypnographState: ObservableObject {
             }
         } catch {
             print("⚠️ Failed to reload settings from \(url.path): \(error)")
+        }
+    }
+
+    // MARK: - Aspect Ratio & Resolution
+
+    /// Set the aspect ratio and save to settings
+    func setAspectRatio(_ ratio: AspectRatio) {
+        aspectRatio = ratio
+        settings.aspectRatio = ratio
+        saveSettingsToDisk()
+    }
+
+    /// Set the max output dimension and save to settings
+    func setMaxOutputDimension(_ dimension: Int) {
+        maxOutputDimension = dimension
+        settings.maxOutputDimension = dimension
+        saveSettingsToDisk()
+    }
+
+    /// Save settings to disk
+    private func saveSettingsToDisk() {
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(settings)
+            try data.write(to: Environment.defaultSettingsURL)
+            print("✅ Saved settings to \(Environment.defaultSettingsURL.path)")
+        } catch {
+            print("⚠️ Failed to save settings: \(error)")
         }
     }
 }
