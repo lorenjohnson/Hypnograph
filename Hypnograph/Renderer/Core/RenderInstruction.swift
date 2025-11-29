@@ -23,18 +23,15 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
     let passthroughTrackID: CMPersistentTrackID = kCMPersistentTrackID_Invalid
     
     // MARK: - Custom Properties
-    
+
     /// Track IDs for each layer (bottom to top)
     let layerTrackIDs: [CMPersistentTrackID]
-    
+
     /// Blend mode for each layer (CIBlendMode constant names)
     let blendModes: [String]
-    
-    /// Transform for each layer (includes orientation from media metadata)
-    let transforms: [CGAffineTransform]
 
-    /// User-applied rotation in degrees (0, 90, 180, 270) for each layer
-    let rotations: [Int]
+    /// Combined transform for each layer (metadata orientation + user transform)
+    let transforms: [CGAffineTransform]
 
     /// Map each layer to a source index in the recipe (for effects)
     let sourceIndices: [Int]
@@ -52,16 +49,14 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
         layerTrackIDs: [CMPersistentTrackID],
         blendModes: [String],
         transforms: [CGAffineTransform],
-        rotations: [Int] = [],
         sourceIndices: [Int],
-        enableEffects: Bool = false,  // disabled in skeleton
+        enableEffects: Bool = false,
         stillImages: [CIImage?] = []
     ) {
         self.timeRange = timeRange
         self.layerTrackIDs = layerTrackIDs
         self.blendModes = blendModes
         self.transforms = transforms
-        self.rotations = rotations.isEmpty ? Array(repeating: 0, count: layerTrackIDs.count) : rotations
         self.sourceIndices = sourceIndices
         self.enableEffects = enableEffects
         self.stillImages = stillImages

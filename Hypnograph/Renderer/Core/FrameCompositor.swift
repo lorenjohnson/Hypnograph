@@ -122,37 +122,18 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
                 continue
             }
 
-            // Apply transform (orientation correction from media metadata)
+            // Apply combined transform (metadata orientation + user transform)
             let transform = instruction.transforms[index]
             img = img.transformed(by: transform)
 
-            // Apply user rotation around the image center
-            let rotationDegrees = instruction.rotations[index]
-            if rotationDegrees != 0 {
-                let radians = CGFloat(rotationDegrees) * .pi / 180.0
-                let extent = img.extent
-                guard extent.width > 0, extent.height > 0,
-                      extent.origin.x.isFinite, extent.origin.y.isFinite else {
-                    print("⚠️ Skipping rotation for layer \(index): invalid extent \(extent)")
-                    continue
-                }
-                // Rotate around the center of the extent
-                let centerX = extent.midX
-                let centerY = extent.midY
-                let rotateAroundCenter = CGAffineTransform(translationX: -centerX, y: -centerY)
-                    .rotated(by: radians)
-                    .translatedBy(x: centerX, y: centerY)
-                img = img.transformed(by: rotateAroundCenter)
-
-                // After rotation, the extent may have moved - translate back to origin
-                // This ensures aspectFill will work correctly
-                let rotatedExtent = img.extent
-                if rotatedExtent.origin != .zero {
-                    img = img.transformed(by: CGAffineTransform(
-                        translationX: -rotatedExtent.origin.x,
-                        y: -rotatedExtent.origin.y
-                    ))
-                }
+            // After transform, the extent may have moved - translate back to origin
+            // This ensures aspectFill will work correctly
+            let transformedExtent = img.extent
+            if transformedExtent.origin != .zero {
+                img = img.transformed(by: CGAffineTransform(
+                    translationX: -transformedExtent.origin.x,
+                    y: -transformedExtent.origin.y
+                ))
             }
 
             // Aspect-fill to output size

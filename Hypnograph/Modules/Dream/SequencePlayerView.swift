@@ -192,6 +192,7 @@ struct SequencePlayerView: NSViewRepresentable {
                 image: ciImage,
                 sourceIndex: index,
                 outputSize: outputSize,
+                transform: source.transform,
                 enableEffects: true
             )
 
@@ -258,7 +259,9 @@ struct SequencePlayerView: NSViewRepresentable {
             guard !Task.isCancelled else { return }
 
             await MainActor.run {
-                let transform = preferredTransform ?? .identity
+                // Compose metadata transform with user transform
+                let metadataTransform = preferredTransform ?? .identity
+                let composedTransform = metadataTransform.concatenating(source.transform)
 
                 // Create composition for single clip
                 let composition = AVMutableComposition()
@@ -305,7 +308,7 @@ struct SequencePlayerView: NSViewRepresentable {
                     timeRange: CMTimeRange(start: .zero, duration: source.clip.duration),
                     layerTrackIDs: [compVideoTrack.trackID],
                     blendModes: [kBlendModeSourceOver],
-                    transforms: [transform],
+                    transforms: [composedTransform],
                     sourceIndices: [index],
                     enableEffects: true,
                     stillImages: [nil]
@@ -434,8 +437,12 @@ struct SequencePlayerView: NSViewRepresentable {
 
     /// Generate a simple identity string to detect recipe changes
     private func recipeIdentity(for recipe: HypnogramRecipe) -> String {
-        let urls = recipe.sources.map { $0.clip.file.url.lastPathComponent }
-        return "\(recipe.sources.count)|\(urls.joined(separator: ","))"
+        let pairs = recipe.sources.map { source in
+            let t = source.transform
+            let transformStr = "\(t.a),\(t.b),\(t.c),\(t.d),\(t.tx),\(t.ty)"
+            return "\(source.clip.file.url.lastPathComponent)|\(transformStr)"
+        }
+        return "\(recipe.sources.count)|\(pairs.joined(separator: ","))"
     }
 }
 
