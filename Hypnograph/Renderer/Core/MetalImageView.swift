@@ -175,7 +175,7 @@ extension MetalImageView: MTKViewDelegate {
         }
 
         // Compute content size from drawable and aspect ratio
-        let contentSize = targetAspectRatio.size(fitting: drawableSize)
+        let contentSize = renderSize(aspectRatio: targetAspectRatio, fitting: drawableSize)
 
         // Update config with content size and time
         var updatedConfig = ProcessingConfig(

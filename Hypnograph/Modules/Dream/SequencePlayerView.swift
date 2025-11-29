@@ -303,10 +303,10 @@ struct SequencePlayerView: NSViewRepresentable {
 
                 // Create video composition with our compositor
                 // Use reference size for aspect ratio - AVPlayerView handles fitting to view
-                let renderSize = aspectRatio.size(maxDimension: 1080)
+                let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: 1080)
 
                 let videoComposition = AVMutableVideoComposition()
-                videoComposition.renderSize = renderSize
+                videoComposition.renderSize = outputSize
                 videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
                 videoComposition.customVideoCompositorClass = FrameCompositor.self
 
