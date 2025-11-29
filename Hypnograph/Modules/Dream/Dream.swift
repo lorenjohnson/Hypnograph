@@ -46,7 +46,7 @@ final class Dream: ObservableObject {
         self.renderQueue = renderQueue
 
         // Compute output size for disk rendering
-        let outputSize = state.settings.aspectRatio.size(maxDimension: state.settings.maxOutputDimension)
+        let outputSize = renderSize(aspectRatio: state.settings.aspectRatio, maxDimension: state.settings.maxOutputDimension)
 
         self.montageRenderer = HypnogramRenderer(
             outputURL: state.settings.outputURL,

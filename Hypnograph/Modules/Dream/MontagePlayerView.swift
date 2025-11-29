@@ -56,7 +56,7 @@ struct MontagePlayerView: NSViewRepresentable {
         }
 
         // Use reference size for aspect ratio - AVPlayerView handles fitting to view
-        let renderSize = aspectRatio.size(maxDimension: 1080)
+        let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: 1080)
 
         let newID = compositionIdentity(for: recipe)
 
@@ -68,7 +68,7 @@ struct MontagePlayerView: NSViewRepresentable {
                 let engine = RenderEngine()
                 let strategy: CompositionBuilder.TimelineStrategy = .montage(targetDuration: recipe.targetDuration)
                 let config = RenderEngine.Config(
-                    outputSize: renderSize,
+                    outputSize: outputSize,
                     frameRate: 30,
                     enableGlobalHooks: true
                 )

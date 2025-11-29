@@ -64,26 +64,6 @@ struct AspectRatio: Codable, Equatable, CustomStringConvertible {
         return nil
     }
     
-    // MARK: - Size Calculation
-    
-    /// Calculate output size for this aspect ratio to fit within a container.
-    /// The result will be the largest size with this aspect ratio that fits in the container.
-    func size(fitting containerSize: CGSize) -> CGSize {
-        let containerAspect = containerSize.width / containerSize.height
-
-        if value > containerAspect {
-            // Wider than container - fit to width, letterbox top/bottom
-            let width = containerSize.width
-            let height = width / value
-            return CGSize(width: width, height: height)
-        } else {
-            // Taller than container - fit to height, pillarbox left/right
-            let height = containerSize.height
-            let width = height * value
-            return CGSize(width: width, height: height)
-        }
-    }
-    
     // MARK: - Codable
     
     init(from decoder: Decoder) throws {
@@ -109,24 +89,4 @@ struct AspectRatio: Codable, Equatable, CustomStringConvertible {
     // MARK: - CustomStringConvertible
 
     var description: String { displayString }
-
-    // MARK: - Size Calculation
-
-    /// Calculate output size for this aspect ratio constrained by maxDimension.
-    /// maxDimension constrains height for landscape, width for portrait.
-    func size(maxDimension: Int) -> CGSize {
-        let maxDim = CGFloat(maxDimension)
-
-        if value >= 1.0 {
-            // Landscape or square - height is the constraining dimension
-            let height = maxDim
-            let width = round(height * value)
-            return CGSize(width: width, height: height)
-        } else {
-            // Portrait - width is the constraining dimension
-            let width = maxDim
-            let height = round(width / value)
-            return CGSize(width: width, height: height)
-        }
-    }
 }
