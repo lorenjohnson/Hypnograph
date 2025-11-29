@@ -79,7 +79,7 @@ final class PhotosLibrary {
         }
 
         let results = PHAsset.fetchAssets(with: options)
-        return results.objects(in: 0..<results.count)
+        return results.objects(at: IndexSet(integersIn: 0..<results.count))
     }
 
     /// Fetch image assets from Photos library
@@ -94,7 +94,7 @@ final class PhotosLibrary {
         }
 
         let results = PHAsset.fetchAssets(with: options)
-        return results.objects(in: 0..<results.count)
+        return results.objects(at: IndexSet(integersIn: 0..<results.count))
     }
 
     /// Fetch a specific asset by local identifier
