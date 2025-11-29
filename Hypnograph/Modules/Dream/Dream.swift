@@ -24,8 +24,8 @@ final class Dream: ObservableObject {
 
     @Published var mode: DreamMode = .montage
 
-    private let montageRenderer: UnifiedRenderer
-    private let sequenceRenderer: UnifiedRenderer
+    private let montageRenderer: HypnogramRenderer
+    private let sequenceRenderer: HypnogramRenderer
 
     private let availableBlendModes: [String] = [
         "CIScreenBlendMode",
@@ -45,13 +45,13 @@ final class Dream: ObservableObject {
         self.state = state
         self.renderQueue = renderQueue
 
-        self.montageRenderer = UnifiedRenderer(
+        self.montageRenderer = HypnogramRenderer(
             outputURL: state.settings.outputURL,
             outputSize: state.settings.outputSize,
             strategy: .montage(targetDuration: CMTime(seconds: 30, preferredTimescale: 600))
         )
 
-        self.sequenceRenderer = UnifiedRenderer(
+        self.sequenceRenderer = HypnogramRenderer(
             outputURL: state.settings.outputURL,
             outputSize: state.settings.outputSize,
             strategy: .sequence
@@ -88,8 +88,6 @@ final class Dream: ObservableObject {
 
     func toggleMode() {
         state.noteUserInteraction()
-        // Clear image cache on mode switch to free memory
-        StillImageCache.clear()
         mode = (mode == .montage) ? .sequence : .montage
     }
 
@@ -243,21 +241,16 @@ final class Dream: ObservableObject {
     }
 
     private func makeDisplayRecipe(state: HypnographState) -> HypnogramRecipe {
-        // Both modes use the same recipe structure, just different target durations
-        let targetDuration: CMTime
+        // Use the recipe directly, just adjust target duration based on mode
+        var recipe = state.recipe
         switch mode {
         case .montage:
-            targetDuration = state.settings.outputDuration
+            recipe.targetDuration = state.settings.outputDuration
         case .sequence:
             let total = sequenceTotalDuration()
-            targetDuration = total.seconds > 0 ? total : state.settings.outputDuration
+            recipe.targetDuration = total.seconds > 0 ? total : state.settings.outputDuration
         }
-
-        // Sources already have blend modes attached, just return the recipe
-        return HypnogramRecipe(
-            sources: state.sources,
-            targetDuration: targetDuration
-        )
+        return recipe
     }
 
     // MARK: - Lifecycle
@@ -356,13 +349,13 @@ final class Dream: ObservableObject {
     }
 
     func save() {
-        // Get the renderable recipe (sources already have blend modes attached)
-        guard var renderRecipe = state.sourcesForRender() else {
-            print("Dream[\(mode.rawValue)]: no renderable hypnogram.")
+        guard !state.recipe.sources.isEmpty else {
+            print("Dream[\(mode.rawValue)]: no sources to save.")
             return
         }
 
-        // Set target duration based on mode
+        // Copy recipe and set target duration based on mode
+        var renderRecipe = state.recipe
         switch mode {
         case .montage:
             renderRecipe.targetDuration = state.settings.outputDuration
@@ -413,12 +406,8 @@ final class Dream: ObservableObject {
         let idx = index ?? state.currentSourceIndex
         guard idx > 0, idx < state.sources.count else { return } // bottom layer stays SourceOver
 
-        // Cycle blend mode in the manager (triggers re-render via onEffectChanged callback)
+        // Cycle blend mode - this writes directly to sources via the setter closure
         state.renderHooks.cycleBlendMode(for: idx)
-
-        // Also update the source directly
-        let newMode = state.renderHooks.blendMode(for: idx)
-        state.sources[idx].blendMode = newMode
     }
 
     // MARK: - Transform
@@ -447,7 +436,6 @@ final class Dream: ObservableObject {
                 state.sources[i].blendMode = kBlendModeDefaultMontage
             }
         }
-        state.renderHooks.clearAllBlendModes()
     }
 
     // MARK: - Sequence helpers

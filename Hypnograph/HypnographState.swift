@@ -38,10 +38,10 @@ final class HypnographState: ObservableObject {
         }
     }
 
-    // MARK: - Source list
+    // MARK: - Recipe (single source of truth)
 
-    /// Dense, ordered list of all sources.
-    @Published var sources: [HypnogramSource]
+    /// The current hypnogram recipe - single source of truth for sources, effects, etc.
+    @Published var recipe: HypnogramRecipe
 
     /// Current selection index (auto-updated during sequence playback)
     @Published var currentSourceIndex: Int = 0
@@ -96,7 +96,10 @@ final class HypnographState: ObservableObject {
             allowStillImages: settings.allowStillImages
         )
 
-        self.sources = []
+        self.recipe = HypnogramRecipe(
+            sources: [],
+            targetDuration: settings.outputDuration
+        )
         self.currentSourceIndex = 0
         self.currentClipTimeOffset = nil
 
@@ -111,9 +114,45 @@ final class HypnographState: ObservableObject {
         renderHooks.onEffectChanged = { [weak self] in
             self?.effectsChangeCounter += 1
         }
+
+        // Recipe provider - just returns the recipe directly
+        renderHooks.recipeProvider = { [weak self] in
+            self?.recipe
+        }
+
+        // Recipe effects setter
+        renderHooks.effectsSetter = { [weak self] effects in
+            self?.recipe.effects = effects
+        }
+
+        // Per-source effect setter
+        renderHooks.sourceEffectSetter = { [weak self] sourceIndex, effects in
+            guard let self = self,
+                  sourceIndex >= 0,
+                  sourceIndex < self.recipe.sources.count else { return }
+            self.recipe.sources[sourceIndex].effects = effects
+        }
+
+        // Blend mode setter
+        renderHooks.blendModeSetter = { [weak self] sourceIndex, mode in
+            guard let self = self,
+                  sourceIndex >= 0,
+                  sourceIndex < self.recipe.sources.count else { return }
+            self.recipe.sources[sourceIndex].blendMode = mode
+        }
     }
 
-    // MARK: - Convenience
+    // MARK: - Convenience accessors (delegate to recipe)
+
+    var sources: [HypnogramSource] {
+        get { recipe.sources }
+        set { recipe.sources = newValue }
+    }
+
+    var effects: [RenderHook] {
+        get { recipe.effects }
+        set { recipe.effects = newValue }
+    }
 
     var activeSourceCount: Int { sources.count }
 
@@ -124,16 +163,6 @@ final class HypnographState: ObservableObject {
 
     var currentClip: VideoClip? {
         currentSource?.clip
-    }
-
-    // MARK: - Rendering
-
-    func sourcesForRender() -> HypnogramRecipe? {
-        guard !sources.isEmpty else { return nil }
-        return HypnogramRecipe(
-            sources: sources,
-            targetDuration: settings.outputDuration
-        )
     }
 
     // MARK: - High-level API (for modes)
@@ -253,6 +282,7 @@ final class HypnographState: ObservableObject {
     /// Simple reset used by modes that want a clean slate.
     func resetForNextHypnogram() {
         sources.removeAll()
+        effects.removeAll()
         currentSourceIndex = 0
         currentClipTimeOffset = nil
     }

@@ -2,21 +2,84 @@
 //  HypnogramRenderer.swift
 //  Hypnograph
 //
-//  Protocol for render backends (Montage, Sequence, etc.).
+//  Renderer using RenderEngine for both montage and sequence export
 //
 
 import Foundation
+import AVFoundation
+import CoreMedia
 
-/// A renderer takes a *pure* HypnogramRecipe (blueprint)
-/// and produces a rendered movie file on disk.
-protocol HypnogramRenderer: AnyObject {
-    /// Enqueue a render for the given recipe.
-    ///
-    /// - Parameters:
-    ///   - recipe: Mode-agnostic blueprint with optional mode payload.
-    ///   - completion: Called on the main thread with success/failure + output URL.
+/// Renderer that takes a HypnogramRecipe and produces a rendered movie file
+final class HypnogramRenderer {
+
+    private let outputFolder: URL
+    private let outputSize: CGSize
+    private let strategy: CompositionBuilder.TimelineStrategy
+
+    init(outputURL: URL, outputSize: CGSize, strategy: CompositionBuilder.TimelineStrategy) {
+        self.outputFolder = outputURL
+        self.outputSize = outputSize
+        self.strategy = strategy
+    }
+
+    // MARK: - Enqueue
+
     func enqueue(
         recipe: HypnogramRecipe,
         completion: @escaping (Result<URL, Error>) -> Void
-    )
+    ) {
+        Task {
+            let result = await render(recipe: recipe)
+            
+            await MainActor.run {
+                switch result {
+                case .success(let url):
+                    completion(.success(url))
+                case .failure(let error):
+                    completion(.failure(error))
+                }
+            }
+        }
+    }
+    
+    // MARK: - Render
+    
+    private func render(recipe: HypnogramRecipe) async -> Result<URL, Error> {
+        print("🎬 HypnogramRenderer: Starting render...")
+        
+        // Prepare output URL
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+        let filename = "hypnograph-\(timestamp).mov"
+        let outputURL = outputFolder.appendingPathComponent(filename)
+        
+        // Remove existing file if present
+        try? FileManager.default.removeItem(at: outputURL)
+        
+        // Create config for export
+        let config = RenderEngine.Config(
+            outputSize: outputSize,
+            frameRate: 30,
+            enableGlobalHooks: false  // disable effects for export
+        )
+        
+        // Export using RenderEngine
+        let engine = RenderEngine()
+        let result = await engine.export(
+            recipe: recipe,
+            strategy: strategy,
+            outputURL: outputURL,
+            config: config
+        )
+        
+        switch result {
+        case .success(let url):
+            print("✅ HypnogramRenderer: Export complete - \(url.lastPathComponent)")
+            return .success(url)
+        case .failure(let error):
+            print("🔴 HypnogramRenderer: Export failed - \(error)")
+            return .failure(error)
+        }
+    }
 }
+

@@ -16,9 +16,11 @@ struct MontagePlayerView: NSViewRepresentable {
 
     class Coordinator {
         var player: AVPlayer?
+        var containerView: NSView?
         var playerView: AVPlayerView?
         var timeObserverToken: Any?
         var endObserverToken: Any?
+        var statusObserver: NSKeyValueObservation?
         var compositionID: String?
         var currentTask: Task<Void, Never>?
         var lastPauseState: Bool?
@@ -30,19 +32,23 @@ struct MontagePlayerView: NSViewRepresentable {
         Coordinator()
     }
 
-    func makeNSView(context: Context) -> AVPlayerView {
-        let playerView = AVPlayerView()
-        playerView.controlsStyle = .none
-        playerView.videoGravity = .resizeAspectFill
-        context.coordinator.playerView = playerView
-        return playerView
+    func makeNSView(context: Context) -> NSView {
+        let container = NSView()
+        container.wantsLayer = true
+        container.layer?.backgroundColor = NSColor.black.cgColor
+        context.coordinator.containerView = container
+        return container
     }
 
-    func updateNSView(_ nsView: AVPlayerView, context: Context) {
+    func updateNSView(_ nsView: NSView, context: Context) {
         let c = context.coordinator
 
-            guard !recipe.sources.isEmpty else {
-            Self.tearDown(coordinator: c)
+        guard !recipe.sources.isEmpty else {
+            // Just pause, don't tear down - sources might be added back immediately
+            c.player?.pause()
+            c.currentTask?.cancel()
+            c.currentTask = nil
+            c.compositionID = nil
             if currentSourceTime != nil {
                 currentSourceTime = nil
             }
@@ -51,7 +57,7 @@ struct MontagePlayerView: NSViewRepresentable {
 
         let newID = compositionIdentity(for: recipe)
 
-        if newID != c.compositionID || c.player == nil {
+        if newID != c.compositionID {
             c.currentTask?.cancel()
             c.compositionID = newID
 
@@ -82,6 +88,29 @@ struct MontagePlayerView: NSViewRepresentable {
 
                     switch result {
                     case .success(let buildResult):
+                        // Create or reuse player view
+                        let playerView: AVPlayerView
+                        if let existing = c.playerView {
+                            playerView = existing
+                        } else {
+                            playerView = AVPlayerView()
+                            playerView.controlsStyle = .none
+                            playerView.videoGravity = .resizeAspectFill
+                            playerView.translatesAutoresizingMaskIntoConstraints = false
+                            c.playerView = playerView
+                        }
+
+                        // Add to container if needed
+                        if playerView.superview != nsView {
+                            nsView.addSubview(playerView)
+                            NSLayoutConstraint.activate([
+                                playerView.topAnchor.constraint(equalTo: nsView.topAnchor),
+                                playerView.bottomAnchor.constraint(equalTo: nsView.bottomAnchor),
+                                playerView.leadingAnchor.constraint(equalTo: nsView.leadingAnchor),
+                                playerView.trailingAnchor.constraint(equalTo: nsView.trailingAnchor)
+                            ])
+                        }
+
                         let player: AVPlayer
                         if let existing = c.player {
                             player = existing
@@ -92,26 +121,31 @@ struct MontagePlayerView: NSViewRepresentable {
                         }
 
                         c.currentPlayerItem = buildResult.playerItem
-                        nsView.player = player
+                        playerView.player = player
 
                         c.lastPauseState = nil
                         c.lastEffectsCounter = effectsChangeCounter
 
-                        if let manager = GlobalRenderHooks.manager {
-                            let blendModes = self.resolvedBlendModes(from: recipe)
-                            for (index, mode) in blendModes.enumerated() {
-                                manager.setBlendMode(mode, for: index, silent: true)
+                        self.setupMontageObservers(player: player, item: buildResult.playerItem, coordinator: c)
+
+                        // Wait for player item to be ready before starting playback
+                        c.statusObserver?.invalidate()
+                        c.statusObserver = buildResult.playerItem.observe(\.status, options: [.initial, .new]) { [weak player, weak c] item, _ in
+                            guard let player = player, let c = c else { return }
+                            if item.status == .readyToPlay {
+                                c.statusObserver?.invalidate()
+                                c.statusObserver = nil
+                                if c.lastPauseState != true {
+                                    player.playImmediately(atRate: 0.8)
+                                }
                             }
                         }
 
-                        self.setupMontageObservers(player: player, item: buildResult.playerItem, coordinator: c)
-
                         if self.isPaused {
-                            player.pause()
+                            c.lastPauseState = true
                         } else {
-                            player.playImmediately(atRate: self.playRate)
+                            c.lastPauseState = false
                         }
-                        c.lastPauseState = self.isPaused
 
                     case .failure(let error):
                         error.log(context: "MontagePlayerView")
@@ -146,7 +180,7 @@ struct MontagePlayerView: NSViewRepresentable {
         }
     }
 
-    static func dismantleNSView(_ nsView: AVPlayerView, coordinator: Coordinator) {
+    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
         tearDown(coordinator: coordinator)
     }
     
@@ -162,12 +196,6 @@ struct MontagePlayerView: NSViewRepresentable {
         }
         let durationPart = "dur=\(recipe.targetDuration.seconds)"
         return pairs.joined(separator: ";;") + "||" + durationPart + "||montage"
-    }
-    
-    private func resolvedBlendModes(from recipe: HypnogramRecipe) -> [String] {
-        return recipe.sources.enumerated().map { idx, source in
-            source.blendMode ?? (idx == 0 ? kBlendModeSourceOver : kBlendModeDefaultMontage)
-        }
     }
 
     // MARK: - Observer setup
@@ -217,6 +245,9 @@ struct MontagePlayerView: NSViewRepresentable {
     // MARK: - Teardown
 
     private static func tearDown(coordinator c: Coordinator) {
+        c.statusObserver?.invalidate()
+        c.statusObserver = nil
+
         if let token = c.timeObserverToken, let player = c.player {
             player.removeTimeObserver(token)
         }
