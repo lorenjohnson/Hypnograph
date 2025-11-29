@@ -418,9 +418,9 @@ final class Dream: ObservableObject {
         let idx = state.currentSourceIndex
         guard idx >= 0, idx < state.sources.count else { return }
 
-        // Compose a 90-degree clockwise rotation onto the existing user transform
+        // Append a 90-degree clockwise rotation to the transforms array
         let rotation90 = CGAffineTransform(rotationAngle: .pi / 2)
-        state.sources[idx].transform = state.sources[idx].transform.concatenating(rotation90)
+        state.sources[idx].transforms.append(rotation90)
     }
 
     // MARK: - Effects

@@ -190,8 +190,9 @@ final class CompositionBuilder {
             }
 
             trackIDs.append(track.trackID)
-            // Compose metadata transform with user transform
-            let composedTransform = loaded.transform.concatenating(source.transform)
+            // Compose metadata transform with user transforms array
+            let userTransform = source.transforms.reduce(CGAffineTransform.identity) { $0.concatenating($1) }
+            let composedTransform = loaded.transform.concatenating(userTransform)
             transforms.append(composedTransform)
             sourceIndices.append(index)
 
@@ -301,8 +302,9 @@ final class CompositionBuilder {
 
             clipStartTimes.append(currentTime)
 
-            // Compose metadata transform with user transform
-            let composedTransform = loaded.transform.concatenating(source.transform)
+            // Compose metadata transform with user transforms array
+            let userTransform = source.transforms.reduce(CGAffineTransform.identity) { $0.concatenating($1) }
+            let composedTransform = loaded.transform.concatenating(userTransform)
 
             if loaded.isStillImage {
                 // For still images: insert empty time range, store CIImage in instruction
