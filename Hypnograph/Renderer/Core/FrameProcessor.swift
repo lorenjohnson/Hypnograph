@@ -74,9 +74,9 @@ final class FrameProcessor {
         manager: RenderHookManager? = nil
     ) -> CIImage {
         var img = image
-        
+
         // Aspect-fill to output size
-        img = aspectFill(image: img, to: config.outputSize)
+        img = ImageUtils.aspectFill(image: img, to: config.outputSize)
         
         // Apply per-source effects if enabled
         if config.enableEffects, let manager = manager {
@@ -136,8 +136,8 @@ final class FrameProcessor {
             }
             
             // Aspect-fill to output size
-            img = aspectFill(image: img, to: config.outputSize)
-            
+            img = ImageUtils.aspectFill(image: img, to: config.outputSize)
+
             // Apply per-source effects
             if config.enableEffects, let manager = manager {
                 var context = RenderContext(
@@ -151,7 +151,7 @@ final class FrameProcessor {
                 )
                 img = manager.applyToSource(sourceIndex: layer.sourceIndex, context: &context, image: img)
             }
-            
+
             // Blend with previous layers
             if let base = composited {
                 // Get blend mode from manager if available (for dynamic changes)
@@ -161,7 +161,7 @@ final class FrameProcessor {
                 } else {
                     blendMode = layer.blendMode
                 }
-                img = blend(layer: img, over: base, mode: blendMode)
+                img = ImageUtils.blend(layer: img, over: base, mode: blendMode)
             }
             
             composited = img
@@ -195,43 +195,6 @@ final class FrameProcessor {
     /// Render processed CIImage to a CGImage (for display or export)
     func renderToCGImage(_ image: CIImage) -> CGImage? {
         ciContext.createCGImage(image, from: image.extent)
-    }
-
-    // MARK: - Helpers
-
-    private func aspectFill(image: CIImage, to size: CGSize) -> CIImage {
-        // First, translate image so its origin is at (0,0) if needed
-        var img = image
-        if img.extent.origin != .zero {
-            img = img.transformed(by: CGAffineTransform(
-                translationX: -img.extent.origin.x,
-                y: -img.extent.origin.y
-            ))
-        }
-
-        let imageSize = img.extent.size
-        guard imageSize.width > 0, imageSize.height > 0, size.width > 0, size.height > 0 else {
-            return img
-        }
-
-        let scale = max(size.width / imageSize.width, size.height / imageSize.height)
-
-        let scaledImage = img.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        let scaledSize = scaledImage.extent.size
-
-        let x = (size.width - scaledSize.width) / 2
-        let y = (size.height - scaledSize.height) / 2
-
-        let translated = scaledImage.transformed(by: CGAffineTransform(translationX: x, y: y))
-
-        return translated.cropped(to: CGRect(origin: .zero, size: size))
-    }
-
-    private func blend(layer: CIImage, over base: CIImage, mode: String) -> CIImage {
-        let filter = CIFilter(name: mode)
-        filter?.setValue(layer, forKey: kCIInputImageKey)
-        filter?.setValue(base, forKey: kCIInputBackgroundImageKey)
-        return filter?.outputImage ?? layer
     }
 }
 

@@ -126,18 +126,8 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
             let transform = instruction.transforms[index]
             img = img.transformed(by: transform)
 
-            // After transform, the extent may have moved - translate back to origin
-            // This ensures aspectFill will work correctly
-            let transformedExtent = img.extent
-            if transformedExtent.origin != .zero {
-                img = img.transformed(by: CGAffineTransform(
-                    translationX: -transformedExtent.origin.x,
-                    y: -transformedExtent.origin.y
-                ))
-            }
-
-            // Aspect-fill to output size
-            img = aspectFill(image: img, to: outputSize)
+            // Aspect-fill to output size (handles origin normalization internally)
+            img = ImageUtils.aspectFill(image: img, to: outputSize)
 
             // Apply per-source effects if enabled
             if instruction.enableEffects, let manager = GlobalRenderHooks.manager {
@@ -170,7 +160,7 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
                     blendMode = instruction.blendModes[index]
                 }
 
-                img = blend(layer: img, over: base, mode: blendMode)
+                img = ImageUtils.blend(layer: img, over: base, mode: blendMode)
                 composited = img
             } else {
                 composited = img
@@ -210,32 +200,6 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
 
         // Finish request
         request.finish(withComposedVideoFrame: outputBuffer)
-    }
-    
-    // MARK: - Helpers
-
-    private func aspectFill(image: CIImage, to size: CGSize) -> CIImage {
-        let imageSize = image.extent.size
-        let scale = max(size.width / imageSize.width, size.height / imageSize.height)
-
-        let scaledImage = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        let scaledSize = scaledImage.extent.size
-
-        let x = (size.width - scaledSize.width) / 2
-        let y = (size.height - scaledSize.height) / 2
-
-        let translated = scaledImage.transformed(by: CGAffineTransform(translationX: x, y: y))
-
-        return translated.cropped(to: CGRect(origin: .zero, size: size))
-    }
-
-    private func blend(layer: CIImage, over base: CIImage, mode: String) -> CIImage {
-        // Use Core Image blend filters
-        let filter = CIFilter(name: mode)
-        filter?.setValue(layer, forKey: kCIInputImageKey)
-        filter?.setValue(base, forKey: kCIInputBackgroundImageKey)
-
-        return filter?.outputImage ?? layer
     }
 }
 
