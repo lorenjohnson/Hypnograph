@@ -36,6 +36,22 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     weak var mainWindow: NSWindow?
     var gameControllerManager: GameControllerManager?
 
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Request notification authorization
+        AppNotifications.requestAuthorization()
+
+        // Request Photos library authorization and refresh hidden assets cache
+        Task {
+            let status = await ApplePhotosLibrary.shared.requestAuthorization()
+            if status.canRead {
+                let count = ApplePhotosLibrary.shared.refreshHiddenIdentifiersCache()
+                if count > 0 {
+                    print("ApplePhotosLibrary: Cached \(count) hidden asset identifiers")
+                }
+            }
+        }
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let queue = renderQueue else {
             return .terminateNow
@@ -143,17 +159,6 @@ struct HypnographApp: App {
                     divine: divine,
                     cycleModule: cycleModule
                 )
-
-                // Request notification authorization on first launch
-                AppNotifications.requestAuthorization()
-
-                // Request Photos library authorization
-                Task {
-                    let status = await PhotosLibrary.shared.requestAuthorization()
-                    if status.canRead {
-                        print("Photos library access granted")
-                    }
-                }
             }
         }
         .commands {
@@ -208,6 +213,11 @@ struct AppCommands: Commands {
                 state.toggleHUD()
             }
             .keyboardShortcut("h", modifiers: [])
+
+            Button("Toggle Info") {
+                InfoWindowController.shared.toggle(sources: state.sources)
+            }
+            .keyboardShortcut("i", modifiers: [])
 
             Button(state.isPaused ? "Play" : "Pause") {
                 state.togglePause()

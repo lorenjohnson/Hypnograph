@@ -272,8 +272,23 @@ final class MediaSourcesLibrary {
     private func applyExclusions() {
         let exclusionStore = ExclusionStore.shared
         let deleteStore = DeleteStore.shared
-        sourceIndex.removeAll {
-            exclusionStore.isExcluded($0.source) || deleteStore.isQueued($0.source)
+        let hiddenUUIDs = ApplePhotosLibrary.shared.cachedHiddenUUIDs
+
+        sourceIndex.removeAll { entry in
+            // Standard exclusions
+            if exclusionStore.isExcluded(entry.source) || deleteStore.isQueued(entry.source) {
+                return true
+            }
+
+            // Hidden asset filter: check filename base against cached hidden UUIDs
+            if !hiddenUUIDs.isEmpty, case .url(let url) = entry.source {
+                let filenameBase = url.deletingPathExtension().lastPathComponent
+                if hiddenUUIDs.contains(filenameBase) {
+                    return true
+                }
+            }
+
+            return false
         }
     }
 
@@ -289,6 +304,3 @@ final class MediaSourcesLibrary {
         sourceIndex.removeAll { sourceKey($0.source) == sourceKey(file.source) }
     }
 }
-
-                // Use the asset duration, since that’s authoritative.
-
