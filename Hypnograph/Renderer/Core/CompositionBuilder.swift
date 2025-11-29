@@ -114,7 +114,6 @@ final class CompositionBuilder {
         let composition = AVMutableComposition()
         var trackIDs: [CMPersistentTrackID] = []
         var transforms: [CGAffineTransform] = []
-        var rotations: [Int] = []
         var blendModes: [String] = []
         var sourceIndices: [Int] = []
         var stillImages: [CIImage?] = []
@@ -191,8 +190,9 @@ final class CompositionBuilder {
             }
 
             trackIDs.append(track.trackID)
-            transforms.append(loaded.transform)
-            rotations.append(source.rotation)
+            // Compose metadata transform with user transform
+            let composedTransform = loaded.transform.concatenating(source.transform)
+            transforms.append(composedTransform)
             sourceIndices.append(index)
 
             // Get blend mode from source (default to SourceOver for first, Screen for others)
@@ -216,7 +216,6 @@ final class CompositionBuilder {
             layerTrackIDs: trackIDs,
             blendModes: blendModes,
             transforms: transforms,
-            rotations: rotations,
             sourceIndices: sourceIndices,
             enableEffects: enableEffects,
             stillImages: stillImages
@@ -302,6 +301,9 @@ final class CompositionBuilder {
 
             clipStartTimes.append(currentTime)
 
+            // Compose metadata transform with user transform
+            let composedTransform = loaded.transform.concatenating(source.transform)
+
             if loaded.isStillImage {
                 // For still images: insert empty time range, store CIImage in instruction
                 composition.insertEmptyTimeRange(CMTimeRange(start: currentTime, duration: clipDuration))
@@ -310,8 +312,7 @@ final class CompositionBuilder {
                     timeRange: CMTimeRange(start: currentTime, duration: clipDuration),
                     layerTrackIDs: [videoTrack.trackID],
                     blendModes: [kBlendModeSourceOver],
-                    transforms: [loaded.transform],
-                    rotations: [source.rotation],
+                    transforms: [composedTransform],
                     sourceIndices: [originalIndex],  // Use original recipe index for correct seeking
                     enableEffects: enableEffects,
                     stillImages: [loaded.ciImage]
@@ -346,8 +347,7 @@ final class CompositionBuilder {
                     timeRange: CMTimeRange(start: currentTime, duration: clipDuration),
                     layerTrackIDs: [videoTrack.trackID],
                     blendModes: [kBlendModeSourceOver],
-                    transforms: [loaded.transform],
-                    rotations: [source.rotation],
+                    transforms: [composedTransform],
                     sourceIndices: [originalIndex],  // Use original recipe index for correct seeking
                     enableEffects: enableEffects,
                     stillImages: [nil]

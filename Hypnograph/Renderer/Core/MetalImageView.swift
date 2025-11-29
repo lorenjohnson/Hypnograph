@@ -22,10 +22,13 @@ final class MetalImageView: NSView {
     
     /// Current image to display (before processing)
     private var sourceImage: CIImage?
-    
+
     /// Current source index (for effects)
     private var sourceIndex: Int = 0
-    
+
+    /// User-applied transform (rotation, scale, etc.)
+    private var userTransform: CGAffineTransform = .identity
+
     /// Processing configuration
     private var processingConfig: ProcessingConfig?
     
@@ -88,17 +91,19 @@ final class MetalImageView: NSView {
         image: CIImage,
         sourceIndex: Int,
         outputSize: CGSize,
+        transform: CGAffineTransform = .identity,
         enableEffects: Bool = true
     ) {
         self.sourceImage = image
         self.sourceIndex = sourceIndex
+        self.userTransform = transform
         self.processingConfig = ProcessingConfig(
             outputSize: outputSize,
             time: .zero,
             isPreview: true,
             enableEffects: enableEffects
         )
-        
+
         // Request a redraw
         mtkView.setNeedsDisplay(mtkView.bounds)
     }
@@ -143,13 +148,27 @@ extension MetalImageView: MTKViewDelegate {
     
     func draw(in view: MTKView) {
         guard let drawable = view.currentDrawable,
-              let sourceImage = sourceImage,
+              var img = sourceImage,
               let config = processingConfig else {
             return
         }
 
         // Use the actual drawable size for rendering
         let drawableSize = view.drawableSize
+
+        // Apply user transform (if not identity)
+        if userTransform != .identity {
+            img = img.transformed(by: userTransform)
+
+            // After transform, translate extent back to origin for aspect-fill
+            let transformedExtent = img.extent
+            if transformedExtent.origin != .zero {
+                img = img.transformed(by: CGAffineTransform(
+                    translationX: -transformedExtent.origin.x,
+                    y: -transformedExtent.origin.y
+                ))
+            }
+        }
 
         // Update config with current drawable size and time
         var updatedConfig = ProcessingConfig(
@@ -171,7 +190,7 @@ extension MetalImageView: MTKViewDelegate {
 
         // Process the image through the unified pipeline
         let processedImage = frameProcessor.processSingleSource(
-            sourceImage,
+            img,
             sourceIndex: sourceIndex,
             config: updatedConfig,
             manager: GlobalRenderHooks.manager
