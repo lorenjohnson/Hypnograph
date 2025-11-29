@@ -3,9 +3,8 @@ import AppKit
 import AVFoundation
 
 extension NSWindow {
-    func makeHypnographBorderless(on screen: NSScreen, contentSize: CGSize) {
+    func makeHypnographBorderless(on screen: NSScreen) {
         let fullFrame = screen.frame
-        let frame = fullFrame
 
         styleMask.remove(.titled)
         styleMask.remove(.closable)
@@ -25,7 +24,7 @@ extension NSWindow {
         backgroundColor = .black
         level = .normal
 
-        setFrame(frame, display: true, animate: false)
+        setFrame(fullFrame, display: true, animate: false)
         isMovable = false
     }
 }
@@ -89,9 +88,7 @@ struct HypnographApp: App {
                 ]),
                 watch: true,
                 maxSourcesForNew: 3,
-                outputHeight: 1080,
                 outputSeconds: 30,
-                outputWidth: 1920,
                 snapshotsFolder: "~/Movies/Hypnograph/snapshots",
                 activeLibrariesPerMode: [:]
             )
@@ -133,10 +130,7 @@ struct HypnographApp: App {
                     let screens = NSScreen.screens
                     let targetScreen = (screens.count > 1 ? screens[1] : screens[0])
 
-                    window.makeHypnographBorderless(
-                        on: targetScreen,
-                        contentSize: state.settings.outputSize
-                    )
+                    window.makeHypnographBorderless(on: targetScreen)
                     appDelegate.mainWindow = window
                 }
 

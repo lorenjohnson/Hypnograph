@@ -45,15 +45,18 @@ final class Dream: ObservableObject {
         self.state = state
         self.renderQueue = renderQueue
 
+        // Compute output size for disk rendering
+        let outputSize = state.settings.aspectRatio.size(maxDimension: state.settings.maxOutputDimension)
+
         self.montageRenderer = HypnogramRenderer(
             outputURL: state.settings.outputURL,
-            outputSize: state.settings.outputSize,
+            outputSize: outputSize,
             strategy: .montage(targetDuration: CMTime(seconds: 30, preferredTimescale: 600))
         )
 
         self.sequenceRenderer = HypnogramRenderer(
             outputURL: state.settings.outputURL,
-            outputSize: state.settings.outputSize,
+            outputSize: outputSize,
             strategy: .sequence
         )
 
@@ -200,13 +203,10 @@ final class Dream: ObservableObject {
 
         switch mode {
         case .montage:
-            // Montage uses MontagePlayerView with AVComposition
-            // Note: MontagePlayerView handles recipe changes internally via compositionIdentity
-            // so we use a stable id to avoid unnecessary view recreation
             return AnyView(
                 MontagePlayerView(
                     recipe: recipe,
-                    outputSize: state.settings.outputSize,
+                    aspectRatio: state.settings.aspectRatio,
                     currentSourceIndex: Binding(
                         get: { state.currentSourceIndex },
                         set: { state.currentSourceIndex = $0 }
@@ -222,11 +222,10 @@ final class Dream: ObservableObject {
             )
 
         case .sequence:
-            // Sequence uses the new SequencePlayerView with independent source handling
             return AnyView(
                 SequencePlayerView(
                     recipe: recipe,
-                    outputSize: state.settings.outputSize,
+                    aspectRatio: state.settings.aspectRatio,
                     currentSourceIndex: Binding(
                         get: { state.currentSourceIndex },
                         set: { state.currentSourceIndex = $0 }

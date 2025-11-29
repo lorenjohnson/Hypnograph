@@ -85,12 +85,16 @@ struct Settings: Codable {
     // Optional in JSON (but non-optional in code)
     var watch: Bool
     var maxSourcesForNew: Int
-    var outputHeight: Int
     var outputSeconds: Int
-    var outputWidth: Int
     var snapshotsFolder: String
     var activeLibrariesPerMode: [String: [String]]
-    var allowStillImages: Bool  // Temporary: set to false to test if still images cause performance issues
+    var allowStillImages: Bool
+
+    /// Aspect ratio for composition (e.g., 16:9, 4:3, 2.35:1)
+    var aspectRatio: AspectRatio
+
+    /// Max dimension for disk output (720, 1080, 2160)
+    var maxOutputDimension: Int
 
     // Single source of truth for defaults
     private enum Defaults {
@@ -98,43 +102,45 @@ struct Settings: Codable {
         static let maxSourcesForNew = 5
         static let outputFolder = "~/Movies/Hypnograph/renders"
         static let snapshotsFolder = "~/Movies/Hypnograph/snapshots"
-        static let outputHeight = 1080
         static let outputSeconds = 60
-        static let outputWidth = 1920
         static let sourceFolders = SourceFoldersParam.array([
             "~/Movies/Hypnograph/sources"
         ])
         static let activeLibrariesPerMode: [String: [String]] = [:]
         static let allowStillImages: Bool = true
+        static let aspectRatio: AspectRatio = .ratio16x9
+        static let maxOutputDimension: Int = 1080
     }
 
     private enum CodingKeys: String, CodingKey {
         case outputFolder, sourceFolders
-        case watch, maxSourcesForNew, outputHeight, outputSeconds, outputWidth, snapshotsFolder
+        case watch, maxSourcesForNew, outputSeconds, snapshotsFolder
         case activeLibrariesPerMode, allowStillImages
+        case aspectRatio, maxOutputDimension
     }
+
     init(
         outputFolder: String,
         sourceFolders: SourceFoldersParam,
         watch: Bool = Defaults.watch,
         maxSourcesForNew: Int = Defaults.maxSourcesForNew,
-        outputHeight: Int = Defaults.outputHeight,
         outputSeconds: Int = Defaults.outputSeconds,
-        outputWidth: Int = Defaults.outputWidth,
         snapshotsFolder: String = Defaults.snapshotsFolder,
         activeLibrariesPerMode: [String: [String]] = Defaults.activeLibrariesPerMode,
-        allowStillImages: Bool = Defaults.allowStillImages
+        allowStillImages: Bool = Defaults.allowStillImages,
+        aspectRatio: AspectRatio = Defaults.aspectRatio,
+        maxOutputDimension: Int = Defaults.maxOutputDimension
     ) {
         self.outputFolder = outputFolder
         self.sourceFolders = sourceFolders
         self.watch = watch
         self.maxSourcesForNew = maxSourcesForNew
-        self.outputHeight = outputHeight
         self.outputSeconds = outputSeconds
-        self.outputWidth = outputWidth
         self.snapshotsFolder = snapshotsFolder
         self.activeLibrariesPerMode = activeLibrariesPerMode
         self.allowStillImages = allowStillImages
+        self.aspectRatio = aspectRatio
+        self.maxOutputDimension = maxOutputDimension
     }
 
     init(from decoder: Decoder) throws {
@@ -148,28 +154,38 @@ struct Settings: Codable {
             ?? Defaults.watch
         maxSourcesForNew = try c.decodeIfPresent(Int.self, forKey: .maxSourcesForNew)
             ?? Defaults.maxSourcesForNew
-        outputHeight = try c.decodeIfPresent(Int.self, forKey: .outputHeight)
-            ?? Defaults.outputHeight
         outputSeconds = try c.decodeIfPresent(Int.self, forKey: .outputSeconds)
             ?? Defaults.outputSeconds
-        outputWidth = try c.decodeIfPresent(Int.self, forKey: .outputWidth)
-            ?? Defaults.outputWidth
         snapshotsFolder = try c.decodeIfPresent(String.self, forKey: .snapshotsFolder)
             ?? Defaults.snapshotsFolder
         activeLibrariesPerMode = try c.decodeIfPresent([String: [String]].self, forKey: .activeLibrariesPerMode)
             ?? Defaults.activeLibrariesPerMode
         allowStillImages = try c.decodeIfPresent(Bool.self, forKey: .allowStillImages)
             ?? Defaults.allowStillImages
+        aspectRatio = try c.decodeIfPresent(AspectRatio.self, forKey: .aspectRatio)
+            ?? Defaults.aspectRatio
+        maxOutputDimension = try c.decodeIfPresent(Int.self, forKey: .maxOutputDimension)
+            ?? Defaults.maxOutputDimension
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(outputFolder, forKey: .outputFolder)
+        try c.encode(sourceFolders, forKey: .sourceFolders)
+        try c.encode(watch, forKey: .watch)
+        try c.encode(maxSourcesForNew, forKey: .maxSourcesForNew)
+        try c.encode(outputSeconds, forKey: .outputSeconds)
+        try c.encode(snapshotsFolder, forKey: .snapshotsFolder)
+        try c.encode(activeLibrariesPerMode, forKey: .activeLibrariesPerMode)
+        try c.encode(allowStillImages, forKey: .allowStillImages)
+        try c.encode(aspectRatio, forKey: .aspectRatio)
+        try c.encode(maxOutputDimension, forKey: .maxOutputDimension)
     }
 
     // MARK: - Derived values
 
     var outputDuration: CMTime {
         CMTime(seconds: Double(outputSeconds), preferredTimescale: 600)
-    }
-
-    var outputSize: CGSize {
-        Self.computeOutputSize(outputHeight: outputHeight, outputWidth: outputWidth)
     }
 
     var outputURL: URL {
@@ -216,26 +232,6 @@ struct Settings: Codable {
             }
         }
         return result
-    }
-
-    private static func computeOutputSize(outputHeight: Int, outputWidth: Int) -> CGSize {
-        let defaultW: CGFloat = 1920
-        let defaultH: CGFloat = 1080
-        let aspect: CGFloat   = 9.0 / 16.0
-
-        let w = CGFloat(outputWidth)
-        let h = CGFloat(outputHeight)
-
-        switch (w > 0, h > 0) {
-        case (true, true):
-            return CGSize(width: w, height: h)
-        case (true, false):
-            return CGSize(width: w, height: round(w * aspect))
-        case (false, true):
-            return CGSize(width: round(h / aspect), height: h)
-        default:
-            return CGSize(width: defaultW, height: defaultH)
-        }
     }
 }
 
