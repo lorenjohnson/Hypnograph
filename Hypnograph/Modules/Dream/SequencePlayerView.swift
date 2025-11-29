@@ -19,6 +19,7 @@ import CoreImage
 struct SequencePlayerView: NSViewRepresentable {
     let recipe: HypnogramRecipe
     let aspectRatio: AspectRatio
+    let displayResolution: OutputResolution
     @Binding var currentSourceIndex: Int
     let isPaused: Bool
     let effectsChangeCounter: Int
@@ -302,8 +303,8 @@ struct SequencePlayerView: NSViewRepresentable {
                 }
 
                 // Create video composition with our compositor
-                // Use reference size for aspect ratio - AVPlayerView handles fitting to view
-                let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: 1080)
+                // Use display resolution for preview - AVPlayerView handles fitting to view
+                let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: displayResolution.maxDimension)
 
                 let videoComposition = AVMutableVideoComposition()
                 videoComposition.renderSize = outputSize

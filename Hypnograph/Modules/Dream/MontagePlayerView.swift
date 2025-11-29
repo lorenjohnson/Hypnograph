@@ -8,6 +8,7 @@ import CoreMedia
 struct MontagePlayerView: NSViewRepresentable {
     let recipe: HypnogramRecipe
     let aspectRatio: AspectRatio
+    let displayResolution: OutputResolution
     @Binding var currentSourceIndex: Int
     @Binding var currentSourceTime: CMTime?
     let isPaused: Bool
@@ -55,8 +56,8 @@ struct MontagePlayerView: NSViewRepresentable {
             return
         }
 
-        // Use reference size for aspect ratio - AVPlayerView handles fitting to view
-        let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: 1080)
+        // Use display resolution for preview - AVPlayerView handles fitting to view
+        let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: displayResolution.maxDimension)
 
         let newID = compositionIdentity(for: recipe)
 

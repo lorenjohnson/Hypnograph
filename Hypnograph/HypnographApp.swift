@@ -146,6 +146,14 @@ struct HypnographApp: App {
 
                 // Request notification authorization on first launch
                 AppNotifications.requestAuthorization()
+
+                // Request Photos library authorization
+                Task {
+                    let status = await PhotosLibrary.shared.requestAuthorization()
+                    if status.canRead {
+                        print("Photos library access granted")
+                    }
+                }
             }
         }
         .commands {
@@ -183,14 +191,7 @@ struct AppCommands: Commands {
         self.cycleModuleHandler = cycleModule
     }
 
-    private func resolutionLabel(for dimension: Int) -> String {
-        switch dimension {
-        case 720: return "720p (HD)"
-        case 1080: return "1080p (Full HD)"
-        case 2160: return "4K (2160p)"
-        default: return "\(dimension)p"
-        }
-    }
+
 
     var body: some Commands {
         // Standard About panel with custom label
@@ -292,7 +293,21 @@ struct AppCommands: Commands {
             .keyboardShortcut("w", modifiers: [])
         }
 
-        CommandMenu("Source Libraries") {
+        CommandMenu("Sources") {
+            // Media type filters
+            Toggle("Photos", isOn: Binding(
+                get: { state.isMediaTypeActive(.photos) },
+                set: { _ in state.toggleMediaType(.photos) }
+            ))
+
+            Toggle("Videos", isOn: Binding(
+                get: { state.isMediaTypeActive(.videos) },
+                set: { _ in state.toggleMediaType(.videos) }
+            ))
+
+            Divider()
+
+            // Source libraries
             let keys: [String] = {
                 let order = state.settings.sourceLibraryOrder
                 if !order.isEmpty {
@@ -311,12 +326,6 @@ struct AppCommands: Commands {
                         get: { state.isLibraryActive(key: key) },
                         set: { _ in state.toggleLibrary(key: key) }
                     ))
-                }
-
-                Divider()
-
-                Button("Use Default Only") {
-                    state.useOnlyDefaultLibrary()
                 }
             }
         }
@@ -402,18 +411,12 @@ struct AppCommands: Commands {
             Divider()
 
             // Resolution - flat in menu
-            Toggle("720p", isOn: Binding(
-                get: { state.maxOutputDimension == 720 },
-                set: { if $0 { state.setMaxOutputDimension(720) } }
-            ))
-            Toggle("1080p", isOn: Binding(
-                get: { state.maxOutputDimension == 1080 },
-                set: { if $0 { state.setMaxOutputDimension(1080) } }
-            ))
-            Toggle("4K", isOn: Binding(
-                get: { state.maxOutputDimension == 2160 },
-                set: { if $0 { state.setMaxOutputDimension(2160) } }
-            ))
+            ForEach(OutputResolution.allCases, id: \.self) { resolution in
+                Toggle(resolution.displayName, isOn: Binding(
+                    get: { state.outputResolution == resolution },
+                    set: { if $0 { state.setOutputResolution(resolution) } }
+                ))
+            }
         }
 
         CommandMenu("Current Source") {
@@ -461,7 +464,17 @@ struct AppCommands: Commands {
             Button("Add to Exclude List") {
                 state.excludeCurrentSource()
             }
-            .keyboardShortcut("x", modifiers: [])
+            .keyboardShortcut("x", modifiers: [.shift])
+
+            Button("Mark for Deletion") {
+                state.markCurrentSourceForDeletion()
+            }
+            .keyboardShortcut("d", modifiers: [.shift])
+
+            Button("Toggle Favorite") {
+                state.toggleCurrentSourceFavorite()
+            }
+            .keyboardShortcut("f", modifiers: [.shift])
         }
     }
 }

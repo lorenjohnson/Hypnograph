@@ -61,6 +61,16 @@ enum Environment {
         appSupportDirectory.appendingPathComponent("exclusions.json")
     }
 
+    /// ~/Library/Application Support/Hypnograph/deletions.json
+    static var deletionsURL: URL {
+        appSupportDirectory.appendingPathComponent("deletions.json")
+    }
+
+    /// ~/Library/Application Support/Hypnograph/favorites.json
+    static var favoritesURL: URL {
+        appSupportDirectory.appendingPathComponent("favorites.json")
+    }
+
     /// If no settings exists in Application Support, copy the bundled default JSON there.
     static func ensureDefaultSettingsFileExists() {
         let fm = FileManager.default

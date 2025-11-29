@@ -24,9 +24,6 @@ final class Dream: ObservableObject {
 
     @Published var mode: DreamMode = .montage
 
-    private let montageRenderer: HypnogramRenderer
-    private let sequenceRenderer: HypnogramRenderer
-
     private let availableBlendModes: [String] = [
         "CIScreenBlendMode",
         "CIOverlayBlendMode",
@@ -45,25 +42,26 @@ final class Dream: ObservableObject {
         self.state = state
         self.renderQueue = renderQueue
 
-        // Compute output size for disk rendering
-        let outputSize = renderSize(aspectRatio: state.settings.aspectRatio, maxDimension: state.settings.maxOutputDimension)
-
-        self.montageRenderer = HypnogramRenderer(
-            outputURL: state.settings.outputURL,
-            outputSize: outputSize,
-            strategy: .montage(targetDuration: CMTime(seconds: 30, preferredTimescale: 600))
-        )
-
-        self.sequenceRenderer = HypnogramRenderer(
-            outputURL: state.settings.outputURL,
-            outputSize: outputSize,
-            strategy: .sequence
-        )
-
         // Set up watch timer callback to respect current mode
         state.onWatchTimerFired = { [weak self] in
             self?.new()
         }
+    }
+
+    /// Create a renderer on-demand with current settings (aspect ratio + resolution)
+    private func makeRenderer(for mode: DreamMode) -> HypnogramRenderer {
+        let outputSize = renderSize(
+            aspectRatio: state.aspectRatio,
+            maxDimension: state.outputResolution.maxDimension
+        )
+        let strategy: CompositionBuilder.TimelineStrategy = (mode == .montage)
+            ? .montage(targetDuration: state.settings.outputDuration)
+            : .sequence
+        return HypnogramRenderer(
+            outputURL: state.settings.outputURL,
+            outputSize: outputSize,
+            strategy: strategy
+        )
     }
 
     // MARK: - Shared helpers
@@ -170,6 +168,13 @@ final class Dream: ObservableObject {
         }
         items.append(.text("Source Effect (F): \(state.renderHooks.sourceEffectName(for: state.currentSourceIndex))", order: 42))
 
+        // Favorite status
+        if let source = state.currentSource?.clip.file.source,
+           FavoriteStore.shared.isFavorited(source) {
+            items.append(.text("★ Favorite", order: 43))
+        }
+
+        items.append(.text("Shift+F = Favorite | Shift+X = Exclude | Shift+D = Delete", order: 44))
         items.append(.text("` = Toggle Montage/Sequence Mode", order: 47))
         return items
     }
@@ -210,6 +215,7 @@ final class Dream: ObservableObject {
                 MontagePlayerView(
                     recipe: recipe,
                     aspectRatio: state.settings.aspectRatio,
+                    displayResolution: state.settings.displayResolution,
                     currentSourceIndex: Binding(
                         get: { state.currentSourceIndex },
                         set: { state.currentSourceIndex = $0 }
@@ -229,6 +235,7 @@ final class Dream: ObservableObject {
                 SequencePlayerView(
                     recipe: recipe,
                     aspectRatio: state.settings.aspectRatio,
+                    displayResolution: state.settings.displayResolution,
                     currentSourceIndex: Binding(
                         get: { state.currentSourceIndex },
                         set: { state.currentSourceIndex = $0 }
@@ -366,8 +373,8 @@ final class Dream: ObservableObject {
             renderRecipe.targetDuration = total.seconds > 0 ? total : state.settings.outputDuration
         }
 
-        // Choose renderer based on mode
-        let renderer: HypnogramRenderer = (mode == .montage) ? montageRenderer : sequenceRenderer
+        // Create renderer with current settings (aspect ratio + resolution)
+        let renderer = makeRenderer(for: mode)
 
         print("Dream[\(mode.rawValue)]: enqueueing recipe with \(renderRecipe.sources.count) source(s), duration: \(renderRecipe.targetDuration.seconds)s")
 
