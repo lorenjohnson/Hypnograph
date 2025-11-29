@@ -18,7 +18,7 @@ import CoreImage
 /// Sequence mode player with proper handling of videos and still images
 struct SequencePlayerView: NSViewRepresentable {
     let recipe: HypnogramRecipe
-    let outputSize: CGSize
+    let aspectRatio: AspectRatio
     @Binding var currentSourceIndex: Int
     let isPaused: Bool
     let effectsChangeCounter: Int
@@ -193,7 +193,7 @@ struct SequencePlayerView: NSViewRepresentable {
             metalView.display(
                 image: ciImage,
                 sourceIndex: index,
-                outputSize: outputSize,
+                aspectRatio: aspectRatio,
                 transform: userTransform,
                 enableEffects: true
             )
@@ -228,7 +228,8 @@ struct SequencePlayerView: NSViewRepresentable {
         } else {
             playerView = AVPlayerView()
             playerView.controlsStyle = .none
-            playerView.videoGravity = .resizeAspectFill
+            // Use .resizeAspect since compositor already did aspectFill to renderSize
+            playerView.videoGravity = .resizeAspect
             playerView.translatesAutoresizingMaskIntoConstraints = false
             c.playerView = playerView
         }
@@ -301,8 +302,11 @@ struct SequencePlayerView: NSViewRepresentable {
                 }
 
                 // Create video composition with our compositor
+                // Use reference size for aspect ratio - AVPlayerView handles fitting to view
+                let renderSize = aspectRatio.size(maxDimension: 1080)
+
                 let videoComposition = AVMutableVideoComposition()
-                videoComposition.renderSize = outputSize
+                videoComposition.renderSize = renderSize
                 videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
                 videoComposition.customVideoCompositorClass = FrameCompositor.self
 

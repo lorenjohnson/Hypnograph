@@ -7,7 +7,7 @@ import CoreMedia
 /// All sources are composited together, looping at targetDuration.
 struct MontagePlayerView: NSViewRepresentable {
     let recipe: HypnogramRecipe
-    let outputSize: CGSize
+    let aspectRatio: AspectRatio
     @Binding var currentSourceIndex: Int
     @Binding var currentSourceTime: CMTime?
     let isPaused: Bool
@@ -55,6 +55,9 @@ struct MontagePlayerView: NSViewRepresentable {
             return
         }
 
+        // Use reference size for aspect ratio - AVPlayerView handles fitting to view
+        let renderSize = aspectRatio.size(maxDimension: 1080)
+
         let newID = compositionIdentity(for: recipe)
 
         if newID != c.compositionID {
@@ -65,7 +68,7 @@ struct MontagePlayerView: NSViewRepresentable {
                 let engine = RenderEngine()
                 let strategy: CompositionBuilder.TimelineStrategy = .montage(targetDuration: recipe.targetDuration)
                 let config = RenderEngine.Config(
-                    outputSize: outputSize,
+                    outputSize: renderSize,
                     frameRate: 30,
                     enableGlobalHooks: true
                 )
@@ -95,7 +98,9 @@ struct MontagePlayerView: NSViewRepresentable {
                         } else {
                             playerView = AVPlayerView()
                             playerView.controlsStyle = .none
-                            playerView.videoGravity = .resizeAspectFill
+                            // Use .resizeAspect since compositor already did aspectFill to outputSize
+                            // Using .resizeAspectFill here would double-crop
+                            playerView.videoGravity = .resizeAspect
                             playerView.translatesAutoresizingMaskIntoConstraints = false
                             c.playerView = playerView
                         }

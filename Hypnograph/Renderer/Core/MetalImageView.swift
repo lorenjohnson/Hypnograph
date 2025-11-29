@@ -29,6 +29,9 @@ final class MetalImageView: NSView {
     /// User-applied transform (rotation, scale, etc.)
     private var userTransform: CGAffineTransform = .identity
 
+    /// Target aspect ratio for content
+    private var targetAspectRatio: AspectRatio = .ratio16x9
+
     /// Processing configuration
     private var processingConfig: ProcessingConfig?
     
@@ -90,15 +93,16 @@ final class MetalImageView: NSView {
     func display(
         image: CIImage,
         sourceIndex: Int,
-        outputSize: CGSize,
+        aspectRatio: AspectRatio,
         transform: CGAffineTransform = .identity,
         enableEffects: Bool = true
     ) {
         self.sourceImage = image
         self.sourceIndex = sourceIndex
         self.userTransform = transform
+        self.targetAspectRatio = aspectRatio
         self.processingConfig = ProcessingConfig(
-            outputSize: outputSize,
+            outputSize: mtkView.drawableSize,
             time: .zero,
             isPreview: true,
             enableEffects: enableEffects
@@ -170,9 +174,12 @@ extension MetalImageView: MTKViewDelegate {
             }
         }
 
-        // Update config with current drawable size and time
+        // Compute content size from drawable and aspect ratio
+        let contentSize = targetAspectRatio.size(fitting: drawableSize)
+
+        // Update config with content size and time
         var updatedConfig = ProcessingConfig(
-            outputSize: drawableSize,
+            outputSize: contentSize,
             time: config.time,
             isPreview: config.isPreview,
             enableEffects: config.enableEffects
@@ -181,7 +188,7 @@ extension MetalImageView: MTKViewDelegate {
         if isAnimating {
             let elapsed = CACurrentMediaTime() - startTime
             updatedConfig = ProcessingConfig(
-                outputSize: drawableSize,
+                outputSize: contentSize,
                 time: CMTime(seconds: elapsed, preferredTimescale: 600),
                 isPreview: config.isPreview,
                 enableEffects: config.enableEffects
@@ -196,12 +203,17 @@ extension MetalImageView: MTKViewDelegate {
             manager: GlobalRenderHooks.manager
         )
 
+        // Center content in drawable (letterbox/pillarbox)
+        let offsetX = (drawableSize.width - contentSize.width) / 2
+        let offsetY = (drawableSize.height - contentSize.height) / 2
+        let centeredImage = processedImage.transformed(by: CGAffineTransform(translationX: offsetX, y: offsetY))
+
         // Render to Metal drawable
         guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
 
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         ciContext.render(
-            processedImage,
+            centeredImage,
             to: drawable.texture,
             commandBuffer: commandBuffer,
             bounds: CGRect(origin: .zero, size: drawableSize),
