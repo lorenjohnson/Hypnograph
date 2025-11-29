@@ -11,48 +11,48 @@ import AVFoundation
 enum RenderError: Error, CustomStringConvertible {
     case noSources
     case invalidDuration(CMTime)
-    case sourceLoadFailed(index: Int, url: URL, underlying: Error)
-    case noVideoTrack(url: URL)
-    case noAssetTrack(url: URL)
-    case imageLoadFailed(url: URL, underlying: Error)
+    case sourceLoadFailed(index: Int, name: String, underlying: Error)
+    case noVideoTrack(name: String)
+    case noAssetTrack(name: String)
+    case imageLoadFailed(name: String, underlying: Error)
     case compositionBuildFailed(underlying: Error)
     case exportFailed(underlying: Error)
     case allSourcesFailedToLoad
     case invalidOutputSize(CGSize)
     case playerItemCreationFailed
-    
+
     var description: String {
         switch self {
         case .noSources:
             return "RenderError: No sources provided in recipe"
-            
+
         case .invalidDuration(let duration):
             return "RenderError: Invalid duration \(duration.seconds)s"
-            
-        case .sourceLoadFailed(let index, let url, let error):
-            return "RenderError: Source[\(index)] failed to load from \(url.lastPathComponent): \(error.localizedDescription)"
-            
-        case .noVideoTrack(let url):
-            return "RenderError: No video track found in \(url.lastPathComponent)"
-            
-        case .noAssetTrack(let url):
-            return "RenderError: No asset track found in \(url.lastPathComponent)"
-            
-        case .imageLoadFailed(let url, let error):
-            return "RenderError: Image failed to load from \(url.lastPathComponent): \(error.localizedDescription)"
-            
+
+        case .sourceLoadFailed(let index, let name, let error):
+            return "RenderError: Source[\(index)] failed to load from \(name): \(error.localizedDescription)"
+
+        case .noVideoTrack(let name):
+            return "RenderError: No video track found in \(name)"
+
+        case .noAssetTrack(let name):
+            return "RenderError: No asset track found in \(name)"
+
+        case .imageLoadFailed(let name, let error):
+            return "RenderError: Image failed to load from \(name): \(error.localizedDescription)"
+
         case .compositionBuildFailed(let error):
             return "RenderError: Composition build failed: \(error.localizedDescription)"
-            
+
         case .exportFailed(let error):
             return "RenderError: Export failed: \(error.localizedDescription)"
-            
+
         case .allSourcesFailedToLoad:
             return "RenderError: All sources failed to load"
-            
+
         case .invalidOutputSize(let size):
             return "RenderError: Invalid output size \(size)"
-            
+
         case .playerItemCreationFailed:
             return "RenderError: Failed to create AVPlayerItem"
         }

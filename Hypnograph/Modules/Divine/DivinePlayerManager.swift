@@ -25,7 +25,7 @@ final class DivinePlayerManager {
             return existing
         }
 
-        let asset = AVURLAsset(url: card.clip.file.url)
+        let asset = card.clip.file.asset
         let item = AVPlayerItem(asset: asset)
         let endTime = CMTimeAdd(card.clip.startTime, card.clip.duration)
         item.forwardPlaybackEndTime = endTime
@@ -35,7 +35,7 @@ final class DivinePlayerManager {
 
         let token = player.addBoundaryTimeObserver(
             forTimes: [NSValue(time: endTime)],
-            queue: .main
+            queue: DispatchQueue.main
         ) { [weak player] in
             // Just pause; card semantics are handled by DivineCardManager.
             player?.pause()

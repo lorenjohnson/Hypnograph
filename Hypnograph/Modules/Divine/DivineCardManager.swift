@@ -272,23 +272,22 @@ final class DivineCardManager: ObservableObject {
     private func makeCard(offset: CGSize) -> DivineCard? {
         let clipLength = max(3.0, state.settings.outputDuration.seconds)
 
-        // Get all source files currently on the table
-        let usedFiles = Set(cards.map { $0.clip.file.url })
+        // Get all source file IDs currently on the table
+        let usedFileIDs = Set(cards.map { $0.clip.file.id })
 
         // Try to get a unique clip (not already on the table)
         var clip: VideoClip?
-        let maxAttempts = 100 // Prevent infinite loop if library is small
+        let maxAttempts = 100
 
         for _ in 0..<maxAttempts {
             if let candidate = state.library.randomClip(clipLength: clipLength) {
-                if !usedFiles.contains(candidate.file.url) {
+                if !usedFileIDs.contains(candidate.file.id) {
                     clip = candidate
                     break
                 }
             }
         }
 
-        // If we couldn't find a unique clip after maxAttempts, return nil
         guard let clip = clip else {
             print("⚠️ DivineMode: Could not find a unique card (all sources may be in use)")
             return nil
@@ -311,27 +310,22 @@ final class DivineCardManager: ObservableObject {
 
     // MARK: - Still grabbing
 
-    /// Unified still-grab for Divine:
-    /// - video clips: AVAssetImageGenerator at `time`
-    /// - image clips: CGImage loaded once from disk (cached)
     private func grabStill(from clip: VideoClip, at time: CMTime? = nil) -> CGImage? {
         let file = clip.file
 
-        // Image-backed sources: load CGImage once and cache it.
+        // Image-backed sources: use VideoFile's loadCGImage()
         if file.mediaKind == .image {
-            return StillImageCache.cgImage(for: file.url)
+            return file.loadCGImage()
         }
 
-        // Video-backed sources: use AVAssetImageGenerator.
-        let asset = AVURLAsset(url: file.url)
-        let generator = AVAssetImageGenerator(asset: asset)
+        // Video-backed sources: use AVAssetImageGenerator
+        let generator = AVAssetImageGenerator(asset: file.asset)
         generator.appliesPreferredTrackTransform = true
         let t = time ?? clip.startTime
 
         do {
             var actual = CMTime.zero
-            let imageRef = try generator.copyCGImage(at: t, actualTime: &actual)
-            return imageRef
+            return try generator.copyCGImage(at: t, actualTime: &actual)
         } catch {
             print("DivineMode: failed to grab still from video: \(error)")
             return nil

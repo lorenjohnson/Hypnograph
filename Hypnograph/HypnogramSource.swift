@@ -1,15 +1,15 @@
 //
-//  Models.swift
+//  HypnogramSource.swift
 //  Hypnograph
 //
-//  Core, mode-agnostic models.
-//
-//  Created by Loren Johnson on 15.11.25.
+//  Core, mode-agnostic models for media sources and hypnogram composition.
 //
 
 import Foundation
+import AVFoundation
 import CoreMedia
 import CoreGraphics
+import CoreImage
 
 // MARK: - Core Data Models
 
@@ -18,23 +18,87 @@ enum MediaKind: String, Codable {
     case image
 }
 
-/// A single video file on disk that we can select clips from.
+/// A single media file that we can select clips from.
+/// Abstracts over local files and (future) Apple Photos sources.
 struct VideoFile: Identifiable {
+
+    /// Where the media comes from
+    enum Source {
+        case url(URL)
+        case photos(localIdentifier: String)  // Apple Photos - coming soon
+    }
+
     let id: UUID
-    let url: URL
+    let source: Source
     let mediaKind: MediaKind
     let duration: CMTime
 
+    // MARK: - Init
+
+    init(
+        id: UUID = UUID(),
+        source: Source,
+        mediaKind: MediaKind = .video,
+        duration: CMTime
+    ) {
+        self.id = id
+        self.source = source
+        self.mediaKind = mediaKind
+        self.duration = duration
+    }
+
+    /// Convenience init for URL-based sources (most common case)
     init(
         id: UUID = UUID(),
         url: URL,
         mediaKind: MediaKind = .video,
         duration: CMTime
     ) {
-        self.id = id
-        self.url = url
-        self.mediaKind = mediaKind
-        self.duration = duration
+        self.init(id: id, source: .url(url), mediaKind: mediaKind, duration: duration)
+    }
+
+    // MARK: - Accessors
+
+    /// Display name for HUD/UI
+    var displayName: String {
+        switch source {
+        case .url(let url): return url.lastPathComponent
+        case .photos(let id): return "Photos:\(id.prefix(8))"
+        }
+    }
+
+    // MARK: - Asset Loading
+
+    /// Get AVAsset for video sources
+    var asset: AVAsset {
+        switch source {
+        case .url(let url):
+            return AVURLAsset(url: url)
+        case .photos:
+            fatalError("Photos asset loading not yet implemented")
+        }
+    }
+
+    /// Load CIImage for still image sources
+    func loadImage() -> CIImage? {
+        guard mediaKind == .image else { return nil }
+        switch source {
+        case .url(let url):
+            return StillImageCache.ciImage(for: url)
+        case .photos:
+            fatalError("Photos image loading not yet implemented")
+        }
+    }
+
+    /// Load CGImage for still image sources (used by Divine for thumbnails)
+    func loadCGImage() -> CGImage? {
+        guard mediaKind == .image else { return nil }
+        switch source {
+        case .url(let url):
+            return StillImageCache.cgImage(for: url)
+        case .photos:
+            fatalError("Photos CGImage loading not yet implemented")
+        }
     }
 }
 
