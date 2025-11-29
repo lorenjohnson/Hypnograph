@@ -2,80 +2,62 @@ import SwiftUI
 import AVKit
 import AVFoundation
 import CoreMedia
-import CoreGraphics
 
-/// Display view for Dream mode montage style.
+/// Player view for Dream module montage style.
 /// All sources are composited together, looping at targetDuration.
-/// Note: Sequence mode now uses SequencePlayerView instead.
-struct DreamView: NSViewRepresentable {
-    /// The recipe containing all sources and target duration
+struct MontagePlayerView: NSViewRepresentable {
     let recipe: HypnogramRecipe
-
-    /// Display style (kept for compatibility, but this view is only used for montage)
-    let style: DreamStyle
-
-    /// Preview render size
     let outputSize: CGSize
-
-    /// Current source index (for flash solo in montage mode)
     @Binding var currentSourceIndex: Int
-
-    /// Binding to track current playback time
     @Binding var currentSourceTime: CMTime?
-
-    /// Whether playback is paused
     let isPaused: Bool
-
-    /// Counter that increments when effects change (triggers re-render when paused)
     let effectsChangeCounter: Int
-
     let playRate: Float = 0.8
 
     class Coordinator {
         var player: AVPlayer?
+        var playerView: AVPlayerView?
         var timeObserverToken: Any?
         var endObserverToken: Any?
         var compositionID: String?
         var currentTask: Task<Void, Never>?
-        var lastPauseState: Bool?  // Track pause state to avoid redundant play/pause calls
-        var lastEffectsCounter: Int?  // Track effects changes to force re-render when paused
+        var lastPauseState: Bool?
+        var lastEffectsCounter: Int?
+        var currentPlayerItem: AVPlayerItem?
     }
-    
+
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
-    
+
     func makeNSView(context: Context) -> AVPlayerView {
-        let view = AVPlayerView()
-        view.controlsStyle = .none
-        view.videoGravity = .resizeAspectFill
-        view.player = AVPlayer()
-        return view
+        let playerView = AVPlayerView()
+        playerView.controlsStyle = .none
+        playerView.videoGravity = .resizeAspectFill
+        context.coordinator.playerView = playerView
+        return playerView
     }
-    
+
     func updateNSView(_ nsView: AVPlayerView, context: Context) {
         let c = context.coordinator
 
-        guard !recipe.sources.isEmpty else {
-            Self.tearDown(coordinator: c, view: nsView)
+            guard !recipe.sources.isEmpty else {
+            Self.tearDown(coordinator: c)
             if currentSourceTime != nil {
                 currentSourceTime = nil
             }
             return
         }
 
-        let newID = compositionIdentity(for: recipe, style: style)
+        let newID = compositionIdentity(for: recipe)
 
         if newID != c.compositionID || c.player == nil {
-            // Cancel any pending build
             c.currentTask?.cancel()
+            c.compositionID = newID
 
-            // Build player item asynchronously using RenderEngine
             c.currentTask = Task {
                 let engine = RenderEngine()
-                // DreamView is now only used for montage mode
                 let strategy: CompositionBuilder.TimelineStrategy = .montage(targetDuration: recipe.targetDuration)
-
                 let config = RenderEngine.Config(
                     outputSize: outputSize,
                     frameRate: 30,
@@ -88,12 +70,18 @@ struct DreamView: NSViewRepresentable {
                     config: config
                 )
 
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled else {
+                    await MainActor.run {
+                        if c.compositionID == newID { c.compositionID = nil }
+                    }
+                    return
+                }
 
                 await MainActor.run {
+                    guard c.compositionID == newID else { return }
+
                     switch result {
                     case .success(let buildResult):
-                        let previousTime = c.player?.currentTime() ?? .zero
                         let player: AVPlayer
                         if let existing = c.player {
                             player = existing
@@ -103,13 +91,12 @@ struct DreamView: NSViewRepresentable {
                             c.player = player
                         }
 
+                        c.currentPlayerItem = buildResult.playerItem
                         nsView.player = player
-                        c.compositionID = newID
-                        c.lastPauseState = nil  // Reset pause state tracking
-                        c.lastEffectsCounter = effectsChangeCounter  // Track current effects state
 
-                        // Sync blend modes from recipe to manager for dynamic rendering
-                        // Use silent=true to avoid triggering re-render during initialization
+                        c.lastPauseState = nil
+                        c.lastEffectsCounter = effectsChangeCounter
+
                         if let manager = GlobalRenderHooks.manager {
                             let blendModes = self.resolvedBlendModes(from: recipe)
                             for (index, mode) in blendModes.enumerated() {
@@ -117,38 +104,18 @@ struct DreamView: NSViewRepresentable {
                             }
                         }
 
-                        // Remove previous observers
-                        if let token = c.timeObserverToken {
-                            player.removeTimeObserver(token)
-                            c.timeObserverToken = nil
-                        }
-                        if let token = c.endObserverToken {
-                            NotificationCenter.default.removeObserver(token)
-                            c.endObserverToken = nil
-                        }
+                        self.setupMontageObservers(player: player, item: buildResult.playerItem, coordinator: c)
 
-                        // Setup montage observers
-                        setupMontageObservers(player: player, item: buildResult.playerItem, coordinator: c)
-
-                        // Seek to previous time
-                        player.seek(to: previousTime)
-
-                        // Respect pause state
-                        if isPaused {
+                        if self.isPaused {
                             player.pause()
                         } else {
-                            player.playImmediately(atRate: playRate)
+                            player.playImmediately(atRate: self.playRate)
                         }
-                        c.lastPauseState = isPaused
+                        c.lastPauseState = self.isPaused
 
                     case .failure(let error):
-                        error.log(context: "DreamView")
-                        // Don't tear down completely - keep existing player if available
-                        if c.player == nil {
-                            print("⚠️  DreamView: No player available after build failure")
-                        } else {
-                            print("⚠️  DreamView: Build failed but keeping existing player")
-                        }
+                        error.log(context: "MontagePlayerView")
+                        c.compositionID = nil
                         if currentSourceTime != nil {
                             currentSourceTime = nil
                         }
@@ -156,7 +123,6 @@ struct DreamView: NSViewRepresentable {
                 }
             }
         } else {
-            // Handle pause state changes without rebuilding composition
             if c.lastPauseState != isPaused {
                 if isPaused {
                     c.player?.pause()
@@ -166,16 +132,12 @@ struct DreamView: NSViewRepresentable {
                 c.lastPauseState = isPaused
             }
 
-            // Handle effects/blend mode changes while paused - force re-render of current frame
             if c.lastEffectsCounter != effectsChangeCounter {
                 c.lastEffectsCounter = effectsChangeCounter
-
-                // If paused, seek to force frame re-render
                 if isPaused, let player = c.player {
                     let currentTime = player.currentTime()
                     let nudgeAmount = CMTime(value: 1, timescale: 600)
                     let nudgedTime = CMTimeAdd(currentTime, nudgeAmount)
-
                     player.seek(to: nudgedTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak player] _ in
                         player?.seek(to: currentTime, toleranceBefore: .zero, toleranceAfter: .zero)
                     }
@@ -183,34 +145,28 @@ struct DreamView: NSViewRepresentable {
             }
         }
     }
-    
+
     static func dismantleNSView(_ nsView: AVPlayerView, coordinator: Coordinator) {
-        tearDown(coordinator: coordinator, view: nsView)
+        tearDown(coordinator: coordinator)
     }
     
     // MARK: - Helpers
     
-    private func compositionIdentity(for recipe: HypnogramRecipe, style: DreamStyle) -> String {
-        // Blend modes are now dynamic (managed by RenderHookManager), so don't include them in identity
+    private func compositionIdentity(for recipe: HypnogramRecipe) -> String {
+        // Blend modes are dynamic (managed by RenderHookManager), but rotation is baked
         let pairs: [String] = recipe.sources.enumerated().map { index, source in
             let url = source.clip.file.url.path
             let start = source.clip.startTime.seconds
             let dur = source.clip.duration.seconds
-            return "\(url)|\(start)|\(dur)"
+            return "\(url)|\(start)|\(dur)|\(source.rotation)"
         }
         let durationPart = "dur=\(recipe.targetDuration.seconds)"
-        let stylePart = "style=\(style.rawValue)"
-        return pairs.joined(separator: ";;") + "||" + durationPart + "||" + stylePart
+        return pairs.joined(separator: ";;") + "||" + durationPart + "||montage"
     }
     
     private func resolvedBlendModes(from recipe: HypnogramRecipe) -> [String] {
-        let count = recipe.sources.count
-        let modeData = recipe.mode?.sourceData ?? []
-
-        return (0..<count).map { idx in
-            if idx == 0 { return kBlendModeSourceOver }
-            let stored = (idx < modeData.count) ? modeData[idx]["blendMode"] : nil
-            return stored ?? kBlendModeDefaultMontage
+        return recipe.sources.enumerated().map { idx, source in
+            source.blendMode ?? (idx == 0 ? kBlendModeSourceOver : kBlendModeDefaultMontage)
         }
     }
 
@@ -221,6 +177,16 @@ struct DreamView: NSViewRepresentable {
         item: AVPlayerItem,
         coordinator c: Coordinator
     ) {
+        // Remove previous observers first (same player, new item)
+        if let token = c.timeObserverToken {
+            player.removeTimeObserver(token)
+            c.timeObserverToken = nil
+        }
+        if let token = c.endObserverToken {
+            NotificationCenter.default.removeObserver(token)
+            c.endObserverToken = nil
+        }
+
         // Track playback time for montage
         let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
         c.timeObserverToken = player.addPeriodicTimeObserver(
@@ -250,7 +216,7 @@ struct DreamView: NSViewRepresentable {
 
     // MARK: - Teardown
 
-    private static func tearDown(coordinator c: Coordinator, view: AVPlayerView) {
+    private static func tearDown(coordinator c: Coordinator) {
         if let token = c.timeObserverToken, let player = c.player {
             player.removeTimeObserver(token)
         }
@@ -262,9 +228,10 @@ struct DreamView: NSViewRepresentable {
         c.endObserverToken = nil
 
         c.player?.pause()
+        c.playerView?.player = nil
         c.player = nil
+        c.currentPlayerItem = nil
         c.compositionID = nil
-        view.player = nil
     }
 }
 

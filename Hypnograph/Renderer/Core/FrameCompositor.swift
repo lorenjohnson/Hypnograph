@@ -10,12 +10,22 @@ import Foundation
 import AVFoundation
 import CoreImage
 import CoreVideo
+import Metal
 
 final class FrameCompositor: NSObject, AVVideoCompositing {
 
     // MARK: - Properties
 
-    private let renderContext = CIContext()
+    private let renderContext: CIContext = {
+        // Use Metal for GPU-accelerated rendering
+        if let device = MTLCreateSystemDefaultDevice() {
+            return CIContext(mtlDevice: device, options: [
+                .cacheIntermediates: false,
+                .priorityRequestLow: false
+            ])
+        }
+        return CIContext()
+    }()
     private let renderQueue = DispatchQueue(label: "com.hypnograph.framecompositor", qos: .userInteractive)
 
     // MARK: - Initialization
@@ -49,13 +59,11 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
 
     func startRequest(_ request: AVAsynchronousVideoCompositionRequest) {
         // Per-frame logging removed for performance (30fps = 30 logs/sec)
-        renderQueue.async { [weak self] in
-            guard let self = self else {
-                print("🔴 FrameCompositor: self is nil")
-                request.finish(with: NSError(domain: "FrameCompositor", code: 1, userInfo: nil))
-                return
-            }
-
+        // NOTE: We capture self strongly here because AVFoundation owns the compositor
+        // and can deallocate it at any time. If AVFoundation deallocates us while
+        // we have pending work, that's an AVFoundation bug we can't fix with weak self.
+        // Using weak self just causes the "self is nil" errors without fixing the root cause.
+        renderQueue.async {
             self.renderFrame(request: request)
         }
     }
@@ -99,12 +107,11 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
 
             // Check if this layer is a still image
             if index < instruction.stillImages.count, let stillImage = instruction.stillImages[index] {
-                // Use the still image directly
                 layerImage = stillImage
             } else {
                 // Get frame from video track
                 guard let sourceBuffer = request.sourceFrame(byTrackID: trackID) else {
-                    // Missing frame - skip this layer silently (happens during seeks)
+                    print("⚠️ FrameCompositor: No source frame for track \(trackID) at \(request.compositionTime.seconds)s")
                     continue
                 }
                 layerImage = CIImage(cvPixelBuffer: sourceBuffer)
@@ -115,9 +122,38 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
                 continue
             }
 
-            // Apply transform (orientation correction)
+            // Apply transform (orientation correction from media metadata)
             let transform = instruction.transforms[index]
             img = img.transformed(by: transform)
+
+            // Apply user rotation around the image center
+            let rotationDegrees = instruction.rotations[index]
+            if rotationDegrees != 0 {
+                let radians = CGFloat(rotationDegrees) * .pi / 180.0
+                let extent = img.extent
+                guard extent.width > 0, extent.height > 0,
+                      extent.origin.x.isFinite, extent.origin.y.isFinite else {
+                    print("⚠️ Skipping rotation for layer \(index): invalid extent \(extent)")
+                    continue
+                }
+                // Rotate around the center of the extent
+                let centerX = extent.midX
+                let centerY = extent.midY
+                let rotateAroundCenter = CGAffineTransform(translationX: -centerX, y: -centerY)
+                    .rotated(by: radians)
+                    .translatedBy(x: centerX, y: centerY)
+                img = img.transformed(by: rotateAroundCenter)
+
+                // After rotation, the extent may have moved - translate back to origin
+                // This ensures aspectFill will work correctly
+                let rotatedExtent = img.extent
+                if rotatedExtent.origin != .zero {
+                    img = img.transformed(by: CGAffineTransform(
+                        translationX: -rotatedExtent.origin.x,
+                        y: -rotatedExtent.origin.y
+                    ))
+                }
+            }
 
             // Aspect-fill to output size
             img = aspectFill(image: img, to: outputSize)

@@ -47,7 +47,7 @@ final class CompositionBuilder {
         enableEffects: Bool = true  // Enable effects by default (can disable for export if needed)
     ) async -> Result<BuildResult, RenderError> {
 
-        print("🏗️  CompositionBuilder: Building \(strategy) with \(recipe.sources.count) sources")
+        // Building logging removed to reduce noise
 
         // Validate
         guard !recipe.sources.isEmpty else {
@@ -108,12 +108,13 @@ final class CompositionBuilder {
             return .failure(.allSourcesFailedToLoad)
         }
 
-        print("🏗️  Montage: Loaded \(loadedSources.count)/\(recipe.sources.count) sources")
+        // Loaded logging removed to reduce noise
 
         // Create composition
         let composition = AVMutableComposition()
         var trackIDs: [CMPersistentTrackID] = []
         var transforms: [CGAffineTransform] = []
+        var rotations: [Int] = []
         var blendModes: [String] = []
         var sourceIndices: [Int] = []
         var stillImages: [CIImage?] = []
@@ -191,10 +192,11 @@ final class CompositionBuilder {
 
             trackIDs.append(track.trackID)
             transforms.append(loaded.transform)
+            rotations.append(source.rotation)
             sourceIndices.append(index)
 
-            // Get blend mode from recipe
-            let blendMode = recipe.mode?.value(for: .blendMode, sourceIndex: index) ?? kBlendModeSourceOver
+            // Get blend mode from source (default to SourceOver for first, Screen for others)
+            let blendMode = source.blendMode ?? (index == 0 ? kBlendModeSourceOver : kBlendModeDefaultMontage)
             blendModes.append(blendMode)
         }
 
@@ -214,6 +216,7 @@ final class CompositionBuilder {
             layerTrackIDs: trackIDs,
             blendModes: blendModes,
             transforms: transforms,
+            rotations: rotations,
             sourceIndices: sourceIndices,
             enableEffects: enableEffects,
             stillImages: stillImages
@@ -232,7 +235,7 @@ final class CompositionBuilder {
             clipStartTimes: [.zero]
         )
 
-        print("✅ Montage: \(trackIDs.count) layers @ \(targetDuration.seconds)s")
+        // Success logging removed to reduce noise
         return .success(result)
     }
 
@@ -264,7 +267,7 @@ final class CompositionBuilder {
             return .failure(.allSourcesFailedToLoad)
         }
 
-        print("🏗️  Sequence: Loaded \(loadedSources.count)/\(recipe.sources.count) sources")
+        // Loaded logging removed to reduce noise
 
         // Create composition with video and audio tracks
         let composition = AVMutableComposition()
@@ -308,6 +311,7 @@ final class CompositionBuilder {
                     layerTrackIDs: [videoTrack.trackID],
                     blendModes: [kBlendModeSourceOver],
                     transforms: [loaded.transform],
+                    rotations: [source.rotation],
                     sourceIndices: [originalIndex],  // Use original recipe index for correct seeking
                     enableEffects: enableEffects,
                     stillImages: [loaded.ciImage]
@@ -343,6 +347,7 @@ final class CompositionBuilder {
                     layerTrackIDs: [videoTrack.trackID],
                     blendModes: [kBlendModeSourceOver],
                     transforms: [loaded.transform],
+                    rotations: [source.rotation],
                     sourceIndices: [originalIndex],  // Use original recipe index for correct seeking
                     enableEffects: enableEffects,
                     stillImages: [nil]
@@ -370,7 +375,7 @@ final class CompositionBuilder {
             clipStartTimes: clipStartTimes
         )
 
-        print("✅ Sequence: \(instructions.count) clips, total \(currentTime.seconds)s")
+        // Success logging removed to reduce noise
         return .success(result)
     }
 }

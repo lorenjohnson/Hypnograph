@@ -22,28 +22,28 @@ import GameController
 ///
 /// Automatically detects and connects to controllers when they're paired via Bluetooth.
 final class GameControllerManager {
-    
+
     // Weak references to avoid retain cycles
     private weak var state: HypnographState?
-    private weak var dreamMode: DreamMode?
-    private weak var divineMode: DivineMode?
-    private var cycleModeHandler: (() -> Void)?
-    
+    private weak var dream: Dream?
+    private weak var divine: Divine?
+    private var cycleModuleHandler: (() -> Void)?
+
     private var connectedController: GCController?
-    
+
     init(
         state: HypnographState,
-        dreamMode: DreamMode,
-        divineMode: DivineMode,
-        cycleMode: @escaping () -> Void
+        dream: Dream,
+        divine: Divine,
+        cycleModule: @escaping () -> Void
     ) {
         self.state = state
-        self.dreamMode = dreamMode
-        self.divineMode = divineMode
-        self.cycleModeHandler = cycleMode
-        
+        self.dream = dream
+        self.divine = divine
+        self.cycleModuleHandler = cycleModule
+
         setupControllerObservers()
-        
+
         // Check if controller is already connected
         if let controller = GCController.controllers().first {
             setupController(controller)
@@ -95,101 +95,107 @@ final class GameControllerManager {
         setupSpecialButtonHandlers(gamepad)
     }
     
-    // MARK: - Current Mode Helper
-    
-    private var currentMode: (any HypnographMode)? {
-        guard let state = state else { return nil }
-        switch state.currentModeType {
-        case .dream:
-            return dreamMode
-        case .divine:
-            return divineMode
-        }
-    }
-    
     // MARK: - Button Handlers
-    
+
     private func setupButtonHandlers(_ gamepad: GCExtendedGamepad) {
         // A Button (bottom) - New composition (Space)
         gamepad.buttonA.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard pressed else { return }
-            self?.currentMode?.new()
+            guard pressed, let self = self else { return }
+            switch self.state?.currentModuleType {
+            case .dream: self.dream?.new()
+            case .divine: self.divine?.new()
+            case .none: break
+            }
         }
 
         // B Button (right) - Save (Cmd+S)
         gamepad.buttonB.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard pressed else { return }
-            self?.currentMode?.save()
+            guard pressed, let self = self else { return }
+            switch self.state?.currentModuleType {
+            case .dream: self.dream?.save()
+            case .divine: self.divine?.save()
+            case .none: break
+            }
         }
 
         // X Button (left) - Cycle global effect (E)
         gamepad.buttonX.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed else { return }
-            self?.currentMode?.cycleGlobalEffect()
+            self?.dream?.cycleGlobalEffect()
         }
 
         // Y Button (top) - Snapshot (S)
         gamepad.buttonY.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed else { return }
-            // Snapshot is Dream-specific, cast to DreamMode
-            if let dreamMode = self?.dreamMode {
-                dreamMode.saveSnapshot()
-            }
+            self?.dream?.saveSnapshot()
         }
     }
-    
+
     private func setupDPadHandlers(_ gamepad: GCExtendedGamepad) {
         // D-Pad Left - Previous source
         gamepad.dpad.left.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard pressed else { return }
-            self?.currentMode?.previousSource()
+            guard pressed, let self = self else { return }
+            switch self.state?.currentModuleType {
+            case .dream: self.dream?.previousSource()
+            case .divine: self.divine?.previousCard()
+            case .none: break
+            }
         }
-        
+
         // D-Pad Right - Next source
         gamepad.dpad.right.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard pressed else { return }
-            self?.currentMode?.nextSource()
+            guard pressed, let self = self else { return }
+            switch self.state?.currentModuleType {
+            case .dream: self.dream?.nextSource()
+            case .divine: self.divine?.nextCard()
+            case .none: break
+            }
         }
-        
+
         // D-Pad Up - Add source (.)
         gamepad.dpad.up.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard pressed else { return }
-            self?.currentMode?.addSource()
+            guard pressed, let self = self else { return }
+            switch self.state?.currentModuleType {
+            case .dream: self.dream?.addSource()
+            case .divine: self.divine?.addCard()
+            case .none: break
+            }
         }
-        
+
         // D-Pad Down - Delete source (Delete)
         gamepad.dpad.down.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard pressed else { return }
-            self?.currentMode?.deleteCurrentSource()
+            guard pressed, let self = self else { return }
+            switch self.state?.currentModuleType {
+            case .dream: self.dream?.deleteCurrentSource()
+            case .divine: self.divine?.deleteCurrentCard()
+            case .none: break
+            }
         }
     }
-    
+
     private func setupBumperHandlers(_ gamepad: GCExtendedGamepad) {
         // Left Bumper - Cycle blend mode (M) for current layer
         gamepad.leftShoulder.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed else { return }
-            // Blend mode is Dream-specific, cast to DreamMode
-            if let dreamMode = self?.dreamMode {
-                dreamMode.cycleBlendMode()
-            }
+            self?.dream?.cycleBlendMode()
         }
 
         // Right Bumper - Cycle source effect (F) for current layer
         gamepad.rightShoulder.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed else { return }
-            self?.currentMode?.cycleSourceEffect()
+            self?.dream?.cycleSourceEffect()
         }
 
         // Left Trigger - Clear all effects and reset blend modes
         gamepad.leftTrigger.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed else { return }
-            self?.currentMode?.clearAllEffects()
+            self?.dream?.clearAllEffects()
         }
 
-        // Right Trigger - Toggle style (Montage/Sequence) - Dream mode only
+        // Right Trigger - Toggle mode (Montage/Sequence) - Dream only
         gamepad.rightTrigger.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed else { return }
-            self?.dreamMode?.toggleStyle()
+            self?.dream?.toggleMode()
         }
     }
 
@@ -197,14 +203,14 @@ final class GameControllerManager {
         // Start/Menu Button - Pause/Play (P)
         gamepad.buttonMenu.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed else { return }
-            self?.currentMode?.togglePause()
+            self?.state?.togglePause()
         }
 
         // Back/Options Button - Toggle HUD (H) (if available)
         if let optionsButton = gamepad.buttonOptions {
             optionsButton.pressedChangedHandler = { [weak self] _, _, pressed in
                 guard pressed else { return }
-                self?.currentMode?.toggleHUD()
+                self?.state?.toggleHUD()
             }
         }
 
@@ -212,15 +218,15 @@ final class GameControllerManager {
         if let leftThumbButton = gamepad.leftThumbstickButton {
             leftThumbButton.pressedChangedHandler = { [weak self] _, _, pressed in
                 guard pressed else { return }
-                self?.currentMode?.toggleWatchMode()
+                self?.state?.toggleWatchMode()
             }
         }
 
-        // Right Stick Click - Cycle mode (~) (if available)
+        // Right Stick Click - Cycle module (~) (if available)
         if let rightThumbButton = gamepad.rightThumbstickButton {
             rightThumbButton.pressedChangedHandler = { [weak self] _, _, pressed in
                 guard pressed else { return }
-                self?.cycleModeHandler?()
+                self?.cycleModuleHandler?()
             }
         }
     }

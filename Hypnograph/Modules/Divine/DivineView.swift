@@ -6,7 +6,7 @@ import CoreGraphics
 // MARK: - Divine View Hierarchy
 
 struct DivineView: View {
-    @ObservedObject var mode: DivineMode
+    @ObservedObject var mode: Divine
     @ObservedObject var cardManager: DivineCardManager
 
     let onTap: (UUID) -> Void

@@ -53,22 +53,26 @@ struct VideoClip {
 
 // MARK: - Hypnogram core models
 
-/// One source of a hypnogram: clip + transform + effects.
-///
-/// NOTE: any mode-specific per-source data (e.g. blend modes for Montage)
-/// lives in `HypnogramMode.sourceData`, *not* here.
+/// One source of a hypnogram: clip + transform + effects + blend mode + rotation.
 struct HypnogramSource {
     var clip: VideoClip
     var transform: CGAffineTransform
     var effects: [RenderHook]
+    var blendMode: String?
+    /// User-applied rotation in degrees (0, 90, 180, 270). Applied around image center.
+    var rotation: Int
 
     init(
         clip: VideoClip,
         transform: CGAffineTransform = .identity,
-        effects: [RenderHook] = []
+        effects: [RenderHook] = [],
+        blendMode: String? = nil,
+        rotation: Int = 0
     ) {
         self.clip = clip
         self.transform = transform
         self.effects = effects
+        self.blendMode = blendMode
+        self.rotation = rotation
     }
 }

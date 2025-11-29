@@ -20,20 +20,20 @@ final class HypnographState: ObservableObject {
 
     private(set) var settings: Settings
 
-    // Per-mode library state
-    private var perModeLibraryKeys: [ModeType: Set<String>] = [:]
+    // Per-module library state
+    private var perModuleLibraryKeys: [ModuleType: Set<String>] = [:]
 
     @Published private(set) var currentLibraryKey: String
     @Published private(set) var activeLibraryKeys: Set<String>
 
     private(set) var library: VideoSourcesLibrary
 
-    // MARK: - Mode management
+    // MARK: - Module management
 
-    @Published var currentModeType: ModeType = .dream {
+    @Published var currentModuleType: ModuleType = .dream {
         didSet {
-            if oldValue != currentModeType {
-                switchToModeLibraries(currentModeType)
+            if oldValue != currentModuleType {
+                switchToModuleLibraries(currentModuleType)
             }
         }
     }
@@ -75,19 +75,19 @@ final class HypnographState: ObservableObject {
         let defaultKey = settings.defaultSourceLibraryKey
         let initialKeys: Set<String> = [defaultKey]
 
-        // Initialize per-mode library state from settings or use defaults
-        var loadedPerModeKeys: [ModeType: Set<String>] = [:]
-        for mode in [ModeType.dream, ModeType.divine] {
-            if let savedKeys = settings.activeLibrariesPerMode[mode.rawValue] {
-                loadedPerModeKeys[mode] = Set(savedKeys)
+        // Initialize per-module library state from settings or use defaults
+        var loadedPerModuleKeys: [ModuleType: Set<String>] = [:]
+        for module in [ModuleType.dream, ModuleType.divine] {
+            if let savedKeys = settings.activeLibrariesPerMode[module.rawValue] {
+                loadedPerModuleKeys[module] = Set(savedKeys)
             } else {
-                loadedPerModeKeys[mode] = initialKeys
+                loadedPerModuleKeys[module] = initialKeys
             }
         }
-        self.perModeLibraryKeys = loadedPerModeKeys
+        self.perModuleLibraryKeys = loadedPerModuleKeys
 
-        // Get active keys for the initial mode (dream)
-        let activeKeys = loadedPerModeKeys[.dream] ?? initialKeys
+        // Get active keys for the initial module (dream)
+        let activeKeys = loadedPerModuleKeys[.dream] ?? initialKeys
 
         self.currentLibraryKey = defaultKey
         self.activeLibraryKeys = activeKeys
@@ -316,24 +316,24 @@ final class HypnographState: ObservableObject {
                 keys.insert(key)
             }
 
-            self.applyActiveLibraries(keys, saveToMode: true)
+            self.applyActiveLibraries(keys, saveToModule: true)
         }
     }
 
     func useOnlyDefaultLibrary() {
         let defaultKey = settings.defaultSourceLibraryKey
         DispatchQueue.main.async { [weak self] in
-            self?.applyActiveLibraries([defaultKey], saveToMode: true)
+            self?.applyActiveLibraries([defaultKey], saveToModule: true)
         }
     }
 
-    /// Switch to the library configuration for a specific mode
-    private func switchToModeLibraries(_ mode: ModeType) {
-        let keys = perModeLibraryKeys[mode] ?? [settings.defaultSourceLibraryKey]
-        applyActiveLibraries(keys, saveToMode: false)
+    /// Switch to the library configuration for a specific module
+    private func switchToModuleLibraries(_ module: ModuleType) {
+        let keys = perModuleLibraryKeys[module] ?? [settings.defaultSourceLibraryKey]
+        applyActiveLibraries(keys, saveToModule: false)
     }
 
-    private func applyActiveLibraries(_ keys: Set<String>, saveToMode: Bool) {
+    private func applyActiveLibraries(_ keys: Set<String>, saveToModule: Bool) {
         let folders = settings.folders(forLibraries: keys)
         activeLibraryKeys = keys
         currentLibraryKey = keys.first ?? settings.defaultSourceLibraryKey
@@ -342,10 +342,10 @@ final class HypnographState: ObservableObject {
             allowStillImages: settings.allowStillImages
         )
 
-        // Save to current mode's library state if requested
-        if saveToMode {
-            perModeLibraryKeys[currentModeType] = keys
-            savePerModeLibrariesToSettings()
+        // Save to current module's library state if requested
+        if saveToModule {
+            perModuleLibraryKeys[currentModuleType] = keys
+            savePerModuleLibrariesToSettings()
         }
 
         sources.removeAll()
@@ -362,12 +362,12 @@ final class HypnographState: ObservableObject {
         }
     }
 
-    /// Save per-mode library selections to settings file
-    private func savePerModeLibrariesToSettings() {
-        // Convert perModeLibraryKeys to [String: [String]] for settings
+    /// Save per-module library selections to settings file
+    private func savePerModuleLibrariesToSettings() {
+        // Convert perModuleLibraryKeys to [String: [String]] for settings
         var librariesDict: [String: [String]] = [:]
-        for (mode, keys) in perModeLibraryKeys {
-            librariesDict[mode.rawValue] = Array(keys)
+        for (module, keys) in perModuleLibraryKeys {
+            librariesDict[module.rawValue] = Array(keys)
         }
 
         settings.activeLibrariesPerMode = librariesDict
@@ -390,7 +390,7 @@ final class HypnographState: ObservableObject {
             let newSettings = try SettingsLoader.load(from: url)
             self.settings = newSettings
 
-            applyActiveLibraries(activeLibraryKeys, saveToMode: false)
+            applyActiveLibraries(activeLibraryKeys, saveToModule: false)
 
             watchTimer?.invalidate()
             watchTimer = nil
