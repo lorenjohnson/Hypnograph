@@ -53,23 +53,23 @@ struct VideoClip {
 
 // MARK: - Hypnogram core models
 
-/// One source of a hypnogram: clip + transform + effects + blend mode.
-/// The transform is user-applied (rotation, scale, etc.) - metadata transforms are computed at runtime.
+/// One source of a hypnogram: clip + transforms + effects + blend mode.
+/// Transforms are user-applied (rotation, scale, etc.) - metadata transforms are computed at runtime.
 struct HypnogramSource {
     var clip: VideoClip
-    /// User-applied transform (rotation, scale, translation). Applied after metadata orientation correction.
-    var transform: CGAffineTransform
+    /// User-applied transforms (rotation, scale, translation). Applied after metadata orientation correction.
+    var transforms: [CGAffineTransform]
     var effects: [RenderHook]
     var blendMode: String?
 
     init(
         clip: VideoClip,
-        transform: CGAffineTransform = .identity,
+        transforms: [CGAffineTransform] = [],
         effects: [RenderHook] = [],
         blendMode: String? = nil
     ) {
         self.clip = clip
-        self.transform = transform
+        self.transforms = transforms
         self.effects = effects
         self.blendMode = blendMode
     }

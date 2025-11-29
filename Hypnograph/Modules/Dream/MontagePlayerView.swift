@@ -187,14 +187,16 @@ struct MontagePlayerView: NSViewRepresentable {
     // MARK: - Helpers
     
     private func compositionIdentity(for recipe: HypnogramRecipe) -> String {
-        // Blend modes are dynamic (managed by RenderHookManager), but transform is baked
+        // Blend modes are dynamic (managed by RenderHookManager), but transforms are baked
         let pairs: [String] = recipe.sources.enumerated().map { index, source in
             let url = source.clip.file.url.path
             let start = source.clip.startTime.seconds
             let dur = source.clip.duration.seconds
-            let t = source.transform
-            let transformStr = "\(t.a),\(t.b),\(t.c),\(t.d),\(t.tx),\(t.ty)"
-            return "\(url)|\(start)|\(dur)|\(transformStr)"
+            // Include all transforms in identity string
+            let transformsStr = source.transforms.map { t in
+                "\(t.a),\(t.b),\(t.c),\(t.d),\(t.tx),\(t.ty)"
+            }.joined(separator: ";")
+            return "\(url)|\(start)|\(dur)|\(transformsStr)"
         }
         let durationPart = "dur=\(recipe.targetDuration.seconds)"
         return pairs.joined(separator: ";;") + "||" + durationPart + "||montage"

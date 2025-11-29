@@ -188,11 +188,13 @@ struct SequencePlayerView: NSViewRepresentable {
 
         // Load and display the image
         if let ciImage = StillImageCache.ciImage(for: source.clip.file.url) {
+            // Compose user transforms array into single transform
+            let userTransform = source.transforms.reduce(CGAffineTransform.identity) { $0.concatenating($1) }
             metalView.display(
                 image: ciImage,
                 sourceIndex: index,
                 outputSize: outputSize,
-                transform: source.transform,
+                transform: userTransform,
                 enableEffects: true
             )
 
@@ -259,9 +261,10 @@ struct SequencePlayerView: NSViewRepresentable {
             guard !Task.isCancelled else { return }
 
             await MainActor.run {
-                // Compose metadata transform with user transform
+                // Compose metadata transform with user transforms array
                 let metadataTransform = preferredTransform ?? .identity
-                let composedTransform = metadataTransform.concatenating(source.transform)
+                let userTransform = source.transforms.reduce(CGAffineTransform.identity) { $0.concatenating($1) }
+                let composedTransform = metadataTransform.concatenating(userTransform)
 
                 // Create composition for single clip
                 let composition = AVMutableComposition()
@@ -438,9 +441,11 @@ struct SequencePlayerView: NSViewRepresentable {
     /// Generate a simple identity string to detect recipe changes
     private func recipeIdentity(for recipe: HypnogramRecipe) -> String {
         let pairs = recipe.sources.map { source in
-            let t = source.transform
-            let transformStr = "\(t.a),\(t.b),\(t.c),\(t.d),\(t.tx),\(t.ty)"
-            return "\(source.clip.file.url.lastPathComponent)|\(transformStr)"
+            // Include all transforms in identity string
+            let transformsStr = source.transforms.map { t in
+                "\(t.a),\(t.b),\(t.c),\(t.d),\(t.tx),\(t.ty)"
+            }.joined(separator: ";")
+            return "\(source.clip.file.url.lastPathComponent)|\(transformsStr)"
         }
         return "\(recipe.sources.count)|\(pairs.joined(separator: ","))"
     }
