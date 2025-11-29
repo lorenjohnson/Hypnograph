@@ -6,21 +6,21 @@ import CoreImage
 final class VideoSourcesLibrary {
     // MARK: - Lazy Loading Optimization
     // For large libraries (5000+ files), we use a two-tier approach:
-    // 1. Lightweight index: just URLs and media kind (fast startup, low memory)
+    // 1. Lightweight index: just source + media kind (fast startup, low memory)
     // 2. Lazy metadata loading: only load AVAsset/duration when file is selected
 
-    private struct FileEntry {
-        let url: URL
+    private struct SourceEntry {
+        let source: VideoFile.Source
         let mediaKind: MediaKind
     }
 
-    private var fileIndex: [FileEntry] = []
+    private var sourceIndex: [SourceEntry] = []
 
     /// Legacy accessor for compatibility (returns empty - not used anymore)
     private(set) var files: [VideoFile] = []
 
-    /// Files that have failed validation at selection time (in-memory only).
-    private var badURLs = Set<URL>()
+    /// Sources that have failed validation at selection time (in-memory only).
+    private var badSources = Set<String>()
 
     /// Whether to allow still images (for performance testing)
     private let allowStillImages: Bool
@@ -51,7 +51,7 @@ final class VideoSourcesLibrary {
 
     private func loadFiles(from sources: [String]) {
         let fileManager = FileManager.default
-        var results: [FileEntry] = []
+        var results: [SourceEntry] = []
 
         for path in sources {
             let url = URL(fileURLWithPath: path)
@@ -62,7 +62,7 @@ final class VideoSourcesLibrary {
             }
 
             if isDirectory.boolValue {
-                // Directory case: recurse and collect URLs only (no AVAsset creation!)
+                // Directory case: recurse and collect sources only (no AVAsset creation!)
                 guard let enumerator = fileManager.enumerator(
                     at: url,
                     includingPropertiesForKeys: nil
@@ -78,10 +78,9 @@ final class VideoSourcesLibrary {
                     let ext = fileURL.pathExtension.lowercased()
 
                     if allowVideoExtensions.contains(ext) {
-                        // Just store URL + kind, no duration loading!
-                        results.append(FileEntry(url: fileURL, mediaKind: .video))
+                        results.append(SourceEntry(source: .url(fileURL), mediaKind: .video))
                     } else if allowStillImages && allowedPhotoExtensions.contains(ext) {
-                        results.append(FileEntry(url: fileURL, mediaKind: .image))
+                        results.append(SourceEntry(source: .url(fileURL), mediaKind: .image))
                     }
                 }
             } else {
@@ -89,14 +88,14 @@ final class VideoSourcesLibrary {
                 let ext = url.pathExtension.lowercased()
 
                 if allowVideoExtensions.contains(ext) {
-                    results.append(FileEntry(url: url, mediaKind: .video))
+                    results.append(SourceEntry(source: .url(url), mediaKind: .video))
                 } else if allowStillImages && allowedPhotoExtensions.contains(ext) {
-                    results.append(FileEntry(url: url, mediaKind: .image))
+                    results.append(SourceEntry(source: .url(url), mediaKind: .image))
                 }
             }
         }
 
-        self.fileIndex = results
+        self.sourceIndex = results
         applyExclusions()
     }
 
@@ -115,7 +114,7 @@ final class VideoSourcesLibrary {
 
         guard fm.fileExists(atPath: originalsURL.path) else {
             print("VideoSourcesLibrary: Originals folder not found at \(originalsURL.path)")
-            self.fileIndex = []
+            self.sourceIndex = []
             return
         }
 
@@ -125,14 +124,14 @@ final class VideoSourcesLibrary {
             .isReadableKey
         ]
 
-        var results: [FileEntry] = []
+        var results: [SourceEntry] = []
 
         guard let enumerator = fm.enumerator(
             at: originalsURL,
             includingPropertiesForKeys: Array(resourceKeys),
             options: [.skipsHiddenFiles, .skipsPackageDescendants]
         ) else {
-            self.fileIndex = []
+            self.sourceIndex = []
             return
         }
 
@@ -147,22 +146,21 @@ final class VideoSourcesLibrary {
             if let size = values.fileSize, size < 1024 { continue }
 
             if allowVideoExtensions.contains(ext) {
-                // Just store URL + kind, no AVAsset creation!
-                results.append(FileEntry(url: fileURL, mediaKind: .video))
+                results.append(SourceEntry(source: .url(fileURL), mediaKind: .video))
             } else if allowStillImages && allowedPhotoExtensions.contains(ext) {
-                results.append(FileEntry(url: fileURL, mediaKind: .image))
+                results.append(SourceEntry(source: .url(fileURL), mediaKind: .image))
             }
         }
 
-        self.fileIndex = results
+        self.sourceIndex = results
         print("VideoSourcesLibrary: indexed \(results.count) media files from Photos originals/")
     }
 
     // MARK: - Random clip selection (with lazy validation for video + image)
 
     func randomClip(clipLength: Double) -> VideoClip? {
-        // Consider *all* files except those already marked bad.
-        let candidates = fileIndex.filter { !badURLs.contains($0.url) }
+        // Consider *all* sources except those already marked bad.
+        let candidates = sourceIndex.filter { !badSources.contains(sourceKey($0.source)) }
         guard !candidates.isEmpty else { return nil }
 
         let maxAttempts = min(32, max(candidates.count * 2, 1))
@@ -172,69 +170,103 @@ final class VideoSourcesLibrary {
 
             switch entry.mediaKind {
             case .video:
-                // Use the asset duration, since that’s authoritative.
-                let asset = AVURLAsset(url: entry.url)
-                let totalSeconds = asset.duration.seconds
-
-                // Validate
-                guard totalSeconds > 0,
-                      asset.isPlayable,
-                      asset.tracks(withMediaType: .video).first != nil else {
-                    badURLs.insert(entry.url)
+                guard let clip = validateVideoSource(entry, clipLength: clipLength) else {
+                    badSources.insert(sourceKey(entry.source))
                     continue
                 }
-
-                let length = min(clipLength, totalSeconds)
-                let maxStart = max(0.0, totalSeconds - length)
-                let startSeconds = maxStart > 0 ? Double.random(in: 0...maxStart) : 0
-
-                return VideoClip(
-                    file: VideoFile(
-                        url: entry.url,
-                        mediaKind: .video,
-                        duration: CMTime(seconds: totalSeconds, preferredTimescale: 600)
-                    ),
-                    startTime: CMTime(seconds: startSeconds, preferredTimescale: 600),
-                    duration: CMTime(seconds: length, preferredTimescale: 600)
-                )
+                return clip
 
             case .image:
-                // Validate image can be loaded using cache (ensures proper pixel format)
-                guard let image = StillImageCache.ciImage(for: entry.url),
-                      !image.extent.isEmpty else {
-                    badURLs.insert(entry.url)
+                guard let clip = validateImageSource(entry, clipLength: clipLength) else {
+                    badSources.insert(sourceKey(entry.source))
                     continue
                 }
-
-                // Time-invariant: we just pretend this still lasts as long as the clipLength.
-                let length = max(clipLength, 0.1)
-                return VideoClip(
-                    file: VideoFile(
-                        url: entry.url,
-                        mediaKind: .image,
-                        duration: CMTime(seconds: length, preferredTimescale: 600)
-                    ),
-                    startTime: .zero,
-                    duration: CMTime(seconds: length, preferredTimescale: 600)
-                )
+                return clip
             }
         }
 
         return nil
     }
 
+    // MARK: - Source Validation
+
+    private func validateVideoSource(_ entry: SourceEntry, clipLength: Double) -> VideoClip? {
+        switch entry.source {
+        case .url(let url):
+            let asset = AVURLAsset(url: url)
+            let totalSeconds = asset.duration.seconds
+
+            guard totalSeconds > 0,
+                  asset.isPlayable,
+                  asset.tracks(withMediaType: .video).first != nil else {
+                return nil
+            }
+
+            let length = min(clipLength, totalSeconds)
+            let maxStart = max(0.0, totalSeconds - length)
+            let startSeconds = maxStart > 0 ? Double.random(in: 0...maxStart) : 0
+
+            return VideoClip(
+                file: VideoFile(
+                    source: entry.source,
+                    mediaKind: .video,
+                    duration: CMTime(seconds: totalSeconds, preferredTimescale: 600)
+                ),
+                startTime: CMTime(seconds: startSeconds, preferredTimescale: 600),
+                duration: CMTime(seconds: length, preferredTimescale: 600)
+            )
+
+        case .photos:
+            // Coming soon: PHImageManager.requestAVAsset
+            return nil
+        }
+    }
+
+    private func validateImageSource(_ entry: SourceEntry, clipLength: Double) -> VideoClip? {
+        switch entry.source {
+        case .url(let url):
+            guard let image = StillImageCache.ciImage(for: url),
+                  !image.extent.isEmpty else {
+                return nil
+            }
+
+            let length = max(clipLength, 0.1)
+            return VideoClip(
+                file: VideoFile(
+                    source: entry.source,
+                    mediaKind: .image,
+                    duration: CMTime(seconds: length, preferredTimescale: 600)
+                ),
+                startTime: .zero,
+                duration: CMTime(seconds: length, preferredTimescale: 600)
+            )
+
+        case .photos:
+            // Coming soon: PHImageManager.requestImage
+            return nil
+        }
+    }
+
+    /// Stable key for tracking bad sources
+    private func sourceKey(_ source: VideoFile.Source) -> String {
+        switch source {
+        case .url(let url): return url.path
+        case .photos(let id): return id
+        }
+    }
+
     private func applyExclusions() {
         let store = ExclusionStore.shared
-        fileIndex.removeAll { store.isExcluded(url: $0.url) }
-        // Note: we intentionally *do not* apply `badURLs` here; those are runtime-only.
+        sourceIndex.removeAll { store.isExcluded($0.source) }
     }
 
     // MARK: - Exclusions (user-driven only)
 
     func exclude(file: VideoFile) {
-        // This is reserved for explicit user choice ("X = Add to Exclude List"),
-        // not for automatic validation.
-        ExclusionStore.shared.add(url: file.url)
-        fileIndex.removeAll { $0.url == file.url }
+        ExclusionStore.shared.add(file.source)
+        sourceIndex.removeAll { sourceKey($0.source) == sourceKey(file.source) }
     }
 }
+
+                // Use the asset duration, since that’s authoritative.
+

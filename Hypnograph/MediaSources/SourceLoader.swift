@@ -9,8 +9,6 @@ import Foundation
 import AVFoundation
 import CoreImage
 import CoreGraphics
-import ImageIO
-import UniformTypeIdentifiers
 import AppKit
 
 /// Represents a successfully loaded source ready for composition
@@ -27,49 +25,42 @@ struct LoadedSource {
 
 /// Loads sources with fault tolerance
 final class SourceLoader {
-    
+
     // MARK: - Loading
-    
+
     /// Load a source, return error if it fails (never crashes)
     func load(source: HypnogramSource) async -> Result<LoadedSource, RenderError> {
-        let url = source.clip.file.url
-        
-        // Loading logging removed to reduce noise - errors will still be logged
-        
-        // Determine if this is an image or video
-        let isImage = isImageFile(url)
-        
-        if isImage {
+        let file = source.clip.file
+
+        switch file.mediaKind {
+        case .image:
             return await loadImageSource(source: source)
-        } else {
+        case .video:
             return await loadVideoSource(source: source)
         }
     }
     
     // MARK: - Video Loading
-    
+
     private func loadVideoSource(source: HypnogramSource) async -> Result<LoadedSource, RenderError> {
-        let url = source.clip.file.url
-        let asset = AVURLAsset(url: url)
+        let file = source.clip.file
+        let asset = file.asset
 
         do {
-            // Load video tracks asynchronously
             let videoTracks = try await asset.loadTracks(withMediaType: .video)
 
             guard let videoTrack = videoTracks.first else {
-                return .failure(.noVideoTrack(url: url))
+                return .failure(.noVideoTrack(name: file.displayName))
             }
 
-            // Load video track properties
             let naturalSize = try await videoTrack.load(.naturalSize)
             let preferredTransform = try await videoTrack.load(.preferredTransform)
             let timeRange = try await videoTrack.load(.timeRange)
 
-            // Load audio track if available
             let audioTracks = try await asset.loadTracks(withMediaType: .audio)
-            let audioTrack = audioTracks.first  // nil if no audio
+            let audioTrack = audioTracks.first
 
-            let loaded = LoadedSource(
+            return .success(LoadedSource(
                 asset: asset,
                 videoTrack: videoTrack,
                 audioTrack: audioTrack,
@@ -78,73 +69,37 @@ final class SourceLoader {
                 transform: preferredTransform,
                 isStillImage: false,
                 ciImage: nil
-            )
-
-            // Success logging removed to reduce noise
-            return .success(loaded)
-
+            ))
         } catch {
-            return .failure(.sourceLoadFailed(index: -1, url: url, underlying: error))
+            return .failure(.sourceLoadFailed(index: -1, name: file.displayName, underlying: error))
         }
     }
-    
+
     // MARK: - Image Loading
 
     private func loadImageSource(source: HypnogramSource) async -> Result<LoadedSource, RenderError> {
-        let url = source.clip.file.url
+        let file = source.clip.file
 
-        // Load the image using StillImageCache
-        guard let ciImage = StillImageCache.ciImage(for: url) else {
+        guard let ciImage = file.loadImage() else {
             return .failure(.imageLoadFailed(
-                url: url,
+                name: file.displayName,
                 underlying: NSError(domain: "SourceLoader", code: 1,
                     userInfo: [NSLocalizedDescriptionKey: "Failed to decode image"])
             ))
         }
 
-        // Get image dimensions
         let extent = ciImage.extent
-        let naturalSize = CGSize(width: extent.width, height: extent.height)
 
-        // Use the clip's duration (from VideoFile)
-        let duration = source.clip.duration
-
-        // Create a dummy asset (not used, but required for LoadedSource)
-        let asset = AVURLAsset(url: url)
-
-        // Get orientation from EXIF if available
-        let transform = getImageTransform(ciImage: ciImage)
-
-        let loaded = LoadedSource(
-            asset: asset,
-            videoTrack: nil,  // No video track for still images
-            audioTrack: nil,  // No audio for still images
-            duration: duration,
-            naturalSize: naturalSize,
-            transform: transform,
+        return .success(LoadedSource(
+            asset: file.asset,  // dummy asset for images
+            videoTrack: nil,
+            audioTrack: nil,
+            duration: source.clip.duration,
+            naturalSize: CGSize(width: extent.width, height: extent.height),
+            transform: .identity,  // CIImage orientation already applied by StillImageCache
             isStillImage: true,
             ciImage: ciImage
-        )
-
-        // Success logging removed to reduce noise
-        return .success(loaded)
-    }
-
-    // MARK: - Image Transform
-
-    private func getImageTransform(ciImage: CIImage) -> CGAffineTransform {
-        // CIImage with applyOrientationProperty already has orientation applied
-        // So we return identity transform
-        return .identity
-    }
-    
-    // MARK: - Helpers
-    
-    private func isImageFile(_ url: URL) -> Bool {
-        guard let type = UTType(filenameExtension: url.pathExtension) else {
-            return false
-        }
-        return type.conforms(to: .image)
+        ))
     }
 }
 

@@ -187,7 +187,7 @@ struct SequencePlayerView: NSViewRepresentable {
         }
 
         // Load and display the image
-        if let ciImage = StillImageCache.ciImage(for: source.clip.file.url) {
+        if let ciImage = source.clip.file.loadImage() {
             // Compose user transforms array into single transform
             let userTransform = source.transforms.reduce(CGAffineTransform.identity) { $0.concatenating($1) }
             metalView.display(
@@ -246,7 +246,7 @@ struct SequencePlayerView: NSViewRepresentable {
         }
 
         // Create player item with video composition for effects
-        let asset = AVURLAsset(url: source.clip.file.url)
+        let asset = source.clip.file.asset
 
         // Build video composition with our custom compositor
         c.loadTask?.cancel()
@@ -449,7 +449,7 @@ struct SequencePlayerView: NSViewRepresentable {
             let transformsStr = source.transforms.map { t in
                 "\(t.a),\(t.b),\(t.c),\(t.d),\(t.tx),\(t.ty)"
             }.joined(separator: ";")
-            return "\(source.clip.file.url.lastPathComponent)|\(transformsStr)"
+            return "\(source.clip.file.displayName)|\(transformsStr)"
         }
         return "\(recipe.sources.count)|\(pairs.joined(separator: ","))"
     }
