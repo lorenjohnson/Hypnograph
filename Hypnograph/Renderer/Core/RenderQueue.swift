@@ -32,7 +32,7 @@ final class RenderQueue {
         renderer.enqueue(recipe: recipe) { [weak self] result in
             guard let self = self else { return }
 
-            // Completion is already called on MainActor by UnifiedRenderer
+            // Completion is already called on MainActor by HypnogramRenderer
             // Update state directly since we're already on MainActor
             self.activeJobs -= 1
 

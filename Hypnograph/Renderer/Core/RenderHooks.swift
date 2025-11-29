@@ -195,21 +195,12 @@ final class EffectRegistry {
 // MARK: - Render Hook Manager
 
 /// Manager that both preview + export can share.
-/// Manages global effect and per-source effects.
+/// Reads effects and blend modes from the recipe (single source of truth).
+/// Provides mutation methods that write back to the recipe via closures.
 final class RenderHookManager {
     /// Shared frame buffer that persists across frames
     /// 60 frames at 30fps = 2 seconds of history for temporal effects
     let frameBuffer = FrameBuffer(maxFrames: 60)
-
-    /// Global effect applied to the final composed image
-    private var globalEffect: RenderHook?
-
-    /// Per-source effects (indexed by source index)
-    private var sourceEffects: [Int: RenderHook] = [:]
-
-    /// Per-source blend modes (indexed by source index)
-    /// Source 0 is always kBlendModeSourceOver, others default to kBlendModeDefaultMontage
-    private var blendModes: [Int: String] = [:]
 
     /// Flash solo: when set, only this source index is rendered (others hidden)
     /// Used for brief visual feedback when switching layers in montage mode
@@ -218,14 +209,33 @@ final class RenderHookManager {
     /// Callback invoked whenever effects or blend modes change (for triggering re-render when paused)
     var onEffectChanged: (() -> Void)?
 
-    // MARK: - Global Effect
+    // MARK: - Recipe Access (single source of truth)
 
+    /// Closure to get the current recipe - reads from the single source of truth
+    var recipeProvider: (() -> HypnogramRecipe?)?
+
+    /// Closure to update recipe effects
+    var effectsSetter: (([RenderHook]) -> Void)?
+
+    /// Closure to update a source's effect at a given index
+    var sourceEffectSetter: ((Int, [RenderHook]) -> Void)?
+
+    /// Closure to update a source's blend mode at a given index
+    var blendModeSetter: ((Int, String) -> Void)?
+
+    // MARK: - Recipe Effects (reads from recipe, the single source of truth)
+
+    /// Get the current recipe's first effect name (UI currently supports one)
     var globalEffectName: String {
-        globalEffect?.name ?? "None"
+        recipeProvider?()?.effects.first?.name ?? "None"
     }
 
     func setGlobalEffect(_ effect: RenderHook?) {
-        globalEffect = effect
+        if let effect = effect {
+            effectsSetter?([effect])
+        } else {
+            effectsSetter?([])
+        }
         onEffectChanged?()
     }
 
@@ -234,18 +244,27 @@ final class RenderHookManager {
         let currentIndex = names.firstIndex(of: globalEffectName) ?? 0
         let nextIndex = (currentIndex + 1) % names.count
         let nextName = names[nextIndex]
-        globalEffect = EffectRegistry.shared.effect(named: nextName)
-        onEffectChanged?()
+        let effect = EffectRegistry.shared.effect(named: nextName)
+        setGlobalEffect(effect)
     }
 
-    // MARK: - Per-Source Effects
+    // MARK: - Per-Source Effects (reads from recipe sources)
 
     func sourceEffectName(for sourceIndex: Int) -> String {
-        sourceEffects[sourceIndex]?.name ?? "None"
+        guard let recipe = recipeProvider?(),
+              sourceIndex >= 0,
+              sourceIndex < recipe.sources.count else {
+            return "None"
+        }
+        return recipe.sources[sourceIndex].effects.first?.name ?? "None"
     }
 
     func setSourceEffect(_ effect: RenderHook?, for sourceIndex: Int) {
-        sourceEffects[sourceIndex] = effect
+        if let effect = effect {
+            sourceEffectSetter?(sourceIndex, [effect])
+        } else {
+            sourceEffectSetter?(sourceIndex, [])
+        }
         onEffectChanged?()
     }
 
@@ -255,62 +274,78 @@ final class RenderHookManager {
         let currentIndex = names.firstIndex(of: currentName) ?? 0
         let nextIndex = (currentIndex + 1) % names.count
         let nextName = names[nextIndex]
-        sourceEffects[sourceIndex] = EffectRegistry.shared.effect(named: nextName)
-        onEffectChanged?()
+        let effect = EffectRegistry.shared.effect(named: nextName)
+        setSourceEffect(effect, for: sourceIndex)
     }
 
     // MARK: - Application
 
-    /// Apply global effect to the final composed image
+    /// Apply recipe effects to the final composed image
     func applyGlobal(to context: inout RenderContext, image: CIImage) -> CIImage {
         // Global effect is not tied to a particular source.
         context.sourceIndex = nil
 
-        // Apply global effect if set
-        guard let effect = globalEffect else {
+        guard let recipe = recipeProvider?(), !recipe.effects.isEmpty else {
             // Even if no effect, still update buffer for future use
             frameBuffer.addFrame(image, at: context.time)
             return image
         }
 
-        // Apply effect (it will check if buffer is filled)
-        let result = effect.willRenderFrame(&context, image: image)
+        // Apply all effects in chain (currently UI only sets one)
+        var result = image
+        for effect in recipe.effects {
+            result = effect.willRenderFrame(&context, image: result)
+        }
 
         // Update frame buffer AFTER applying effect
-        // This way the effect sees the previous frames, not including current
-        // Pass time to detect loops/seeks
         frameBuffer.addFrame(image, at: context.time)
 
         return result
     }
 
-    /// Apply per-source effect to a single source image (before compositing)
+    /// Apply per-source effects to a single source image (before compositing)
     func applyToSource(sourceIndex: Int, context: inout RenderContext, image: CIImage) -> CIImage {
-        guard let effect = sourceEffects[sourceIndex] else {
+        guard let recipe = recipeProvider?(),
+              sourceIndex >= 0,
+              sourceIndex < recipe.sources.count else {
             return image
         }
 
+        let effects = recipe.sources[sourceIndex].effects
+        guard !effects.isEmpty else { return image }
+
         // Mark which source is being processed so hooks can branch if they want.
         context.sourceIndex = sourceIndex
-        return effect.willRenderFrame(&context, image: image)
+
+        var result = image
+        for effect in effects {
+            result = effect.willRenderFrame(&context, image: result)
+        }
+        return result
     }
 
     func clearFrameBuffer() {
         frameBuffer.clear()
     }
 
-    // MARK: - Blend Modes
+    // MARK: - Blend Modes (reads from recipe sources)
 
     func blendMode(for sourceIndex: Int) -> String {
         // Source 0 is always source-over (base layer)
         if sourceIndex == 0 {
             return kBlendModeSourceOver
         }
-        return blendModes[sourceIndex] ?? kBlendModeDefaultMontage
+        // Read from the recipe (single source of truth)
+        guard let recipe = recipeProvider?(),
+              sourceIndex >= 0,
+              sourceIndex < recipe.sources.count else {
+            return kBlendModeDefaultMontage
+        }
+        return recipe.sources[sourceIndex].blendMode ?? kBlendModeDefaultMontage
     }
 
     func setBlendMode(_ mode: String, for sourceIndex: Int, silent: Bool = false) {
-        blendModes[sourceIndex] = mode
+        blendModeSetter?(sourceIndex, mode)
         if !silent {
             onEffectChanged?()
         }
@@ -331,14 +366,7 @@ final class RenderHookManager {
         let currentMode = blendMode(for: sourceIndex)
         let currentIndex = modes.firstIndex(of: currentMode) ?? 0
         let nextIndex = (currentIndex + 1) % modes.count
-        blendModes[sourceIndex] = modes[nextIndex]
-        onEffectChanged?()
-    }
-
-    /// Reset all blend modes to Screen (default for montage)
-    func clearAllBlendModes() {
-        blendModes.removeAll()
-        onEffectChanged?()
+        setBlendMode(modes[nextIndex], for: sourceIndex)
     }
 
     // MARK: - Flash Solo
