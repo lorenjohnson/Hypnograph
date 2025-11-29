@@ -26,7 +26,7 @@ final class HypnographState: ObservableObject {
     @Published private(set) var currentLibraryKey: String
     @Published private(set) var activeLibraryKeys: Set<String>
 
-    private(set) var library: VideoSourcesLibrary
+    private(set) var library: MediaSourcesLibrary
 
     // MARK: - Module management
 
@@ -60,8 +60,8 @@ final class HypnographState: ObservableObject {
     /// Current aspect ratio for composition
     @Published var aspectRatio: AspectRatio
 
-    /// Current max output dimension (720, 1080, 2160)
-    @Published var maxOutputDimension: Int
+    /// Current output resolution (720p, 1080p, 4K)
+    @Published var outputResolution: OutputResolution
 
     // Render hooks
     let renderHooks = RenderHookManager()
@@ -97,9 +97,9 @@ final class HypnographState: ObservableObject {
 
         self.currentLibraryKey = defaultKey
         self.activeLibraryKeys = activeKeys
-        self.library = VideoSourcesLibrary(
+        self.library = MediaSourcesLibrary(
             sourceFolders: settings.folders(forLibraries: activeKeys),
-            allowStillImages: settings.allowStillImages
+            allowedMediaTypes: settings.sourceMediaTypes
         )
 
         self.recipe = HypnogramRecipe(
@@ -111,7 +111,7 @@ final class HypnographState: ObservableObject {
 
         // Initialize aspect ratio and resolution from settings
         self.aspectRatio = settings.aspectRatio
-        self.maxOutputDimension = settings.maxOutputDimension
+        self.outputResolution = settings.outputResolution
 
         // Always start with a full random hypnogram
         newRandomHypnogram()
@@ -289,6 +289,22 @@ final class HypnographState: ObservableObject {
         replaceClipForCurrentSource()
     }
 
+    func markCurrentSourceForDeletion() {
+        noteUserInteraction()
+        guard let clip = currentClip else { return }
+        library.markForDeletion(file: clip.file)
+        replaceClipForCurrentSource()
+        AppNotifications.shared.show("Marked for deletion", flash: true)
+    }
+
+    func toggleCurrentSourceFavorite() {
+        noteUserInteraction()
+        guard let clip = currentClip else { return }
+        let isFavorited = FavoriteStore.shared.toggle(clip.file.source)
+        let message = isFavorited ? "Added to favorites" : "Removed from favorites"
+        AppNotifications.shared.show(message, flash: true)
+    }
+
     /// Simple reset used by modes that want a clean slate.
     func resetForNextHypnogram() {
         sources.removeAll()
@@ -360,10 +376,35 @@ final class HypnographState: ObservableObject {
         }
     }
 
-    func useOnlyDefaultLibrary() {
-        let defaultKey = settings.defaultSourceLibraryKey
+    // MARK: - Source Media Types
+
+    func isMediaTypeActive(_ type: SourceMediaType) -> Bool {
+        settings.sourceMediaTypes.contains(type)
+    }
+
+    func toggleMediaType(_ type: SourceMediaType) {
         DispatchQueue.main.async { [weak self] in
-            self?.applyActiveLibraries([defaultKey], saveToModule: true)
+            guard let self else { return }
+
+            var types = self.settings.sourceMediaTypes
+
+            if types.contains(type) {
+                // Don't allow removing the last type
+                if types.count > 1 {
+                    types.remove(type)
+                }
+            } else {
+                types.insert(type)
+            }
+
+            self.settings.sourceMediaTypes = types
+            self.saveSettingsToDisk()
+            // Rebuild library with new filter, but keep current composition
+            self.library = MediaSourcesLibrary(
+                sourceFolders: self.settings.folders(forLibraries: self.activeLibraryKeys),
+                allowedMediaTypes: types
+            )
+            AppNotifications.show("Takes effect on next Hypnogram", flash: true, duration: 1.5)
         }
     }
 
@@ -377,9 +418,9 @@ final class HypnographState: ObservableObject {
         let folders = settings.folders(forLibraries: keys)
         activeLibraryKeys = keys
         currentLibraryKey = keys.first ?? settings.defaultSourceLibraryKey
-        library = VideoSourcesLibrary(
+        library = MediaSourcesLibrary(
             sourceFolders: folders,
-            allowStillImages: settings.allowStillImages
+            allowedMediaTypes: settings.sourceMediaTypes
         )
 
         // Save to current module's library state if requested
@@ -420,9 +461,9 @@ final class HypnographState: ObservableObject {
             let newSettings = try SettingsLoader.load(from: url)
             self.settings = newSettings
 
-            // Sync aspect ratio and max dimension
+            // Sync aspect ratio and resolution
             self.aspectRatio = newSettings.aspectRatio
-            self.maxOutputDimension = newSettings.maxOutputDimension
+            self.outputResolution = newSettings.outputResolution
 
             applyActiveLibraries(activeLibraryKeys, saveToModule: false)
 
@@ -444,12 +485,13 @@ final class HypnographState: ObservableObject {
         aspectRatio = ratio
         settings.aspectRatio = ratio
         saveSettingsToDisk()
+        AppNotifications.show("Takes effect on next Hypnogram", flash: true, duration: 1.5)
     }
 
-    /// Set the max output dimension and save to settings
-    func setMaxOutputDimension(_ dimension: Int) {
-        maxOutputDimension = dimension
-        settings.maxOutputDimension = dimension
+    /// Set the output resolution and save to settings
+    func setOutputResolution(_ resolution: OutputResolution) {
+        outputResolution = resolution
+        settings.outputResolution = resolution
         saveSettingsToDisk()
     }
 

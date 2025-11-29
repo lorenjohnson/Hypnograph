@@ -75,6 +75,30 @@ enum SourceFoldersParam: Codable {
     }
 }
 
+// MARK: - Output Resolution
+
+/// Standard video resolutions (720p, 1080p, 4K)
+/// The raw value is the vertical resolution for landscape video.
+enum OutputResolution: Int, Codable, CaseIterable {
+    case p720 = 720
+    case p1080 = 1080
+    case p4K = 2160
+
+    /// Display name for menus
+    var displayName: String {
+        switch self {
+        case .p720: return "720p"
+        case .p1080: return "1080p"
+        case .p4K: return "4K"
+        }
+    }
+
+    /// The constraining dimension for renderSize()
+    /// For landscape: this is the height (e.g., 1080 for 1080p → 1920×1080)
+    /// For portrait: this is the width
+    var maxDimension: Int { rawValue }
+}
+
 // MARK: - Settings
 
 struct Settings: Codable {
@@ -88,13 +112,18 @@ struct Settings: Codable {
     var outputSeconds: Int
     var snapshotsFolder: String
     var activeLibrariesPerMode: [String: [String]]
-    var allowStillImages: Bool
 
     /// Aspect ratio for composition (e.g., 16:9, 4:3, 2.35:1)
     var aspectRatio: AspectRatio
 
-    /// Max dimension for disk output (720, 1080, 2160)
-    var maxOutputDimension: Int
+    /// Output resolution for disk rendering
+    var outputResolution: OutputResolution
+
+    /// Display resolution for preview (no menu option)
+    var displayResolution: OutputResolution
+
+    /// Which media types to include in sources: "photos", "videos", or both
+    var sourceMediaTypes: Set<SourceMediaType>
 
     // Single source of truth for defaults
     private enum Defaults {
@@ -107,16 +136,17 @@ struct Settings: Codable {
             "~/Movies/Hypnograph/sources"
         ])
         static let activeLibrariesPerMode: [String: [String]] = [:]
-        static let allowStillImages: Bool = true
         static let aspectRatio: AspectRatio = .ratio16x9
-        static let maxOutputDimension: Int = 1080
+        static let outputResolution: OutputResolution = .p1080
+        static let displayResolution: OutputResolution = .p1080
+        static let sourceMediaTypes: Set<SourceMediaType> = [.photos, .videos]
     }
 
     private enum CodingKeys: String, CodingKey {
         case outputFolder, sourceFolders
         case watch, maxSourcesForNew, outputSeconds, snapshotsFolder
-        case activeLibrariesPerMode, allowStillImages
-        case aspectRatio, maxOutputDimension
+        case activeLibrariesPerMode
+        case aspectRatio, outputResolution, displayResolution, sourceMediaTypes
     }
 
     init(
@@ -127,9 +157,10 @@ struct Settings: Codable {
         outputSeconds: Int = Defaults.outputSeconds,
         snapshotsFolder: String = Defaults.snapshotsFolder,
         activeLibrariesPerMode: [String: [String]] = Defaults.activeLibrariesPerMode,
-        allowStillImages: Bool = Defaults.allowStillImages,
         aspectRatio: AspectRatio = Defaults.aspectRatio,
-        maxOutputDimension: Int = Defaults.maxOutputDimension
+        outputResolution: OutputResolution = Defaults.outputResolution,
+        displayResolution: OutputResolution = Defaults.displayResolution,
+        sourceMediaTypes: Set<SourceMediaType> = Defaults.sourceMediaTypes
     ) {
         self.outputFolder = outputFolder
         self.sourceFolders = sourceFolders
@@ -138,9 +169,10 @@ struct Settings: Codable {
         self.outputSeconds = outputSeconds
         self.snapshotsFolder = snapshotsFolder
         self.activeLibrariesPerMode = activeLibrariesPerMode
-        self.allowStillImages = allowStillImages
         self.aspectRatio = aspectRatio
-        self.maxOutputDimension = maxOutputDimension
+        self.outputResolution = outputResolution
+        self.displayResolution = displayResolution
+        self.sourceMediaTypes = sourceMediaTypes
     }
 
     init(from decoder: Decoder) throws {
@@ -160,12 +192,17 @@ struct Settings: Codable {
             ?? Defaults.snapshotsFolder
         activeLibrariesPerMode = try c.decodeIfPresent([String: [String]].self, forKey: .activeLibrariesPerMode)
             ?? Defaults.activeLibrariesPerMode
-        allowStillImages = try c.decodeIfPresent(Bool.self, forKey: .allowStillImages)
-            ?? Defaults.allowStillImages
         aspectRatio = try c.decodeIfPresent(AspectRatio.self, forKey: .aspectRatio)
             ?? Defaults.aspectRatio
-        maxOutputDimension = try c.decodeIfPresent(Int.self, forKey: .maxOutputDimension)
-            ?? Defaults.maxOutputDimension
+        outputResolution = try c.decodeIfPresent(OutputResolution.self, forKey: .outputResolution)
+            ?? Defaults.outputResolution
+        displayResolution = try c.decodeIfPresent(OutputResolution.self, forKey: .displayResolution)
+            ?? Defaults.displayResolution
+        if let types = try c.decodeIfPresent([SourceMediaType].self, forKey: .sourceMediaTypes) {
+            sourceMediaTypes = Set(types)
+        } else {
+            sourceMediaTypes = Defaults.sourceMediaTypes
+        }
     }
 
     func encode(to encoder: Encoder) throws {
@@ -177,9 +214,10 @@ struct Settings: Codable {
         try c.encode(outputSeconds, forKey: .outputSeconds)
         try c.encode(snapshotsFolder, forKey: .snapshotsFolder)
         try c.encode(activeLibrariesPerMode, forKey: .activeLibrariesPerMode)
-        try c.encode(allowStillImages, forKey: .allowStillImages)
         try c.encode(aspectRatio, forKey: .aspectRatio)
-        try c.encode(maxOutputDimension, forKey: .maxOutputDimension)
+        try c.encode(outputResolution, forKey: .outputResolution)
+        try c.encode(displayResolution, forKey: .displayResolution)
+        try c.encode(Array(sourceMediaTypes), forKey: .sourceMediaTypes)
     }
 
     // MARK: - Derived values

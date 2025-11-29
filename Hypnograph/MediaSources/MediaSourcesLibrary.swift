@@ -3,7 +3,16 @@ import AVFoundation
 import CoreMedia
 import CoreImage
 
-final class VideoSourcesLibrary {
+// MARK: - Source Media Type
+
+enum SourceMediaType: String, Codable, CaseIterable {
+    case photos
+    case videos
+}
+
+// MARK: - MediaSourcesLibrary
+
+final class MediaSourcesLibrary {
     // MARK: - Lazy Loading Optimization
     // For large libraries (5000+ files), we use a two-tier approach:
     // 1. Lightweight index: just source + media kind (fast startup, low memory)
@@ -22,8 +31,8 @@ final class VideoSourcesLibrary {
     /// Sources that have failed validation at selection time (in-memory only).
     private var badSources = Set<String>()
 
-    /// Whether to allow still images (for performance testing)
-    private let allowStillImages: Bool
+    /// Which media types to include
+    private let allowedMediaTypes: Set<SourceMediaType>
 
     let allowedPhotoExtensions = Set([
         "jpeg", "jpg", "png", "heic", "gif"
@@ -35,8 +44,13 @@ final class VideoSourcesLibrary {
         "3gp", "3g2"
     ])
 
-    init(sourceFolders: [String], allowStillImages: Bool = true) {
-        self.allowStillImages = allowStillImages
+    /// Whether photos are allowed based on media types
+    private var allowPhotos: Bool { allowedMediaTypes.contains(.photos) }
+    /// Whether videos are allowed based on media types
+    private var allowVideos: Bool { allowedMediaTypes.contains(.videos) }
+
+    init(sourceFolders: [String], allowedMediaTypes: Set<SourceMediaType> = [.photos, .videos]) {
+        self.allowedMediaTypes = allowedMediaTypes
         if sourceFolders.isEmpty {
             // No explicit sources → default to Photos library videos
             loadFilesFromPhotosLibrary()
@@ -77,9 +91,9 @@ final class VideoSourcesLibrary {
 
                     let ext = fileURL.pathExtension.lowercased()
 
-                    if allowVideoExtensions.contains(ext) {
+                    if allowVideos && allowVideoExtensions.contains(ext) {
                         results.append(SourceEntry(source: .url(fileURL), mediaKind: .video))
-                    } else if allowStillImages && allowedPhotoExtensions.contains(ext) {
+                    } else if allowPhotos && allowedPhotoExtensions.contains(ext) {
                         results.append(SourceEntry(source: .url(fileURL), mediaKind: .image))
                     }
                 }
@@ -87,9 +101,9 @@ final class VideoSourcesLibrary {
                 // Single-file case
                 let ext = url.pathExtension.lowercased()
 
-                if allowVideoExtensions.contains(ext) {
+                if allowVideos && allowVideoExtensions.contains(ext) {
                     results.append(SourceEntry(source: .url(url), mediaKind: .video))
-                } else if allowStillImages && allowedPhotoExtensions.contains(ext) {
+                } else if allowPhotos && allowedPhotoExtensions.contains(ext) {
                     results.append(SourceEntry(source: .url(url), mediaKind: .image))
                 }
             }
@@ -113,7 +127,7 @@ final class VideoSourcesLibrary {
         let originalsURL = photosLibURL.appendingPathComponent("originals", isDirectory: true)
 
         guard fm.fileExists(atPath: originalsURL.path) else {
-            print("VideoSourcesLibrary: Originals folder not found at \(originalsURL.path)")
+            print("MediaSourcesLibrary: Originals folder not found at \(originalsURL.path)")
             self.sourceIndex = []
             return
         }
@@ -145,15 +159,15 @@ final class VideoSourcesLibrary {
             // Skip iCloud placeholders / stubs
             if let size = values.fileSize, size < 1024 { continue }
 
-            if allowVideoExtensions.contains(ext) {
+            if allowVideos && allowVideoExtensions.contains(ext) {
                 results.append(SourceEntry(source: .url(fileURL), mediaKind: .video))
-            } else if allowStillImages && allowedPhotoExtensions.contains(ext) {
+            } else if allowPhotos && allowedPhotoExtensions.contains(ext) {
                 results.append(SourceEntry(source: .url(fileURL), mediaKind: .image))
             }
         }
 
         self.sourceIndex = results
-        print("VideoSourcesLibrary: indexed \(results.count) media files from Photos originals/")
+        print("MediaSourcesLibrary: indexed \(results.count) media files from Photos originals/")
     }
 
     // MARK: - Random clip selection (with lazy validation for video + image)
@@ -256,14 +270,22 @@ final class VideoSourcesLibrary {
     }
 
     private func applyExclusions() {
-        let store = ExclusionStore.shared
-        sourceIndex.removeAll { store.isExcluded($0.source) }
+        let exclusionStore = ExclusionStore.shared
+        let deleteStore = DeleteStore.shared
+        sourceIndex.removeAll {
+            exclusionStore.isExcluded($0.source) || deleteStore.isQueued($0.source)
+        }
     }
 
-    // MARK: - Exclusions (user-driven only)
+    // MARK: - Exclusions & Deletions (user-driven)
 
     func exclude(file: VideoFile) {
         ExclusionStore.shared.add(file.source)
+        sourceIndex.removeAll { sourceKey($0.source) == sourceKey(file.source) }
+    }
+
+    func markForDeletion(file: VideoFile) {
+        DeleteStore.shared.add(file.source)
         sourceIndex.removeAll { sourceKey($0.source) == sourceKey(file.source) }
     }
 }
