@@ -28,6 +28,7 @@ final class RenderQueue {
         completion: ((Result<URL, Error>) -> Void)? = nil
     ) {
         activeJobs += 1
+        AppNotifications.show("Rendering started", flash: true, duration: 1.0)
 
         renderer.enqueue(recipe: recipe) { [weak self] result in
             guard let self = self else { return }
@@ -39,8 +40,10 @@ final class RenderQueue {
             switch result {
             case .success(let url):
                 print("Render job finished: \(url.path)")
+                AppNotifications.show("Saved: \(url.lastPathComponent)")
             case .failure(let error):
                 print("Render job failed: \(error.localizedDescription)")
+                AppNotifications.show("Save failed: \(error.localizedDescription)")
             }
 
             // Call per-job completion if provided

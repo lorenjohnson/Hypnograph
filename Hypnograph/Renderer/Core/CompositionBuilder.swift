@@ -24,6 +24,7 @@ final class CompositionBuilder {
     struct BuildResult {
         let composition: AVMutableComposition
         let videoComposition: AVMutableVideoComposition
+        let audioMix: AVMutableAudioMix?  // for mixing multiple audio tracks
         let instructions: [RenderInstruction]
         let clipStartTimes: [CMTime]  // for sequence seeking
     }
@@ -113,6 +114,7 @@ final class CompositionBuilder {
         // Create composition
         let composition = AVMutableComposition()
         var trackIDs: [CMPersistentTrackID] = []
+        var audioTrackIDs: [CMPersistentTrackID] = []
         var transforms: [CGAffineTransform] = []
         var blendModes: [String] = []
         var sourceIndices: [Int] = []
@@ -128,7 +130,9 @@ final class CompositionBuilder {
             }
 
             if loaded.isStillImage {
-                // For still images: create empty track, store CIImage
+                // For still images: insert empty time range so track has valid segments.
+                // AVAssetExportSession fails if tracks have no segments at all.
+                track.insertEmptyTimeRange(CMTimeRange(start: .zero, duration: targetDuration))
                 stillImages.append(loaded.ciImage)
             } else {
                 // For videos: insert media, looping if needed
@@ -185,7 +189,7 @@ final class CompositionBuilder {
                             break
                         }
                     }
-
+                    audioTrackIDs.append(compAudioTrack.trackID)
                 }
             }
 
@@ -228,9 +232,25 @@ final class CompositionBuilder {
         videoComposition.renderSize = outputSize
         videoComposition.instructions = [instruction]
 
+        // Create audio mix for multiple audio tracks (normalizes volume across tracks)
+        var audioMix: AVMutableAudioMix? = nil
+        if !audioTrackIDs.isEmpty {
+            audioMix = AVMutableAudioMix()
+            let inputParameters = audioTrackIDs.map { trackID -> AVMutableAudioMixInputParameters in
+                let params = AVMutableAudioMixInputParameters(track: nil)
+                params.trackID = trackID
+                // Reduce volume per track to prevent clipping when mixing
+                let volumePerTrack = 1.0 / Float(audioTrackIDs.count)
+                params.setVolume(volumePerTrack, at: .zero)
+                return params
+            }
+            audioMix?.inputParameters = inputParameters
+        }
+
         let result = BuildResult(
             composition: composition,
             videoComposition: videoComposition,
+            audioMix: audioMix,
             instructions: [instruction],
             clipStartTimes: [.zero]
         )
@@ -373,6 +393,7 @@ final class CompositionBuilder {
         let result = BuildResult(
             composition: composition,
             videoComposition: videoComposition,
+            audioMix: nil,  // Sequence uses single audio track, no mixing needed
             instructions: instructions,
             clipStartTimes: clipStartTimes
         )

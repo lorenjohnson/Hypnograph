@@ -143,6 +143,9 @@ struct HypnographApp: App {
                     divine: divine,
                     cycleModule: cycleModule
                 )
+
+                // Request notification authorization on first launch
+                AppNotifications.requestAuthorization()
             }
         }
         .commands {
@@ -178,6 +181,15 @@ struct AppCommands: Commands {
         _divine = ObservedObject(initialValue: divine)
         self.appDelegate = appDelegate
         self.cycleModuleHandler = cycleModule
+    }
+
+    private func resolutionLabel(for dimension: Int) -> String {
+        switch dimension {
+        case 720: return "720p (HD)"
+        case 1080: return "1080p (Full HD)"
+        case 2160: return "4K (2160p)"
+        default: return "\(dimension)p"
+        }
     }
 
     var body: some Commands {
@@ -366,6 +378,42 @@ struct AppCommands: Commands {
                 dream.clearAllEffects()
             }
             .keyboardShortcut("0", modifiers: [])
+
+            Divider()
+
+            // Aspect Ratio - flat in menu
+            Toggle("16:9 (Landscape)", isOn: Binding(
+                get: { state.aspectRatio == .ratio16x9 },
+                set: { if $0 { state.setAspectRatio(.ratio16x9) } }
+            ))
+            Toggle("9:16 (Portrait)", isOn: Binding(
+                get: { state.aspectRatio == .ratio9x16 },
+                set: { if $0 { state.setAspectRatio(.ratio9x16) } }
+            ))
+            Toggle("4:3", isOn: Binding(
+                get: { state.aspectRatio == .ratio4x3 },
+                set: { if $0 { state.setAspectRatio(.ratio4x3) } }
+            ))
+            Toggle("1:1 (Square)", isOn: Binding(
+                get: { state.aspectRatio == .ratio1x1 },
+                set: { if $0 { state.setAspectRatio(.ratio1x1) } }
+            ))
+
+            Divider()
+
+            // Resolution - flat in menu
+            Toggle("720p", isOn: Binding(
+                get: { state.maxOutputDimension == 720 },
+                set: { if $0 { state.setMaxOutputDimension(720) } }
+            ))
+            Toggle("1080p", isOn: Binding(
+                get: { state.maxOutputDimension == 1080 },
+                set: { if $0 { state.setMaxOutputDimension(1080) } }
+            ))
+            Toggle("4K", isOn: Binding(
+                get: { state.maxOutputDimension == 2160 },
+                set: { if $0 { state.setMaxOutputDimension(2160) } }
+            ))
         }
 
         CommandMenu("Current Source") {

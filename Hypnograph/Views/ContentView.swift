@@ -52,6 +52,7 @@ struct ContentView: View {
                     .padding()
             }
         }
+        .appNotifications()
         .background(Color.black)
     }
 }
