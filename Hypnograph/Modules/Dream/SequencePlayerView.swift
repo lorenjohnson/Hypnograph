@@ -44,12 +44,11 @@ struct SequencePlayerView: NSViewRepresentable {
         var lastSourceIndex: Int = -1
         var lastPauseState: Bool?
         var lastEffectsCounter: Int?
-        
+        var lastRecipeIdentity: String?
+
         // End observer for video
         var endObserverToken: Any?
-        
-        // Loaded sources cache
-        var loadedSources: [Int: LoadedSourceInfo] = [:]
+
         var loadTask: Task<Void, Never>?
         
         deinit {
@@ -59,16 +58,16 @@ struct SequencePlayerView: NSViewRepresentable {
         func cleanup() {
             durationTimer?.invalidate()
             durationTimer = nil
-            
+
             if let token = endObserverToken {
                 NotificationCenter.default.removeObserver(token)
                 endObserverToken = nil
             }
-            
+
             if case .video(let player) = displayMode {
                 player.pause()
             }
-            
+
             loadTask?.cancel()
             loadTask = nil
         }
@@ -88,18 +87,30 @@ struct SequencePlayerView: NSViewRepresentable {
     
     func updateNSView(_ nsView: NSView, context: Context) {
         let c = context.coordinator
-        
+
         guard !recipe.sources.isEmpty else {
             c.cleanup()
             return
         }
-        
+
+        // Check if recipe changed significantly - clear image cache to prevent memory bloat
+        let recipeIdentity = recipeIdentity(for: recipe)
+        if c.lastRecipeIdentity != recipeIdentity {
+            // Recipe changed - clear cached images that may no longer be needed
+            let cacheSize = StillImageCache.cacheSize()
+            if cacheSize.ciImages > 20 || cacheSize.cgImages > 20 {
+                StillImageCache.clear()
+            }
+            c.lastRecipeIdentity = recipeIdentity
+            c.lastSourceIndex = -1  // Force source reload
+        }
+
         // Clamp index to valid range
         let validIndex = min(max(0, currentSourceIndex), recipe.sources.count - 1)
-        
+
         // Check if we need to switch sources
         let needsSourceSwitch = validIndex != c.lastSourceIndex
-        
+
         if needsSourceSwitch {
             switchToSource(index: validIndex, coordinator: c, container: nsView)
             c.lastSourceIndex = validIndex
@@ -420,13 +431,11 @@ struct SequencePlayerView: NSViewRepresentable {
             break
         }
     }
-}
 
-// MARK: - Loaded Source Info
-
-struct LoadedSourceInfo {
-    let isStillImage: Bool
-    let ciImage: CIImage?
-    let asset: AVURLAsset?
+    /// Generate a simple identity string to detect recipe changes
+    private func recipeIdentity(for recipe: HypnogramRecipe) -> String {
+        let urls = recipe.sources.map { $0.clip.file.url.lastPathComponent }
+        return "\(recipe.sources.count)|\(urls.joined(separator: ","))"
+    }
 }
 

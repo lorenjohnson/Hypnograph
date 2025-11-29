@@ -1,6 +1,8 @@
 //
-//  DreamMode.swift
+//  Dream.swift
 //  Hypnograph
+//
+//  Dream feature: video/image composition with montage and sequence modes.
 //
 
 import Foundation
@@ -11,19 +13,16 @@ import SwiftUI
 import AVFoundation
 import AppKit
 
-enum DreamStyle: String, Codable {
+enum DreamMode: String, Codable {
     case montage
     case sequence
 }
 
-final class DreamMode: HypnographMode {
+final class Dream: ObservableObject {
     let state: HypnographState
     let renderQueue: RenderQueue
 
-    @Published var style: DreamStyle = .montage
-
-    /// Blend modes for montage style, indexed by source index
-    @Published private var blendModes: [Int: String] = [:]
+    @Published var mode: DreamMode = .montage
 
     private let montageRenderer: UnifiedRenderer
     private let sequenceRenderer: UnifiedRenderer
@@ -58,7 +57,7 @@ final class DreamMode: HypnographMode {
             strategy: .sequence
         )
 
-        // Set up watch timer callback to respect current style
+        // Set up watch timer callback to respect current mode
         state.onWatchTimerFired = { [weak self] in
             self?.new()
         }
@@ -77,7 +76,7 @@ final class DreamMode: HypnographMode {
     }
 
     private func preferredClipLength() -> Double? {
-        switch style {
+        switch mode {
         case .montage:
             return nil
         case .sequence:
@@ -85,11 +84,13 @@ final class DreamMode: HypnographMode {
         }
     }
 
-    // MARK: - Style
+    // MARK: - Mode
 
-    func toggleStyle() {
+    func toggleMode() {
         state.noteUserInteraction()
-        style = (style == .montage) ? .sequence : .montage
+        // Clear image cache on mode switch to free memory
+        StillImageCache.clear()
+        mode = (mode == .montage) ? .sequence : .montage
     }
 
     // MARK: - Source Navigation (with flash solo in montage mode)
@@ -113,7 +114,7 @@ final class DreamMode: HypnographMode {
 
     private func triggerFlashSoloIfNeeded() {
         // Only flash solo in montage mode and if setting is enabled
-        guard style == .montage else { return }
+        guard mode == .montage else { return }
 
         // Cancel any existing timer
         flashSoloTimer?.invalidate()
@@ -127,6 +128,18 @@ final class DreamMode: HypnographMode {
         }
     }
 
+    // MARK: - Effects
+
+    func cycleGlobalEffect() {
+        state.noteUserInteraction()
+        state.renderHooks.cycleGlobalEffect()
+    }
+
+    func cycleSourceEffect() {
+        state.noteUserInteraction()
+        state.renderHooks.cycleSourceEffect(for: state.currentSourceIndex)
+    }
+
     // MARK: - HUD
 
     func hudItems(
@@ -135,11 +148,11 @@ final class DreamMode: HypnographMode {
     ) -> [HUDItem] {
         var items: [HUDItem] = []
 
-        let styleLabel = (style == .montage ? "Montage" : "Sequence")
-        items.append(.text("Style: \(styleLabel)", order: 12, font: .subheadline))
+        let modeLabel = (mode == .montage ? "Montage" : "Sequence")
+        items.append(.text("Mode: \(modeLabel)", order: 12, font: .subheadline))
         items.append(.text("Source \(currentDisplayIndex) of \(sourceCount)", order: 25))
 
-        switch style {
+        switch mode {
         case .montage:
             items.append(.text("Blend mode (M): \(currentBlendModeDisplayName())", order: 41))
 
@@ -162,18 +175,18 @@ final class DreamMode: HypnographMode {
 
     // MARK: - Commands
 
-    func compositionCommands() -> [ModeCommand] {
+    func compositionCommands() -> [ModuleCommand] {
         [
-            ModeCommand(title: "Cycle Blend Mode", key: "m") { [weak self] in
+            ModuleCommand(title: "Cycle Blend Mode", key: "m") { [weak self] in
                 self?.cycleBlendMode()
             },
-            ModeCommand(title: "Toggle Style (Montage/Sequence)", key: "`") { [weak self] in
-                self?.toggleStyle()
+            ModuleCommand(title: "Toggle Mode (Montage/Sequence)", key: "`") { [weak self] in
+                self?.toggleMode()
             }
         ]
     }
 
-    func sourceCommands() -> [ModeCommand] { [] }
+    func sourceCommands() -> [ModuleCommand] { [] }
 
     // MARK: - Display
 
@@ -181,19 +194,20 @@ final class DreamMode: HypnographMode {
         state: HypnographState,
         renderQueue: RenderQueue
     ) -> AnyView {
-        if style == .sequence, state.sources.isEmpty {
+        if mode == .sequence, state.sources.isEmpty {
             newRandomSequence()
         }
 
         let recipe = makeDisplayRecipe(state: state)
 
-        switch style {
+        switch mode {
         case .montage:
-            // Montage uses the original DreamView with AVComposition
+            // Montage uses MontagePlayerView with AVComposition
+            // Note: MontagePlayerView handles recipe changes internally via compositionIdentity
+            // so we use a stable id to avoid unnecessary view recreation
             return AnyView(
-                DreamView(
+                MontagePlayerView(
                     recipe: recipe,
-                    style: style,
                     outputSize: state.settings.outputSize,
                     currentSourceIndex: Binding(
                         get: { state.currentSourceIndex },
@@ -229,9 +243,9 @@ final class DreamMode: HypnographMode {
     }
 
     private func makeDisplayRecipe(state: HypnographState) -> HypnogramRecipe {
-        // Both styles use the same recipe structure, just different target durations
+        // Both modes use the same recipe structure, just different target durations
         let targetDuration: CMTime
-        switch style {
+        switch mode {
         case .montage:
             targetDuration = state.settings.outputDuration
         case .sequence:
@@ -239,35 +253,41 @@ final class DreamMode: HypnographMode {
             targetDuration = total.seconds > 0 ? total : state.settings.outputDuration
         }
 
-        // Build mode payload with blend modes
-        let modeData = buildModeData(for: state.sources)
-
+        // Sources already have blend modes attached, just return the recipe
         return HypnogramRecipe(
             sources: state.sources,
-            targetDuration: targetDuration,
-            mode: HypnogramMode(name: .dream, sourceData: modeData)
+            targetDuration: targetDuration
         )
-    }
-
-    /// Build mode-specific data (blend modes) for the given sources
-    private func buildModeData(for sources: [HypnogramSource]) -> [[String: String]] {
-        return sources.enumerated().map { index, _ in
-            if index == 0 {
-                return ["blendMode": kBlendModeSourceOver]
-            } else {
-                return ["blendMode": blendModes[index] ?? kBlendModeDefaultMontage]
-            }
-        }
     }
 
     // MARK: - Lifecycle
 
     func new() {
-        switch style {
+        // Clear image cache if it's getting large to prevent memory bloat
+        let cacheSize = StillImageCache.cacheSize()
+        if cacheSize.ciImages > 30 || cacheSize.cgImages > 30 {
+            StillImageCache.clear()
+        }
+
+        switch mode {
         case .montage:
             state.newRandomHypnogram()
-            blendModes.removeAll()
         case .sequence:
+            newRandomSequence()
+        }
+    }
+
+    func toggleHUD() {
+        state.toggleHUD()
+    }
+
+    func togglePause() {
+        state.togglePause()
+    }
+
+    func reloadSettings() {
+        state.reloadSettings(from: Environment.defaultSettingsURL)
+        if mode == .sequence {
             newRandomSequence()
         }
     }
@@ -276,6 +296,14 @@ final class DreamMode: HypnographMode {
     func addSource() {
         let length = preferredClipLength()
         _ = state.addSource(length: length)
+    }
+
+    func newRandomClip() {
+        state.replaceClipForCurrentSource()
+    }
+
+    func deleteCurrentSource() {
+        state.deleteCurrentSource()
     }
 
     /// Save a snapshot of the current frame from the frame buffer
@@ -328,14 +356,14 @@ final class DreamMode: HypnographMode {
     }
 
     func save() {
-        // Get the renderable recipe (filters out excluded sources)
+        // Get the renderable recipe (sources already have blend modes attached)
         guard var renderRecipe = state.sourcesForRender() else {
-            print("DreamMode[\(style.rawValue)]: no renderable hypnogram.")
+            print("Dream[\(mode.rawValue)]: no renderable hypnogram.")
             return
         }
 
-        // Set target duration based on style
-        switch style {
+        // Set target duration based on mode
+        switch mode {
         case .montage:
             renderRecipe.targetDuration = state.settings.outputDuration
         case .sequence:
@@ -343,14 +371,10 @@ final class DreamMode: HypnographMode {
             renderRecipe.targetDuration = total.seconds > 0 ? total : state.settings.outputDuration
         }
 
-        // Attach mode-specific data (blend modes)
-        let modeData = buildModeData(for: renderRecipe.sources)
-        renderRecipe.mode = HypnogramMode(name: .dream, sourceData: modeData)
+        // Choose renderer based on mode
+        let renderer: HypnogramRenderer = (mode == .montage) ? montageRenderer : sequenceRenderer
 
-        // Choose renderer based on style
-        let renderer: HypnogramRenderer = (style == .montage) ? montageRenderer : sequenceRenderer
-
-        print("DreamMode[\(style.rawValue)]: enqueueing recipe with \(renderRecipe.sources.count) source(s), duration: \(renderRecipe.targetDuration.seconds)s")
+        print("Dream[\(mode.rawValue)]: enqueueing recipe with \(renderRecipe.sources.count) source(s), duration: \(renderRecipe.targetDuration.seconds)s")
 
         // Enqueue immediately (don't defer - the renderer handles async internally)
         renderQueue.enqueue(renderer: renderer, recipe: renderRecipe)
@@ -360,10 +384,9 @@ final class DreamMode: HypnographMode {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
 
-            switch self.style {
+            switch self.mode {
             case .montage:
                 self.state.resetForNextHypnogram()
-                self.blendModes.removeAll()
                 self.state.newRandomHypnogram()  // Always generate new hypnogram after save
             case .sequence:
                 self.newRandomSequence()
@@ -371,21 +394,11 @@ final class DreamMode: HypnographMode {
         }
     }
 
-    // MARK: - Settings
-
-    func reloadSettings() {
-        state.reloadSettings(from: Environment.defaultSettingsURL)
-
-        if style == .sequence {
-            newRandomSequence()
-        }
-    }
-
     // MARK: - Montage blend modes
 
     private func blendModeForSourceIndex(_ idx: Int) -> String {
-        if idx == 0 { return kBlendModeSourceOver }
-        return blendModes[idx] ?? kBlendModeDefaultMontage
+        guard idx >= 0, idx < state.sources.count else { return kBlendModeSourceOver }
+        return state.sources[idx].blendMode ?? (idx == 0 ? kBlendModeSourceOver : kBlendModeDefaultMontage)
     }
 
     private func currentBlendModeDisplayName() -> String {
@@ -398,14 +411,27 @@ final class DreamMode: HypnographMode {
         state.noteUserInteraction()
 
         let idx = index ?? state.currentSourceIndex
-        guard idx > 0 else { return } // bottom layer stays SourceOver
+        guard idx > 0, idx < state.sources.count else { return } // bottom layer stays SourceOver
 
         // Cycle blend mode in the manager (triggers re-render via onEffectChanged callback)
         state.renderHooks.cycleBlendMode(for: idx)
 
-        // Also update local state for HUD display and save
+        // Also update the source directly
         let newMode = state.renderHooks.blendMode(for: idx)
-        blendModes[idx] = newMode
+        state.sources[idx].blendMode = newMode
+    }
+
+    // MARK: - Transform
+
+    /// Rotate the current source by 90 degrees clockwise
+    func rotateCurrentSource() {
+        state.noteUserInteraction()
+        let idx = state.currentSourceIndex
+        guard idx >= 0, idx < state.sources.count else { return }
+
+        // Add 90 degrees, wrap at 360
+        let current = state.sources[idx].rotation
+        state.sources[idx].rotation = (current + 90) % 360
     }
 
     // MARK: - Effects
@@ -416,10 +442,12 @@ final class DreamMode: HypnographMode {
         state.renderHooks.setGlobalEffect(nil)
         for i in 0..<state.activeSourceCount {
             state.renderHooks.setSourceEffect(nil, for: i)
+            // Reset blend mode on source (keep first one as SourceOver)
+            if i > 0 {
+                state.sources[i].blendMode = kBlendModeDefaultMontage
+            }
         }
-        // Also reset blend modes to Screen
         state.renderHooks.clearAllBlendModes()
-        blendModes.removeAll()
     }
 
     // MARK: - Sequence helpers

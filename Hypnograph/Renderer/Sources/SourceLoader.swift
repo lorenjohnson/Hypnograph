@@ -34,7 +34,7 @@ final class SourceLoader {
     func load(source: HypnogramSource) async -> Result<LoadedSource, RenderError> {
         let url = source.clip.file.url
         
-        print("📦 SourceLoader: Loading \(url.lastPathComponent)...")
+        // Loading logging removed to reduce noise - errors will still be logged
         
         // Determine if this is an image or video
         let isImage = isImageFile(url)
@@ -80,8 +80,7 @@ final class SourceLoader {
                 ciImage: nil
             )
 
-            let audioStatus = audioTrack != nil ? "with audio" : "no audio"
-            print("✅ SourceLoader: Loaded video \(url.lastPathComponent) - \(naturalSize) @ \(timeRange.duration.seconds)s (\(audioStatus))")
+            // Success logging removed to reduce noise
             return .success(loaded)
 
         } catch {
@@ -127,7 +126,7 @@ final class SourceLoader {
             ciImage: ciImage
         )
 
-        print("✅ SourceLoader: Loaded image \(url.lastPathComponent) - \(naturalSize) @ \(duration.seconds)s")
+        // Success logging removed to reduce noise
         return .success(loaded)
     }
 

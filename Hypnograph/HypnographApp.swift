@@ -68,8 +68,8 @@ struct HypnographApp: App {
     private let settings: Settings
     @StateObject private var state: HypnographState
     private let renderQueue: RenderQueue  // Not @StateObject - we don't want to trigger view updates
-    @StateObject private var dreamMode: DreamMode
-    @StateObject private var divineMode: DivineMode
+    @StateObject private var dream: Dream
+    @StateObject private var divine: Divine
 
     init() {
         Environment.ensureDefaultSettingsFileExists()
@@ -105,37 +105,27 @@ struct HypnographApp: App {
         GlobalRenderHooks.manager = state.renderHooks
 
         _state = StateObject(wrappedValue: state)
-        _dreamMode = StateObject(wrappedValue: DreamMode(state: state, renderQueue: renderQueue))
-        _divineMode = StateObject(wrappedValue: DivineMode(state: state, renderQueue: renderQueue))
+        _dream = StateObject(wrappedValue: Dream(state: state, renderQueue: renderQueue))
+        _divine = StateObject(wrappedValue: Divine(state: state, renderQueue: renderQueue))
     }
 
-    func cycleMode() {
-        switch state.currentModeType {
+    func cycleModule() {
+        switch state.currentModuleType {
         case .dream:
-            state.currentModeType = .divine
+            state.currentModuleType = .divine
         case .divine:
-            state.currentModeType = .dream
+            state.currentModuleType = .dream
         }
     }
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                switch state.currentModeType {
-                case .dream:
-                    ContentView(
-                        state: state,
-                        renderQueue: renderQueue,
-                        mode: dreamMode
-                    )
-                case .divine:
-                    ContentView(
-                        state: state,
-                        renderQueue: renderQueue,
-                        mode: divineMode
-                    )
-                }
-            }
+            ContentView(
+                state: state,
+                renderQueue: renderQueue,
+                dream: dream,
+                divine: divine
+            )
             .onAppear {
                 DispatchQueue.main.async {
                     guard let window = NSApp.windows.first else { return }
@@ -155,19 +145,19 @@ struct HypnographApp: App {
                 // Initialize game controller support
                 appDelegate.gameControllerManager = GameControllerManager(
                     state: state,
-                    dreamMode: dreamMode,
-                    divineMode: divineMode,
-                    cycleMode: cycleMode
+                    dream: dream,
+                    divine: divine,
+                    cycleModule: cycleModule
                 )
             }
         }
         .commands {
             AppCommands(
                 state: state,
-                dreamMode: dreamMode,
-                divineMode: divineMode,
+                dream: dream,
+                divine: divine,
                 appDelegate: appDelegate,
-                cycleMode: cycleMode
+                cycleModule: cycleModule
             )
         }
     }
@@ -177,32 +167,23 @@ struct HypnographApp: App {
 
 struct AppCommands: Commands {
     @ObservedObject private var state: HypnographState
-    @ObservedObject private var dreamMode: DreamMode
-    @ObservedObject private var divineMode: DivineMode
+    @ObservedObject private var dream: Dream
+    @ObservedObject private var divine: Divine
     private weak var appDelegate: HypnographAppDelegate?
-    private let cycleModeHandler: () -> Void
+    private let cycleModuleHandler: () -> Void
 
     init(
         state: HypnographState,
-        dreamMode: DreamMode,
-        divineMode: DivineMode,
+        dream: Dream,
+        divine: Divine,
         appDelegate: HypnographAppDelegate?,
-        cycleMode: @escaping () -> Void
+        cycleModule: @escaping () -> Void
     ) {
         _state = ObservedObject(initialValue: state)
-        _dreamMode = ObservedObject(initialValue: dreamMode)
-        _divineMode = ObservedObject(initialValue: divineMode)
+        _dream = ObservedObject(initialValue: dream)
+        _divine = ObservedObject(initialValue: divine)
         self.appDelegate = appDelegate
-        self.cycleModeHandler = cycleMode
-    }
-
-    private var currentMode: any HypnographMode {
-        switch state.currentModeType {
-        case .dream:
-            return dreamMode
-        case .divine:
-            return divineMode
-        }
+        self.cycleModuleHandler = cycleModule
     }
 
     var body: some Commands {
@@ -217,17 +198,20 @@ struct AppCommands: Commands {
         // Items in the Hypnograph app menu (leftmost)
         CommandGroup(after: .appSettings) {
             Button("Toggle HUD") {
-                currentMode.toggleHUD()
+                state.toggleHUD()
             }
             .keyboardShortcut("h", modifiers: [])
 
             Button(state.isPaused ? "Play" : "Pause") {
-                currentMode.togglePause()
+                state.togglePause()
             }
             .keyboardShortcut("p", modifiers: [])
 
             Button("Restart Session (Reload Settings)") {
-                currentMode.reloadSettings()
+                switch state.currentModuleType {
+                case .dream: dream.reloadSettings()
+                case .divine: divine.reloadSettings()
+                }
             }
             .keyboardShortcut("r", modifiers: [.command])
 
@@ -247,22 +231,26 @@ struct AppCommands: Commands {
 
         CommandGroup(after: .newItem) {
             Button("New") {
-                currentMode.new()
+                switch state.currentModuleType {
+                case .dream: dream.new()
+                case .divine: divine.new()
+                }
             }
             .keyboardShortcut(.space, modifiers: [])
         }
 
         CommandGroup(replacing: .saveItem) {
             Button("Save") {
-                currentMode.save()
+                switch state.currentModuleType {
+                case .dream: dream.save()
+                case .divine: divine.save()
+                }
             }
             .keyboardShortcut("s", modifiers: [.command])
 
             Button("Save Snapshot") {
-                // Only DreamMode supports snapshots
-                if let dreamMode = currentMode as? DreamMode {
-                    dreamMode.saveSnapshot()
-                }
+                // Only Dream supports snapshots
+                dream.saveSnapshot()
             }
             .keyboardShortcut("s", modifiers: [])
         }
@@ -270,18 +258,18 @@ struct AppCommands: Commands {
         CommandGroup(after: .sidebar) {
             Divider()
 
-            Button("Cycle Mode") {
-                cycleModeHandler()
+            Button("Cycle Module") {
+                cycleModuleHandler()
             }
             .keyboardShortcut("~", modifiers: [])
 
-            Button("Dream Mode") {
-                state.currentModeType = .dream
+            Button("Dream") {
+                state.currentModuleType = .dream
             }
             .keyboardShortcut("1", modifiers: [.command, .shift])
 
-            Button("Divine Mode") {
-                state.currentModeType = .divine
+            Button("Divine") {
+                state.currentModuleType = .divine
             }
             .keyboardShortcut("2", modifiers: [.command, .shift])
 
@@ -326,41 +314,52 @@ struct AppCommands: Commands {
         }
 
         CommandMenu("Composition") {
-            let modeCompositionCommands = currentMode.compositionCommands()
-            if !modeCompositionCommands.isEmpty {
-                ForEach(Array(modeCompositionCommands.enumerated()), id: \.offset) { _, command in
+            // Dream-specific commands
+            if state.currentModuleType == .dream {
+                ForEach(Array(dream.compositionCommands().enumerated()), id: \.offset) { _, command in
                     Button(command.title) {
                         command.action()
                     }
                     .keyboardShortcut(command.keyEquivalent, modifiers: command.modifiers)
                 }
-
                 Divider()
             }
 
             Button("Cycle Global Effect") {
-                currentMode.cycleGlobalEffect()
+                dream.cycleGlobalEffect()
             }
             .keyboardShortcut("e", modifiers: [])
 
             Button("Add Source") {
-                currentMode.addSource()
+                switch state.currentModuleType {
+                case .dream: dream.addSource()
+                case .divine: divine.addCard()
+                }
             }
             .keyboardShortcut(".", modifiers: [])
 
             Button("> Next Source") {
-                currentMode.nextSource()
+                switch state.currentModuleType {
+                case .dream: dream.nextSource()
+                case .divine: divine.nextCard()
+                }
             }
             .keyboardShortcut(.rightArrow, modifiers: [])
 
             Button("< Previous Source") {
-                currentMode.previousSource()
+                switch state.currentModuleType {
+                case .dream: dream.previousSource()
+                case .divine: divine.previousCard()
+                }
             }
             .keyboardShortcut(.leftArrow, modifiers: [])
 
             ForEach(0..<9, id: \.self) { idx in
                 Button("Select Source \(idx + 1)") {
-                    currentMode.selectSource(index: idx)
+                    switch state.currentModuleType {
+                    case .dream: dream.selectSource(index: idx)
+                    case .divine: divine.selectCard(index: idx)
+                    }
                 }
                 .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
             }
@@ -368,38 +367,50 @@ struct AppCommands: Commands {
             Divider()
 
             Button("Clear All Effects") {
-                currentMode.clearAllEffects()
+                dream.clearAllEffects()
             }
             .keyboardShortcut("0", modifiers: [])
         }
 
         CommandMenu("Current Source") {
-            let modeSourceCommands = currentMode.sourceCommands()
-            if !modeSourceCommands.isEmpty {
-                ForEach(Array(modeSourceCommands.enumerated()), id: \.offset) { _, command in
+            // Dream-specific commands
+            if state.currentModuleType == .dream {
+                ForEach(Array(dream.sourceCommands().enumerated()), id: \.offset) { _, command in
                     Button(command.title) {
                         command.action()
                     }
                     .keyboardShortcut(command.keyEquivalent, modifiers: command.modifiers)
                 }
-
-                Divider()
+                if !dream.sourceCommands().isEmpty {
+                    Divider()
+                }
             }
 
+            Button("Rotate 90° Clockwise") {
+                dream.rotateCurrentSource()
+            }
+            .keyboardShortcut("r", modifiers: [])
+
             Button("Cycle Effect") {
-                currentMode.cycleSourceEffect()
+                dream.cycleSourceEffect()
             }
             .keyboardShortcut("f", modifiers: [])
 
             Button("New Random Clip") {
-                currentMode.newRandomClip()
+                switch state.currentModuleType {
+                case .dream: dream.newRandomClip()
+                case .divine: divine.newRandomCard()
+                }
             }
             .keyboardShortcut("n", modifiers: [])
 
             Divider()
 
             Button("Delete") {
-                currentMode.deleteCurrentSource()
+                switch state.currentModuleType {
+                case .dream: dream.deleteCurrentSource()
+                case .divine: divine.deleteCurrentCard()
+                }
             }
             .keyboardShortcut(.delete, modifiers: [])
 

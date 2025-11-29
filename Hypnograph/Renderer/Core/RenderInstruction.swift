@@ -30,12 +30,15 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
     /// Blend mode for each layer (CIBlendMode constant names)
     let blendModes: [String]
     
-    /// Transform for each layer (includes orientation + user transform)
+    /// Transform for each layer (includes orientation from media metadata)
     let transforms: [CGAffineTransform]
-    
+
+    /// User-applied rotation in degrees (0, 90, 180, 270) for each layer
+    let rotations: [Int]
+
     /// Map each layer to a source index in the recipe (for effects)
     let sourceIndices: [Int]
-    
+
     /// Whether to apply render hooks
     let enableEffects: Bool
 
@@ -43,12 +46,13 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
     let stillImages: [CIImage?]
 
     // MARK: - Initialization
-    
+
     init(
         timeRange: CMTimeRange,
         layerTrackIDs: [CMPersistentTrackID],
         blendModes: [String],
         transforms: [CGAffineTransform],
+        rotations: [Int] = [],
         sourceIndices: [Int],
         enableEffects: Bool = false,  // disabled in skeleton
         stillImages: [CIImage?] = []
@@ -57,6 +61,7 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
         self.layerTrackIDs = layerTrackIDs
         self.blendModes = blendModes
         self.transforms = transforms
+        self.rotations = rotations.isEmpty ? Array(repeating: 0, count: layerTrackIDs.count) : rotations
         self.sourceIndices = sourceIndices
         self.enableEffects = enableEffects
         self.stillImages = stillImages

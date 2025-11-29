@@ -199,8 +199,8 @@ final class VideoSourcesLibrary {
                 )
 
             case .image:
-                // Validate image can be loaded
-                guard let image = CIImage(contentsOf: entry.url),
+                // Validate image can be loaded using cache (ensures proper pixel format)
+                guard let image = StillImageCache.ciImage(for: entry.url),
                       !image.extent.isEmpty else {
                     badURLs.insert(entry.url)
                     continue

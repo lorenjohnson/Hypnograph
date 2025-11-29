@@ -2,10 +2,11 @@ import SwiftUI
 import AVFoundation
 import Combine
 
-struct ContentView<Mode: HypnographMode>: View {
+struct ContentView: View {
     @ObservedObject var state: HypnographState
     var renderQueue: RenderQueue  // Not @ObservedObject - we don't want to trigger view updates
-    @ObservedObject var mode: Mode
+    @ObservedObject var dream: Dream
+    @ObservedObject var divine: Divine
 
     // MARK: - Global HUD Items
 
@@ -14,14 +15,14 @@ struct ContentView<Mode: HypnographMode>: View {
 
         // Header
         items.append(.text("Hypnograph", order: 10, font: .headline))
-        let modeLabel: String
-        switch state.currentModeType {
+        let moduleLabel: String
+        switch state.currentModuleType {
         case .dream:
-            modeLabel = "Dream Mode"
+            moduleLabel = "Dream"
         case .divine:
-            modeLabel = "Divine Mode"
+            moduleLabel = "Divine"
         }
-        items.append(.text(modeLabel, order: 11, font: .subheadline))
+        items.append(.text(moduleLabel, order: 11, font: .subheadline))
         items.append(.padding(8, order: 15))
 
         // Queue status
@@ -33,7 +34,7 @@ struct ContentView<Mode: HypnographMode>: View {
         items.append(.padding(8, order: 21))
 
         // Global status
-        items.append(.text("Global Effect (E): \(mode.globalEffectName)", order: 22))
+        items.append(.text("Global Effect (E): \(state.renderHooks.globalEffectName)", order: 22))
 
         // Divider before source-specific items
         items.append(.padding(16, order: 24))
@@ -45,6 +46,7 @@ struct ContentView<Mode: HypnographMode>: View {
 
         items.append(.text("Current Source", order: 40, font: .subheadline))
         // Global keyboard shortcuts
+        items.append(.text("R = Rotate 90°", order: 44))
         items.append(.text("N = New random clip", order: 45))
         items.append(.text("Delete = Delete Source", order: 47))
 
@@ -61,8 +63,22 @@ struct ContentView<Mode: HypnographMode>: View {
 
     private func allHUDItems() -> [HUDItem] {
         let global = globalHUDItems()
-        let modeSpecific = mode.hudItems(state: state, renderQueue: renderQueue)
-        return (global + modeSpecific).sorted { $0.order < $1.order }
+        let moduleSpecific: [HUDItem]
+        switch state.currentModuleType {
+        case .dream:
+            moduleSpecific = dream.hudItems(state: state, renderQueue: renderQueue)
+        case .divine:
+            moduleSpecific = divine.hudItems()
+        }
+        return (global + moduleSpecific).sorted { $0.order < $1.order }
+    }
+
+    private var soloIndicatorText: String? {
+        // Only Dream shows solo indicator
+        if state.currentModuleType == .dream, !state.sources.isEmpty {
+            return "\(state.currentSourceIndex + 1)/\(state.sources.count)"
+        }
+        return nil
     }
 
     var body: some View {
@@ -71,9 +87,15 @@ struct ContentView<Mode: HypnographMode>: View {
             Color.black
                 .ignoresSafeArea()
 
-            // Mode-driven display: ContentView doesn't care *what* this is.
-            mode.makeDisplayView(state: state, renderQueue: renderQueue)
-                .ignoresSafeArea()
+            // Module-specific display
+            switch state.currentModuleType {
+            case .dream:
+                dream.makeDisplayView(state: state, renderQueue: renderQueue)
+                    .ignoresSafeArea()
+            case .divine:
+                divine.makeDisplayView()
+                    .ignoresSafeArea()
+            }
 
             // HUD
             if state.isHUDVisible {
@@ -94,7 +116,7 @@ struct ContentView<Mode: HypnographMode>: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if let text = mode.soloIndicatorText {
+            if let text = soloIndicatorText {
                 Text(text)
                     .font(.system(size: 48, weight: .bold))
                     .foregroundColor(.red)
