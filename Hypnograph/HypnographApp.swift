@@ -252,28 +252,31 @@ struct AppCommands: Commands {
         CommandGroup(after: .sidebar) {
             Divider()
 
+            Toggle("Dream", isOn: Binding(
+                get: { state.currentModuleType == .dream },
+                set: { if $0 { state.currentModuleType = .dream } }
+            ))
+            .keyboardShortcut("1", modifiers: [.command, .shift])
+
+            Toggle("Divine", isOn: Binding(
+                get: { state.currentModuleType == .divine },
+                set: { if $0 { state.currentModuleType = .divine } }
+            ))
+            .keyboardShortcut("2", modifiers: [.command, .shift])
+
+            Divider()
+
             Button("Cycle Module") {
                 cycleModuleHandler()
             }
             .keyboardShortcut("~", modifiers: [])
 
-            Button("Dream") {
-                state.currentModuleType = .dream
-            }
-            .keyboardShortcut("1", modifiers: [.command, .shift])
-
-            Button("Divine") {
-                state.currentModuleType = .divine
-            }
-            .keyboardShortcut("2", modifiers: [.command, .shift])
-
             Divider()
 
-            Button {
-                state.toggleWatchMode()
-            } label: {
-                Text(state.settings.watch ? "✓  Watch" : "Watch")
-            }
+            Toggle("Watch", isOn: Binding(
+                get: { state.settings.watch },
+                set: { _ in state.toggleWatchMode() }
+            ))
             .keyboardShortcut("w", modifiers: [])
         }
 
@@ -292,11 +295,10 @@ struct AppCommands: Commands {
                     .disabled(true)
             } else {
                 ForEach(keys, id: \.self) { key in
-                    Button {
-                        state.toggleLibrary(key: key)
-                    } label: {
-                        Text(state.isLibraryActive(key: key) ? "✓  \(key)" : key)
-                    }
+                    Toggle(key, isOn: Binding(
+                        get: { state.isLibraryActive(key: key) },
+                        set: { _ in state.toggleLibrary(key: key) }
+                    ))
                 }
 
                 Divider()

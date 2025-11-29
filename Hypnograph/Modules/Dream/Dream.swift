@@ -170,7 +170,7 @@ final class Dream: ObservableObject {
         }
         items.append(.text("Source Effect (F): \(state.renderHooks.sourceEffectName(for: state.currentSourceIndex))", order: 42))
 
-        items.append(.text("S = Toggle Montage/Sequence", order: 47))
+        items.append(.text("` = Toggle Montage/Sequence Mode", order: 47))
         return items
     }
 
@@ -178,16 +178,19 @@ final class Dream: ObservableObject {
 
     func compositionCommands() -> [ModuleCommand] {
         [
-            ModuleCommand(title: "Cycle Blend Mode", key: "m") { [weak self] in
-                self?.cycleBlendMode()
-            },
             ModuleCommand(title: "Toggle Mode (Montage/Sequence)", key: "`") { [weak self] in
                 self?.toggleMode()
             }
         ]
     }
 
-    func sourceCommands() -> [ModuleCommand] { [] }
+    func sourceCommands() -> [ModuleCommand] {
+        [
+            ModuleCommand(title: "Cycle Blend Mode", key: "m") { [weak self] in
+                self?.cycleBlendMode()
+            }
+        ]
+    }
 
     // MARK: - Display
 
