@@ -272,7 +272,7 @@ final class MediaSourcesLibrary {
     private func applyExclusions() {
         let exclusionStore = ExclusionStore.shared
         let deleteStore = DeleteStore.shared
-        let hiddenUUIDs = ApplePhotosLibrary.shared.cachedHiddenUUIDs
+        let hiddenUUIDs = ApplePhotos.shared.cachedHiddenUUIDs
 
         sourceIndex.removeAll { entry in
             // Standard exclusions

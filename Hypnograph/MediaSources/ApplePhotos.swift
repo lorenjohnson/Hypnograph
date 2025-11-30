@@ -1,5 +1,5 @@
 //
-//  ApplePhotosLibrary.swift
+//  ApplePhotos.swift
 //  Hypnograph
 //
 //  Interface to Apple Photos library via PhotoKit.
@@ -11,8 +11,8 @@ import Photos
 import AVFoundation
 
 /// Singleton interface to Apple Photos library
-final class ApplePhotosLibrary {
-    static let shared = ApplePhotosLibrary()
+final class ApplePhotos {
+    static let shared = ApplePhotos()
 
     // MARK: - Authorization
 
