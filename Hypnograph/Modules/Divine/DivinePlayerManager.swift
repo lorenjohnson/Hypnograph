@@ -20,12 +20,14 @@ final class DivinePlayerManager {
     func player(
         for card: DivineCard,
         onPlaybackEnd: @escaping () -> Void
-    ) -> AVPlayer {
+    ) async -> AVPlayer? {
         if let existing = players[card.id] {
             return existing
         }
 
-        let asset = card.clip.file.asset
+        guard let asset = await card.clip.file.loadAsset() else {
+            return nil
+        }
         let item = AVPlayerItem(asset: asset)
         let endTime = CMTimeAdd(card.clip.startTime, card.clip.duration)
         item.forwardPlaybackEndTime = endTime

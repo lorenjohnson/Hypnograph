@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 import CoreMedia
 import CoreImage
+import Photos
 
 // MARK: - Source Media Type
 
@@ -49,6 +50,9 @@ final class MediaSourcesLibrary {
     /// Whether videos are allowed based on media types
     private var allowVideos: Bool { allowedMediaTypes.contains(.videos) }
 
+    /// Total number of assets in this library
+    var assetCount: Int { sourceIndex.count }
+
     init(sourceFolders: [String], allowedMediaTypes: Set<SourceMediaType> = [.photos, .videos]) {
         self.allowedMediaTypes = allowedMediaTypes
         if sourceFolders.isEmpty {
@@ -59,6 +63,35 @@ final class MediaSourcesLibrary {
             loadFiles(from: sourceFolders)
         }
         applyExclusions()
+    }
+
+    /// Initialize from a Photos album
+    init(photosAlbum: PHAssetCollection, allowedMediaTypes: Set<SourceMediaType> = [.photos, .videos]) {
+        self.allowedMediaTypes = allowedMediaTypes
+        loadFromPhotosAlbum(photosAlbum)
+        // No exclusions for Photos albums - they're curated
+    }
+
+    /// Initialize from both folder paths AND Photos albums (combined sources)
+    init(
+        sourceFolders: [String],
+        photosAlbums: [PHAssetCollection],
+        allowedMediaTypes: Set<SourceMediaType> = [.photos, .videos]
+    ) {
+        self.allowedMediaTypes = allowedMediaTypes
+
+        // Load folder sources
+        if !sourceFolders.isEmpty {
+            loadFiles(from: sourceFolders)
+            applyExclusions()
+        }
+
+        // Load Photos album sources
+        for album in photosAlbums {
+            loadFromPhotosAlbum(album)
+        }
+
+        print("MediaSourcesLibrary: combined library has \(sourceIndex.count) total sources")
     }
 
     // MARK: - File system sources
@@ -109,8 +142,7 @@ final class MediaSourcesLibrary {
             }
         }
 
-        self.sourceIndex = results
-        applyExclusions()
+        self.sourceIndex.append(contentsOf: results)
     }
 
     // MARK: - Photos library fallback (raw originals scan)
@@ -166,8 +198,35 @@ final class MediaSourcesLibrary {
             }
         }
 
-        self.sourceIndex = results
+        self.sourceIndex.append(contentsOf: results)
         print("MediaSourcesLibrary: indexed \(results.count) media files from Photos originals/")
+    }
+
+    // MARK: - Photos Album sources
+
+    private func loadFromPhotosAlbum(_ album: PHAssetCollection) {
+        var results: [SourceEntry] = []
+
+        let options = PHFetchOptions()
+        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+
+        let assets = PHAsset.fetchAssets(in: album, options: nil)
+
+        for i in 0..<assets.count {
+            let asset = assets.object(at: i)
+
+            switch asset.mediaType {
+            case .video where allowVideos:
+                results.append(SourceEntry(source: .photos(localIdentifier: asset.localIdentifier), mediaKind: .video))
+            case .image where allowPhotos:
+                results.append(SourceEntry(source: .photos(localIdentifier: asset.localIdentifier), mediaKind: .image))
+            default:
+                break
+            }
+        }
+
+        self.sourceIndex.append(contentsOf: results)
+        print("MediaSourcesLibrary: indexed \(results.count) assets from Photos album '\(album.localizedTitle ?? "unknown")'")
     }
 
     // MARK: - Random clip selection (with lazy validation for video + image)
@@ -175,7 +234,10 @@ final class MediaSourcesLibrary {
     func randomClip(clipLength: Double) -> VideoClip? {
         // Consider *all* sources except those already marked bad.
         let candidates = sourceIndex.filter { !badSources.contains(sourceKey($0.source)) }
-        guard !candidates.isEmpty else { return nil }
+        guard !candidates.isEmpty else {
+            print("⚠️ MediaSourcesLibrary.randomClip: No candidates (sourceIndex: \(sourceIndex.count), badSources: \(badSources.count))")
+            return nil
+        }
 
         let maxAttempts = min(32, max(candidates.count * 2, 1))
 
@@ -230,9 +292,28 @@ final class MediaSourcesLibrary {
                 duration: CMTime(seconds: length, preferredTimescale: 600)
             )
 
-        case .photos:
-            // Coming soon: PHImageManager.requestAVAsset
-            return nil
+        case .photos(let localIdentifier):
+            // Fetch PHAsset to get duration
+            guard let phAsset = ApplePhotos.shared.fetchAsset(localIdentifier: localIdentifier) else {
+                return nil
+            }
+
+            let totalSeconds = phAsset.duration
+            guard totalSeconds > 0 else { return nil }
+
+            let length = min(clipLength, totalSeconds)
+            let maxStart = max(0.0, totalSeconds - length)
+            let startSeconds = maxStart > 0 ? Double.random(in: 0...maxStart) : 0
+
+            return VideoClip(
+                file: VideoFile(
+                    source: entry.source,
+                    mediaKind: .video,
+                    duration: CMTime(seconds: totalSeconds, preferredTimescale: 600)
+                ),
+                startTime: CMTime(seconds: startSeconds, preferredTimescale: 600),
+                duration: CMTime(seconds: length, preferredTimescale: 600)
+            )
         }
     }
 
@@ -255,9 +336,22 @@ final class MediaSourcesLibrary {
                 duration: CMTime(seconds: length, preferredTimescale: 600)
             )
 
-        case .photos:
-            // Coming soon: PHImageManager.requestImage
-            return nil
+        case .photos(let localIdentifier):
+            // Verify the asset exists
+            guard ApplePhotos.shared.fetchAsset(localIdentifier: localIdentifier) != nil else {
+                return nil
+            }
+
+            let length = max(clipLength, 0.1)
+            return VideoClip(
+                file: VideoFile(
+                    source: entry.source,
+                    mediaKind: .image,
+                    duration: CMTime(seconds: length, preferredTimescale: 600)
+                ),
+                startTime: .zero,
+                duration: CMTime(seconds: length, preferredTimescale: 600)
+            )
         }
     }
 

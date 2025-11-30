@@ -343,6 +343,17 @@ final class Dream: ObservableObject {
 
         if CGImageDestinationFinalize(destination) {
             print("✅ DreamMode: Snapshot saved to \(outputURL.path)")
+            AppNotifications.show("Snapshot saved")
+
+            // Also save to Apple Photos if write access is available
+            if ApplePhotos.shared.status.canWrite {
+                Task {
+                    let success = await ApplePhotos.shared.saveImage(at: outputURL)
+                    if success {
+                        print("✅ DreamMode: Snapshot added to Apple Photos")
+                    }
+                }
+            }
         } else {
             print("DreamMode: failed to save snapshot")
         }

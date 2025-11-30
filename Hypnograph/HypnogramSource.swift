@@ -69,35 +69,49 @@ struct VideoFile: Identifiable {
 
     // MARK: - Asset Loading
 
-    /// Get AVAsset for video sources
-    var asset: AVAsset {
+    /// Get AVAsset for video sources (async - works for all source types)
+    func loadAsset() async -> AVAsset? {
         switch source {
         case .url(let url):
             return AVURLAsset(url: url)
-        case .photos:
-            fatalError("Photos asset loading not yet implemented")
+        case .photos(let localIdentifier):
+            guard let phAsset = ApplePhotos.shared.fetchAsset(localIdentifier: localIdentifier) else {
+                return nil
+            }
+            return await ApplePhotos.shared.requestAVAsset(for: phAsset)
         }
     }
 
     /// Load CIImage for still image sources
-    func loadImage() -> CIImage? {
+    func loadImage() async -> CIImage? {
         guard mediaKind == .image else { return nil }
         switch source {
         case .url(let url):
             return StillImageCache.ciImage(for: url)
-        case .photos:
-            fatalError("Photos image loading not yet implemented")
+        case .photos(let localIdentifier):
+            guard let phAsset = ApplePhotos.shared.fetchAsset(localIdentifier: localIdentifier) else {
+                return nil
+            }
+            return await ApplePhotos.shared.requestCIImage(for: phAsset)
         }
     }
 
     /// Load CGImage for still image sources (used by Divine for thumbnails)
-    func loadCGImage() -> CGImage? {
+    func loadCGImage() async -> CGImage? {
         guard mediaKind == .image else { return nil }
         switch source {
         case .url(let url):
             return StillImageCache.cgImage(for: url)
-        case .photos:
-            fatalError("Photos CGImage loading not yet implemented")
+        case .photos(let localIdentifier):
+            guard let phAsset = ApplePhotos.shared.fetchAsset(localIdentifier: localIdentifier) else {
+                return nil
+            }
+            // Get CIImage and convert to CGImage
+            guard let ciImage = await ApplePhotos.shared.requestCIImage(for: phAsset) else {
+                return nil
+            }
+            let context = CIContext()
+            return context.createCGImage(ciImage, from: ciImage.extent)
         }
     }
 }

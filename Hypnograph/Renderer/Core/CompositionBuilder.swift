@@ -26,12 +26,12 @@ let kBlendModes: [String] = [
     "CIOverlayBlendMode",
     "CISoftLightBlendMode",
     "CIHardLightBlendMode",
-    "CIVividLightBlendMode",
+    // "CIVividLightBlendMode",
     "CIPinLightBlendMode",
     "CIMultiplyBlendMode",
     "CIColorBurnBlendMode",
     "CIDarkenBlendMode",
-    "CILinearBurnBlendMode",
+    // "CILinearBurnBlendMode",
 ]
 
 /// Returns a random blend mode from kBlendModes
@@ -350,8 +350,8 @@ final class CompositionBuilder {
             let composedTransform = loaded.transform.concatenating(userTransform)
 
             if loaded.isStillImage {
-                // For still images: insert empty time range, store CIImage in instruction
-                composition.insertEmptyTimeRange(CMTimeRange(start: currentTime, duration: clipDuration))
+                // For still images: insert empty time range into the video track, store CIImage in instruction
+                videoTrack.insertEmptyTimeRange(CMTimeRange(start: currentTime, duration: clipDuration))
 
                 let instruction = RenderInstruction(
                     timeRange: CMTimeRange(start: currentTime, duration: clipDuration),

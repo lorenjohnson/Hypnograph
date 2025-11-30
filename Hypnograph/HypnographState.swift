@@ -12,6 +12,7 @@ import Foundation
 import Combine
 import CoreMedia
 import CoreGraphics
+import Photos
 
 /// Manages the current in-progress hypnogram.
 final class HypnographState: ObservableObject {
@@ -22,9 +23,13 @@ final class HypnographState: ObservableObject {
 
     // Per-module library state
     private var perModuleLibraryKeys: [ModuleType: Set<String>] = [:]
+    private var perModuleUsingPhotos: [ModuleType: Bool] = [:]
 
     @Published private(set) var currentLibraryKey: String
     @Published private(set) var activeLibraryKeys: Set<String>
+
+    /// Whether currently using Apple Photos album as source
+    @Published private(set) var isUsingApplePhotosAlbum: Bool = false
 
     private(set) var library: MediaSourcesLibrary
 
@@ -33,6 +38,8 @@ final class HypnographState: ObservableObject {
     @Published var currentModuleType: ModuleType = .dream {
         didSet {
             if oldValue != currentModuleType {
+                // Save current module's Photos state before switching
+                perModuleUsingPhotos[oldValue] = isUsingApplePhotosAlbum
                 switchToModuleLibraries(currentModuleType)
             }
         }
@@ -374,75 +381,66 @@ final class HypnographState: ObservableObject {
         }
     }
 
-    // MARK: - Library switching
+    // MARK: - Library switching (unified: folders + Photos)
 
     func isLibraryActive(key: String) -> Bool {
         activeLibraryKeys.contains(key)
     }
 
+    /// Toggle a library (folder or Photos) on/off
     func toggleLibrary(key: String) {
-        guard settings.sourceLibraries[key] != nil else { return }
-
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-
-            var keys = self.activeLibraryKeys
+        Task { @MainActor in
+            var keys = activeLibraryKeys
 
             if keys.contains(key) {
-                if keys.count > 1 { keys.remove(key) }
-                else { keys = [self.settings.defaultSourceLibraryKey] }
+                // Removing - ensure at least one library remains
+                if keys.count > 1 {
+                    keys.remove(key)
+                } else {
+                    // Can't remove the last one - could switch to default, but for now just ignore
+                    return
+                }
             } else {
                 keys.insert(key)
             }
 
-            self.applyActiveLibraries(keys, saveToModule: true)
+            await applyActiveLibrariesUnified(keys, saveToModule: true)
         }
     }
 
-    // MARK: - Source Media Types
+    /// Apply a unified set of active library keys (both folder and Photos)
+    @MainActor
+    private func applyActiveLibrariesUnified(_ keys: Set<String>, saveToModule: Bool) async {
+        activeLibraryKeys = keys
 
-    func isMediaTypeActive(_ type: SourceMediaType) -> Bool {
-        settings.sourceMediaTypes.contains(type)
-    }
+        // Separate folder keys from Photos keys
+        var folderPaths: [String] = []
+        var photosAlbums: [PHAssetCollection] = []
 
-    func toggleMediaType(_ type: SourceMediaType) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-
-            var types = self.settings.sourceMediaTypes
-
-            if types.contains(type) {
-                // Don't allow removing the last type
-                if types.count > 1 {
-                    types.remove(type)
+        for key in keys {
+            if key.hasPrefix("photos:") {
+                // It's a Photos album
+                let identifier = String(key.dropFirst("photos:".count))
+                if let album = await fetchPhotosAlbum(identifier: identifier) {
+                    photosAlbums.append(album)
                 }
             } else {
-                types.insert(type)
+                // It's a folder library
+                if let paths = settings.sourceLibraries[key] {
+                    folderPaths.append(contentsOf: paths)
+                }
             }
-
-            self.settings.sourceMediaTypes = types
-            self.saveSettingsToDisk()
-            // Rebuild library with new filter, but keep current composition
-            self.library = MediaSourcesLibrary(
-                sourceFolders: self.settings.folders(forLibraries: self.activeLibraryKeys),
-                allowedMediaTypes: types
-            )
-            AppNotifications.show("Takes effect on next Hypnogram", flash: true, duration: 1.5)
         }
-    }
 
-    /// Switch to the library configuration for a specific module
-    private func switchToModuleLibraries(_ module: ModuleType) {
-        let keys = perModuleLibraryKeys[module] ?? [settings.defaultSourceLibraryKey]
-        applyActiveLibraries(keys, saveToModule: false)
-    }
-
-    private func applyActiveLibraries(_ keys: Set<String>, saveToModule: Bool) {
-        let folders = settings.folders(forLibraries: keys)
-        activeLibraryKeys = keys
+        // Update tracking flags
+        isUsingApplePhotosAlbum = !photosAlbums.isEmpty
+        perModuleUsingPhotos[currentModuleType] = !photosAlbums.isEmpty
         currentLibraryKey = keys.first ?? settings.defaultSourceLibraryKey
+
+        // Create combined library
         library = MediaSourcesLibrary(
-            sourceFolders: folders,
+            sourceFolders: folderPaths,
+            photosAlbums: photosAlbums,
             allowedMediaTypes: settings.sourceMediaTypes
         )
 
@@ -464,6 +462,184 @@ final class HypnographState: ObservableObject {
             newRandomHypnogram()
             scheduleWatchTimer()
         }
+    }
+
+    /// Fetch a Photos album by identifier, with fallback for the default Sources album
+    private func fetchPhotosAlbum(identifier: String) async -> PHAssetCollection? {
+        let albums = PHAssetCollection.fetchAssetCollections(
+            withLocalIdentifiers: [identifier],
+            options: nil
+        )
+        if let found = albums.firstObject {
+            return found
+        }
+        // Fallback for the default Sources album
+        return await ApplePhotos.shared.getOrCreateSourcesAlbum()
+    }
+
+    // MARK: - Legacy Apple Photos methods (for backward compatibility)
+
+    /// Switch to using Apple Photos album as the source (legacy - adds to active libraries)
+    func useApplePhotosAlbum() {
+        Task { @MainActor in
+            guard ApplePhotos.shared.status.canRead else {
+                AppNotifications.show("Photos access not granted", flash: true)
+                return
+            }
+
+            guard let album = await ApplePhotos.shared.getOrCreateSourcesAlbum() else {
+                AppNotifications.show("Failed to access Photos album", flash: true)
+                return
+            }
+
+            let photosKey = "photos:\(album.localIdentifier)"
+            var keys = activeLibraryKeys
+            keys.insert(photosKey)
+            await applyActiveLibrariesUnified(keys, saveToModule: true)
+
+            AppNotifications.show("Added Apple Photos album", flash: true, duration: 1.5)
+        }
+    }
+
+    /// Switch back to file-based sources only (removes all Photos libraries)
+    func useFileSources() {
+        Task { @MainActor in
+            let folderKeys = activeLibraryKeys.filter { !$0.hasPrefix("photos:") }
+            if folderKeys.isEmpty {
+                // If no folder libraries, use the default
+                await applyActiveLibrariesUnified([settings.defaultSourceLibraryKey], saveToModule: true)
+            } else {
+                await applyActiveLibrariesUnified(folderKeys, saveToModule: true)
+            }
+        }
+    }
+
+    // MARK: - Source Media Types
+
+    func isMediaTypeActive(_ type: SourceMediaType) -> Bool {
+        settings.sourceMediaTypes.contains(type)
+    }
+
+    func toggleMediaType(_ type: SourceMediaType) {
+        Task { @MainActor in
+            var types = settings.sourceMediaTypes
+
+            if types.contains(type) {
+                // Don't allow removing the last type
+                if types.count > 1 {
+                    types.remove(type)
+                }
+            } else {
+                types.insert(type)
+            }
+
+            settings.sourceMediaTypes = types
+            saveSettingsToDisk()
+            // Rebuild library with new filter - reapply current libraries
+            await applyActiveLibrariesUnified(activeLibraryKeys, saveToModule: false)
+            AppNotifications.show("Takes effect on next Hypnogram", flash: true, duration: 1.5)
+        }
+    }
+
+    /// Switch to the library configuration for a specific module
+    private func switchToModuleLibraries(_ module: ModuleType) {
+        // Get the module's saved library keys (which now include both folder and Photos keys)
+        let keys = perModuleLibraryKeys[module] ?? [settings.defaultSourceLibraryKey]
+
+        Task { @MainActor in
+            await applyActiveLibrariesUnified(keys, saveToModule: false)
+        }
+    }
+
+    // MARK: - Library Info for Menu Display
+
+    /// Cached library info for menu display (includes asset counts)
+    @Published private(set) var availableLibraries: [SourceLibraryInfo] = []
+
+    /// Refresh the available libraries list with asset counts
+    /// Call this when settings change or at app startup
+    @MainActor
+    func refreshAvailableLibraries() async {
+        var infos: [SourceLibraryInfo] = []
+
+        // Folder-based libraries
+        for key in settings.sourceLibraryOrder {
+            guard let paths = settings.sourceLibraries[key] else { continue }
+
+            // Count assets by creating a temporary library
+            let tempLibrary = MediaSourcesLibrary(
+                sourceFolders: paths,
+                allowedMediaTypes: settings.sourceMediaTypes
+            )
+            let count = tempLibrary.assetCount
+
+            // Only include non-empty libraries
+            if count > 0 {
+                infos.append(SourceLibraryInfo(
+                    id: key,
+                    name: key,
+                    type: .folders,
+                    assetCount: count
+                ))
+            }
+        }
+
+        // Apple Photos albums
+        if ApplePhotos.shared.status.canRead {
+            var hasConfiguredAlbums = false
+
+            for (name, identifier) in settings.applePhotosAlbums {
+                hasConfiguredAlbums = true
+                // Try to find album and count assets
+                let count = await countPhotosAlbumAssets(identifier: identifier, name: name)
+                if count > 0 {
+                    infos.append(SourceLibraryInfo(
+                        id: "photos:\(identifier)",
+                        name: name,
+                        type: .applePhotos,
+                        assetCount: count
+                    ))
+                }
+            }
+
+            // If no albums configured, add the default Hypnograph/Sources album
+            if !hasConfiguredAlbums {
+                if let album = await ApplePhotos.shared.getOrCreateSourcesAlbum() {
+                    let count = PHAsset.fetchAssets(in: album, options: nil).count
+                    if count > 0 {
+                        infos.append(SourceLibraryInfo(
+                            id: "photos:\(album.localIdentifier)",
+                            name: "Hypnograph Sources",
+                            type: .applePhotos,
+                            assetCount: count
+                        ))
+                    }
+                }
+            }
+        }
+
+        availableLibraries = infos
+    }
+
+    /// Count assets in a Photos album by identifier or name
+    private func countPhotosAlbumAssets(identifier: String, name: String) async -> Int {
+        // First try by local identifier
+        let byId = PHAssetCollection.fetchAssetCollections(
+            withLocalIdentifiers: [identifier],
+            options: nil
+        )
+        if let album = byId.firstObject {
+            return PHAsset.fetchAssets(in: album, options: nil).count
+        }
+
+        // Fall back to finding by name (for the hardcoded "Hypnograph/Sources" case)
+        if name == "Hypnograph Sources" || name == "Sources" {
+            if let album = await ApplePhotos.shared.getOrCreateSourcesAlbum() {
+                return PHAsset.fetchAssets(in: album, options: nil).count
+            }
+        }
+
+        return 0
     }
 
     /// Save per-module library selections to settings file
@@ -488,7 +664,9 @@ final class HypnographState: ObservableObject {
             self.aspectRatio = newSettings.aspectRatio
             self.outputResolution = newSettings.outputResolution
 
-            applyActiveLibraries(activeLibraryKeys, saveToModule: false)
+            Task { @MainActor in
+                await applyActiveLibrariesUnified(activeLibraryKeys, saveToModule: false)
+            }
 
             watchTimer?.invalidate()
             watchTimer = nil

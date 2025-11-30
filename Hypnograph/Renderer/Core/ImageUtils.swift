@@ -10,6 +10,30 @@ import CoreImage
 
 enum ImageUtils {
 
+    /// Convert AVFoundation's preferredTransform to work correctly with CIImage.
+    ///
+    /// AVFoundation's preferredTransform assumes a top-left origin coordinate system,
+    /// but CIImage uses bottom-left origin. To convert, we conjugate by a y-flip:
+    /// T' = S * T * S where S = scale(1, -1).
+    ///
+    /// This gives: a' = a, b' = -b, c' = -c, d' = d, tx' = tx, ty' = -ty
+    static func convertTransformForCIImage(_ transform: CGAffineTransform, naturalSize: CGSize) -> CGAffineTransform {
+        // If identity, no conversion needed
+        if transform.isIdentity {
+            return transform
+        }
+
+        // Conjugate by y-flip: negate b, c, and ty
+        return CGAffineTransform(
+            a: transform.a,
+            b: -transform.b,
+            c: -transform.c,
+            d: transform.d,
+            tx: transform.tx,
+            ty: -transform.ty
+        )
+    }
+
     /// Scale and crop an image to fill the target size while maintaining aspect ratio.
     /// The image is centered, with overflow cropped equally from both sides.
     static func aspectFill(image: CIImage, to size: CGSize) -> CIImage {
