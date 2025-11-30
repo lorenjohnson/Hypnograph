@@ -41,6 +41,17 @@ final class RenderQueue {
             case .success(let url):
                 print("Render job finished: \(url.path)")
                 AppNotifications.show("Saved: \(url.lastPathComponent)")
+
+                // Also save to Apple Photos if write access is available
+                if ApplePhotos.shared.status.canWrite {
+                    Task {
+                        let success = await ApplePhotos.shared.saveVideo(at: url)
+                        if success {
+                            print("✅ RenderQueue: Render added to Apple Photos")
+                        }
+                    }
+                }
+
             case .failure(let error):
                 print("Render job failed: \(error.localizedDescription)")
                 AppNotifications.show("Save failed: \(error.localizedDescription)")

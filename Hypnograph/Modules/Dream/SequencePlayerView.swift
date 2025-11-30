@@ -161,11 +161,11 @@ struct SequencePlayerView: NSViewRepresentable {
     
     private func setupStillImage(source: HypnogramSource, index: Int, coordinator c: Coordinator, container: NSView) {
         print("🖼️ SequencePlayer: Switching to still image at index \(index)")
-        
+
         // Remove video view if present
         c.playerView?.removeFromSuperview()
         c.playerView = nil
-        
+
         // Create or reuse metal view
         let metalView: MetalImageView
         if let existing = c.metalView {
@@ -175,7 +175,7 @@ struct SequencePlayerView: NSViewRepresentable {
             metalView.translatesAutoresizingMaskIntoConstraints = false
             c.metalView = metalView
         }
-        
+
         // Add to container if not already
         if metalView.superview != container {
             container.addSubview(metalView)
@@ -187,8 +187,13 @@ struct SequencePlayerView: NSViewRepresentable {
             ])
         }
 
-        // Load and display the image
-        if let ciImage = source.clip.file.loadImage() {
+        // Load and display the image (async for Photos support)
+        Task { @MainActor in
+            guard let ciImage = await source.clip.file.loadImage() else {
+                print("❌ SequencePlayer: Failed to load still image at index \(index)")
+                return
+            }
+
             // Compose user transforms array into single transform
             let userTransform = source.transforms.reduce(CGAffineTransform.identity) { $0.concatenating($1) }
             metalView.display(
@@ -208,10 +213,8 @@ struct SequencePlayerView: NSViewRepresentable {
 
             // Setup duration timer for auto-advance
             if !isPaused {
-                setupDurationTimer(duration: source.clip.duration, coordinator: c)
+                self.setupDurationTimer(duration: source.clip.duration, coordinator: c)
             }
-        } else {
-            print("❌ SequencePlayer: Failed to load still image at index \(index)")
         }
     }
 
@@ -246,27 +249,34 @@ struct SequencePlayerView: NSViewRepresentable {
             ])
         }
 
-        // Create player item with video composition for effects
-        let asset = source.clip.file.asset
-
         // Build video composition with our custom compositor
         c.loadTask?.cancel()
         c.loadTask = Task {
+            guard let asset = await source.clip.file.loadAsset() else {
+                print("❌ SequencePlayer: Failed to load asset")
+                return
+            }
+
             guard let videoTrack = try? await asset.loadTracks(withMediaType: .video).first else {
                 print("❌ SequencePlayer: No video track in asset")
                 return
             }
 
             let preferredTransform = try? await videoTrack.load(.preferredTransform)
+            let naturalSize = try? await videoTrack.load(.naturalSize)
             let audioTrack = try? await asset.loadTracks(withMediaType: .audio).first
 
             guard !Task.isCancelled else { return }
 
             await MainActor.run {
-                // Compose metadata transform with user transforms array
-                let metadataTransform = preferredTransform ?? .identity
+                // Convert AVFoundation transform to CIImage coordinate system
+                let avTransform = preferredTransform ?? .identity
+                let size = naturalSize ?? CGSize(width: 1920, height: 1080)
+                let ciTransform = ImageUtils.convertTransformForCIImage(avTransform, naturalSize: size)
+
+                // Compose with user transforms
                 let userTransform = source.transforms.reduce(CGAffineTransform.identity) { $0.concatenating($1) }
-                let composedTransform = metadataTransform.concatenating(userTransform)
+                let composedTransform = ciTransform.concatenating(userTransform)
 
                 // Create composition for single clip
                 let composition = AVMutableComposition()

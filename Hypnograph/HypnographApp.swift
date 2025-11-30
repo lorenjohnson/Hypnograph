@@ -159,6 +159,11 @@ struct HypnographApp: App {
                     divine: divine,
                     cycleModule: cycleModule
                 )
+
+                // Refresh available libraries (includes asset counts for menu)
+                Task {
+                    await state.refreshAvailableLibraries()
+                }
             }
         }
         .commands {
@@ -317,24 +322,29 @@ struct AppCommands: Commands {
 
             Divider()
 
-            // Source libraries
-            let keys: [String] = {
-                let order = state.settings.sourceLibraryOrder
-                if !order.isEmpty {
-                    return order
-                } else {
-                    return Array(state.settings.sourceLibraries.keys).sorted()
+            // Apple Photos albums (shown first, with prefix)
+            let photosLibraries = state.availableLibraries.filter { $0.type == .applePhotos }
+            if !photosLibraries.isEmpty {
+                ForEach(photosLibraries) { lib in
+                    Toggle(lib.menuLabel, isOn: Binding(
+                        get: { state.isLibraryActive(key: lib.id) },
+                        set: { _ in state.toggleLibrary(key: lib.id) }
+                    ))
                 }
-            }()
 
-            if keys.isEmpty {
+                Divider()
+            }
+
+            // Folder-based libraries (with asset counts)
+            let folderLibraries = state.availableLibraries.filter { $0.type == .folders }
+            if folderLibraries.isEmpty && photosLibraries.isEmpty {
                 Text("No libraries configured")
                     .disabled(true)
             } else {
-                ForEach(keys, id: \.self) { key in
-                    Toggle(key, isOn: Binding(
-                        get: { state.isLibraryActive(key: key) },
-                        set: { _ in state.toggleLibrary(key: key) }
+                ForEach(folderLibraries) { lib in
+                    Toggle(lib.displayName, isOn: Binding(
+                        get: { state.isLibraryActive(key: lib.id) },
+                        set: { _ in state.toggleLibrary(key: lib.id) }
                     ))
                 }
             }

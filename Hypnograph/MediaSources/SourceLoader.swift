@@ -44,7 +44,24 @@ final class SourceLoader {
 
     private func loadVideoSource(source: HypnogramSource) async -> Result<LoadedSource, RenderError> {
         let file = source.clip.file
-        let asset = file.asset
+
+        // Get AVAsset - either from URL or Photos
+        let asset: AVAsset
+        switch file.source {
+        case .url(let url):
+            asset = AVURLAsset(url: url)
+        case .photos(let localIdentifier):
+            guard let phAsset = ApplePhotos.shared.fetchAsset(localIdentifier: localIdentifier),
+                  let avAsset = await ApplePhotos.shared.requestAVAsset(for: phAsset) else {
+                return .failure(.sourceLoadFailed(
+                    index: -1,
+                    name: file.displayName,
+                    underlying: NSError(domain: "SourceLoader", code: 2,
+                        userInfo: [NSLocalizedDescriptionKey: "Failed to load video from Photos"])
+                ))
+            }
+            asset = avAsset
+        }
 
         do {
             let videoTracks = try await asset.loadTracks(withMediaType: .video)
@@ -57,6 +74,9 @@ final class SourceLoader {
             let preferredTransform = try await videoTrack.load(.preferredTransform)
             let timeRange = try await videoTrack.load(.timeRange)
 
+            // Convert AVFoundation transform to CIImage coordinate system
+            let ciTransform = ImageUtils.convertTransformForCIImage(preferredTransform, naturalSize: naturalSize)
+
             let audioTracks = try await asset.loadTracks(withMediaType: .audio)
             let audioTrack = audioTracks.first
 
@@ -66,7 +86,7 @@ final class SourceLoader {
                 audioTrack: audioTrack,
                 duration: timeRange.duration,
                 naturalSize: naturalSize,
-                transform: preferredTransform,
+                transform: ciTransform,
                 isStillImage: false,
                 ciImage: nil
             ))
@@ -80,7 +100,23 @@ final class SourceLoader {
     private func loadImageSource(source: HypnogramSource) async -> Result<LoadedSource, RenderError> {
         let file = source.clip.file
 
-        guard let ciImage = file.loadImage() else {
+        // Get CIImage - either from URL or Photos
+        let ciImage: CIImage?
+        switch file.source {
+        case .url(let url):
+            ciImage = StillImageCache.ciImage(for: url)
+        case .photos(let localIdentifier):
+            guard let phAsset = ApplePhotos.shared.fetchAsset(localIdentifier: localIdentifier) else {
+                return .failure(.imageLoadFailed(
+                    name: file.displayName,
+                    underlying: NSError(domain: "SourceLoader", code: 3,
+                        userInfo: [NSLocalizedDescriptionKey: "Photos asset not found"])
+                ))
+            }
+            ciImage = await ApplePhotos.shared.requestCIImage(for: phAsset)
+        }
+
+        guard let ciImage = ciImage else {
             return .failure(.imageLoadFailed(
                 name: file.displayName,
                 underlying: NSError(domain: "SourceLoader", code: 1,
@@ -90,13 +126,22 @@ final class SourceLoader {
 
         let extent = ciImage.extent
 
+        // For Photos images, we need a dummy asset - use an empty composition
+        let dummyAsset: AVAsset
+        switch file.source {
+        case .url(let url):
+            dummyAsset = AVURLAsset(url: url)
+        case .photos:
+            dummyAsset = AVMutableComposition()
+        }
+
         return .success(LoadedSource(
-            asset: file.asset,  // dummy asset for images
+            asset: dummyAsset,
             videoTrack: nil,
             audioTrack: nil,
             duration: source.clip.duration,
             naturalSize: CGSize(width: extent.width, height: extent.height),
-            transform: .identity,  // CIImage orientation already applied by StillImageCache
+            transform: .identity,  // CIImage orientation already applied
             isStillImage: true,
             ciImage: ciImage
         ))
