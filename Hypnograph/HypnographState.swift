@@ -179,12 +179,12 @@ final class HypnographState: ObservableObject {
 
     /// Add a new source with a random clip.
     @discardableResult
-    func addSource(length: Double? = nil) -> HypnogramSource? {
+    func addSource(length: Double? = nil, blendMode: String? = nil) -> HypnogramSource? {
         noteUserInteraction()
         guard let clip = library.randomClip(clipLength: length ?? settings.outputDuration.seconds)
         else { return nil }
 
-        let newSource = HypnogramSource(clip: clip)
+        let newSource = HypnogramSource(clip: clip, blendMode: blendMode)
 
         sources.append(newSource)
         currentSourceIndex = sources.count - 1
@@ -318,9 +318,32 @@ final class HypnographState: ObservableObject {
         let total = max(1, settings.maxSourcesForNew)
         let minCount = min(2, total)
         let count = Int.random(in: minCount...total)
-        for _ in 0..<max(1, count) {
-            addSource()
+        for i in 0..<max(1, count) {
+            // First source uses SourceOver, rest get random blend modes
+            let blendMode = (i == 0) ? kBlendModeSourceOver : randomBlendMode()
+            addSource(blendMode: blendMode)
         }
+    }
+
+    /// Randomize blend modes and effects for all sources in current hypnogram
+    func randomizeBlendModes() {
+        noteUserInteraction()
+        let allEffects = EffectRegistry.shared.allEffects()
+
+        for i in 0..<sources.count {
+            // First source stays SourceOver, rest get random blend modes
+            let blendMode = (i == 0) ? kBlendModeSourceOver : randomBlendMode()
+            sources[i].blendMode = blendMode
+
+            // ~20% chance of getting a random effect
+            if Double.random(in: 0..<1) < 0.2, let effect = allEffects.randomElement() {
+                sources[i].effects = [effect]
+            } else {
+                sources[i].effects = []
+            }
+        }
+        renderHooks.invalidateBlendAnalysis()
+        renderHooks.onEffectChanged?()
     }
 
     /// Reset the watch timer when user interacts with the app
@@ -480,19 +503,20 @@ final class HypnographState: ObservableObject {
 
     // MARK: - Aspect Ratio & Resolution
 
-    /// Set the aspect ratio and save to settings
+    /// Set the aspect ratio and save to settings (applies immediately)
     func setAspectRatio(_ ratio: AspectRatio) {
         aspectRatio = ratio
         settings.aspectRatio = ratio
         saveSettingsToDisk()
-        AppNotifications.show("Takes effect on next Hypnogram", flash: true, duration: 1.5)
+        renderHooks.onEffectChanged?()
     }
 
-    /// Set the output resolution and save to settings
+    /// Set the output resolution and save to settings (applies immediately)
     func setOutputResolution(_ resolution: OutputResolution) {
         outputResolution = resolution
         settings.outputResolution = resolution
         saveSettingsToDisk()
+        renderHooks.onEffectChanged?()
     }
 
     /// Save settings to disk

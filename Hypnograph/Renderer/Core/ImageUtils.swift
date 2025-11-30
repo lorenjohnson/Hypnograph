@@ -9,7 +9,7 @@
 import CoreImage
 
 enum ImageUtils {
-    
+
     /// Scale and crop an image to fill the target size while maintaining aspect ratio.
     /// The image is centered, with overflow cropped equally from both sides.
     static func aspectFill(image: CIImage, to size: CGSize) -> CIImage {
@@ -39,13 +39,62 @@ enum ImageUtils {
 
         return translated.cropped(to: CGRect(origin: .zero, size: size))
     }
-    
+
     /// Blend a foreground layer over a background using a Core Image blend filter.
-    static func blend(layer: CIImage, over base: CIImage, mode: String) -> CIImage {
+    /// - Parameters:
+    ///   - layer: The foreground image to blend
+    ///   - base: The background image
+    ///   - mode: CI blend filter name (e.g., "CIScreenBlendMode")
+    ///   - opacity: Optional opacity multiplier (0-1). If < 1, blends result with base.
+    static func blend(
+        layer: CIImage,
+        over base: CIImage,
+        mode: String,
+        opacity: CGFloat = 1.0
+    ) -> CIImage {
         let filter = CIFilter(name: mode)
         filter?.setValue(layer, forKey: kCIInputImageKey)
         filter?.setValue(base, forKey: kCIInputBackgroundImageKey)
-        return filter?.outputImage ?? layer
+
+        guard let blended = filter?.outputImage else { return layer }
+
+        // If full opacity, return blended result directly
+        guard opacity < 1.0 else { return blended }
+
+        // Partial opacity: lerp between base and blended result
+        // result = base * (1 - opacity) + blended * opacity
+        return applyOpacity(blended, over: base, opacity: opacity)
+    }
+
+    /// Apply opacity by blending foreground over background
+    /// result = background * (1 - opacity) + foreground * opacity
+    private static func applyOpacity(
+        _ foreground: CIImage,
+        over background: CIImage,
+        opacity: CGFloat
+    ) -> CIImage {
+        // Use CIColorMatrix to apply opacity to the foreground
+        guard let opacityFilter = CIFilter(name: "CIColorMatrix") else {
+            return foreground
+        }
+
+        // Alpha vector: multiply alpha channel by opacity
+        let alphaVector = CIVector(x: 0, y: 0, z: 0, w: opacity)
+        opacityFilter.setValue(foreground, forKey: kCIInputImageKey)
+        opacityFilter.setValue(alphaVector, forKey: "inputAVector")
+
+        guard let transparentForeground = opacityFilter.outputImage else {
+            return foreground
+        }
+
+        // Composite over background
+        guard let composite = CIFilter(name: "CISourceOverCompositing") else {
+            return foreground
+        }
+        composite.setValue(transparentForeground, forKey: kCIInputImageKey)
+        composite.setValue(background, forKey: kCIInputBackgroundImageKey)
+
+        return composite.outputImage ?? foreground
     }
 }
 

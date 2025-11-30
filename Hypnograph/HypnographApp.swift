@@ -398,25 +398,20 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("0", modifiers: [])
 
+            Button("Randomize Blend Modes") {
+                state.randomizeBlendModes()
+            }
+            .keyboardShortcut(.space, modifiers: [.shift])
+
             Divider()
 
             // Aspect Ratio - flat in menu
-            Toggle("16:9 (Landscape)", isOn: Binding(
-                get: { state.aspectRatio == .ratio16x9 },
-                set: { if $0 { state.setAspectRatio(.ratio16x9) } }
-            ))
-            Toggle("9:16 (Portrait)", isOn: Binding(
-                get: { state.aspectRatio == .ratio9x16 },
-                set: { if $0 { state.setAspectRatio(.ratio9x16) } }
-            ))
-            Toggle("4:3", isOn: Binding(
-                get: { state.aspectRatio == .ratio4x3 },
-                set: { if $0 { state.setAspectRatio(.ratio4x3) } }
-            ))
-            Toggle("1:1 (Square)", isOn: Binding(
-                get: { state.aspectRatio == .ratio1x1 },
-                set: { if $0 { state.setAspectRatio(.ratio1x1) } }
-            ))
+            ForEach(AspectRatio.menuPresets, id: \.self) { ratio in
+                Toggle(ratio.menuLabel, isOn: Binding(
+                    get: { state.aspectRatio == ratio },
+                    set: { if $0 { state.setAspectRatio(ratio) } }
+                ))
+            }
 
             Divider()
 
@@ -427,6 +422,14 @@ struct AppCommands: Commands {
                     set: { if $0 { state.setOutputResolution(resolution) } }
                 ))
             }
+
+            Divider()
+
+            // Blend normalization toggle (for A/B testing)
+            Toggle("Blend Normalization", isOn: Binding(
+                get: { state.renderHooks.isNormalizationEnabled },
+                set: { state.renderHooks.isNormalizationEnabled = $0 }
+            ))
         }
 
         CommandMenu("Current Source") {

@@ -109,7 +109,7 @@ final class FrameProcessor {
     }
     
     // MARK: - Multi-Layer Compositing
-    
+
     /// Composite multiple layers with blending and effects
     func compositeMultipleLayers(
         _ layers: [LayerInput],
@@ -117,24 +117,25 @@ final class FrameProcessor {
         manager: RenderHookManager? = nil
     ) -> CIImage? {
         guard !layers.isEmpty else { return nil }
-        
+
+        let totalLayers = layers.count
         var composited: CIImage?
-        
-        for layer in layers {
+
+        for (index, layer) in layers.enumerated() {
             // Check flash solo - skip layers that shouldn't be rendered
             if config.enableEffects,
                let manager = manager,
                !manager.shouldRenderSource(at: layer.sourceIndex) {
                 continue
             }
-            
+
             var img = layer.image
-            
+
             // Apply transform
             if layer.transform != .identity {
                 img = img.transformed(by: layer.transform)
             }
-            
+
             // Aspect-fill to output size
             img = ImageUtils.aspectFill(image: img, to: config.outputSize)
 
@@ -154,21 +155,35 @@ final class FrameProcessor {
 
             // Blend with previous layers
             if let base = composited {
-                // Get blend mode from manager if available (for dynamic changes)
+                // Get blend mode and opacity from manager if available
                 let blendMode: String
+                let opacity: CGFloat
+
                 if config.enableEffects, let manager = manager {
                     blendMode = manager.blendMode(for: layer.sourceIndex)
+                    // Get compensated opacity from normalization strategy
+                    opacity = manager.compensatedOpacity(
+                        layerIndex: index,
+                        totalLayers: totalLayers,
+                        blendMode: blendMode
+                    )
                 } else {
                     blendMode = layer.blendMode
+                    opacity = 1.0
                 }
-                img = ImageUtils.blend(layer: img, over: base, mode: blendMode)
+                img = ImageUtils.blend(layer: img, over: base, mode: blendMode, opacity: opacity)
             }
-            
+
             composited = img
         }
-        
+
         guard var finalImage = composited else { return nil }
-        
+
+        // Apply blend normalization (after compositing, before global effects)
+        if config.enableEffects, let manager = manager {
+            finalImage = manager.applyNormalization(to: finalImage)
+        }
+
         // Apply global effects
         if config.enableEffects, let manager = manager {
             var context = RenderContext(
@@ -181,7 +196,7 @@ final class FrameProcessor {
             )
             finalImage = manager.applyGlobal(to: &context, image: finalImage)
         }
-        
+
         return finalImage
     }
 

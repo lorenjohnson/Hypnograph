@@ -209,6 +209,69 @@ final class RenderHookManager {
     /// Callback invoked whenever effects or blend modes change (for triggering re-render when paused)
     var onEffectChanged: (() -> Void)?
 
+    // MARK: - Blend Normalization
+
+    /// Whether blend normalization is enabled (for A/B testing)
+    var isNormalizationEnabled: Bool = true {
+        didSet {
+            if oldValue != isNormalizationEnabled {
+                onEffectChanged?()
+            }
+        }
+    }
+
+    /// Current normalization strategy (auto-selected by default)
+    private var _normalizationStrategy: NormalizationStrategy?
+
+    /// Cached blend mode analysis (recomputed when recipe changes)
+    private var cachedAnalysis: BlendModeAnalysis?
+
+    /// Get the active normalization strategy (auto-selects if not manually set)
+    /// Returns NoNormalization if normalization is disabled
+    var normalizationStrategy: NormalizationStrategy {
+        guard isNormalizationEnabled else {
+            return NoNormalization()
+        }
+        if let manual = _normalizationStrategy {
+            return manual
+        }
+        let analysis = currentBlendAnalysis
+        return NormalizationRegistry.shared.autoSelect(for: analysis)
+    }
+
+    /// Set a specific normalization strategy (nil = auto-select)
+    func setNormalizationStrategy(_ strategy: NormalizationStrategy?) {
+        _normalizationStrategy = strategy
+        onEffectChanged?()
+    }
+
+    /// Get current blend mode analysis for the recipe
+    var currentBlendAnalysis: BlendModeAnalysis {
+        if let cached = cachedAnalysis {
+            return cached
+        }
+        let blendModes = collectBlendModes()
+        let analysis = BlendModeClassifier.analyze(blendModes: blendModes)
+        cachedAnalysis = analysis
+        return analysis
+    }
+
+    /// Invalidate cached analysis (call when blend modes change)
+    func invalidateBlendAnalysis() {
+        cachedAnalysis = nil
+    }
+
+    /// Collect all blend modes from current recipe
+    private func collectBlendModes() -> [String] {
+        guard let recipe = recipeProvider?() else { return [] }
+        return recipe.sources.enumerated().map { index, source in
+            if index == 0 {
+                return kBlendModeSourceOver
+            }
+            return source.blendMode ?? kBlendModeDefaultMontage
+        }
+    }
+
     // MARK: - Recipe Access (single source of truth)
 
     /// Closure to get the current recipe - reads from the single source of truth
@@ -346,6 +409,7 @@ final class RenderHookManager {
 
     func setBlendMode(_ mode: String, for sourceIndex: Int, silent: Bool = false) {
         blendModeSetter?(sourceIndex, mode)
+        invalidateBlendAnalysis()  // Blend modes changed, recalculate analysis
         if !silent {
             onEffectChanged?()
         }
@@ -355,18 +419,33 @@ final class RenderHookManager {
         // Don't cycle source 0 - it's always source-over
         guard sourceIndex > 0 else { return }
 
-        let modes = [
-            "CIScreenBlendMode",
-            "CIOverlayBlendMode",
-            "CISoftLightBlendMode",
-            "CIMultiplyBlendMode",
-            "CIDarkenBlendMode",
-            "CILightenBlendMode",
-        ]
         let currentMode = blendMode(for: sourceIndex)
-        let currentIndex = modes.firstIndex(of: currentMode) ?? 0
-        let nextIndex = (currentIndex + 1) % modes.count
-        setBlendMode(modes[nextIndex], for: sourceIndex)
+        let currentIndex = kBlendModes.firstIndex(of: currentMode) ?? 0
+        let nextIndex = (currentIndex + 1) % kBlendModes.count
+        setBlendMode(kBlendModes[nextIndex], for: sourceIndex)
+    }
+
+    // MARK: - Blend Normalization Helpers
+
+    /// Get compensated opacity for a layer (for use during compositing)
+    func compensatedOpacity(
+        layerIndex: Int,
+        totalLayers: Int,
+        blendMode: String
+    ) -> CGFloat {
+        let analysis = currentBlendAnalysis
+        return normalizationStrategy.opacityForLayer(
+            index: layerIndex,
+            totalLayers: totalLayers,
+            blendMode: blendMode,
+            analysis: analysis
+        )
+    }
+
+    /// Apply post-composition normalization (call after all layers blended, before global effects)
+    func applyNormalization(to image: CIImage) -> CIImage {
+        let analysis = currentBlendAnalysis
+        return normalizationStrategy.normalizeComposite(image, analysis: analysis)
     }
 
     // MARK: - Flash Solo

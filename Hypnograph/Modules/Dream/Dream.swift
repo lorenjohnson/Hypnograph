@@ -24,15 +24,6 @@ final class Dream: ObservableObject {
 
     @Published var mode: DreamMode = .montage
 
-    private let availableBlendModes: [String] = [
-        "CIScreenBlendMode",
-        "CIOverlayBlendMode",
-        "CISoftLightBlendMode",
-        "CIMultiplyBlendMode",
-        "CIDarkenBlendMode",
-        "CILightenBlendMode",
-    ]
-
     private let maxSequenceSources: Int = 20
     private let initialSequenceSourceCount: Int = 5
 
@@ -214,8 +205,8 @@ final class Dream: ObservableObject {
             return AnyView(
                 MontagePlayerView(
                     recipe: recipe,
-                    aspectRatio: state.settings.aspectRatio,
-                    displayResolution: state.settings.displayResolution,
+                    aspectRatio: state.aspectRatio,
+                    displayResolution: state.outputResolution,
                     currentSourceIndex: Binding(
                         get: { state.currentSourceIndex },
                         set: { state.currentSourceIndex = $0 }
@@ -227,15 +218,15 @@ final class Dream: ObservableObject {
                     isPaused: state.isPaused,
                     effectsChangeCounter: state.effectsChangeCounter
                 )
-                .id("dream-montage")
+                .id("dream-montage-\(state.aspectRatio.displayString)-\(state.outputResolution.rawValue)")
             )
 
         case .sequence:
             return AnyView(
                 SequencePlayerView(
                     recipe: recipe,
-                    aspectRatio: state.settings.aspectRatio,
-                    displayResolution: state.settings.displayResolution,
+                    aspectRatio: state.aspectRatio,
+                    displayResolution: state.outputResolution,
                     currentSourceIndex: Binding(
                         get: { state.currentSourceIndex },
                         set: { state.currentSourceIndex = $0 }
@@ -244,7 +235,7 @@ final class Dream: ObservableObject {
                     effectsChangeCounter: state.effectsChangeCounter,
                     playRate: 0.8
                 )
-                .id("dream-sequence-\(state.sources.count)")
+                .id("dream-sequence-\(state.sources.count)-\(state.aspectRatio.displayString)-\(state.outputResolution.rawValue)")
             )
         }
     }
