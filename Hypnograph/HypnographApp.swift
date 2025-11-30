@@ -42,11 +42,11 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
 
         // Request Photos library authorization and refresh hidden assets cache
         Task {
-            let status = await ApplePhotosLibrary.shared.requestAuthorization()
+            let status = await ApplePhotos.shared.requestAuthorization()
             if status.canRead {
-                let count = ApplePhotosLibrary.shared.refreshHiddenIdentifiersCache()
+                let count = ApplePhotos.shared.refreshHiddenIdentifiersCache()
                 if count > 0 {
-                    print("ApplePhotosLibrary: Cached \(count) hidden asset identifiers")
+                    print("ApplePhotos: Cached \(count) hidden asset identifiers")
                 }
             }
         }
