@@ -49,33 +49,54 @@ struct PhotoMontage {
     }
     
     // MARK: - Composite
-    
+
     /// Composite all layers into a single image
+    /// Uses RenderHookManager for blend normalization when available
     func composite() -> CIImage {
+        let manager = GlobalRenderHooks.manager
+        let totalLayers = layers.count
+
+        // Build blend analysis from our layers
+        let blendModes = layers.enumerated().map { index, layer in
+            index == 0 ? kBlendModeSourceOver : layer.blendMode
+        }
+        let analysis = BlendModeClassifier.analyze(blendModes: blendModes)
+        let strategy = manager?.normalizationStrategy ?? NormalizationRegistry.shared.autoSelect(for: analysis)
+
         var result = CIImage.empty().cropped(to: CGRect(origin: .zero, size: outputSize))
-        
+
         for (index, layer) in layers.enumerated() {
             var img = layer.image.transformed(by: layer.transform)
-            
+
             // Scale to fill output size
             let scaleX = outputSize.width / img.extent.width
             let scaleY = outputSize.height / img.extent.height
             let scale = max(scaleX, scaleY)
             img = img.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-            
+
             // Center in output
             let offsetX = (outputSize.width - img.extent.width) / 2 - img.extent.origin.x
             let offsetY = (outputSize.height - img.extent.height) / 2 - img.extent.origin.y
             img = img.transformed(by: CGAffineTransform(translationX: offsetX, y: offsetY))
-            
+
             // First layer uses source-over, subsequent use their blend mode
             if index == 0 {
                 result = img
             } else {
-                result = ImageUtils.blend(layer: img, over: result, mode: layer.blendMode)
+                // Get compensated opacity from normalization strategy
+                let opacity = strategy.opacityForLayer(
+                    index: index,
+                    totalLayers: totalLayers,
+                    blendMode: layer.blendMode,
+                    analysis: analysis
+                )
+                result = ImageUtils.blend(layer: img, over: result, mode: layer.blendMode, opacity: opacity)
             }
         }
-        
+
+        // Apply post-composition normalization
+        result = strategy.normalizeComposite(result, analysis: analysis)
+
         return result.cropped(to: CGRect(origin: .zero, size: outputSize))
     }
     

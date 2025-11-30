@@ -16,6 +16,29 @@ let kBlendModeSourceOver = "CISourceOverCompositing"
 /// Default per-layer blend mode for Montage (above layer 0).
 let kBlendModeDefaultMontage = "CIScreenBlendMode"
 
+/// Available blend modes for random selection and cycling
+let kBlendModes: [String] = [
+    "CIScreenBlendMode",
+    "CIAdditionCompositing",
+    "CILinearDodgeBlendMode",
+    "CIColorDodgeBlendMode",
+    "CILightenBlendMode",
+    "CIOverlayBlendMode",
+    "CISoftLightBlendMode",
+    "CIHardLightBlendMode",
+    "CIVividLightBlendMode",
+    "CIPinLightBlendMode",
+    "CIMultiplyBlendMode",
+    "CIColorBurnBlendMode",
+    "CIDarkenBlendMode",
+    "CILinearBurnBlendMode",
+]
+
+/// Returns a random blend mode from kBlendModes
+func randomBlendMode() -> String {
+    kBlendModes.randomElement() ?? kBlendModeDefaultMontage
+}
+
 /// Builds compositions for preview and export
 final class CompositionBuilder {
     

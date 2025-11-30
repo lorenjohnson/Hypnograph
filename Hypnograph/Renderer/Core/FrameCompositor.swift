@@ -152,15 +152,24 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
                 // Get blend mode from manager if available (for dynamic changes),
                 // otherwise fall back to instruction (for export)
                 let blendMode: String
+                let opacity: CGFloat
+
                 if instruction.enableEffects,
                    let manager = GlobalRenderHooks.manager {
                     let sourceIndex = instruction.sourceIndices[index]
                     blendMode = manager.blendMode(for: sourceIndex)
+                    // Get compensated opacity from normalization strategy
+                    opacity = manager.compensatedOpacity(
+                        layerIndex: index,
+                        totalLayers: instruction.layerTrackIDs.count,
+                        blendMode: blendMode
+                    )
                 } else {
                     blendMode = instruction.blendModes[index]
+                    opacity = 1.0  // No compensation during export (baked in)
                 }
 
-                img = ImageUtils.blend(layer: img, over: base, mode: blendMode)
+                img = ImageUtils.blend(layer: img, over: base, mode: blendMode, opacity: opacity)
                 composited = img
             } else {
                 composited = img
@@ -171,6 +180,11 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
             print("🔴 FrameCompositor: No layers composited")
             request.finish(with: NSError(domain: "FrameCompositor", code: 5, userInfo: nil))
             return
+        }
+
+        // Apply blend normalization (after compositing, before global effects)
+        if instruction.enableEffects, let manager = GlobalRenderHooks.manager {
+            finalImage = manager.applyNormalization(to: finalImage)
         }
 
         // Apply global effects if enabled
