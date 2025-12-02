@@ -75,25 +75,6 @@ final class FrameBuffer {
     }
 }
 
-// MARK: - Render Parameters
-
-/// Parameters hooks can influence and the renderer can read.
-struct RenderParams {
-    var seed: UInt64
-    var glitchAmount: Float
-    var hueShift: Float
-
-    init(
-        seed: UInt64 = 0,
-        glitchAmount: Float = 0,
-        hueShift: Float = 0
-    ) {
-        self.seed = seed
-        self.glitchAmount = glitchAmount
-        self.hueShift = hueShift
-    }
-}
-
 // MARK: - Render Context
 
 /// Per-frame context, used by BOTH preview and export.
@@ -106,9 +87,6 @@ struct RenderContext {
     /// Access to previous frames for motion-based effects
     let frameBuffer: FrameBuffer
 
-    /// Hook-tunable parameters
-    var params: RenderParams
-
     /// Index of the source currently being processed (if any).
     /// - `nil` when rendering the final composed frame or when no specific source is in scope.
     var sourceIndex: Int?
@@ -119,7 +97,6 @@ struct RenderContext {
         isPreview: Bool,
         outputSize: CGSize,
         frameBuffer: FrameBuffer,
-        params: RenderParams,
         sourceIndex: Int? = nil
     ) {
         self.frameIndex = frameIndex
@@ -127,7 +104,6 @@ struct RenderContext {
         self.isPreview = isPreview
         self.outputSize = outputSize
         self.frameBuffer = frameBuffer
-        self.params = params
         self.sourceIndex = sourceIndex
     }
 
@@ -156,39 +132,25 @@ extension RenderHook {
     }
 }
 
-// MARK: - Effect Registry
+// MARK: - Available Effects
 
-/// Registry of all available effects
-final class EffectRegistry {
-    static let shared = EffectRegistry()
+/// Namespace for available render effects
+enum Effect {
+    /// All available effects (None is implicit, represented by nil)
+    static let all: [RenderHook] = [
+        BlackAndWhiteLowHook(),
+        BlackAndWhiteHighHook(),
+        HueWobbleHook(),
+        RGBSplitSimpleHook(offsetAmount: 15.0, animated: true),
+        ScanlinesHook(lineWidth: 6.0, intensity: 0.8),
+        PixelSortHook(intensity: 10.0),
+        DatamoshHook(intensity: 20.0),
+        DatamoshHook2(intensity: 0.6, blurAmount: 4.0, timeScale: 0.02)
+    ]
 
-    private init() {}
-
-    /// All available effects (None is implicit, not in this list)
-    func allEffects() -> [RenderHook] {
-        return [
-            BlackAndWhiteLowHook(),
-            BlackAndWhiteHighHook(),
-            HueWobbleHook(),
-            RGBSplitSimpleHook(offsetAmount: 15.0, animated: true),
-            ScanlinesHook(lineWidth: 6.0, intensity: 0.8),
-            PixelSortHook(intensity: 10.0),
-            DatamoshHook(intensity: 20.0),
-            DatamoshHook2(intensity: 0.6, blurAmount: 4.0, timeScale: 0.02)
-        ]
-    }
-
-    /// Get effect by name, or nil for "None"
-    func effect(named: String) -> RenderHook? {
-        if named == "None" {
-            return nil
-        }
-        return allEffects().first { $0.name == named }
-    }
-
-    /// All effect names including "None"
-    func allEffectNames() -> [String] {
-        return ["None"] + allEffects().map { $0.name }
+    /// Returns a random effect
+    static func random() -> RenderHook? {
+        all.randomElement()
     }
 }
 
@@ -236,7 +198,7 @@ final class RenderHookManager {
             return manual
         }
         let analysis = currentBlendAnalysis
-        return NormalizationRegistry.shared.autoSelect(for: analysis)
+        return autoSelectNormalization(for: analysis)
     }
 
     /// Set a specific normalization strategy (nil = auto-select)
@@ -251,7 +213,7 @@ final class RenderHookManager {
             return cached
         }
         let blendModes = collectBlendModes()
-        let analysis = BlendModeClassifier.analyze(blendModes: blendModes)
+        let analysis = analyzeBlendModes(blendModes)
         cachedAnalysis = analysis
         return analysis
     }
@@ -266,9 +228,9 @@ final class RenderHookManager {
         guard let recipe = recipeProvider?() else { return [] }
         return recipe.sources.enumerated().map { index, source in
             if index == 0 {
-                return kBlendModeSourceOver
+                return BlendMode.sourceOver
             }
-            return source.blendMode ?? kBlendModeDefaultMontage
+            return source.blendMode ?? BlendMode.defaultMontage
         }
     }
 
@@ -303,12 +265,12 @@ final class RenderHookManager {
     }
 
     func cycleGlobalEffect() {
-        let names = EffectRegistry.shared.allEffectNames()
-        let currentIndex = names.firstIndex(of: globalEffectName) ?? 0
-        let nextIndex = (currentIndex + 1) % names.count
-        let nextName = names[nextIndex]
-        let effect = EffectRegistry.shared.effect(named: nextName)
-        setGlobalEffect(effect)
+        // Find current index (-1 means None)
+        let currentName = globalEffectName
+        let currentIndex = Effect.all.firstIndex { $0.name == currentName } ?? -1
+        // Cycle: -1 -> 0 -> 1 -> ... -> count-1 -> -1
+        let nextIndex = (currentIndex + 2) % (Effect.all.count + 1) - 1
+        setGlobalEffect(nextIndex >= 0 ? Effect.all[nextIndex] : nil)
     }
 
     // MARK: - Per-Source Effects (reads from recipe sources)
@@ -332,13 +294,10 @@ final class RenderHookManager {
     }
 
     func cycleSourceEffect(for sourceIndex: Int) {
-        let names = EffectRegistry.shared.allEffectNames()
         let currentName = sourceEffectName(for: sourceIndex)
-        let currentIndex = names.firstIndex(of: currentName) ?? 0
-        let nextIndex = (currentIndex + 1) % names.count
-        let nextName = names[nextIndex]
-        let effect = EffectRegistry.shared.effect(named: nextName)
-        setSourceEffect(effect, for: sourceIndex)
+        let currentIndex = Effect.all.firstIndex { $0.name == currentName } ?? -1
+        let nextIndex = (currentIndex + 2) % (Effect.all.count + 1) - 1
+        setSourceEffect(nextIndex >= 0 ? Effect.all[nextIndex] : nil, for: sourceIndex)
     }
 
     // MARK: - Application
@@ -396,15 +355,15 @@ final class RenderHookManager {
     func blendMode(for sourceIndex: Int) -> String {
         // Source 0 is always source-over (base layer)
         if sourceIndex == 0 {
-            return kBlendModeSourceOver
+            return BlendMode.sourceOver
         }
         // Read from the recipe (single source of truth)
         guard let recipe = recipeProvider?(),
               sourceIndex >= 0,
               sourceIndex < recipe.sources.count else {
-            return kBlendModeDefaultMontage
+            return BlendMode.defaultMontage
         }
-        return recipe.sources[sourceIndex].blendMode ?? kBlendModeDefaultMontage
+        return recipe.sources[sourceIndex].blendMode ?? BlendMode.defaultMontage
     }
 
     func setBlendMode(_ mode: String, for sourceIndex: Int, silent: Bool = false) {
@@ -420,9 +379,9 @@ final class RenderHookManager {
         guard sourceIndex > 0 else { return }
 
         let currentMode = blendMode(for: sourceIndex)
-        let currentIndex = kBlendModes.firstIndex(of: currentMode) ?? 0
-        let nextIndex = (currentIndex + 1) % kBlendModes.count
-        setBlendMode(kBlendModes[nextIndex], for: sourceIndex)
+        let currentIndex = BlendMode.all.firstIndex(of: currentMode) ?? 0
+        let nextIndex = (currentIndex + 1) % BlendMode.all.count
+        setBlendMode(BlendMode.all[nextIndex], for: sourceIndex)
     }
 
     // MARK: - Blend Normalization Helpers

@@ -173,7 +173,7 @@ struct Settings: Codable {
         static let aspectRatio: AspectRatio = .ratio16x9
         static let outputResolution: OutputResolution = .p1080
         static let displayResolution: OutputResolution = .p1080
-        static let sourceMediaTypes: Set<SourceMediaType> = [.photos, .videos]
+        static let sourceMediaTypes: Set<SourceMediaType> = [.images, .videos]
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -292,13 +292,6 @@ struct Settings: Codable {
 
     var defaultSourceLibraryKey: String {
         sourceFolders.defaultKey
-    }
-
-    var activeSourceFolders: [String] {
-        sourceLibraries[defaultSourceLibraryKey]
-            ?? sourceLibraryOrder.first.flatMap { sourceLibraries[$0] }
-            ?? sourceLibraries.values.first
-            ?? []
     }
 
     func folders(forLibraries keys: Set<String>) -> [String] {

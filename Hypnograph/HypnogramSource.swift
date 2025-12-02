@@ -19,13 +19,13 @@ enum MediaKind: String, Codable {
 }
 
 /// A single media file that we can select clips from.
-/// Abstracts over local files and (future) Apple Photos sources.
-struct VideoFile: Identifiable {
+/// Abstracts over local files and Apple Photos sources.
+struct MediaFile: Identifiable {
 
     /// Where the media comes from
     enum Source {
         case url(URL)
-        case photos(localIdentifier: String)  // Apple Photos - coming soon
+        case photos(localIdentifier: String)
     }
 
     let id: UUID
@@ -116,13 +116,13 @@ struct VideoFile: Identifiable {
     }
 }
 
-/// A specific slice (start + length) from a VideoFile.
+/// A specific slice (start + length) from a MediaFile.
 struct VideoClip {
-    let file: VideoFile
+    let file: MediaFile
     let startTime: CMTime
     let duration: CMTime
 
-    init(file: VideoFile, startTime: CMTime, duration: CMTime) {
+    init(file: MediaFile, startTime: CMTime, duration: CMTime) {
         self.file = file
         self.startTime = startTime
         self.duration = duration

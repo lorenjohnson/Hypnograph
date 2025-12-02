@@ -18,6 +18,7 @@ enum DreamMode: String, Codable {
     case sequence
 }
 
+@MainActor
 final class Dream: ObservableObject {
     let state: HypnographState
     let renderQueue: RenderQueue
@@ -132,10 +133,7 @@ final class Dream: ObservableObject {
 
     // MARK: - HUD
 
-    func hudItems(
-        state: HypnographState,
-        renderQueue: RenderQueue
-    ) -> [HUDItem] {
+    func hudItems() -> [HUDItem] {
         var items: [HUDItem] = []
 
         let modeLabel = (mode == .montage ? "Montage" : "Sequence")
@@ -170,35 +168,14 @@ final class Dream: ObservableObject {
         return items
     }
 
-    // MARK: - Commands
-
-    func compositionCommands() -> [ModuleCommand] {
-        [
-            ModuleCommand(title: "Toggle Mode (Montage/Sequence)", key: "`") { [weak self] in
-                self?.toggleMode()
-            }
-        ]
-    }
-
-    func sourceCommands() -> [ModuleCommand] {
-        [
-            ModuleCommand(title: "Cycle Blend Mode", key: "m") { [weak self] in
-                self?.cycleBlendMode()
-            }
-        ]
-    }
-
     // MARK: - Display
 
-    func makeDisplayView(
-        state: HypnographState,
-        renderQueue: RenderQueue
-    ) -> AnyView {
+    func makeDisplayView() -> AnyView {
         if mode == .sequence, state.sources.isEmpty {
             newRandomSequence()
         }
 
-        let recipe = makeDisplayRecipe(state: state)
+        let recipe = makeDisplayRecipe()
 
         switch mode {
         case .montage:
@@ -208,12 +185,12 @@ final class Dream: ObservableObject {
                     aspectRatio: state.aspectRatio,
                     displayResolution: state.outputResolution,
                     currentSourceIndex: Binding(
-                        get: { state.currentSourceIndex },
-                        set: { state.currentSourceIndex = $0 }
+                        get: { [state] in state.currentSourceIndex },
+                        set: { [state] in state.currentSourceIndex = $0 }
                     ),
                     currentSourceTime: Binding(
-                        get: { state.currentClipTimeOffset },
-                        set: { state.currentClipTimeOffset = $0 }
+                        get: { [state] in state.currentClipTimeOffset },
+                        set: { [state] in state.currentClipTimeOffset = $0 }
                     ),
                     isPaused: state.isPaused,
                     effectsChangeCounter: state.effectsChangeCounter
@@ -228,8 +205,8 @@ final class Dream: ObservableObject {
                     aspectRatio: state.aspectRatio,
                     displayResolution: state.outputResolution,
                     currentSourceIndex: Binding(
-                        get: { state.currentSourceIndex },
-                        set: { state.currentSourceIndex = $0 }
+                        get: { [state] in state.currentSourceIndex },
+                        set: { [state] in state.currentSourceIndex = $0 }
                     ),
                     isPaused: state.isPaused,
                     effectsChangeCounter: state.effectsChangeCounter,
@@ -240,7 +217,7 @@ final class Dream: ObservableObject {
         }
     }
 
-    private func makeDisplayRecipe(state: HypnographState) -> HypnogramRecipe {
+    private func makeDisplayRecipe() -> HypnogramRecipe {
         // Use the recipe directly, just adjust target duration based on mode
         var recipe = state.recipe
         switch mode {
@@ -401,8 +378,8 @@ final class Dream: ObservableObject {
     // MARK: - Montage blend modes
 
     private func blendModeForSourceIndex(_ idx: Int) -> String {
-        guard idx >= 0, idx < state.sources.count else { return kBlendModeSourceOver }
-        return state.sources[idx].blendMode ?? (idx == 0 ? kBlendModeSourceOver : kBlendModeDefaultMontage)
+        guard idx >= 0, idx < state.sources.count else { return BlendMode.sourceOver }
+        return state.sources[idx].blendMode ?? (idx == 0 ? BlendMode.sourceOver : BlendMode.defaultMontage)
     }
 
     private func currentBlendModeDisplayName() -> String {
@@ -444,7 +421,7 @@ final class Dream: ObservableObject {
             state.renderHooks.setSourceEffect(nil, for: i)
             // Reset blend mode on source (keep first one as SourceOver)
             if i > 0 {
-                state.sources[i].blendMode = kBlendModeDefaultMontage
+                state.sources[i].blendMode = BlendMode.defaultMontage
             }
         }
     }

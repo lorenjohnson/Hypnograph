@@ -20,14 +20,14 @@ final class FavoriteStore {
     }
 
     /// Check if a source is favorited
-    func isFavorited(_ source: VideoFile.Source) -> Bool {
+    func isFavorited(_ source: MediaFile.Source) -> Bool {
         queue.sync {
             favoritedIdentifiers.contains(identifier(for: source))
         }
     }
 
     /// Add a source to favorites
-    func add(_ source: VideoFile.Source) {
+    func add(_ source: MediaFile.Source) {
         queue.sync {
             favoritedIdentifiers.insert(identifier(for: source))
             save()
@@ -35,7 +35,7 @@ final class FavoriteStore {
     }
 
     /// Remove a source from favorites
-    func remove(_ source: VideoFile.Source) {
+    func remove(_ source: MediaFile.Source) {
         queue.sync {
             favoritedIdentifiers.remove(identifier(for: source))
             save()
@@ -44,7 +44,7 @@ final class FavoriteStore {
 
     /// Toggle favorite status, returns new state
     @discardableResult
-    func toggle(_ source: VideoFile.Source) -> Bool {
+    func toggle(_ source: MediaFile.Source) -> Bool {
         queue.sync {
             let id = identifier(for: source)
             if favoritedIdentifiers.contains(id) {
@@ -66,7 +66,7 @@ final class FavoriteStore {
 
     // MARK: - Private
 
-    private func identifier(for source: VideoFile.Source) -> String {
+    private func identifier(for source: MediaFile.Source) -> String {
         switch source {
         case .url(let url):
             return "file:" + url.standardizedFileURL.path

@@ -19,7 +19,7 @@ struct PhotoMontage {
         let transform: CGAffineTransform
         let blendMode: String
         
-        init(image: CIImage, transform: CGAffineTransform = .identity, blendMode: String = kBlendModeSourceOver) {
+        init(image: CIImage, transform: CGAffineTransform = .identity, blendMode: String = BlendMode.sourceOver) {
             self.image = image
             self.transform = transform
             self.blendMode = blendMode
@@ -40,7 +40,7 @@ struct PhotoMontage {
         for (index, maybeImage) in instruction.stillImages.enumerated() {
             guard let image = maybeImage else { continue }
             let transform = index < instruction.transforms.count ? instruction.transforms[index] : .identity
-            let blendMode = index < instruction.blendModes.count ? instruction.blendModes[index] : kBlendModeSourceOver
+            let blendMode = index < instruction.blendModes.count ? instruction.blendModes[index] : BlendMode.sourceOver
             layers.append(Layer(image: image, transform: transform, blendMode: blendMode))
         }
         guard !layers.isEmpty else { return nil }
@@ -58,10 +58,10 @@ struct PhotoMontage {
 
         // Build blend analysis from our layers
         let blendModes = layers.enumerated().map { index, layer in
-            index == 0 ? kBlendModeSourceOver : layer.blendMode
+            index == 0 ? BlendMode.sourceOver : layer.blendMode
         }
-        let analysis = BlendModeClassifier.analyze(blendModes: blendModes)
-        let strategy = manager?.normalizationStrategy ?? NormalizationRegistry.shared.autoSelect(for: analysis)
+        let analysis = analyzeBlendModes(blendModes)
+        let strategy = manager?.normalizationStrategy ?? autoSelectNormalization(for: analysis)
 
         var result = CIImage.empty().cropped(to: CGRect(origin: .zero, size: outputSize))
 

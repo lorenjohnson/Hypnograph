@@ -1,7 +1,7 @@
 import Foundation
 
-/// Simple persistent exclusion list for source videos.
-/// Works with VideoFile.Source to support both file URLs and (future) Photos identifiers.
+/// Simple persistent exclusion list for source media.
+/// Works with MediaFile.Source to support both file URLs and Photos identifiers.
 final class ExclusionStore {
     static let shared = ExclusionStore()
 
@@ -12,13 +12,13 @@ final class ExclusionStore {
         load()
     }
 
-    func isExcluded(_ source: VideoFile.Source) -> Bool {
+    func isExcluded(_ source: MediaFile.Source) -> Bool {
         queue.sync {
             excludedIdentifiers.contains(identifier(for: source))
         }
     }
 
-    func add(_ source: VideoFile.Source) {
+    func add(_ source: MediaFile.Source) {
         queue.sync {
             excludedIdentifiers.insert(identifier(for: source))
             save()
@@ -26,7 +26,7 @@ final class ExclusionStore {
     }
 
     /// Extract a stable identifier from the source for persistence
-    private func identifier(for source: VideoFile.Source) -> String {
+    private func identifier(for source: MediaFile.Source) -> String {
         switch source {
         case .url(let url):
             return "file:" + url.standardizedFileURL.path

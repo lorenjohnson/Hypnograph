@@ -11,6 +11,7 @@ import CoreMedia
 import CoreGraphics
 
 /// Tarot-style stills with drag-and-drop cards.
+@MainActor
 final class Divine: ObservableObject {
     let state: HypnographState
     let renderQueue: RenderQueue

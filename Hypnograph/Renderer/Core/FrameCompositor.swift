@@ -137,8 +137,7 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
                     time: request.compositionTime,
                     isPreview: true,
                     outputSize: outputSize,
-                    frameBuffer: manager.frameBuffer,
-                    params: RenderParams()
+                    frameBuffer: manager.frameBuffer
                 )
                 img = manager.applyToSource(
                     sourceIndex: sourceIndex,
@@ -194,8 +193,7 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
                 time: request.compositionTime,
                 isPreview: true,
                 outputSize: outputSize,
-                frameBuffer: manager.frameBuffer,
-                params: RenderParams()
+                frameBuffer: manager.frameBuffer
             )
 
             let effectResult = manager.applyGlobal(to: &context, image: finalImage)

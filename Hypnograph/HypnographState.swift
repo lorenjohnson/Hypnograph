@@ -15,6 +15,7 @@ import CoreGraphics
 import Photos
 
 /// Manages the current in-progress hypnogram.
+@MainActor
 final class HypnographState: ObservableObject {
 
     // MARK: - Core configuration
@@ -23,13 +24,9 @@ final class HypnographState: ObservableObject {
 
     // Per-module library state
     private var perModuleLibraryKeys: [ModuleType: Set<String>] = [:]
-    private var perModuleUsingPhotos: [ModuleType: Bool] = [:]
 
     @Published private(set) var currentLibraryKey: String
     @Published private(set) var activeLibraryKeys: Set<String>
-
-    /// Whether currently using Apple Photos album as source
-    @Published private(set) var isUsingApplePhotosAlbum: Bool = false
 
     private(set) var library: MediaSourcesLibrary
 
@@ -38,8 +35,6 @@ final class HypnographState: ObservableObject {
     @Published var currentModuleType: ModuleType = .dream {
         didSet {
             if oldValue != currentModuleType {
-                // Save current module's Photos state before switching
-                perModuleUsingPhotos[oldValue] = isUsingApplePhotosAlbum
                 switchToModuleLibraries(currentModuleType)
             }
         }
@@ -72,7 +67,6 @@ final class HypnographState: ObservableObject {
 
     // Render hooks
     let renderHooks = RenderHookManager()
-    var baseRenderParams = RenderParams()
 
     // Watch timer - generates new hypnograms at intervals when watch mode is enabled
     private var watchTimer: Timer?
@@ -327,7 +321,7 @@ final class HypnographState: ObservableObject {
         let count = Int.random(in: minCount...total)
         for i in 0..<max(1, count) {
             // First source uses SourceOver, rest get random blend modes
-            let blendMode = (i == 0) ? kBlendModeSourceOver : randomBlendMode()
+            let blendMode = (i == 0) ? BlendMode.sourceOver : BlendMode.random()
             addSource(blendMode: blendMode)
         }
     }
@@ -335,15 +329,14 @@ final class HypnographState: ObservableObject {
     /// Randomize blend modes and effects for all sources in current hypnogram
     func randomizeBlendModes() {
         noteUserInteraction()
-        let allEffects = EffectRegistry.shared.allEffects()
 
         for i in 0..<sources.count {
             // First source stays SourceOver, rest get random blend modes
-            let blendMode = (i == 0) ? kBlendModeSourceOver : randomBlendMode()
+            let blendMode = (i == 0) ? BlendMode.sourceOver : BlendMode.random()
             sources[i].blendMode = blendMode
 
             // ~20% chance of getting a random effect
-            if Double.random(in: 0..<1) < 0.2, let effect = allEffects.randomElement() {
+            if Double.random(in: 0..<1) < 0.2, let effect = Effect.random() {
                 sources[i].effects = [effect]
             } else {
                 sources[i].effects = []
@@ -389,7 +382,7 @@ final class HypnographState: ObservableObject {
 
     /// Toggle a library (folder or Photos) on/off
     func toggleLibrary(key: String) {
-        Task { @MainActor in
+        Task {
             var keys = activeLibraryKeys
 
             if keys.contains(key) {
@@ -409,7 +402,6 @@ final class HypnographState: ObservableObject {
     }
 
     /// Apply a unified set of active library keys (both folder and Photos)
-    @MainActor
     private func applyActiveLibrariesUnified(_ keys: Set<String>, saveToModule: Bool) async {
         activeLibraryKeys = keys
 
@@ -432,9 +424,6 @@ final class HypnographState: ObservableObject {
             }
         }
 
-        // Update tracking flags
-        isUsingApplePhotosAlbum = !photosAlbums.isEmpty
-        perModuleUsingPhotos[currentModuleType] = !photosAlbums.isEmpty
         currentLibraryKey = keys.first ?? settings.defaultSourceLibraryKey
 
         // Create combined library
@@ -477,43 +466,6 @@ final class HypnographState: ObservableObject {
         return await ApplePhotos.shared.getOrCreateSourcesAlbum()
     }
 
-    // MARK: - Legacy Apple Photos methods (for backward compatibility)
-
-    /// Switch to using Apple Photos album as the source (legacy - adds to active libraries)
-    func useApplePhotosAlbum() {
-        Task { @MainActor in
-            guard ApplePhotos.shared.status.canRead else {
-                AppNotifications.show("Photos access not granted", flash: true)
-                return
-            }
-
-            guard let album = await ApplePhotos.shared.getOrCreateSourcesAlbum() else {
-                AppNotifications.show("Failed to access Photos album", flash: true)
-                return
-            }
-
-            let photosKey = "photos:\(album.localIdentifier)"
-            var keys = activeLibraryKeys
-            keys.insert(photosKey)
-            await applyActiveLibrariesUnified(keys, saveToModule: true)
-
-            AppNotifications.show("Added Apple Photos album", flash: true, duration: 1.5)
-        }
-    }
-
-    /// Switch back to file-based sources only (removes all Photos libraries)
-    func useFileSources() {
-        Task { @MainActor in
-            let folderKeys = activeLibraryKeys.filter { !$0.hasPrefix("photos:") }
-            if folderKeys.isEmpty {
-                // If no folder libraries, use the default
-                await applyActiveLibrariesUnified([settings.defaultSourceLibraryKey], saveToModule: true)
-            } else {
-                await applyActiveLibrariesUnified(folderKeys, saveToModule: true)
-            }
-        }
-    }
-
     // MARK: - Source Media Types
 
     func isMediaTypeActive(_ type: SourceMediaType) -> Bool {
@@ -521,7 +473,7 @@ final class HypnographState: ObservableObject {
     }
 
     func toggleMediaType(_ type: SourceMediaType) {
-        Task { @MainActor in
+        Task {
             var types = settings.sourceMediaTypes
 
             if types.contains(type) {
@@ -546,7 +498,7 @@ final class HypnographState: ObservableObject {
         // Get the module's saved library keys (which now include both folder and Photos keys)
         let keys = perModuleLibraryKeys[module] ?? [settings.defaultSourceLibraryKey]
 
-        Task { @MainActor in
+        Task {
             await applyActiveLibrariesUnified(keys, saveToModule: false)
         }
     }
@@ -558,7 +510,6 @@ final class HypnographState: ObservableObject {
 
     /// Refresh the available libraries list with asset counts
     /// Call this when settings change or at app startup
-    @MainActor
     func refreshAvailableLibraries() async {
         var infos: [SourceLibraryInfo] = []
 
@@ -664,7 +615,7 @@ final class HypnographState: ObservableObject {
             self.aspectRatio = newSettings.aspectRatio
             self.outputResolution = newSettings.outputResolution
 
-            Task { @MainActor in
+            Task {
                 await applyActiveLibrariesUnified(activeLibraryKeys, saveToModule: false)
             }
 
@@ -701,7 +652,7 @@ final class HypnographState: ObservableObject {
     private func saveSettingsToDisk() {
         do {
             let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
             let data = try encoder.encode(settings)
             try data.write(to: Environment.defaultSettingsURL)
             print("✅ Saved settings to \(Environment.defaultSettingsURL.path)")

@@ -25,7 +25,7 @@ struct ContentView: View {
             // Module-specific display
             switch state.currentModuleType {
             case .dream:
-                dream.makeDisplayView(state: state, renderQueue: renderQueue)
+                dream.makeDisplayView()
                     .ignoresSafeArea()
             case .divine:
                 divine.makeDisplayView()

@@ -325,7 +325,7 @@ struct SequencePlayerView: NSViewRepresentable {
                 let instruction = RenderInstruction(
                     timeRange: CMTimeRange(start: .zero, duration: source.clip.duration),
                     layerTrackIDs: [compVideoTrack.trackID],
-                    blendModes: [kBlendModeSourceOver],
+                    blendModes: [BlendMode.sourceOver],
                     transforms: [composedTransform],
                     sourceIndices: [index],
                     enableEffects: true,

@@ -12,6 +12,7 @@ import CoreGraphics
 import CoreMedia
 import AVFoundation
 
+@MainActor
 final class DivineCardManager: ObservableObject {
 
     // Public-facing state
@@ -31,7 +32,7 @@ final class DivineCardManager: ObservableObject {
     init(state: HypnographState) {
         self.state = state
         // Don't add initial card here - it will use wrong library before per-mode settings load
-        // Initial card is added when mode is first displayed (see DivineMode.makeDisplayView)
+        // Initial card is added when module is first displayed (see Divine.makeDisplayView)
     }
 
     // MARK: - Layout
@@ -187,7 +188,7 @@ final class DivineCardManager: ObservableObject {
             guard let player = await self.playerManager.player(for: card, onPlaybackEnd: { [weak self] in
                 self?.handlePlaybackEnded(for: card.id)
             }) else {
-                print("⚠️ DivineMode: Failed to load player for card")
+                print("⚠️ Divine: Failed to load player for card")
                 return
             }
             await player.seek(to: card.clip.startTime, toleranceBefore: .zero, toleranceAfter: .zero)
@@ -304,7 +305,7 @@ final class DivineCardManager: ObservableObject {
         }
 
         guard let clip = clip else {
-            print("⚠️ DivineMode: Could not find a unique card (all sources may be in use)")
+            print("⚠️ Divine: Could not find a unique card (all sources may be in use)")
             return nil
         }
 
@@ -340,14 +341,14 @@ final class DivineCardManager: ObservableObject {
     private func grabStill(from clip: VideoClip, at time: CMTime? = nil) async -> CGImage? {
         let file = clip.file
 
-        // Image-backed sources: use VideoFile's loadCGImage()
+        // Image-backed sources: use MediaFile's loadCGImage()
         if file.mediaKind == .image {
             return await file.loadCGImage()
         }
 
         // Video-backed sources: use AVAssetImageGenerator
         guard let asset = await file.loadAsset() else {
-            print("DivineMode: failed to load asset for still grab")
+            print("Divine: failed to load asset for still grab")
             return nil
         }
         let generator = AVAssetImageGenerator(asset: asset)
@@ -358,7 +359,7 @@ final class DivineCardManager: ObservableObject {
             var actual = CMTime.zero
             return try generator.copyCGImage(at: t, actualTime: &actual)
         } catch {
-            print("DivineMode: failed to grab still from video: \(error)")
+            print("Divine: failed to grab still from video: \(error)")
             return nil
         }
     }

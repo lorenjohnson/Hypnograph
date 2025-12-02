@@ -1,9 +1,8 @@
 //
-//  BlendNormalization.swift
+//  BlendModes.swift
 //  Hypnograph
 //
-//  Automatic luminance/contrast normalization for multi-layer blend mode compositing.
-//  Follows the RenderHook pattern: swappable strategies that can be tuned or replaced.
+//  Blend mode constants, classification, and normalization strategies.
 //
 //  Theory: Non-linear blend modes compound exponentially:
 //    - Screen: result = 1 - (1-a)(1-b) → pushes toward white
@@ -14,76 +13,77 @@
 
 import CoreImage
 
+// MARK: - Blend Mode Constants
+
+/// Namespace for blend mode constants
+enum BlendMode {
+    /// Normal source-over compositing
+    static let sourceOver = "CISourceOverCompositing"
+
+    /// Default per-layer blend mode for Montage (above layer 0)
+    static let defaultMontage = "CIScreenBlendMode"
+
+    /// Available blend modes for random selection and cycling
+    static let all: [String] = [
+        "CIScreenBlendMode",
+        "CIAdditionCompositing",
+        "CILinearDodgeBlendMode",
+        "CIColorDodgeBlendMode",
+        "CILightenBlendMode",
+        "CIOverlayBlendMode",
+        "CISoftLightBlendMode",
+        "CIHardLightBlendMode",
+        // "CIVividLightBlendMode",
+        "CIPinLightBlendMode",
+        "CIMultiplyBlendMode",
+        "CIColorBurnBlendMode",
+        "CIDarkenBlendMode",
+        // "CILinearBurnBlendMode",
+    ]
+
+    /// Returns a random blend mode
+    static func random() -> String {
+        all.randomElement() ?? defaultMontage
+    }
+}
+
 // MARK: - Blend Mode Classification
 
 /// Categorizes blend modes by their luminance behavior
 enum BlendModeFamily {
-    /// Lightening modes: Screen, ColorDodge, Lighten, Add
-    /// These push luminance toward 1.0 exponentially when stacked
-    case lightening
-
-    /// Darkening modes: Multiply, ColorBurn, Darken
-    /// These push luminance toward 0.0 exponentially when stacked
-    case darkening
-
-    /// Contrast modes: Overlay, SoftLight, HardLight
-    /// These increase contrast but don't systematically drift luminance
-    case contrast
-
-    /// Neutral modes: SourceOver, Normal
-    /// No luminance compensation needed
-    case neutral
+    case lightening  // Screen, ColorDodge, etc. → pushes toward white
+    case darkening   // Multiply, ColorBurn, etc. → pushes toward black
+    case contrast    // Overlay, SoftLight, etc. → increases contrast
+    case neutral     // SourceOver, Normal → no compensation needed
 }
 
-enum BlendModeClassifier {
+/// Maps blend mode names to their family (dictionary lookup)
+private let blendModeFamilies: [String: BlendModeFamily] = [
+    // Lightening
+    "CIScreenBlendMode": .lightening,
+    "CIColorDodgeBlendMode": .lightening,
+    "CILightenBlendMode": .lightening,
+    "CIAdditionCompositing": .lightening,
+    "CILinearDodgeBlendMode": .lightening,
+    // Darkening
+    "CIMultiplyBlendMode": .darkening,
+    "CIColorBurnBlendMode": .darkening,
+    "CIDarkenBlendMode": .darkening,
+    "CILinearBurnBlendMode": .darkening,
+    // Contrast
+    "CIOverlayBlendMode": .contrast,
+    "CISoftLightBlendMode": .contrast,
+    "CIHardLightBlendMode": .contrast,
+    "CIVividLightBlendMode": .contrast,
+    "CIPinLightBlendMode": .contrast,
+]
 
-    static func family(for mode: String) -> BlendModeFamily {
-        switch mode {
-        // Lightening family
-        case "CIScreenBlendMode", "CIColorDodgeBlendMode", "CILightenBlendMode",
-             "CIAdditionCompositing", "CILinearDodgeBlendMode":
-            return .lightening
-
-        // Darkening family
-        case "CIMultiplyBlendMode", "CIColorBurnBlendMode", "CIDarkenBlendMode",
-             "CILinearBurnBlendMode":
-            return .darkening
-
-        // Contrast family
-        case "CIOverlayBlendMode", "CISoftLightBlendMode", "CIHardLightBlendMode",
-             "CIVividLightBlendMode", "CIPinLightBlendMode":
-            return .contrast
-
-        // Neutral / default
-        default:
-            return .neutral
-        }
-    }
-
-    /// Analyze blend modes to determine the dominant behavior
-    static func analyze(blendModes: [String]) -> BlendModeAnalysis {
-        var lightening = 0
-        var darkening = 0
-        var contrast = 0
-
-        // Skip first mode (base layer is always SourceOver)
-        for mode in blendModes.dropFirst() {
-            switch family(for: mode) {
-            case .lightening: lightening += 1
-            case .darkening: darkening += 1
-            case .contrast: contrast += 1
-            case .neutral: break
-            }
-        }
-
-        return BlendModeAnalysis(
-            layerCount: blendModes.count,
-            lighteningCount: lightening,
-            darkeningCount: darkening,
-            contrastCount: contrast
-        )
-    }
+/// Get the family for a blend mode
+func blendModeFamily(for mode: String) -> BlendModeFamily {
+    blendModeFamilies[mode] ?? .neutral
 }
+
+// MARK: - Blend Mode Analysis
 
 /// Summary of blend mode usage in a composite
 struct BlendModeAnalysis {
@@ -110,16 +110,38 @@ struct BlendModeAnalysis {
     }
 }
 
+/// Analyze blend modes to determine the dominant behavior
+func analyzeBlendModes(_ modes: [String]) -> BlendModeAnalysis {
+    var lightening = 0
+    var darkening = 0
+    var contrast = 0
+
+    // Skip first mode (base layer is always SourceOver)
+    for mode in modes.dropFirst() {
+        switch blendModeFamily(for: mode) {
+        case .lightening: lightening += 1
+        case .darkening: darkening += 1
+        case .contrast: contrast += 1
+        case .neutral: break
+        }
+    }
+
+    return BlendModeAnalysis(
+        layerCount: modes.count,
+        lighteningCount: lightening,
+        darkeningCount: darkening,
+        contrastCount: contrast
+    )
+}
+
 // MARK: - Normalization Strategy Protocol
 
 /// A swappable strategy for blend mode normalization.
-/// Similar to RenderHook but specialized for luminance/contrast compensation.
 protocol NormalizationStrategy {
     /// Display name for UI/debugging
     var name: String { get }
 
     /// Per-layer opacity compensation (called before each blend operation)
-    /// Return 1.0 to apply no compensation.
     func opacityForLayer(
         index: Int,
         totalLayers: Int,
@@ -128,14 +150,10 @@ protocol NormalizationStrategy {
     ) -> CGFloat
 
     /// Post-composition normalization (called after all layers are blended)
-    /// Return the image unchanged if no post-processing needed.
-    func normalizeComposite(
-        _ image: CIImage,
-        analysis: BlendModeAnalysis
-    ) -> CIImage
+    func normalizeComposite(_ image: CIImage, analysis: BlendModeAnalysis) -> CIImage
 }
 
-// Default implementations - strategies can override what they need
+// Default implementations
 extension NormalizationStrategy {
     func opacityForLayer(
         index: Int,
@@ -151,42 +169,15 @@ extension NormalizationStrategy {
     }
 }
 
-// MARK: - Strategy Registry
+// MARK: - Available Strategies
 
-/// Registry of available normalization strategies (like EffectRegistry)
-final class NormalizationRegistry {
-    static let shared = NormalizationRegistry()
-
-    private init() {}
-
-    /// All available strategies
-    func allStrategies() -> [NormalizationStrategy] {
-        [
-            NoNormalization(),
-            SqrtOpacityStrategy(),
-            GammaPostStrategy(),
-            SqrtPlusGammaStrategy(),
-            // Future: SigmoidStrategy(), ACESStrategy(), etc.
-        ]
+/// Auto-select best strategy based on blend mode analysis
+func autoSelectNormalization(for analysis: BlendModeAnalysis) -> NormalizationStrategy {
+    if !analysis.needsCompensation {
+        return NoNormalization()
     }
-
-    /// Get strategy by name
-    func strategy(named: String) -> NormalizationStrategy? {
-        allStrategies().first { $0.name == named }
-    }
-
-    /// Auto-select best strategy based on blend mode analysis
-    func autoSelect(for analysis: BlendModeAnalysis) -> NormalizationStrategy {
-        // No compensation needed for simple composites
-        if !analysis.needsCompensation {
-            return NoNormalization()
-        }
-
-        // Default: sqrt opacity + light gamma correction
-        return SqrtPlusGammaStrategy()
-    }
+    return SqrtPlusGammaStrategy()
 }
-
 
 // MARK: - Concrete Strategies
 
@@ -196,7 +187,6 @@ struct NoNormalization: NormalizationStrategy {
 }
 
 /// Per-layer sqrt(n) opacity compensation only
-/// Good for preventing drift without changing the final look
 struct SqrtOpacityStrategy: NormalizationStrategy {
     var name: String { "Sqrt Opacity" }
 
@@ -208,15 +198,13 @@ struct SqrtOpacityStrategy: NormalizationStrategy {
     ) -> CGFloat {
         guard index > 0, totalLayers > 1 else { return 1.0 }
 
-        let family = BlendModeClassifier.family(for: blendMode)
+        let family = blendModeFamily(for: blendMode)
         let n = CGFloat(totalLayers)
 
         switch family {
         case .lightening, .darkening:
-            // sqrt(n) rule: 2→0.71, 3→0.58, 4→0.50, 5→0.45
             return 1.0 / sqrt(n)
         case .contrast:
-            // Gentler for contrast modes
             return 1.0 / pow(n, 0.3)
         case .neutral:
             return 1.0
@@ -225,7 +213,6 @@ struct SqrtOpacityStrategy: NormalizationStrategy {
 }
 
 /// Post-composition gamma correction only
-/// Good for correcting existing compositions without changing blend behavior
 struct GammaPostStrategy: NormalizationStrategy {
     var name: String { "Gamma Post" }
 
@@ -235,13 +222,10 @@ struct GammaPostStrategy: NormalizationStrategy {
         let gamma: Double
         switch analysis.dominantFamily {
         case .lightening:
-            // Screen blowout: apply gamma > 1 to pull highlights down
             gamma = 1.0 + 0.15 * Double(analysis.lighteningCount)
         case .darkening:
-            // Multiply crush: apply gamma < 1 to lift shadows
             gamma = 1.0 / (1.0 + 0.15 * Double(analysis.darkeningCount))
         case .contrast, .neutral, nil:
-            // Mixed or neutral: light S-curve via moderate gamma
             gamma = 1.0 + 0.1 * Double(analysis.layerCount - 2)
         }
 
@@ -252,13 +236,11 @@ struct GammaPostStrategy: NormalizationStrategy {
     }
 }
 
-/// Hybrid: sqrt opacity + light gamma safety net
-/// The recommended default - prevents drift AND catches residual issues
+/// Hybrid: sqrt opacity + light gamma safety net (recommended default)
 struct SqrtPlusGammaStrategy: NormalizationStrategy {
     var name: String { "Balanced (Auto)" }
 
     private let sqrtStrategy = SqrtOpacityStrategy()
-    private let gammaStrategy = GammaPostStrategy()
 
     func opacityForLayer(
         index: Int,
@@ -275,7 +257,6 @@ struct SqrtPlusGammaStrategy: NormalizationStrategy {
     }
 
     func normalizeComposite(_ image: CIImage, analysis: BlendModeAnalysis) -> CIImage {
-        // Apply lighter gamma correction since opacity already did most of the work
         guard analysis.needsCompensation else { return image }
 
         let gamma: Double
@@ -285,7 +266,7 @@ struct SqrtPlusGammaStrategy: NormalizationStrategy {
         case .darkening:
             gamma = 1.0 / (1.0 + 0.08 * Double(analysis.darkeningCount))
         case .contrast, .neutral, nil:
-            return image  // Opacity compensation sufficient for mixed
+            return image
         }
 
         guard let filter = CIFilter(name: "CIGammaAdjust") else { return image }
@@ -294,4 +275,3 @@ struct SqrtPlusGammaStrategy: NormalizationStrategy {
         return filter.outputImage ?? image
     }
 }
-
