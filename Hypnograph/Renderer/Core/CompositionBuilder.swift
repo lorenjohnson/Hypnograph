@@ -10,35 +10,6 @@ import AVFoundation
 import CoreGraphics
 import CoreImage
 
-/// CI filter name for "normal" source-over compositing.
-let kBlendModeSourceOver = "CISourceOverCompositing"
-
-/// Default per-layer blend mode for Montage (above layer 0).
-let kBlendModeDefaultMontage = "CIScreenBlendMode"
-
-/// Available blend modes for random selection and cycling
-let kBlendModes: [String] = [
-    "CIScreenBlendMode",
-    "CIAdditionCompositing",
-    "CILinearDodgeBlendMode",
-    "CIColorDodgeBlendMode",
-    "CILightenBlendMode",
-    "CIOverlayBlendMode",
-    "CISoftLightBlendMode",
-    "CIHardLightBlendMode",
-    // "CIVividLightBlendMode",
-    "CIPinLightBlendMode",
-    "CIMultiplyBlendMode",
-    "CIColorBurnBlendMode",
-    "CIDarkenBlendMode",
-    // "CILinearBurnBlendMode",
-]
-
-/// Returns a random blend mode from kBlendModes
-func randomBlendMode() -> String {
-    kBlendModes.randomElement() ?? kBlendModeDefaultMontage
-}
-
 /// Builds compositions for preview and export
 final class CompositionBuilder {
     
@@ -224,7 +195,7 @@ final class CompositionBuilder {
             sourceIndices.append(index)
 
             // Get blend mode from source (default to SourceOver for first, Screen for others)
-            let blendMode = source.blendMode ?? (index == 0 ? kBlendModeSourceOver : kBlendModeDefaultMontage)
+            let blendMode = source.blendMode ?? (index == 0 ? BlendMode.sourceOver : BlendMode.defaultMontage)
             blendModes.append(blendMode)
         }
 
@@ -356,7 +327,7 @@ final class CompositionBuilder {
                 let instruction = RenderInstruction(
                     timeRange: CMTimeRange(start: currentTime, duration: clipDuration),
                     layerTrackIDs: [videoTrack.trackID],
-                    blendModes: [kBlendModeSourceOver],
+                    blendModes: [BlendMode.sourceOver],
                     transforms: [composedTransform],
                     sourceIndices: [originalIndex],  // Use original recipe index for correct seeking
                     enableEffects: enableEffects,
@@ -391,7 +362,7 @@ final class CompositionBuilder {
                 let instruction = RenderInstruction(
                     timeRange: CMTimeRange(start: currentTime, duration: clipDuration),
                     layerTrackIDs: [videoTrack.trackID],
-                    blendModes: [kBlendModeSourceOver],
+                    blendModes: [BlendMode.sourceOver],
                     transforms: [composedTransform],
                     sourceIndices: [originalIndex],  // Use original recipe index for correct seeking
                     enableEffects: enableEffects,

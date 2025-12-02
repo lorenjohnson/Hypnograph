@@ -21,6 +21,7 @@ import GameController
 /// - **Right Stick Click** - Cycle mode (~)
 ///
 /// Automatically detects and connects to controllers when they're paired via Bluetooth.
+@MainActor
 final class GameControllerManager {
 
     // Weak references to avoid retain cycles

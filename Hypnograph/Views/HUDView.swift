@@ -88,7 +88,7 @@ struct HUDView: View {
         let moduleSpecific: [HUDItem]
         switch state.currentModuleType {
         case .dream:
-            moduleSpecific = dream.hudItems(state: state, renderQueue: renderQueue)
+            moduleSpecific = dream.hudItems()
         case .divine:
             moduleSpecific = divine.hudItems()
         }

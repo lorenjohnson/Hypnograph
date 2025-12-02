@@ -7,7 +7,7 @@ import Photos
 // MARK: - Source Media Type
 
 enum SourceMediaType: String, Codable, CaseIterable {
-    case photos
+    case images
     case videos
 }
 
@@ -20,14 +20,11 @@ final class MediaSourcesLibrary {
     // 2. Lazy metadata loading: only load AVAsset/duration when file is selected
 
     private struct SourceEntry {
-        let source: VideoFile.Source
+        let source: MediaFile.Source
         let mediaKind: MediaKind
     }
 
     private var sourceIndex: [SourceEntry] = []
-
-    /// Legacy accessor for compatibility (returns empty - not used anymore)
-    private(set) var files: [VideoFile] = []
 
     /// Sources that have failed validation at selection time (in-memory only).
     private var badSources = Set<String>()
@@ -45,15 +42,15 @@ final class MediaSourcesLibrary {
         "3gp", "3g2"
     ])
 
-    /// Whether photos are allowed based on media types
-    private var allowPhotos: Bool { allowedMediaTypes.contains(.photos) }
+    /// Whether images are allowed based on media types
+    private var allowImages: Bool { allowedMediaTypes.contains(.images) }
     /// Whether videos are allowed based on media types
     private var allowVideos: Bool { allowedMediaTypes.contains(.videos) }
 
     /// Total number of assets in this library
     var assetCount: Int { sourceIndex.count }
 
-    init(sourceFolders: [String], allowedMediaTypes: Set<SourceMediaType> = [.photos, .videos]) {
+    init(sourceFolders: [String], allowedMediaTypes: Set<SourceMediaType> = [.images, .videos]) {
         self.allowedMediaTypes = allowedMediaTypes
         if sourceFolders.isEmpty {
             // No explicit sources → default to Photos library videos
@@ -66,7 +63,7 @@ final class MediaSourcesLibrary {
     }
 
     /// Initialize from a Photos album
-    init(photosAlbum: PHAssetCollection, allowedMediaTypes: Set<SourceMediaType> = [.photos, .videos]) {
+    init(photosAlbum: PHAssetCollection, allowedMediaTypes: Set<SourceMediaType> = [.images, .videos]) {
         self.allowedMediaTypes = allowedMediaTypes
         loadFromPhotosAlbum(photosAlbum)
         // No exclusions for Photos albums - they're curated
@@ -76,7 +73,7 @@ final class MediaSourcesLibrary {
     init(
         sourceFolders: [String],
         photosAlbums: [PHAssetCollection],
-        allowedMediaTypes: Set<SourceMediaType> = [.photos, .videos]
+        allowedMediaTypes: Set<SourceMediaType> = [.images, .videos]
     ) {
         self.allowedMediaTypes = allowedMediaTypes
 
@@ -126,7 +123,7 @@ final class MediaSourcesLibrary {
 
                     if allowVideos && allowVideoExtensions.contains(ext) {
                         results.append(SourceEntry(source: .url(fileURL), mediaKind: .video))
-                    } else if allowPhotos && allowedPhotoExtensions.contains(ext) {
+                    } else if allowImages && allowedPhotoExtensions.contains(ext) {
                         results.append(SourceEntry(source: .url(fileURL), mediaKind: .image))
                     }
                 }
@@ -136,7 +133,7 @@ final class MediaSourcesLibrary {
 
                 if allowVideos && allowVideoExtensions.contains(ext) {
                     results.append(SourceEntry(source: .url(url), mediaKind: .video))
-                } else if allowPhotos && allowedPhotoExtensions.contains(ext) {
+                } else if allowImages && allowedPhotoExtensions.contains(ext) {
                     results.append(SourceEntry(source: .url(url), mediaKind: .image))
                 }
             }
@@ -193,7 +190,7 @@ final class MediaSourcesLibrary {
 
             if allowVideos && allowVideoExtensions.contains(ext) {
                 results.append(SourceEntry(source: .url(fileURL), mediaKind: .video))
-            } else if allowPhotos && allowedPhotoExtensions.contains(ext) {
+            } else if allowImages && allowedPhotoExtensions.contains(ext) {
                 results.append(SourceEntry(source: .url(fileURL), mediaKind: .image))
             }
         }
@@ -218,7 +215,7 @@ final class MediaSourcesLibrary {
             switch asset.mediaType {
             case .video where allowVideos:
                 results.append(SourceEntry(source: .photos(localIdentifier: asset.localIdentifier), mediaKind: .video))
-            case .image where allowPhotos:
+            case .image where allowImages:
                 results.append(SourceEntry(source: .photos(localIdentifier: asset.localIdentifier), mediaKind: .image))
             default:
                 break
@@ -283,7 +280,7 @@ final class MediaSourcesLibrary {
             let startSeconds = maxStart > 0 ? Double.random(in: 0...maxStart) : 0
 
             return VideoClip(
-                file: VideoFile(
+                file: MediaFile(
                     source: entry.source,
                     mediaKind: .video,
                     duration: CMTime(seconds: totalSeconds, preferredTimescale: 600)
@@ -306,7 +303,7 @@ final class MediaSourcesLibrary {
             let startSeconds = maxStart > 0 ? Double.random(in: 0...maxStart) : 0
 
             return VideoClip(
-                file: VideoFile(
+                file: MediaFile(
                     source: entry.source,
                     mediaKind: .video,
                     duration: CMTime(seconds: totalSeconds, preferredTimescale: 600)
@@ -327,7 +324,7 @@ final class MediaSourcesLibrary {
 
             let length = max(clipLength, 0.1)
             return VideoClip(
-                file: VideoFile(
+                file: MediaFile(
                     source: entry.source,
                     mediaKind: .image,
                     duration: CMTime(seconds: length, preferredTimescale: 600)
@@ -344,7 +341,7 @@ final class MediaSourcesLibrary {
 
             let length = max(clipLength, 0.1)
             return VideoClip(
-                file: VideoFile(
+                file: MediaFile(
                     source: entry.source,
                     mediaKind: .image,
                     duration: CMTime(seconds: length, preferredTimescale: 600)
@@ -356,7 +353,7 @@ final class MediaSourcesLibrary {
     }
 
     /// Stable key for tracking bad sources
-    private func sourceKey(_ source: VideoFile.Source) -> String {
+    private func sourceKey(_ source: MediaFile.Source) -> String {
         switch source {
         case .url(let url): return url.path
         case .photos(let id): return id
@@ -388,12 +385,12 @@ final class MediaSourcesLibrary {
 
     // MARK: - Exclusions & Deletions (user-driven)
 
-    func exclude(file: VideoFile) {
+    func exclude(file: MediaFile) {
         ExclusionStore.shared.add(file.source)
         sourceIndex.removeAll { sourceKey($0.source) == sourceKey(file.source) }
     }
 
-    func markForDeletion(file: VideoFile) {
+    func markForDeletion(file: MediaFile) {
         DeleteStore.shared.add(file.source)
         sourceIndex.removeAll { sourceKey($0.source) == sourceKey(file.source) }
     }

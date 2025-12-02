@@ -27,6 +27,7 @@ struct NotificationItem: Identifiable {
 /// Unified notification manager for in-app and system notifications.
 /// - Foreground: shows in-app overlay (stacked, with dismiss button)
 /// - Background: sends system notification (if authorized)
+@MainActor
 final class AppNotifications: ObservableObject {
     static let shared = AppNotifications()
 
@@ -76,15 +77,13 @@ final class AppNotifications: ObservableObject {
     private func showInApp(_ message: String, flash: Bool, duration: TimeInterval) {
         let item = NotificationItem(message: message, flash: flash)
 
-        Task { @MainActor in
-            withAnimation(.easeIn(duration: 0.15)) {
-                notifications.append(item)
-            }
+        withAnimation(.easeIn(duration: 0.15)) {
+            notifications.append(item)
         }
 
         // Schedule auto-dismiss if flash
         if flash {
-            dismissTasks[item.id] = Task { @MainActor in
+            dismissTasks[item.id] = Task {
                 try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
                 guard !Task.isCancelled else { return }
                 self.dismiss(id: item.id)
@@ -97,10 +96,8 @@ final class AppNotifications: ObservableObject {
         dismissTasks[id]?.cancel()
         dismissTasks.removeValue(forKey: id)
 
-        Task { @MainActor in
-            withAnimation(.easeOut(duration: 0.15)) {
-                notifications.removeAll { $0.id == id }
-            }
+        withAnimation(.easeOut(duration: 0.15)) {
+            notifications.removeAll { $0.id == id }
         }
     }
 
@@ -110,10 +107,8 @@ final class AppNotifications: ObservableObject {
             task.cancel()
             dismissTasks.removeValue(forKey: id)
         }
-        Task { @MainActor in
-            withAnimation(.easeOut(duration: 0.15)) {
-                notifications.removeAll()
-            }
+        withAnimation(.easeOut(duration: 0.15)) {
+            notifications.removeAll()
         }
     }
 
@@ -121,9 +116,9 @@ final class AppNotifications: ObservableObject {
 
     /// Request authorization for system notifications.
     func requestSystemNotificationAuthorization() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { [weak self] granted, error in
             Task { @MainActor in
-                self.systemNotificationsAuthorized = granted
+                self?.systemNotificationsAuthorized = granted
                 if let error = error {
                     print("AppNotifications: authorization error - \(error)")
                 } else {
@@ -134,9 +129,9 @@ final class AppNotifications: ObservableObject {
     }
 
     private func checkSystemNotificationAuthorization() {
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
+        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
             Task { @MainActor in
-                self.systemNotificationsAuthorized = (settings.authorizationStatus == .authorized)
+                self?.systemNotificationsAuthorized = (settings.authorizationStatus == .authorized)
             }
         }
     }
@@ -165,14 +160,18 @@ final class AppNotifications: ObservableObject {
         }
     }
 
-    // MARK: - Static convenience
+    // MARK: - Static convenience (nonisolated so they can be called from anywhere)
 
-    static func show(_ message: String, flash: Bool = false, duration: TimeInterval = 2.0) {
-        shared.show(message, flash: flash, duration: duration)
+    nonisolated static func show(_ message: String, flash: Bool = false, duration: TimeInterval = 2.0) {
+        Task { @MainActor in
+            shared.show(message, flash: flash, duration: duration)
+        }
     }
 
-    static func requestAuthorization() {
-        shared.requestSystemNotificationAuthorization()
+    nonisolated static func requestAuthorization() {
+        Task { @MainActor in
+            shared.requestSystemNotificationAuthorization()
+        }
     }
 }
 

@@ -86,12 +86,11 @@ final class FrameProcessor {
                 isPreview: config.isPreview,
                 outputSize: config.outputSize,
                 frameBuffer: manager.frameBuffer,
-                params: RenderParams(),
                 sourceIndex: sourceIndex
             )
             img = manager.applyToSource(sourceIndex: sourceIndex, context: &context, image: img)
         }
-        
+
         // Apply global effects
         if config.enableEffects, let manager = manager {
             var context = RenderContext(
@@ -99,8 +98,7 @@ final class FrameProcessor {
                 time: config.time,
                 isPreview: config.isPreview,
                 outputSize: config.outputSize,
-                frameBuffer: manager.frameBuffer,
-                params: RenderParams()
+                frameBuffer: manager.frameBuffer
             )
             img = manager.applyGlobal(to: &context, image: img)
         }
@@ -147,7 +145,6 @@ final class FrameProcessor {
                     isPreview: config.isPreview,
                     outputSize: config.outputSize,
                     frameBuffer: manager.frameBuffer,
-                    params: RenderParams(),
                     sourceIndex: layer.sourceIndex
                 )
                 img = manager.applyToSource(sourceIndex: layer.sourceIndex, context: &context, image: img)
@@ -191,8 +188,7 @@ final class FrameProcessor {
                 time: config.time,
                 isPreview: config.isPreview,
                 outputSize: config.outputSize,
-                frameBuffer: manager.frameBuffer,
-                params: RenderParams()
+                frameBuffer: manager.frameBuffer
             )
             finalImage = manager.applyGlobal(to: &context, image: finalImage)
         }

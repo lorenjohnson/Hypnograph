@@ -310,9 +310,9 @@ struct AppCommands: Commands {
 
         CommandMenu("Sources") {
             // Media type filters
-            Toggle("Photos", isOn: Binding(
-                get: { state.isMediaTypeActive(.photos) },
-                set: { _ in state.toggleMediaType(.photos) }
+            Toggle("Images", isOn: Binding(
+                get: { state.isMediaTypeActive(.images) },
+                set: { _ in state.toggleMediaType(.images) }
             ))
 
             Toggle("Videos", isOn: Binding(
@@ -353,12 +353,10 @@ struct AppCommands: Commands {
         CommandMenu("Composition") {
             // Dream-specific commands
             if state.currentModuleType == .dream {
-                ForEach(Array(dream.compositionCommands().enumerated()), id: \.offset) { _, command in
-                    Button(command.title) {
-                        command.action()
-                    }
-                    .keyboardShortcut(command.keyEquivalent, modifiers: command.modifiers)
+                Button("Toggle Mode (Montage/Sequence)") {
+                    dream.toggleMode()
                 }
+                .keyboardShortcut("`", modifiers: [])
                 Divider()
             }
 
@@ -445,15 +443,11 @@ struct AppCommands: Commands {
         CommandMenu("Current Source") {
             // Dream-specific commands
             if state.currentModuleType == .dream {
-                ForEach(Array(dream.sourceCommands().enumerated()), id: \.offset) { _, command in
-                    Button(command.title) {
-                        command.action()
-                    }
-                    .keyboardShortcut(command.keyEquivalent, modifiers: command.modifiers)
+                Button("Cycle Blend Mode") {
+                    dream.cycleBlendMode()
                 }
-                if !dream.sourceCommands().isEmpty {
-                    Divider()
-                }
+                .keyboardShortcut("m", modifiers: [])
+                Divider()
             }
 
             Button("Rotate 90° Clockwise") {
