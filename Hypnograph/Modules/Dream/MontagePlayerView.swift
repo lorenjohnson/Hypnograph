@@ -27,6 +27,7 @@ struct MontagePlayerView: NSViewRepresentable {
         var lastPauseState: Bool?
         var lastEffectsCounter: Int?
         var currentPlayerItem: AVPlayerItem?
+        var currentVideoComposition: AVVideoComposition?
     }
 
     func makeCoordinator() -> Coordinator {
@@ -127,6 +128,7 @@ struct MontagePlayerView: NSViewRepresentable {
                         }
 
                         c.currentPlayerItem = buildResult.playerItem
+                        c.currentVideoComposition = buildResult.playerItem.videoComposition
                         playerView.player = player
 
                         c.lastPauseState = nil
@@ -174,12 +176,17 @@ struct MontagePlayerView: NSViewRepresentable {
 
             if c.lastEffectsCounter != effectsChangeCounter {
                 c.lastEffectsCounter = effectsChangeCounter
-                if isPaused, let player = c.player {
-                    let currentTime = player.currentTime()
-                    let nudgeAmount = CMTime(value: 1, timescale: 600)
-                    let nudgedTime = CMTimeAdd(currentTime, nudgeAmount)
-                    player.seek(to: nudgedTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak player] _ in
-                        player?.seek(to: currentTime, toleranceBefore: .zero, toleranceAfter: .zero)
+                if let playerItem = c.currentPlayerItem,
+                   let videoComposition = c.currentVideoComposition {
+                    // Re-assign video composition to force AVFoundation to invalidate cached frames
+                    // This triggers the compositor to re-render with updated effects/blend modes
+                    playerItem.videoComposition = nil
+                    playerItem.videoComposition = videoComposition
+
+                    // Also seek to current time to ensure the frame is displayed
+                    if isPaused, let player = c.player {
+                        let currentTime = player.currentTime()
+                        player.seek(to: currentTime, toleranceBefore: .zero, toleranceAfter: .zero)
                     }
                 }
             }

@@ -40,7 +40,7 @@ final class RenderQueue {
             switch result {
             case .success(let url):
                 print("Render job finished: \(url.path)")
-                AppNotifications.show("Saved: \(url.lastPathComponent)")
+                AppNotifications.show("Saved: \(url.lastPathComponent)", flash: true)
 
                 // Also save to Apple Photos if write access is available
                 if ApplePhotos.shared.status.canWrite {
@@ -54,7 +54,7 @@ final class RenderQueue {
 
             case .failure(let error):
                 print("Render job failed: \(error.localizedDescription)")
-                AppNotifications.show("Save failed: \(error.localizedDescription)")
+                AppNotifications.show("Save failed: \(error.localizedDescription)", flash: true)
             }
 
             // Call per-job completion if provided

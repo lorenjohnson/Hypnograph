@@ -320,7 +320,7 @@ final class Dream: ObservableObject {
 
         if CGImageDestinationFinalize(destination) {
             print("✅ DreamMode: Snapshot saved to \(outputURL.path)")
-            AppNotifications.show("Snapshot saved")
+            AppNotifications.show("Snapshot saved", flash: true)
 
             // Also save to Apple Photos if write access is available
             if ApplePhotos.shared.status.canWrite {
