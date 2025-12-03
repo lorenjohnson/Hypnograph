@@ -70,9 +70,11 @@ final class MediaSourcesLibrary {
     }
 
     /// Initialize from both folder paths AND Photos albums (combined sources)
+    /// Set `includeAllPhotos` to true to include all items from Photos library
     init(
         sourceFolders: [String],
         photosAlbums: [PHAssetCollection],
+        includeAllPhotos: Bool = false,
         allowedMediaTypes: Set<SourceMediaType> = [.images, .videos]
     ) {
         self.allowedMediaTypes = allowedMediaTypes
@@ -83,12 +85,45 @@ final class MediaSourcesLibrary {
             applyExclusions()
         }
 
-        // Load Photos album sources
-        for album in photosAlbums {
-            loadFromPhotosAlbum(album)
+        // Load all Photos library items if requested (takes precedence over specific albums)
+        if includeAllPhotos {
+            loadAllPhotosAssets()
+        } else {
+            // Load Photos album sources
+            for album in photosAlbums {
+                loadFromPhotosAlbum(album)
+            }
         }
 
         print("MediaSourcesLibrary: combined library has \(sourceIndex.count) total sources")
+    }
+
+    /// Load all assets from the entire Photos library
+    private func loadAllPhotosAssets() {
+        guard ApplePhotos.shared.status.canRead else { return }
+
+        var results: [SourceEntry] = []
+
+        let options = PHFetchOptions()
+        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+
+        let allAssets = PHAsset.fetchAssets(with: options)
+
+        for i in 0..<allAssets.count {
+            let asset = allAssets.object(at: i)
+
+            switch asset.mediaType {
+            case .video where allowVideos:
+                results.append(SourceEntry(source: .photos(localIdentifier: asset.localIdentifier), mediaKind: .video))
+            case .image where allowImages:
+                results.append(SourceEntry(source: .photos(localIdentifier: asset.localIdentifier), mediaKind: .image))
+            default:
+                break
+            }
+        }
+
+        self.sourceIndex.append(contentsOf: results)
+        print("MediaSourcesLibrary: indexed \(results.count) assets from entire Photos library")
     }
 
     // MARK: - File system sources

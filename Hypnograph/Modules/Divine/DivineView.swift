@@ -61,6 +61,10 @@ struct DivineView: View {
                                 panDrag = .zero
                             }
                     )
+                    .onTapGesture(count: 2) { location in
+                        let offset = canvasOffset(fromScreenPoint: location, in: geo.size)
+                        onBackgroundDoubleTap(offset)
+                    }
 
                 // Inner content that actually scales and pans.
                 ZStack {
@@ -119,13 +123,6 @@ struct DivineView: View {
                         guard isZooming else { return }
                         pinchAnchor = anchorPoint(for: value.location, in: geo.size)
                     }
-            )
-            .simultaneousGesture(
-                SpatialTapGesture(count: 2).onEnded { value in
-                    let offset = canvasOffset(fromScreenPoint: value.location,
-                                              in: geo.size)
-                    onBackgroundDoubleTap(offset)
-                }
             )
         }
     }

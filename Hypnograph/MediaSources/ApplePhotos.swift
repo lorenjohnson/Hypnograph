@@ -170,6 +170,81 @@ final class ApplePhotos {
         return results.firstObject
     }
 
+    /// Fetch all assets from the entire Photos library (photos and videos)
+    func fetchAllAssets(limit: Int? = nil) -> [PHAsset] {
+        guard status.canRead else { return [] }
+
+        let options = PHFetchOptions()
+        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        if let limit = limit {
+            options.fetchLimit = limit
+        }
+
+        let results = PHAsset.fetchAssets(with: options)
+        return results.objects(at: IndexSet(integersIn: 0..<results.count))
+    }
+
+    /// Count all assets in the entire Photos library
+    func countAllAssets() -> Int {
+        guard status.canRead else { return 0 }
+        return PHAsset.fetchAssets(with: nil).count
+    }
+
+    // MARK: - Album Discovery
+
+    /// Album info for menu display
+    struct AlbumInfo {
+        let localIdentifier: String
+        let title: String
+        let assetCount: Int
+
+        /// Key for use in library selection (consistent with existing convention)
+        var libraryKey: String {
+            "photos:\(localIdentifier)"
+        }
+    }
+
+    /// Fetch all user-created albums (not smart albums)
+    /// Returns array of AlbumInfo sorted alphabetically by title
+    func fetchUserAlbums() -> [AlbumInfo] {
+        guard status.canRead else { return [] }
+
+        var albums: [AlbumInfo] = []
+
+        // Fetch all user-created albums
+        let userAlbums = PHAssetCollection.fetchAssetCollections(
+            with: .album,
+            subtype: .albumRegular,
+            options: nil
+        )
+
+        for i in 0..<userAlbums.count {
+            let album = userAlbums.object(at: i)
+            let assetCount = PHAsset.fetchAssets(in: album, options: nil).count
+
+            // Only include non-empty albums
+            if assetCount > 0, let title = album.localizedTitle {
+                albums.append(AlbumInfo(
+                    localIdentifier: album.localIdentifier,
+                    title: title,
+                    assetCount: assetCount
+                ))
+            }
+        }
+
+        // Sort alphabetically by title
+        return albums.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+    }
+
+    /// Fetch an album by local identifier
+    func fetchAlbum(localIdentifier: String) -> PHAssetCollection? {
+        let result = PHAssetCollection.fetchAssetCollections(
+            withLocalIdentifiers: [localIdentifier],
+            options: nil
+        )
+        return result.firstObject
+    }
+
     // MARK: - AVAsset Loading
 
     /// Request AVAsset for a PHAsset (video)
@@ -317,91 +392,36 @@ final class ApplePhotos {
 
     // MARK: - Album Management
 
-    /// Folder and album names used by Hypnograph
-    private static let folderName = "Hypnograph"
+    /// Album name for saved hypnograms (snapshots and renders)
+    private static let hypnogramsAlbumName = "Hypnograms"
 
-    enum AlbumName: String {
-        case sources = "Sources"
-        case saved = "Saved"
-    }
-
-    /// Find an existing folder by name
-    private func findFolder(named name: String) -> PHCollectionList? {
+    /// Find an existing top-level album by name
+    private func findAlbum(named name: String) -> PHAssetCollection? {
         let options = PHFetchOptions()
         options.predicate = NSPredicate(format: "title == %@", name)
-        let folders = PHCollectionList.fetchCollectionLists(with: .folder, subtype: .any, options: options)
-        return folders.firstObject
+        let albums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .albumRegular, options: options)
+        return albums.firstObject
     }
 
-    /// Find an existing album by name within a folder
-    private func findAlbum(named name: String, inFolder folder: PHCollectionList) -> PHAssetCollection? {
-        let collections = PHCollection.fetchCollections(in: folder, options: nil)
-        for i in 0..<collections.count {
-            if let album = collections.object(at: i) as? PHAssetCollection,
-               album.localizedTitle == name {
-                return album
-            }
-        }
-        return nil
-    }
-
-    /// Find or create the Hypnograph folder
-    private func findOrCreateFolder() async -> PHCollectionList? {
-        if let existing = findFolder(named: Self.folderName) {
+    /// Find or create the Hypnograms album (top-level, not in a folder)
+    func findOrCreateHypnogramsAlbum() async -> PHAssetCollection? {
+        if let existing = findAlbum(named: Self.hypnogramsAlbumName) {
             return existing
         }
 
         guard status.canWrite else {
-            print("ApplePhotos: cannot create folder - no write access")
+            print("ApplePhotos: cannot create album - no write access")
             return nil
         }
 
-        var placeholderID: String?
-        do {
-            try await PHPhotoLibrary.shared().performChanges {
-                let request = PHCollectionListChangeRequest.creationRequestForCollectionList(withTitle: Self.folderName)
-                placeholderID = request.placeholderForCreatedCollectionList.localIdentifier
-            }
-        } catch {
-            print("ApplePhotos: failed to create folder '\(Self.folderName)' - \(error)")
-            return nil
-        }
-
-        guard let id = placeholderID else { return nil }
-        let result = PHCollectionList.fetchCollectionLists(withLocalIdentifiers: [id], options: nil)
-        return result.firstObject
-    }
-
-    /// Find or create an album inside the Hypnograph folder
-    func findOrCreateAlbum(named albumName: AlbumName) async -> PHAssetCollection? {
-        guard let folder = await findOrCreateFolder() else {
-            print("ApplePhotos: cannot create album - folder not available")
-            return nil
-        }
-
-        // Check if album already exists in folder
-        if let existing = findAlbum(named: albumName.rawValue, inFolder: folder) {
-            return existing
-        }
-
-        guard status.canWrite else {
-            print("ApplePhotos: cannot create album '\(albumName.rawValue)' - no write access")
-            return nil
-        }
-
-        // Create album inside folder
         var albumPlaceholderID: String?
         do {
             try await PHPhotoLibrary.shared().performChanges {
-                let albumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName.rawValue)
-                albumPlaceholderID = albumRequest.placeholderForCreatedAssetCollection.localIdentifier
-
-                // Add album to folder
-                guard let folderRequest = PHCollectionListChangeRequest(for: folder) else { return }
-                folderRequest.addChildCollections([albumRequest.placeholderForCreatedAssetCollection] as NSArray)
+                let request = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: Self.hypnogramsAlbumName)
+                albumPlaceholderID = request.placeholderForCreatedAssetCollection.localIdentifier
             }
         } catch {
-            print("ApplePhotos: failed to create album '\(albumName.rawValue)' - \(error)")
+            print("ApplePhotos: failed to create album '\(Self.hypnogramsAlbumName)' - \(error)")
             return nil
         }
 
@@ -422,59 +442,16 @@ final class ApplePhotos {
         return results.objects(at: IndexSet(integersIn: 0..<results.count))
     }
 
-    /// Get or create the Sources album, populating with recent assets if newly created
-    func getOrCreateSourcesAlbum() async -> PHAssetCollection? {
-        // Check if folder/album already exist
-        if let folder = findFolder(named: Self.folderName),
-           let existing = findAlbum(named: AlbumName.sources.rawValue, inFolder: folder) {
-            return existing
-        }
-
-        guard status.canWrite else {
-            print("ApplePhotos: cannot create sources album - no write access")
-            return nil
-        }
-
-        // Create folder and album
-        guard let album = await findOrCreateAlbum(named: .sources) else { return nil }
-
-        // Fetch last 500 assets by date (photos and videos)
-        let options = PHFetchOptions()
-        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-        options.fetchLimit = 500
-
-        let allAssets = PHAsset.fetchAssets(with: options)
-        let assets = allAssets.objects(at: IndexSet(integersIn: 0..<allAssets.count))
-
-        if assets.isEmpty {
-            print("ApplePhotos: no assets to add to sources album")
-            return album
-        }
-
-        // Add assets to album
-        do {
-            try await PHPhotoLibrary.shared().performChanges {
-                guard let request = PHAssetCollectionChangeRequest(for: album) else { return }
-                request.addAssets(assets as NSFastEnumeration)
-            }
-            print("ApplePhotos: added \(assets.count) assets to 'Hypnograph/Sources'")
-        } catch {
-            print("ApplePhotos: failed to add assets to album - \(error)")
-        }
-
-        return album
-    }
-
     // MARK: - Saving to Photos
 
-    /// Save an image file to Photos and add to the Saved album
+    /// Save an image file to Photos and add to the Hypnograms album
     func saveImage(at url: URL) async -> Bool {
         guard status.canWrite else {
             print("ApplePhotos: cannot save image - no write access")
             return false
         }
 
-        guard let album = await findOrCreateAlbum(named: .saved) else {
+        guard let album = await findOrCreateHypnogramsAlbum() else {
             print("ApplePhotos: cannot save image - failed to get/create album")
             return false
         }
@@ -499,7 +476,7 @@ final class ApplePhotos {
                 guard let albumRequest = PHAssetCollectionChangeRequest(for: album) else { return }
                 albumRequest.addAssets([placeholder] as NSArray)
             }
-            print("ApplePhotos: saved image to 'Hypnograph/Saved'")
+            print("ApplePhotos: saved image to 'Hypnograms' album")
             return true
         } catch {
             print("ApplePhotos: failed to add image to album - \(error)")
@@ -507,14 +484,14 @@ final class ApplePhotos {
         }
     }
 
-    /// Save a video file to Photos and add to the Saved album
+    /// Save a video file to Photos and add to the Hypnograms album
     func saveVideo(at url: URL) async -> Bool {
         guard status.canWrite else {
             print("ApplePhotos: cannot save video - no write access")
             return false
         }
 
-        guard let album = await findOrCreateAlbum(named: .saved) else {
+        guard let album = await findOrCreateHypnogramsAlbum() else {
             print("ApplePhotos: cannot save video - failed to get/create album")
             return false
         }
@@ -539,7 +516,7 @@ final class ApplePhotos {
                 guard let albumRequest = PHAssetCollectionChangeRequest(for: album) else { return }
                 albumRequest.addAssets([placeholder] as NSArray)
             }
-            print("ApplePhotos: saved video to 'Hypnograph/Saved'")
+            print("ApplePhotos: saved video to 'Hypnograms' album")
             return true
         } catch {
             print("ApplePhotos: failed to add video to album - \(error)")

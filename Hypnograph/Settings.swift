@@ -26,16 +26,6 @@ struct SourceLibraryInfo: Identifiable {
     var displayName: String {
         "\(name) (\(assetCount))"
     }
-
-    /// Menu label with type prefix for Apple Photos
-    var menuLabel: String {
-        switch type {
-        case .folders:
-            return displayName
-        case .applePhotos:
-            return "Apple Photos: \(displayName)"
-        }
-    }
 }
 
 // MARK: - Polymorphic sourceFolders
@@ -143,9 +133,6 @@ struct Settings: Codable {
     var snapshotsFolder: String
     var activeLibrariesPerMode: [String: [String]]
 
-    /// Apple Photos albums as sources: library name -> album identifier
-    var applePhotosAlbums: [String: String]
-
     /// Aspect ratio for composition (e.g., 16:9, 4:3, 2.35:1)
     var aspectRatio: AspectRatio
 
@@ -169,7 +156,6 @@ struct Settings: Codable {
             "~/Movies/Hypnograph/sources"
         ])
         static let activeLibrariesPerMode: [String: [String]] = [:]
-        static let applePhotosAlbums: [String: String] = [:]
         static let aspectRatio: AspectRatio = .ratio16x9
         static let outputResolution: OutputResolution = .p1080
         static let displayResolution: OutputResolution = .p1080
@@ -179,7 +165,7 @@ struct Settings: Codable {
     private enum CodingKeys: String, CodingKey {
         case outputFolder, sourceFolders
         case watch, maxSourcesForNew, outputSeconds, snapshotsFolder
-        case activeLibrariesPerMode, applePhotosAlbums
+        case activeLibrariesPerMode
         case aspectRatio, outputResolution, displayResolution, sourceMediaTypes
     }
 
@@ -191,7 +177,6 @@ struct Settings: Codable {
         outputSeconds: Int = Defaults.outputSeconds,
         snapshotsFolder: String = Defaults.snapshotsFolder,
         activeLibrariesPerMode: [String: [String]] = Defaults.activeLibrariesPerMode,
-        applePhotosAlbums: [String: String] = Defaults.applePhotosAlbums,
         aspectRatio: AspectRatio = Defaults.aspectRatio,
         outputResolution: OutputResolution = Defaults.outputResolution,
         displayResolution: OutputResolution = Defaults.displayResolution,
@@ -204,7 +189,6 @@ struct Settings: Codable {
         self.outputSeconds = outputSeconds
         self.snapshotsFolder = snapshotsFolder
         self.activeLibrariesPerMode = activeLibrariesPerMode
-        self.applePhotosAlbums = applePhotosAlbums
         self.aspectRatio = aspectRatio
         self.outputResolution = outputResolution
         self.displayResolution = displayResolution
@@ -228,8 +212,6 @@ struct Settings: Codable {
             ?? Defaults.snapshotsFolder
         activeLibrariesPerMode = try c.decodeIfPresent([String: [String]].self, forKey: .activeLibrariesPerMode)
             ?? Defaults.activeLibrariesPerMode
-        applePhotosAlbums = try c.decodeIfPresent([String: String].self, forKey: .applePhotosAlbums)
-            ?? Defaults.applePhotosAlbums
         aspectRatio = try c.decodeIfPresent(AspectRatio.self, forKey: .aspectRatio)
             ?? Defaults.aspectRatio
         outputResolution = try c.decodeIfPresent(OutputResolution.self, forKey: .outputResolution)
@@ -252,7 +234,6 @@ struct Settings: Codable {
         try c.encode(outputSeconds, forKey: .outputSeconds)
         try c.encode(snapshotsFolder, forKey: .snapshotsFolder)
         try c.encode(activeLibrariesPerMode, forKey: .activeLibrariesPerMode)
-        try c.encode(applePhotosAlbums, forKey: .applePhotosAlbums)
         try c.encode(aspectRatio, forKey: .aspectRatio)
         try c.encode(outputResolution, forKey: .outputResolution)
         try c.encode(displayResolution, forKey: .displayResolution)

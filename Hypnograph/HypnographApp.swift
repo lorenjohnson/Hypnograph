@@ -214,16 +214,6 @@ struct AppCommands: Commands {
 
         // Items in the Hypnograph app menu (leftmost)
         CommandGroup(after: .appSettings) {
-            Button("Toggle HUD") {
-                state.toggleHUD()
-            }
-            .keyboardShortcut("h", modifiers: [])
-
-            Button("Toggle Info") {
-                InfoWindowController.shared.toggle(sources: state.sources)
-            }
-            .keyboardShortcut("i", modifiers: [])
-
             Button(state.isPaused ? "Play" : "Pause") {
                 state.togglePause()
             }
@@ -306,6 +296,24 @@ struct AppCommands: Commands {
                 set: { _ in state.toggleWatchMode() }
             ))
             .keyboardShortcut("w", modifiers: [])
+
+            Divider()
+
+            Section("Sidebar") {
+                Toggle("All", isOn: Binding(
+                    get: { state.isHUDVisible && state.isInfoVisible },
+                    set: { newValue in
+                        state.isHUDVisible = newValue
+                        state.isInfoVisible = newValue
+                    }
+                ))
+
+                Toggle("Main", isOn: $state.isHUDVisible)
+                    .keyboardShortcut("h", modifiers: [])
+
+                Toggle("Info", isOn: $state.isInfoVisible)
+                    .keyboardShortcut("i", modifiers: [])
+            }
         }
 
         CommandMenu("Sources") {
@@ -322,176 +330,55 @@ struct AppCommands: Commands {
 
             Divider()
 
-            // Apple Photos albums (shown first, with prefix)
             let photosLibraries = state.availableLibraries.filter { $0.type == .applePhotos }
-            if !photosLibraries.isEmpty {
-                ForEach(photosLibraries) { lib in
-                    Toggle(lib.menuLabel, isOn: Binding(
-                        get: { state.isLibraryActive(key: lib.id) },
-                        set: { _ in state.toggleLibrary(key: lib.id) }
-                    ))
-                }
-
-                Divider()
-            }
-
-            // Folder-based libraries (with asset counts)
             let folderLibraries = state.availableLibraries.filter { $0.type == .folders }
-            if folderLibraries.isEmpty && photosLibraries.isEmpty {
+
+            if photosLibraries.isEmpty && folderLibraries.isEmpty {
                 Text("No libraries configured")
                     .disabled(true)
             } else {
-                ForEach(folderLibraries) { lib in
-                    Toggle(lib.displayName, isOn: Binding(
-                        get: { state.isLibraryActive(key: lib.id) },
-                        set: { _ in state.toggleLibrary(key: lib.id) }
-                    ))
+                // Apple Photos section
+                if !photosLibraries.isEmpty {
+                    Section("Apple Photos") {
+                        ForEach(photosLibraries) { lib in
+                            Toggle(lib.displayName, isOn: Binding(
+                                get: { state.isLibraryActive(key: lib.id) },
+                                set: { _ in state.toggleLibrary(key: lib.id) }
+                            ))
+                        }
+                    }
+                }
+
+                // Folder-based libraries section
+                if !folderLibraries.isEmpty {
+                    Section("Folders") {
+                        ForEach(folderLibraries) { lib in
+                            Toggle(lib.displayName, isOn: Binding(
+                                get: { state.isLibraryActive(key: lib.id) },
+                                set: { _ in state.toggleLibrary(key: lib.id) }
+                            ))
+                        }
+                    }
                 }
             }
         }
 
         CommandMenu("Composition") {
-            // Dream-specific commands
-            if state.currentModuleType == .dream {
-                Button("Toggle Mode (Montage/Sequence)") {
-                    dream.toggleMode()
-                }
-                .keyboardShortcut("`", modifiers: [])
-                Divider()
+            switch state.currentModuleType {
+            case .dream:
+                dream.compositionMenu()
+            case .divine:
+                divine.compositionMenu()
             }
-
-            Button("Cycle Global Effect") {
-                dream.cycleGlobalEffect()
-            }
-            .keyboardShortcut("e", modifiers: [])
-
-            Button("Add Source") {
-                switch state.currentModuleType {
-                case .dream: dream.addSource()
-                case .divine: divine.addCard()
-                }
-            }
-            .keyboardShortcut(".", modifiers: [])
-
-            Button("> Next Source") {
-                switch state.currentModuleType {
-                case .dream: dream.nextSource()
-                case .divine: divine.nextCard()
-                }
-            }
-            .keyboardShortcut(.rightArrow, modifiers: [])
-
-            Button("< Previous Source") {
-                switch state.currentModuleType {
-                case .dream: dream.previousSource()
-                case .divine: divine.previousCard()
-                }
-            }
-            .keyboardShortcut(.leftArrow, modifiers: [])
-
-            ForEach(0..<9, id: \.self) { idx in
-                Button("Select Source \(idx + 1)") {
-                    switch state.currentModuleType {
-                    case .dream: dream.selectSource(index: idx)
-                    case .divine: divine.selectCard(index: idx)
-                    }
-                }
-                .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
-            }
-
-            Divider()
-
-            Button("Clear All Effects") {
-                dream.clearAllEffects()
-            }
-            .keyboardShortcut("0", modifiers: [])
-
-            Button("Randomize Blend Modes") {
-                state.randomizeBlendModes()
-            }
-            .keyboardShortcut(.space, modifiers: [.shift])
-
-            Divider()
-
-            // Aspect Ratio - flat in menu
-            ForEach(AspectRatio.menuPresets, id: \.self) { ratio in
-                Toggle(ratio.menuLabel, isOn: Binding(
-                    get: { state.aspectRatio == ratio },
-                    set: { if $0 { state.setAspectRatio(ratio) } }
-                ))
-            }
-
-            Divider()
-
-            // Resolution - flat in menu
-            ForEach(OutputResolution.allCases, id: \.self) { resolution in
-                Toggle(resolution.displayName, isOn: Binding(
-                    get: { state.outputResolution == resolution },
-                    set: { if $0 { state.setOutputResolution(resolution) } }
-                ))
-            }
-
-            Divider()
-
-            // Blend normalization toggle (for A/B testing)
-            Toggle("Blend Normalization", isOn: Binding(
-                get: { state.renderHooks.isNormalizationEnabled },
-                set: { state.renderHooks.isNormalizationEnabled = $0 }
-            ))
         }
 
-        CommandMenu("Current Source") {
-            // Dream-specific commands
-            if state.currentModuleType == .dream {
-                Button("Cycle Blend Mode") {
-                    dream.cycleBlendMode()
-                }
-                .keyboardShortcut("m", modifiers: [])
-                Divider()
+        CommandMenu("Source") {
+            switch state.currentModuleType {
+            case .dream:
+                dream.sourceMenu()
+            case .divine:
+                divine.sourceMenu()
             }
-
-            Button("Rotate 90° Clockwise") {
-                dream.rotateCurrentSource()
-            }
-            .keyboardShortcut("r", modifiers: [])
-
-            Button("Cycle Effect") {
-                dream.cycleSourceEffect()
-            }
-            .keyboardShortcut("f", modifiers: [])
-
-            Button("New Random Clip") {
-                switch state.currentModuleType {
-                case .dream: dream.newRandomClip()
-                case .divine: divine.newRandomCard()
-                }
-            }
-            .keyboardShortcut("n", modifiers: [])
-
-            Divider()
-
-            Button("Delete") {
-                switch state.currentModuleType {
-                case .dream: dream.deleteCurrentSource()
-                case .divine: divine.deleteCurrentCard()
-                }
-            }
-            .keyboardShortcut(.delete, modifiers: [])
-
-            Button("Add to Exclude List") {
-                state.excludeCurrentSource()
-            }
-            .keyboardShortcut("x", modifiers: [.shift])
-
-            Button("Mark for Deletion") {
-                state.markCurrentSourceForDeletion()
-            }
-            .keyboardShortcut("d", modifiers: [.shift])
-
-            Button("Toggle Favorite") {
-                state.toggleCurrentSourceFavorite()
-            }
-            .keyboardShortcut("f", modifiers: [.shift])
         }
     }
 }
