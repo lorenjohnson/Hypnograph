@@ -73,9 +73,107 @@ final class Divine: ObservableObject {
     }
 
     func hudItems() -> [HUDItem] {
-        [
-            .text("Space: Clear table", order: 27),
-        ]
+        var items: [HUDItem] = []
+
+        // Header
+        items.append(.text("Hypnograph", order: 10, font: .headline))
+        items.append(.text("Divine", order: 11, font: .subheadline))
+        items.append(.padding(8, order: 15))
+
+        // Card count
+        items.append(.text("Cards: \(cardManager.cards.count)", order: 20))
+        items.append(.padding(16, order: 24))
+
+        // Keyboard hints
+        items.append(.text("Shortcuts", order: 40, font: .subheadline))
+        items.append(.text("Space = Clear table", order: 41))
+        items.append(.text(". = Add card | N = New card", order: 42))
+        items.append(.text("←/→ = Navigate | 1-9 = Select card", order: 43))
+        items.append(.text("Delete = Remove card", order: 44))
+        items.append(.text("Drag cards to arrange", order: 45))
+
+        return items
+    }
+
+    // MARK: - Menus
+
+    @ViewBuilder
+    func compositionMenu() -> some View {
+        Button("Add Card") { [self] in
+            addCard()
+        }
+        .keyboardShortcut(".", modifiers: [])
+
+        Button("> Next Card") { [self] in
+            nextCard()
+        }
+        .keyboardShortcut(.rightArrow, modifiers: [])
+
+        Button("< Previous Card") { [self] in
+            previousCard()
+        }
+        .keyboardShortcut(.leftArrow, modifiers: [])
+
+        ForEach(0..<9, id: \.self) { idx in
+            Button("Select Card \(idx + 1)") { [self] in
+                selectCard(index: idx)
+            }
+            .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
+        }
+
+        Divider()
+
+        Button("Clear Table") { [self] in
+            new()
+        }
+        .keyboardShortcut(.space, modifiers: [])
+
+        Button("Toggle Pause") { [self] in
+            togglePause()
+        }
+        .keyboardShortcut("p", modifiers: [])
+
+        Divider()
+
+        Button("Zoom In") { [self] in
+            zoomInStep()
+        }
+        .keyboardShortcut("+", modifiers: [.command])
+
+        Button("Zoom Out") { [self] in
+            zoomOutStep()
+        }
+        .keyboardShortcut("-", modifiers: [.command])
+
+        Button("Reset Zoom") { [self] in
+            resetViewTransform()
+        }
+        .keyboardShortcut("0", modifiers: [.command])
+    }
+
+    @ViewBuilder
+    func sourceMenu() -> some View {
+        Button("New Random Card") { [self] in
+            newRandomCard()
+        }
+        .keyboardShortcut("n", modifiers: [])
+
+        Divider()
+
+        Button("Delete Card") { [self] in
+            deleteCurrentCard()
+        }
+        .keyboardShortcut(.delete, modifiers: [])
+
+        Button("Add to Exclude List") { [self] in
+            state.excludeCurrentSource()
+        }
+        .keyboardShortcut("x", modifiers: [.shift])
+
+        Button("Toggle Favorite") { [self] in
+            state.toggleCurrentSourceFavorite()
+        }
+        .keyboardShortcut("f", modifiers: [.shift])
     }
 
     // MARK: - Lifecycle

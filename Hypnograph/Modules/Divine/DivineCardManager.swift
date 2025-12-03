@@ -21,6 +21,7 @@ final class DivineCardManager: ObservableObject {
 
     private let state: HypnographState
     private let playerManager = DivinePlayerManager()
+    private var playerManagerSubscription: AnyCancellable?
 
     // TODO: Move into settings, e.g.: "modes:" [ { "Divine": { "allowReversed": true } } ]
     private var allowReversed: Bool = false
@@ -29,8 +30,15 @@ final class DivineCardManager: ObservableObject {
     private var viewportSize: CGSize = .zero
     private var cardSize: CGSize = .zero
 
+    // Track long press to avoid tap firing on release
+    private var lastLongPressTime: Date = .distantPast
+
     init(state: HypnographState) {
         self.state = state
+        // Forward playerManager changes to trigger view updates
+        playerManagerSubscription = playerManager.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
         // Don't add initial card here - it will use wrong library before per-mode settings load
         // Initial card is added when module is first displayed (see Divine.makeDisplayView)
     }
@@ -138,6 +146,9 @@ final class DivineCardManager: ObservableObject {
     // MARK: - Interaction
 
     func handleTap(id: UUID) {
+        // Ignore taps that fire immediately after a long press release
+        guard Date().timeIntervalSince(lastLongPressTime) > 0.3 else { return }
+
         guard let idx = cards.firstIndex(where: { $0.id == id }) else { return }
 
         let isOverlapped = isCardOverlapped(at: idx)
@@ -161,37 +172,38 @@ final class DivineCardManager: ObservableObject {
     }
 
     func handleLongPress(id: UUID) {
+        lastLongPressTime = Date()
         guard let idx = cards.firstIndex(where: { $0.id == id }) else { return }
         let newIdx = bringToFront(at: idx)
         var card = cards[newIdx]
 
-        // --- Image-only clips: just reveal the still, no AVPlayer / spinner ---
+        // Images: just reveal (no playback)
         if card.clip.file.mediaKind == .image {
             if card.cgImage == nil {
                 Task { @MainActor in
-                    cards[newIdx].cgImage = await grabStill(from: card.clip)
+                    self.cards[newIdx].cgImage = await self.grabStill(from: card.clip)
                 }
             }
             card.isRevealed = true
-            card.isPlaying = false
             cards[newIdx] = card
             return
         }
 
-        // --- Video clips: existing "press to play" semantics ---
+        // Videos: reveal and play
         card.isRevealed = true
         card.isPlaying = true
         cards[newIdx] = card
 
         Task { @MainActor [weak self] in
             guard let self = self else { return }
+            let seekTime = card.lastSnapshotTime ?? card.clip.startTime
             guard let player = await self.playerManager.player(for: card, onPlaybackEnd: { [weak self] in
                 self?.handlePlaybackEnded(for: card.id)
             }) else {
                 print("⚠️ Divine: Failed to load player for card")
                 return
             }
-            await player.seek(to: card.clip.startTime, toleranceBefore: .zero, toleranceAfter: .zero)
+            await player.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero)
             player.play()
         }
     }
@@ -225,42 +237,50 @@ final class DivineCardManager: ObservableObject {
         guard index >= 0 && index < cards.count else { return }
 
         var card = cards[index]
-        let file = card.clip.file
+        let isVideo = card.clip.file.mediaKind == .video
         let player = playerManager.player(forID: card.id)
 
         switch (card.isRevealed, card.isPlaying) {
         case (false, _):
-            // Face-down → reveal still using last snapshot if available
-            let snapshotTime = card.lastSnapshotTime ?? card.clip.startTime
-            if card.cgImage == nil {
-                Task { @MainActor in
-                    cards[index].cgImage = await grabStill(from: card.clip, at: snapshotTime)
+            // Face-down → reveal
+            card.isRevealed = true
+            card.isPlaying = false
+            cards[index] = card
+
+            if isVideo {
+                // Create player (paused) - it will show the first frame
+                let seekTime = card.lastSnapshotTime ?? card.clip.startTime
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
+                    guard let player = await self.playerManager.player(for: card, onPlaybackEnd: { [weak self] in
+                        self?.handlePlaybackEnded(for: card.id)
+                    }) else { return }
+                    await player.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero)
+                    // Player stays paused, showing the frame
+                }
+            } else {
+                // Image: load cgImage
+                if card.cgImage == nil {
+                    Task { @MainActor in
+                        self.cards[index].cgImage = await self.grabStill(from: card.clip)
+                    }
                 }
             }
-            card.isRevealed = true
-            card.isPlaying = false
-            player?.pause()
 
         case (true, false):
-            // Face-up still → flip back down (keep snapshot/time)
+            // Revealed & paused → flip back down
             card.isRevealed = false
             card.isPlaying = false
-            player?.pause()
+            card.lastSnapshotTime = player?.currentTime()
+            cards[index] = card
 
         case (true, true):
-            // Playing → pause and update snapshot, stay revealed
+            // Playing → pause (player shows paused frame, no still grab needed)
             player?.pause()
-            let snapshotTime = player?.currentTime() ?? card.clip.startTime
-            card.lastSnapshotTime = snapshotTime
-            // For images, snapshot is just the source image; grabStill handles both.
-            Task { @MainActor in
-                cards[index].cgImage = await grabStill(from: card.clip, at: snapshotTime)
-            }
+            card.lastSnapshotTime = player?.currentTime()
             card.isPlaying = false
-            card.isRevealed = true
+            cards[index] = card
         }
-
-        cards[index] = card
     }
 
     private func bringToFront(at index: Int) -> Int {
@@ -272,14 +292,9 @@ final class DivineCardManager: ObservableObject {
     }
 
     private func handlePlaybackEnded(for id: UUID) {
-        updateCard(id: id) { card, index in
-            let startTime = card.clip.startTime
-            let clip = card.clip  // Capture value before async
-            // Works for both video + image sources.
-            Task { @MainActor [weak self] in
-                self?.cards[index].cgImage = await self?.grabStill(from: clip, at: startTime)
-            }
-            card.lastSnapshotTime = startTime
+        updateCard(id: id) { card, _ in
+            // Player stays visible showing the end frame, just mark as not playing
+            card.lastSnapshotTime = card.clip.startTime
             card.isPlaying = false
             card.isRevealed = true
         }
@@ -324,10 +339,12 @@ final class DivineCardManager: ObservableObject {
         )
     }
 
-    /// Load the thumbnail image for a card asynchronously
+    /// Load the thumbnail image for image-only cards asynchronously
     private func loadCardImage(at index: Int) {
         guard index < cards.count else { return }
         let clip = cards[index].clip
+        // Only pre-load for images; videos use AVPlayer to show frames
+        guard clip.file.mediaKind == .image else { return }
         Task { @MainActor in
             let cgImage = await grabStill(from: clip)
             if index < cards.count, cards[index].clip.file.id == clip.file.id {

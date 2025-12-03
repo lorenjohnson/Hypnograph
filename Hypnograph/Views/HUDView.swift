@@ -59,16 +59,15 @@ struct HUDItem {
 // MARK: - HUDView
 
 /// A styled HUD overlay.
-/// Aggregates global and module-specific HUD items into a semi-transparent box.
+/// Renders module-specific HUD items into a semi-transparent box.
 struct HUDView: View {
     @ObservedObject var state: HypnographState
-    var renderQueue: RenderQueue
     @ObservedObject var dream: Dream
     @ObservedObject var divine: Divine
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            ForEach(Array(allItems().enumerated()), id: \.offset) { index, item in
+            ForEach(Array(hudItems().enumerated()), id: \.offset) { index, item in
                 item.render()
                     .id(index)
             }
@@ -81,69 +80,73 @@ struct HUDView: View {
         )
     }
 
-    // MARK: - Item Composition
-
-    private func allItems() -> [HUDItem] {
-        let global = globalItems()
-        let moduleSpecific: [HUDItem]
+    private func hudItems() -> [HUDItem] {
         switch state.currentModuleType {
         case .dream:
-            moduleSpecific = dream.hudItems()
+            return dream.hudItems().sorted { $0.order < $1.order }
         case .divine:
-            moduleSpecific = divine.hudItems()
+            return divine.hudItems().sorted { $0.order < $1.order }
         }
-        return (global + moduleSpecific).sorted { $0.order < $1.order }
+    }
+}
+
+// MARK: - InfoHUD
+
+/// Info HUD showing source list and composition details
+struct InfoHUD: View {
+    @ObservedObject var state: HypnographState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Sources")
+                .font(.headline)
+                .foregroundColor(.white)
+
+            if state.sources.isEmpty {
+                Text("No sources")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.7))
+            } else {
+                ForEach(Array(state.sources.enumerated()), id: \.offset) { index, source in
+                    Text("\(index + 1): \(sourcePath(source))")
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+
+            Spacer().frame(height: 8)
+
+            Text("Total: \(formattedDuration)")
+                .font(.caption)
+                .foregroundColor(.white)
+        }
+        .padding(12)
+        .background(
+            Color.black.opacity(0.6)
+                .cornerRadius(10)
+        )
     }
 
-    private func globalItems() -> [HUDItem] {
-        var items: [HUDItem] = []
-
-        // Header
-        items.append(.text("Hypnograph", order: 10, font: .headline))
-        let moduleLabel: String
-        switch state.currentModuleType {
-        case .dream:
-            moduleLabel = "Dream"
-        case .divine:
-            moduleLabel = "Divine"
+    private func sourcePath(_ source: HypnogramSource) -> String {
+        switch source.clip.file.source {
+        case .url(let url):
+            return url.path
+        case .photos(let identifier):
+            return "photos:\(identifier)"
         }
-        items.append(.text(moduleLabel, order: 11, font: .subheadline))
-        items.append(.padding(8, order: 15))
+    }
 
-        // Queue status
-        if renderQueue.activeJobs > 0 {
-            items.append(.text("Queue: \(renderQueue.activeJobs)", order: 20, font: .subheadline))
+    private var formattedDuration: String {
+        let totalSeconds = state.recipe.targetDuration.seconds
+        if totalSeconds < 60 {
+            return String(format: "%.1fs", totalSeconds)
         } else {
-            items.append(.text("Queue: 0", order: 20, font: .caption))
+            let minutes = Int(totalSeconds) / 60
+            let seconds = Int(totalSeconds) % 60
+            return String(format: "%d:%02d", minutes, seconds)
         }
-        items.append(.padding(8, order: 21))
-
-        // Global status
-        items.append(.text("Global Effect (E): \(state.renderHooks.globalEffectName)", order: 22))
-
-        // Divider before source-specific items
-        items.append(.padding(16, order: 24))
-
-        // Source-specific items will be inserted here (order 25-29)
-
-        // Divider after source-specific items
-        items.append(.padding(16, order: 39))
-
-        items.append(.text("Current Source", order: 40, font: .subheadline))
-        // Global keyboard shortcuts
-        items.append(.text("R = Rotate 90°", order: 44))
-        items.append(.text("N = New random clip", order: 45))
-        items.append(.text("Delete = Delete Source", order: 47))
-
-        items.append(.padding(16, order: 49))
-
-        items.append(.text("1-9 = Jump to Source 1-9", order: 50))
-        items.append(.text("Space = New random Hypnogram", order: 51))
-        items.append(.text("Cmd-S = Save Hypnogram", order: 52))
-        items.append(.text("Cmd-R = Reload Settings and Restart", order: 53))
-        items.append(.text("Shift-Cmd-S = Show Settings Folder", order: 54))
-
-        return items
     }
 }
 

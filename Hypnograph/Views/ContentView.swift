@@ -32,17 +32,22 @@ struct ContentView: View {
                     .ignoresSafeArea()
             }
 
-            // HUD
-            if state.isHUDVisible {
-                HUDView(
-                    state: state,
-                    renderQueue: renderQueue,
-                    dream: dream,
-                    divine: divine
-                )
-                .padding(.top, 12)
-                .padding(.leading, 12)
+            // HUDs
+            VStack(alignment: .leading, spacing: 8) {
+                if state.isHUDVisible {
+                    HUDView(
+                        state: state,
+                        dream: dream,
+                        divine: divine
+                    )
+                }
+
+                if state.isInfoVisible {
+                    InfoHUD(state: state)
+                }
             }
+            .padding(.top, 12)
+            .padding(.leading, 12)
         }
         .overlay(alignment: .topTrailing) {
             if let text = soloIndicatorText {

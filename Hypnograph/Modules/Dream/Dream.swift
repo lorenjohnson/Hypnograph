@@ -136,36 +136,196 @@ final class Dream: ObservableObject {
     func hudItems() -> [HUDItem] {
         var items: [HUDItem] = []
 
+        // Header
+        items.append(.text("Hypnograph", order: 10, font: .headline))
         let modeLabel = (mode == .montage ? "Montage" : "Sequence")
-        items.append(.text("Mode: \(modeLabel)", order: 12, font: .subheadline))
+        items.append(.text("Dream: \(modeLabel)", order: 11, font: .subheadline))
+        items.append(.padding(8, order: 15))
+
+        // Queue status
+        if renderQueue.activeJobs > 0 {
+            items.append(.text("Queue: \(renderQueue.activeJobs)", order: 20, font: .subheadline))
+        } else {
+            items.append(.text("Queue: 0", order: 20, font: .caption))
+        }
+        items.append(.padding(8, order: 21))
+
+        // Global effect
+        items.append(.text("Global Effect (E): \(state.renderHooks.globalEffectName)", order: 22))
+        items.append(.padding(16, order: 24))
+
+        // Source info
         items.append(.text("Source \(currentDisplayIndex) of \(sourceCount)", order: 25))
 
         switch mode {
         case .montage:
-            items.append(.text("Blend mode (M): \(currentBlendModeDisplayName())", order: 41))
-
+            items.append(.text("Blend mode (M): \(currentBlendModeDisplayName())", order: 26))
         case .sequence:
             let totalSecs = sequenceTotalDuration().seconds
-            items.append(.text(String(format: "Duration: %.1fs", totalSecs), order: 27))
-
+            items.append(.text(String(format: "Duration: %.1fs", totalSecs), order: 26))
             if let clip = state.currentClip {
-                items.append(.padding(8, order: 29))
-                items.append(.text("Source \(state.currentSourceIndex + 1): \(clip.duration.seconds)s", order: 41))
+                items.append(.text("Clip: \(String(format: "%.1fs", clip.duration.seconds))", order: 27))
             }
-
-            items.append(.text("←/→ = Navigate sources", order: 46))
         }
-        items.append(.text("Source Effect (F): \(state.renderHooks.sourceEffectName(for: state.currentSourceIndex))", order: 42))
+
+        items.append(.text("Source Effect (F): \(state.renderHooks.sourceEffectName(for: state.currentSourceIndex))", order: 28))
 
         // Favorite status
         if let source = state.currentSource?.clip.file.source,
            FavoriteStore.shared.isFavorited(source) {
-            items.append(.text("★ Favorite", order: 43))
+            items.append(.text("★ Favorite", order: 29))
         }
 
-        items.append(.text("Shift+F = Favorite | Shift+X = Exclude | Shift+D = Delete", order: 44))
-        items.append(.text("` = Toggle Montage/Sequence Mode", order: 47))
+        items.append(.padding(16, order: 39))
+
+        // Keyboard hints
+        items.append(.text("Shortcuts", order: 40, font: .subheadline))
+        items.append(.text("R = Rotate | N = New clip | M = Blend", order: 41))
+        items.append(.text("E = Global effect | F = Source effect", order: 42))
+        items.append(.text("←/→ = Navigate | 1-9 = Jump to source", order: 43))
+        items.append(.text("Space = New | Cmd-S = Save", order: 44))
+        items.append(.text("` = Toggle Montage/Sequence", order: 45))
+        items.append(.text("Shift+F/X/D = Favorite/Exclude/Delete", order: 46))
+
         return items
+    }
+
+    // MARK: - Menus
+
+    @ViewBuilder
+    func compositionMenu() -> some View {
+        Button("Toggle Mode (Montage/Sequence)") { [self] in
+            toggleMode()
+        }
+        .keyboardShortcut("`", modifiers: [])
+
+        Divider()
+
+        Button("Cycle Global Effect") { [self] in
+            cycleGlobalEffect()
+        }
+        .keyboardShortcut("e", modifiers: [])
+
+        Button("Add Source") { [self] in
+            addSource()
+        }
+        .keyboardShortcut(".", modifiers: [])
+
+        Button("> Next Source") { [self] in
+            nextSource()
+        }
+        .keyboardShortcut(.rightArrow, modifiers: [])
+
+        Button("< Previous Source") { [self] in
+            previousSource()
+        }
+        .keyboardShortcut(.leftArrow, modifiers: [])
+
+        ForEach(0..<9, id: \.self) { idx in
+            Button("Select Source \(idx + 1)") { [self] in
+                selectSource(index: idx)
+            }
+            .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
+        }
+
+        Divider()
+
+        Button("Clear All Effects") { [self] in
+            clearAllEffects()
+        }
+
+        Divider()
+
+        Button("New Hypnogram") { [self] in
+            new()
+        }
+        .keyboardShortcut(.space, modifiers: [])
+
+        Button("Toggle Pause") { [self] in
+            togglePause()
+        }
+        .keyboardShortcut("p", modifiers: [])
+
+        Divider()
+
+        Button("Save") { [self] in
+            save()
+        }
+        .keyboardShortcut("s", modifiers: [.command])
+
+        Button("Save Snapshot") { [self] in
+            saveSnapshot()
+        }
+        .keyboardShortcut("s", modifiers: [.command, .shift])
+
+        Divider()
+
+        // Aspect Ratio
+        Section("Aspect Ratio") {
+            ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
+                Toggle(ratio.menuLabel, isOn: Binding(
+                    get: { [self] in state.aspectRatio == ratio },
+                    set: { [self] in if $0 { state.setAspectRatio(ratio) } }
+                ))
+            }
+        }
+
+        // Output Resolution
+        Section("Output Resolution") {
+            ForEach(OutputResolution.allCases, id: \.self) { resolution in
+                Toggle(resolution.displayName, isOn: Binding(
+                    get: { [self] in state.outputResolution == resolution },
+                    set: { [self] in if $0 { state.setOutputResolution(resolution) } }
+                ))
+            }
+        }
+    }
+
+    @ViewBuilder
+    func sourceMenu() -> some View {
+        Button("Cycle Blend Mode") { [self] in
+            cycleBlendMode()
+        }
+        .keyboardShortcut("m", modifiers: [])
+
+        Divider()
+
+        Button("Rotate 90° Clockwise") { [self] in
+            rotateCurrentSource()
+        }
+        .keyboardShortcut("r", modifiers: [])
+
+        Button("Cycle Effect") { [self] in
+            cycleSourceEffect()
+        }
+        .keyboardShortcut("f", modifiers: [])
+
+        Button("New Random Clip") { [self] in
+            newRandomClip()
+        }
+        .keyboardShortcut("n", modifiers: [])
+
+        Divider()
+
+        Button("Delete") { [self] in
+            deleteCurrentSource()
+        }
+        .keyboardShortcut(.delete, modifiers: [])
+
+        Button("Add to Exclude List") { [self] in
+            state.excludeCurrentSource()
+        }
+        .keyboardShortcut("x", modifiers: [.shift])
+
+        Button("Mark for Deletion") { [self] in
+            state.markCurrentSourceForDeletion()
+        }
+        .keyboardShortcut("d", modifiers: [.shift])
+
+        Button("Toggle Favorite") { [self] in
+            state.toggleCurrentSourceFavorite()
+        }
+        .keyboardShortcut("f", modifiers: [.shift])
     }
 
     // MARK: - Display

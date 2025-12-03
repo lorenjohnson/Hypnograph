@@ -52,6 +52,7 @@ final class HypnographState: ObservableObject {
     @Published var currentClipTimeOffset: CMTime?
 
     @Published var isHUDVisible: Bool = true
+    @Published var isInfoVisible: Bool = false
 
     /// Pause/play state for video playback (Dream mode)
     @Published var isPaused: Bool = false
@@ -79,13 +80,19 @@ final class HypnographState: ObservableObject {
     init(settings: Settings) {
         self.settings = settings
 
-        let defaultKey = settings.defaultSourceLibraryKey
+        // Default to "Apple Photos: All Items" if available, otherwise folder sources
+        let defaultKey: String
+        if ApplePhotos.shared.status.canRead && ApplePhotos.shared.countAllAssets() > 0 {
+            defaultKey = Self.photosAllItemsKey
+        } else {
+            defaultKey = settings.defaultSourceLibraryKey
+        }
         let initialKeys: Set<String> = [defaultKey]
 
         // Initialize per-module library state from settings or use defaults
         var loadedPerModuleKeys: [ModuleType: Set<String>] = [:]
         for module in [ModuleType.dream, ModuleType.divine] {
-            if let savedKeys = settings.activeLibrariesPerMode[module.rawValue] {
+            if let savedKeys = settings.activeLibrariesPerMode[module.rawValue], !savedKeys.isEmpty {
                 loadedPerModuleKeys[module] = Set(savedKeys)
             } else {
                 loadedPerModuleKeys[module] = initialKeys
@@ -390,10 +397,25 @@ final class HypnographState: ObservableObject {
                 if keys.count > 1 {
                     keys.remove(key)
                 } else {
-                    // Can't remove the last one - could switch to default, but for now just ignore
+                    // Can't remove the last one
                     return
                 }
             } else {
+                // Adding - handle "All" keys that should deselect others of same type
+                if key == Self.photosAllItemsKey {
+                    // Deselect all other Photos albums
+                    keys = keys.filter { !$0.hasPrefix("photos:") }
+                } else if key == Self.foldersAllKey {
+                    // Deselect all individual folder libraries
+                    let folderKeys = Set(settings.sourceLibraryOrder)
+                    keys = keys.subtracting(folderKeys)
+                } else if key.hasPrefix("photos:") {
+                    // Selecting a specific album deselects "All Items"
+                    keys.remove(Self.photosAllItemsKey)
+                } else if settings.sourceLibraries[key] != nil {
+                    // Selecting a specific folder deselects "All Folders"
+                    keys.remove(Self.foldersAllKey)
+                }
                 keys.insert(key)
             }
 
@@ -408,16 +430,27 @@ final class HypnographState: ObservableObject {
         // Separate folder keys from Photos keys
         var folderPaths: [String] = []
         var photosAlbums: [PHAssetCollection] = []
+        var includeAllPhotos = false
 
         for key in keys {
-            if key.hasPrefix("photos:") {
+            if key == Self.photosAllItemsKey {
+                // Special case: include all items from Photos
+                includeAllPhotos = true
+            } else if key.hasPrefix("photos:") {
                 // It's a Photos album
                 let identifier = String(key.dropFirst("photos:".count))
                 if let album = await fetchPhotosAlbum(identifier: identifier) {
                     photosAlbums.append(album)
                 }
+            } else if key == Self.foldersAllKey {
+                // Special case: include all folder libraries
+                for libraryKey in settings.sourceLibraryOrder {
+                    if let paths = settings.sourceLibraries[libraryKey] {
+                        folderPaths.append(contentsOf: paths)
+                    }
+                }
             } else {
-                // It's a folder library
+                // It's a specific folder library
                 if let paths = settings.sourceLibraries[key] {
                     folderPaths.append(contentsOf: paths)
                 }
@@ -430,6 +463,7 @@ final class HypnographState: ObservableObject {
         library = MediaSourcesLibrary(
             sourceFolders: folderPaths,
             photosAlbums: photosAlbums,
+            includeAllPhotos: includeAllPhotos,
             allowedMediaTypes: settings.sourceMediaTypes
         )
 
@@ -453,17 +487,13 @@ final class HypnographState: ObservableObject {
         }
     }
 
-    /// Fetch a Photos album by identifier, with fallback for the default Sources album
+    /// Fetch a Photos album by identifier
     private func fetchPhotosAlbum(identifier: String) async -> PHAssetCollection? {
         let albums = PHAssetCollection.fetchAssetCollections(
             withLocalIdentifiers: [identifier],
             options: nil
         )
-        if let found = albums.firstObject {
-            return found
-        }
-        // Fallback for the default Sources album
-        return await ApplePhotos.shared.getOrCreateSourcesAlbum()
+        return albums.firstObject
     }
 
     // MARK: - Source Media Types
@@ -514,6 +544,9 @@ final class HypnographState: ObservableObject {
         var infos: [SourceLibraryInfo] = []
 
         // Folder-based libraries
+        var folderInfos: [SourceLibraryInfo] = []
+        var totalFolderCount = 0
+
         for key in settings.sourceLibraryOrder {
             guard let paths = settings.sourceLibraries[key] else { continue }
 
@@ -526,72 +559,61 @@ final class HypnographState: ObservableObject {
 
             // Only include non-empty libraries
             if count > 0 {
-                infos.append(SourceLibraryInfo(
+                folderInfos.append(SourceLibraryInfo(
                     id: key,
                     name: key,
                     type: .folders,
                     assetCount: count
                 ))
+                totalFolderCount += count
             }
         }
 
-        // Apple Photos albums
-        if ApplePhotos.shared.status.canRead {
-            var hasConfiguredAlbums = false
+        // Add "All Folders" option if there are multiple folder libraries
+        if folderInfos.count > 1 {
+            infos.append(SourceLibraryInfo(
+                id: Self.foldersAllKey,
+                name: "All Folders",
+                type: .folders,
+                assetCount: totalFolderCount
+            ))
+        }
 
-            for (name, identifier) in settings.applePhotosAlbums {
-                hasConfiguredAlbums = true
-                // Try to find album and count assets
-                let count = await countPhotosAlbumAssets(identifier: identifier, name: name)
-                if count > 0 {
-                    infos.append(SourceLibraryInfo(
-                        id: "photos:\(identifier)",
-                        name: name,
-                        type: .applePhotos,
-                        assetCount: count
-                    ))
-                }
+        // Add individual folder libraries
+        infos.append(contentsOf: folderInfos)
+
+        // Apple Photos: All Items (always first)
+        if ApplePhotos.shared.status.canRead {
+            let allCount = ApplePhotos.shared.countAllAssets()
+            if allCount > 0 {
+                infos.append(SourceLibraryInfo(
+                    id: Self.photosAllItemsKey,
+                    name: "All Items",
+                    type: .applePhotos,
+                    assetCount: allCount
+                ))
             }
 
-            // If no albums configured, add the default Hypnograph/Sources album
-            if !hasConfiguredAlbums {
-                if let album = await ApplePhotos.shared.getOrCreateSourcesAlbum() {
-                    let count = PHAsset.fetchAssets(in: album, options: nil).count
-                    if count > 0 {
-                        infos.append(SourceLibraryInfo(
-                            id: "photos:\(album.localIdentifier)",
-                            name: "Hypnograph Sources",
-                            type: .applePhotos,
-                            assetCount: count
-                        ))
-                    }
-                }
+            // Dynamically list all user albums from Photos
+            let userAlbums = ApplePhotos.shared.fetchUserAlbums()
+            for album in userAlbums {
+                infos.append(SourceLibraryInfo(
+                    id: album.libraryKey,
+                    name: album.title,
+                    type: .applePhotos,
+                    assetCount: album.assetCount
+                ))
             }
         }
 
         availableLibraries = infos
     }
 
-    /// Count assets in a Photos album by identifier or name
-    private func countPhotosAlbumAssets(identifier: String, name: String) async -> Int {
-        // First try by local identifier
-        let byId = PHAssetCollection.fetchAssetCollections(
-            withLocalIdentifiers: [identifier],
-            options: nil
-        )
-        if let album = byId.firstObject {
-            return PHAsset.fetchAssets(in: album, options: nil).count
-        }
+    /// Special key for "All Items" from Photos library
+    static let photosAllItemsKey = "photos:all"
 
-        // Fall back to finding by name (for the hardcoded "Hypnograph/Sources" case)
-        if name == "Hypnograph Sources" || name == "Sources" {
-            if let album = await ApplePhotos.shared.getOrCreateSourcesAlbum() {
-                return PHAsset.fetchAssets(in: album, options: nil).count
-            }
-        }
-
-        return 0
-    }
+    /// Special key for "All Folders" (all folder libraries combined)
+    static let foldersAllKey = "folders:all"
 
     /// Save per-module library selections to settings file
     private func savePerModuleLibrariesToSettings() {

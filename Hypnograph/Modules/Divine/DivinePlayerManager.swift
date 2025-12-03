@@ -8,8 +8,9 @@ import Foundation
 import AVFoundation
 import CoreMedia
 
-final class DivinePlayerManager {
-    private var players: [UUID: AVPlayer] = [:]
+@MainActor
+final class DivinePlayerManager: ObservableObject {
+    @Published private var players: [UUID: AVPlayer] = [:]
     private var endObservers: [UUID: Any] = [:]
 
     /// Get or create a player for the given card.
@@ -33,7 +34,7 @@ final class DivinePlayerManager {
         item.forwardPlaybackEndTime = endTime
 
         let player = AVPlayer(playerItem: item)
-        players[card.id] = player
+        players[card.id] = player  // @Published triggers view update
 
         let token = player.addBoundaryTimeObserver(
             forTimes: [NSValue(time: endTime)],
