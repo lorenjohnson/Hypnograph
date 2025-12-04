@@ -340,7 +340,38 @@ struct AppCommands: Commands {
                 // Apple Photos section
                 if !photosLibraries.isEmpty {
                     Section("Apple Photos") {
-                        ForEach(photosLibraries) { lib in
+                        // Filter out Custom Selection from regular library list (handled separately)
+                        let regularPhotosLibraries = photosLibraries.filter { $0.id != HypnographState.photosCustomKey }
+
+                        // "All Items" first (if present)
+                        if let allItems = regularPhotosLibraries.first(where: { $0.id == "photos:all" }) {
+                            Toggle(allItems.displayName, isOn: Binding(
+                                get: { state.isLibraryActive(key: allItems.id) },
+                                set: { _ in state.toggleLibrary(key: allItems.id) }
+                            ))
+                        }
+
+                        // Custom Selection right after All Items
+                        let customCount = state.customPhotosAssetIds.count
+                        let isCustomActive = state.isLibraryActive(key: HypnographState.photosCustomKey)
+                        let customLabel = customCount > 0 ? "Custom Selection (\(customCount))" : "Custom Selection"
+
+                        Toggle(customLabel, isOn: Binding(
+                            get: { isCustomActive },
+                            set: { newValue in
+                                if newValue {
+                                    // Turning ON: show picker first
+                                    state.showPhotosPicker = true
+                                } else {
+                                    // Turning OFF: just deactivate
+                                    state.toggleLibrary(key: HypnographState.photosCustomKey)
+                                }
+                            }
+                        ))
+                        .keyboardShortcut("o", modifiers: [.command, .shift])
+
+                        // Rest of the albums (excluding "All Items" which is already shown)
+                        ForEach(regularPhotosLibraries.filter { $0.id != "photos:all" }) { lib in
                             Toggle(lib.displayName, isOn: Binding(
                                 get: { state.isLibraryActive(key: lib.id) },
                                 set: { _ in state.toggleLibrary(key: lib.id) }

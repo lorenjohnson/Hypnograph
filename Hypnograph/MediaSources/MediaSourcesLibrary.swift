@@ -71,10 +71,12 @@ final class MediaSourcesLibrary {
 
     /// Initialize from both folder paths AND Photos albums (combined sources)
     /// Set `includeAllPhotos` to true to include all items from Photos library
+    /// Use `customPhotosAssetIds` to include specific Photos assets by local identifier
     init(
         sourceFolders: [String],
-        photosAlbums: [PHAssetCollection],
+        photosAlbums: [PHAssetCollection] = [],
         includeAllPhotos: Bool = false,
+        customPhotosAssetIds: [String] = [],
         allowedMediaTypes: Set<SourceMediaType> = [.images, .videos]
     ) {
         self.allowedMediaTypes = allowedMediaTypes
@@ -95,7 +97,36 @@ final class MediaSourcesLibrary {
             }
         }
 
+        // Load custom-selected Photos assets
+        if !customPhotosAssetIds.isEmpty {
+            loadFromPhotosAssetIds(customPhotosAssetIds)
+        }
+
         print("MediaSourcesLibrary: combined library has \(sourceIndex.count) total sources")
+    }
+
+    /// Load specific Photos assets by their local identifiers
+    private func loadFromPhotosAssetIds(_ identifiers: [String]) {
+        guard ApplePhotos.shared.status.canRead else { return }
+
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: nil)
+        var results: [SourceEntry] = []
+
+        for i in 0..<assets.count {
+            let asset = assets.object(at: i)
+
+            switch asset.mediaType {
+            case .video where allowVideos:
+                results.append(SourceEntry(source: .photos(localIdentifier: asset.localIdentifier), mediaKind: .video))
+            case .image where allowImages:
+                results.append(SourceEntry(source: .photos(localIdentifier: asset.localIdentifier), mediaKind: .image))
+            default:
+                break
+            }
+        }
+
+        self.sourceIndex.append(contentsOf: results)
+        print("MediaSourcesLibrary: indexed \(results.count) assets from custom selection (\(identifiers.count) requested)")
     }
 
     /// Load all assets from the entire Photos library
