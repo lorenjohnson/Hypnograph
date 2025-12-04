@@ -411,6 +411,8 @@ final class RenderHookManager {
 
     /// Set flash solo to show only the specified source index
     func setFlashSolo(_ sourceIndex: Int?) {
+        // Only trigger effect change if the value actually changed
+        guard flashSoloIndex != sourceIndex else { return }
         flashSoloIndex = sourceIndex
         onEffectChanged?()
     }
