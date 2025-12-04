@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 import Combine
+import PhotosUI
 
 struct ContentView: View {
     @ObservedObject var state: HypnographState
@@ -59,6 +60,24 @@ struct ContentView: View {
         }
         .appNotifications()
         .background(Color.black)
+        .sheet(isPresented: $state.showPhotosPicker) {
+            PhotosPickerSheet(
+                isPresented: $state.showPhotosPicker,
+                preselectedIdentifiers: state.customPhotosAssetIds,
+                onSelection: { identifiers in
+                    state.setCustomPhotosAssets(identifiers)
+                    if identifiers.isEmpty {
+                        AppNotifications.shared.show("Custom Selection cleared", flash: true)
+                    } else {
+                        // Activate the custom selection library if it has items
+                        if !state.isLibraryActive(key: HypnographState.photosCustomKey) {
+                            state.toggleLibrary(key: HypnographState.photosCustomKey)
+                        }
+                        AppNotifications.shared.show("Custom Selection: \(identifiers.count) items", flash: true)
+                    }
+                }
+            )
+        }
     }
 }
 

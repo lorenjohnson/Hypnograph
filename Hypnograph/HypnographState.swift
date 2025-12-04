@@ -158,6 +158,9 @@ final class HypnographState: ObservableObject {
                   sourceIndex < self.recipe.sources.count else { return }
             self.recipe.sources[sourceIndex].blendMode = mode
         }
+
+        // Load custom photo selection from disk (must be after all properties initialized)
+        loadCustomSelectionFromDisk()
     }
 
     // MARK: - Convenience accessors (delegate to recipe)
@@ -431,11 +434,15 @@ final class HypnographState: ObservableObject {
         var folderPaths: [String] = []
         var photosAlbums: [PHAssetCollection] = []
         var includeAllPhotos = false
+        var includeCustomSelection = false
 
         for key in keys {
             if key == Self.photosAllItemsKey {
                 // Special case: include all items from Photos
                 includeAllPhotos = true
+            } else if key == Self.photosCustomKey {
+                // Special case: include custom-selected Photos assets
+                includeCustomSelection = true
             } else if key.hasPrefix("photos:") {
                 // It's a Photos album
                 let identifier = String(key.dropFirst("photos:".count))
@@ -464,6 +471,7 @@ final class HypnographState: ObservableObject {
             sourceFolders: folderPaths,
             photosAlbums: photosAlbums,
             includeAllPhotos: includeAllPhotos,
+            customPhotosAssetIds: includeCustomSelection ? customPhotosAssetIds : [],
             allowedMediaTypes: settings.sourceMediaTypes
         )
 
@@ -594,6 +602,16 @@ final class HypnographState: ObservableObject {
                 ))
             }
 
+            // Custom Selection (only show if there are selected assets)
+            if !customPhotosAssetIds.isEmpty {
+                infos.append(SourceLibraryInfo(
+                    id: Self.photosCustomKey,
+                    name: "Custom Selection",
+                    type: .applePhotos,
+                    assetCount: customPhotosAssetIds.count
+                ))
+            }
+
             // Dynamically list all user albums from Photos
             let userAlbums = ApplePhotos.shared.fetchUserAlbums()
             for album in userAlbums {
@@ -614,6 +632,66 @@ final class HypnographState: ObservableObject {
 
     /// Special key for "All Folders" (all folder libraries combined)
     static let foldersAllKey = "folders:all"
+
+    /// Special key for custom-selected Photos assets
+    static let photosCustomKey = "photos:custom"
+
+    // MARK: - Custom Photo Selection
+
+    /// Flag to trigger PhotosPicker presentation
+    @Published var showPhotosPicker = false
+
+    /// Storage for custom-selected Photos asset identifiers (per-module)
+    @Published private(set) var customPhotosAssetIds: [String] = []
+
+    /// Set the custom selection (replaces existing)
+    func setCustomPhotosAssets(_ identifiers: [String]) {
+        customPhotosAssetIds = identifiers
+
+        // Save to disk
+        saveCustomSelectionToDisk()
+
+        // Refresh available libraries to update count
+        Task {
+            await refreshAvailableLibraries()
+        }
+
+        print("HypnographState: Set custom selection to \(customPhotosAssetIds.count) assets")
+    }
+
+    /// Clear the custom selection
+    func clearCustomPhotosAssets() {
+        setCustomPhotosAssets([])
+    }
+
+    /// File URL for custom selection storage
+    private var customSelectionFileURL: URL {
+        Environment.appSupportDirectory
+            .appendingPathComponent("custom-photos-selection.json")
+    }
+
+    /// Load custom selection from disk
+    private func loadCustomSelectionFromDisk() {
+        guard FileManager.default.fileExists(atPath: customSelectionFileURL.path) else { return }
+
+        do {
+            let data = try Data(contentsOf: customSelectionFileURL)
+            customPhotosAssetIds = try JSONDecoder().decode([String].self, from: data)
+            print("HypnographState: Loaded \(customPhotosAssetIds.count) custom-selected assets")
+        } catch {
+            print("HypnographState: Failed to load custom selection: \(error)")
+        }
+    }
+
+    /// Save custom selection to disk
+    private func saveCustomSelectionToDisk() {
+        do {
+            let data = try JSONEncoder().encode(customPhotosAssetIds)
+            try data.write(to: customSelectionFileURL)
+        } catch {
+            print("HypnographState: Failed to save custom selection: \(error)")
+        }
+    }
 
     /// Save per-module library selections to settings file
     private func savePerModuleLibrariesToSettings() {
