@@ -393,6 +393,9 @@ final class Dream: ObservableObject {
     // MARK: - Lifecycle
 
     func new() {
+        // Clear frame buffer to prevent memory bloat from stored CIImages
+        state.renderHooks.clearFrameBuffer()
+
         // Clear image cache if it's getting large to prevent memory bloat
         let cacheSize = StillImageCache.cacheSize()
         if cacheSize.ciImages > 30 || cacheSize.cgImages > 30 {

@@ -66,6 +66,11 @@ struct MontagePlayerView: NSViewRepresentable {
             c.currentTask?.cancel()
             c.compositionID = newID
 
+            // Clear old player item references to allow memory to be freed
+            c.currentPlayerItem?.videoComposition = nil
+            c.currentPlayerItem = nil
+            c.currentVideoComposition = nil
+
             c.currentTask = Task {
                 let engine = RenderEngine()
                 let strategy: CompositionBuilder.TimelineStrategy = .montage(targetDuration: recipe.targetDuration)
