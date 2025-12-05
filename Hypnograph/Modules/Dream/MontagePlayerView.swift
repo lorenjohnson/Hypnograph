@@ -181,18 +181,10 @@ struct MontagePlayerView: NSViewRepresentable {
 
             if c.lastEffectsCounter != effectsChangeCounter {
                 c.lastEffectsCounter = effectsChangeCounter
-                if let playerItem = c.currentPlayerItem,
-                   let videoComposition = c.currentVideoComposition {
-                    // Re-assign video composition to force AVFoundation to invalidate cached frames
-                    // This triggers the compositor to re-render with updated effects/blend modes
-                    playerItem.videoComposition = nil
-                    playerItem.videoComposition = videoComposition
-
-                    // Also seek to current time to ensure the frame is displayed
-                    if isPaused, let player = c.player {
-                        let currentTime = player.currentTime()
-                        player.seek(to: currentTime, toleranceBefore: .zero, toleranceAfter: .zero)
-                    }
+                // Only force redraw when paused - while playing, compositor picks up changes naturally
+                if isPaused, let player = c.player {
+                    let currentTime = player.currentTime()
+                    player.seek(to: currentTime, toleranceBefore: .zero, toleranceAfter: .zero)
                 }
             }
         }

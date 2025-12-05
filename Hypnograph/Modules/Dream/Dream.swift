@@ -181,7 +181,7 @@ final class Dream: ObservableObject {
         // Keyboard hints
         items.append(.text("Shortcuts", order: 40, font: .subheadline))
         items.append(.text("R = Rotate | N = New clip | M = Blend", order: 41))
-        items.append(.text("E = Global effect | F = Source effect", order: 42))
+        items.append(.text("E = Global effect | F = Source effect | 0 = Clear", order: 42))
         items.append(.text("←/→ = Navigate | 1-9 = Jump to source", order: 43))
         items.append(.text("Space = New | Cmd-S = Save", order: 44))
         items.append(.text("` = Toggle Montage/Sequence", order: 45))
@@ -233,6 +233,7 @@ final class Dream: ObservableObject {
         Button("Clear All Effects") { [self] in
             clearAllEffects()
         }
+        .keyboardShortcut("0", modifiers: [])
 
         Divider()
 

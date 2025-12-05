@@ -138,14 +138,31 @@ extension RenderHook {
 enum Effect {
     /// All available effects (None is implicit, represented by nil)
     static let all: [RenderHook] = [
+        // Classics
         BlackAndWhiteLowHook(),
         BlackAndWhiteHighHook(),
         HueWobbleHook(),
         RGBSplitSimpleHook(offsetAmount: 15.0, animated: true),
-        ScanlinesHook(lineWidth: 6.0, intensity: 0.8),
-        PixelSortHook(intensity: 10.0),
-        DatamoshHook(intensity: 20.0),
-        DatamoshHook2(intensity: 0.6, blurAmount: 4.0, timeScale: 0.02)
+        // VHSDecayHook(intensity: 0.6),
+
+        // New temporal/destructive effects
+        // DatamoshHook3(intensity: 0.5, historyDepth: 8),
+        GhostBlurHook(intensity: 0.5, trailLength: 6, blurAmount: 8.0),
+        LuminanceRemovalHook(mode: .removeDark, threshold: 0.25, softness: 0.15),
+        LuminanceRemovalHook(mode: .removeLight, threshold: 0.75, softness: 0.15),
+        FrameDifferenceHook(originalBlend: 0.4, boost: 1.5),
+        // TemporalSmearHook(intensity: 0.5, lookback: 4),
+        ColorEchoHook(channelOffset: 3),
+        // EdgeDecayHook(intensity: 0.5),
+        // PosterizeDecayHook(levels: 6.0, decayAmount: 0.3),
+        // FeedbackLoopHook(scale: 0.96, rotation: 0.01, intensity: 0.4),
+        // SolarizeGlitchHook(intensity: 0.6, speed: 0.25)
+
+        // Disabled for now:
+        // ScanlinesHook(lineWidth: 6.0, intensity: 0.8),
+        // PixelSortHook(intensity: 10.0),
+        // DatamoshHook(intensity: 20.0),
+        // DatamoshHook2(intensity: 0.6, blurAmount: 4.0, timeScale: 0.02)
     ]
 
     /// Returns a random effect
@@ -265,6 +282,9 @@ final class RenderHookManager {
     }
 
     func cycleGlobalEffect() {
+        // Clear frame buffer so new effect starts fresh (prevents chunkiness)
+        frameBuffer.clear()
+
         // Find current index (-1 means None)
         let currentName = globalEffectName
         let currentIndex = Effect.all.firstIndex { $0.name == currentName } ?? -1
