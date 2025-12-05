@@ -317,15 +317,24 @@ final class HypnographState: ObservableObject {
     }
 
     /// Simple reset used by modes that want a clean slate.
-    func resetForNextHypnogram() {
+    /// Preserves the current global effect by default.
+    func resetForNextHypnogram(preserveGlobalEffect: Bool = true) {
+        // Preserve global effect before clearing
+        let savedEffects = preserveGlobalEffect ? effects : []
+
         sources.removeAll()
         effects.removeAll()
         currentSourceIndex = 0
         currentClipTimeOffset = nil
+
+        // Restore global effect if preserving
+        if preserveGlobalEffect {
+            effects = savedEffects
+        }
     }
 
     func newRandomHypnogram() {
-        resetForNextHypnogram()
+        resetForNextHypnogram(preserveGlobalEffect: true)
         let total = max(1, settings.maxSourcesForNew)
         let minCount = min(2, total)
         let count = Int.random(in: minCount...total)
