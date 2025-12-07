@@ -12,17 +12,31 @@ import CoreImage
 // MARK: - Frame Buffer
 
 /// Holds a circular buffer of recent frames for motion-based effects.
+/// Frames are "baked" to CGImage to prevent CIImage filter chain accumulation.
 final class FrameBuffer {
-    private var frames: [CIImage] = []
+    private var frames: [CGImage] = []
     private let maxFrames: Int
     private var lastTime: CMTime?
     private let queue = DispatchQueue(label: "FrameBuffer.queue")
+
+    /// CIContext for baking CIImages to CGImages (prevents filter chain accumulation)
+    private let ciContext: CIContext = {
+        if let device = MTLCreateSystemDefaultDevice() {
+            return CIContext(mtlDevice: device, options: [.cacheIntermediates: false])
+        }
+        return CIContext()
+    }()
 
     init(maxFrames: Int = 5) {
         self.maxFrames = maxFrames
     }
 
     func addFrame(_ image: CIImage, at time: CMTime) {
+        // Bake to CGImage outside the queue to avoid blocking
+        guard let cgImage = ciContext.createCGImage(image, from: image.extent) else {
+            return
+        }
+
         queue.sync {
             // Detect discontinuity (seek/loop) - clear buffer if time jumps backwards
             if let last = lastTime, time < last {
@@ -31,7 +45,7 @@ final class FrameBuffer {
             }
 
             lastTime = time
-            frames.append(image)
+            frames.append(cgImage)
             if frames.count > maxFrames {
                 frames.removeFirst()
             }
@@ -43,13 +57,14 @@ final class FrameBuffer {
         queue.sync {
             let index = frames.count - 1 - offset
             guard index >= 0, index < frames.count else { return nil }
-            return frames[index]
+            return CIImage(cgImage: frames[index])
         }
     }
 
     var currentFrame: CIImage? {
         queue.sync {
-            frames.last
+            guard let last = frames.last else { return nil }
+            return CIImage(cgImage: last)
         }
     }
 
@@ -81,7 +96,6 @@ final class FrameBuffer {
 struct RenderContext {
     let frameIndex: Int
     let time: CMTime
-    let isPreview: Bool
     let outputSize: CGSize
 
     /// Access to previous frames for motion-based effects
@@ -94,14 +108,12 @@ struct RenderContext {
     init(
         frameIndex: Int,
         time: CMTime,
-        isPreview: Bool,
         outputSize: CGSize,
         frameBuffer: FrameBuffer,
         sourceIndex: Int? = nil
     ) {
         self.frameIndex = frameIndex
         self.time = time
-        self.isPreview = isPreview
         self.outputSize = outputSize
         self.frameBuffer = frameBuffer
         self.sourceIndex = sourceIndex
@@ -124,11 +136,18 @@ protocol RenderHook {
 
     /// Apply effect to the current frame
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage
+
+    /// Reset internal state (call when switching montages/effects)
+    func reset()
 }
 
 extension RenderHook {
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         image
+    }
+
+    func reset() {
+        // Default: no-op for stateless hooks
     }
 }
 
@@ -139,30 +158,29 @@ enum Effect {
     /// All available effects (None is implicit, represented by nil)
     static let all: [RenderHook] = [
         // Classics
-        BlackAndWhiteLowHook(),
-        BlackAndWhiteHighHook(),
-        HueWobbleHook(),
+        BlackAndWhiteHook(contrast: 1.0),
         RGBSplitSimpleHook(offsetAmount: 15.0, animated: true),
-        // VHSDecayHook(intensity: 0.6),
 
-        // New temporal/destructive effects
-        // DatamoshHook3(intensity: 0.5, historyDepth: 8),
+        // Temporal/destructive effects
         GhostBlurHook(intensity: 0.5, trailLength: 6, blurAmount: 8.0),
-        LuminanceRemovalHook(mode: .removeDark, threshold: 0.25, softness: 0.15),
-        LuminanceRemovalHook(mode: .removeLight, threshold: 0.75, softness: 0.15),
-        FrameDifferenceHook(originalBlend: 0.4, boost: 1.5),
-        // TemporalSmearHook(intensity: 0.5, lookback: 4),
+        FrameDifferenceHook(originalBlend: 0.6, boost: 0.1),
         ColorEchoHook(channelOffset: 3),
-        // EdgeDecayHook(intensity: 0.5),
-        // PosterizeDecayHook(levels: 6.0, decayAmount: 0.3),
-        // FeedbackLoopHook(scale: 0.96, rotation: 0.01, intensity: 0.4),
-        // SolarizeGlitchHook(intensity: 0.6, speed: 0.25)
+        HoldFrameHook(),
 
-        // Disabled for now:
-        // ScanlinesHook(lineWidth: 6.0, intensity: 0.8),
-        // PixelSortHook(intensity: 10.0),
-        // DatamoshHook(intensity: 20.0),
-        // DatamoshHook2(intensity: 0.6, blurAmount: 4.0, timeScale: 0.02)
+        // Chained effects - compound combinations
+        ChainedHook(name: "Hold + Echo", hooks: [
+            HoldFrameHook(freezeInterval: 6.0, holdDuration: 3.0, trailBoost: 1.2),
+            ColorEchoHook(channelOffset: 2)
+        ]),
+        ChainedHook(name: "Diff + Echo", hooks: [
+            FrameDifferenceHook(originalBlend: 2.0, boost: 10.8),
+            ColorEchoHook(channelOffset: 3)
+        ]),
+        ChainedHook(name: "Hold + Ghost", hooks: [
+            HoldFrameHook(freezeInterval: 6.0, holdDuration: 10.0, trailBoost: 10.0),
+            GhostBlurHook(intensity: 0.2, trailLength: 10, blurAmount: 8.0),
+            BlackAndWhiteHook(contrast: 1.0)
+        ])
     ]
 
     /// Returns a random effect
@@ -180,6 +198,32 @@ final class RenderHookManager {
     /// Shared frame buffer that persists across frames
     /// 60 frames at 30fps = 2 seconds of history for temporal effects
     let frameBuffer = FrameBuffer(maxFrames: 60)
+
+    /// Global frame counter - increments each frame, persists across video loops
+    /// Used by temporal effects that need consistent timing
+    private(set) var globalFrameIndex: Int = 0
+
+    /// Increment frame counter and return current value
+    func nextFrameIndex() -> Int {
+        let current = globalFrameIndex
+        globalFrameIndex += 1
+        return current
+    }
+
+    /// Reset frame counter (call when switching montages or effects)
+    func resetFrameIndex() {
+        globalFrameIndex = 0
+    }
+
+    /// Create a manager for export with a frozen recipe
+    /// Uses same code paths as preview but with isolated state
+    static func forExport(recipe: HypnogramRecipe) -> RenderHookManager {
+        let manager = RenderHookManager()
+        manager.recipeProvider = { recipe }
+        // No setters needed - export is read-only
+        // flashSoloIndex stays nil - export renders all layers
+        return manager
+    }
 
     /// Flash solo: when set, only this source index is rendered (others hidden)
     /// Used for brief visual feedback when switching layers in montage mode
@@ -282,8 +326,9 @@ final class RenderHookManager {
     }
 
     func cycleGlobalEffect() {
-        // Clear frame buffer so new effect starts fresh (prevents chunkiness)
+        // Clear frame buffer and reset frame counter so new effect starts fresh
         frameBuffer.clear()
+        resetFrameIndex()
 
         // Find current index (-1 means None)
         let currentName = globalEffectName
@@ -368,6 +413,19 @@ final class RenderHookManager {
 
     func clearFrameBuffer() {
         frameBuffer.clear()
+        resetFrameIndex()
+
+        // Reset all effects that have internal state (HoldFrameHook, etc.)
+        if let recipe = recipeProvider?() {
+            for effect in recipe.effects {
+                effect.reset()
+            }
+            for source in recipe.sources {
+                for effect in source.effects {
+                    effect.reset()
+                }
+            }
+        }
     }
 
     // MARK: - Blend Modes (reads from recipe sources)

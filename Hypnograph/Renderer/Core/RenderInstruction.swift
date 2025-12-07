@@ -42,6 +42,9 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
     /// Still images for layers that are images (indexed by layer, nil for video layers)
     let stillImages: [CIImage?]
 
+    /// Snapshot of recipe for export (nil = use GlobalRenderHooks.manager for live preview)
+    let recipeSnapshot: HypnogramRecipe?
+
     // MARK: - Initialization
 
     init(
@@ -51,7 +54,8 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
         transforms: [CGAffineTransform],
         sourceIndices: [Int],
         enableEffects: Bool = false,
-        stillImages: [CIImage?] = []
+        stillImages: [CIImage?] = [],
+        recipeSnapshot: HypnogramRecipe? = nil
     ) {
         self.timeRange = timeRange
         self.layerTrackIDs = layerTrackIDs
@@ -60,6 +64,7 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
         self.sourceIndices = sourceIndices
         self.enableEffects = enableEffects
         self.stillImages = stillImages
+        self.recipeSnapshot = recipeSnapshot
 
         // Required track IDs for AVFoundation
         // Must wrap CMPersistentTrackID as NSNumber

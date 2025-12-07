@@ -106,14 +106,15 @@ final class RenderEngine {
 
         print("🎬 RenderEngine.export: Starting export to \(outputURL.lastPathComponent)...")
 
-        // Build composition for export (effects baked into recipe, not from live GlobalRenderHooks)
+        // Build composition for export (effects baked into recipe snapshot, not from live GlobalRenderHooks)
         let builder = CompositionBuilder()
         let buildResult = await builder.build(
             recipe: recipe,
             strategy: strategy,
             outputSize: config.outputSize,
             frameRate: config.frameRate,
-            enableEffects: config.enableGlobalHooks  // false for export - use baked-in blend modes
+            enableEffects: config.enableGlobalHooks,
+            isExport: true  // Bake recipe snapshot into instructions
         )
 
         guard case .success(let build) = buildResult else {

@@ -33,13 +33,14 @@ final class CompositionBuilder {
     private let sourceLoader = SourceLoader()
     
     // MARK: - Build
-    
+
     func build(
         recipe: HypnogramRecipe,
         strategy: TimelineStrategy,
         outputSize: CGSize,
         frameRate: Int = 30,
-        enableEffects: Bool = true  // Enable effects by default (can disable for export if needed)
+        enableEffects: Bool = true,
+        isExport: Bool = false  // When true, bakes recipe snapshot into instructions
     ) async -> Result<BuildResult, RenderError> {
 
         // Building logging removed to reduce noise
@@ -61,14 +62,16 @@ final class CompositionBuilder {
                 targetDuration: targetDuration,
                 outputSize: outputSize,
                 frameRate: frameRate,
-                enableEffects: enableEffects
+                enableEffects: enableEffects,
+                isExport: isExport
             )
         case .sequence:
             return await buildSequence(
                 recipe: recipe,
                 outputSize: outputSize,
                 frameRate: frameRate,
-                enableEffects: enableEffects
+                enableEffects: enableEffects,
+                isExport: isExport
             )
         }
     }
@@ -80,7 +83,8 @@ final class CompositionBuilder {
         targetDuration: CMTime,
         outputSize: CGSize,
         frameRate: Int,
-        enableEffects: Bool
+        enableEffects: Bool,
+        isExport: Bool
     ) async -> Result<BuildResult, RenderError> {
 
         // Load all sources
@@ -209,7 +213,7 @@ final class CompositionBuilder {
             composition.insertEmptyTimeRange(CMTimeRange(start: .zero, duration: targetDuration))
         }
 
-        // Create instruction
+        // Create instruction - pass recipe snapshot for export so live changes don't affect it
         let instruction = RenderInstruction(
             timeRange: CMTimeRange(start: .zero, duration: targetDuration),
             layerTrackIDs: trackIDs,
@@ -217,7 +221,8 @@ final class CompositionBuilder {
             transforms: transforms,
             sourceIndices: sourceIndices,
             enableEffects: enableEffects,
-            stillImages: stillImages
+            stillImages: stillImages,
+            recipeSnapshot: isExport ? recipe : nil
         )
 
         // Create video composition
@@ -259,7 +264,8 @@ final class CompositionBuilder {
         recipe: HypnogramRecipe,
         outputSize: CGSize,
         frameRate: Int,
-        enableEffects: Bool
+        enableEffects: Bool,
+        isExport: Bool
     ) async -> Result<BuildResult, RenderError> {
 
         // Load all sources (track original index for correct seeking)
@@ -329,9 +335,10 @@ final class CompositionBuilder {
                     layerTrackIDs: [videoTrack.trackID],
                     blendModes: [BlendMode.sourceOver],
                     transforms: [composedTransform],
-                    sourceIndices: [originalIndex],  // Use original recipe index for correct seeking
+                    sourceIndices: [originalIndex],
                     enableEffects: enableEffects,
-                    stillImages: [loaded.ciImage]
+                    stillImages: [loaded.ciImage],
+                    recipeSnapshot: isExport ? recipe : nil
                 )
                 instructions.append(instruction)
             } else {
@@ -364,9 +371,10 @@ final class CompositionBuilder {
                     layerTrackIDs: [videoTrack.trackID],
                     blendModes: [BlendMode.sourceOver],
                     transforms: [composedTransform],
-                    sourceIndices: [originalIndex],  // Use original recipe index for correct seeking
+                    sourceIndices: [originalIndex],
                     enableEffects: enableEffects,
-                    stillImages: [nil]
+                    stillImages: [nil],
+                    recipeSnapshot: isExport ? recipe : nil
                 )
                 instructions.append(instruction)
             }

@@ -104,7 +104,6 @@ final class MetalImageView: NSView {
         self.processingConfig = ProcessingConfig(
             outputSize: mtkView.drawableSize,
             time: .zero,
-            isPreview: true,
             enableEffects: enableEffects
         )
 
@@ -144,7 +143,6 @@ extension MetalImageView: MTKViewDelegate {
             processingConfig = ProcessingConfig(
                 outputSize: size,
                 time: config.time,
-                isPreview: config.isPreview,
                 enableEffects: config.enableEffects
             )
         }
@@ -181,7 +179,6 @@ extension MetalImageView: MTKViewDelegate {
         var updatedConfig = ProcessingConfig(
             outputSize: contentSize,
             time: config.time,
-            isPreview: config.isPreview,
             enableEffects: config.enableEffects
         )
 
@@ -190,7 +187,6 @@ extension MetalImageView: MTKViewDelegate {
             updatedConfig = ProcessingConfig(
                 outputSize: contentSize,
                 time: CMTime(seconds: elapsed, preferredTimescale: 600),
-                isPreview: config.isPreview,
                 enableEffects: config.enableEffects
             )
         }
