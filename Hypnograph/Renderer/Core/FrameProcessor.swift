@@ -35,18 +35,15 @@ struct LayerInput {
 struct ProcessingConfig {
     let outputSize: CGSize
     let time: CMTime
-    let isPreview: Bool
     let enableEffects: Bool
-    
+
     init(
         outputSize: CGSize,
         time: CMTime = .zero,
-        isPreview: Bool = true,
         enableEffects: Bool = true
     ) {
         self.outputSize = outputSize
         self.time = time
-        self.isPreview = isPreview
         self.enableEffects = enableEffects
     }
 }
@@ -83,7 +80,6 @@ final class FrameProcessor {
             var context = RenderContext(
                 frameIndex: 0,
                 time: config.time,
-                isPreview: config.isPreview,
                 outputSize: config.outputSize,
                 frameBuffer: manager.frameBuffer,
                 sourceIndex: sourceIndex
@@ -96,7 +92,6 @@ final class FrameProcessor {
             var context = RenderContext(
                 frameIndex: 0,
                 time: config.time,
-                isPreview: config.isPreview,
                 outputSize: config.outputSize,
                 frameBuffer: manager.frameBuffer
             )
@@ -142,7 +137,6 @@ final class FrameProcessor {
                 var context = RenderContext(
                     frameIndex: 0,
                     time: config.time,
-                    isPreview: config.isPreview,
                     outputSize: config.outputSize,
                     frameBuffer: manager.frameBuffer,
                     sourceIndex: layer.sourceIndex
@@ -186,7 +180,6 @@ final class FrameProcessor {
             var context = RenderContext(
                 frameIndex: 0,
                 time: config.time,
-                isPreview: config.isPreview,
                 outputSize: config.outputSize,
                 frameBuffer: manager.frameBuffer
             )

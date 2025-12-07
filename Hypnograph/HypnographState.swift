@@ -319,6 +319,9 @@ final class HypnographState: ObservableObject {
     /// Simple reset used by modes that want a clean slate.
     /// Preserves the current global effect by default.
     func resetForNextHypnogram(preserveGlobalEffect: Bool = true) {
+        // Clear frame buffer to prevent ghost frames from previous montage
+        renderHooks.clearFrameBuffer()
+
         // Preserve global effect before clearing
         let savedEffects = preserveGlobalEffect ? effects : []
 

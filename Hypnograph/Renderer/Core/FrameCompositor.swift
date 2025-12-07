@@ -28,6 +28,10 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
     }()
     private let renderQueue = DispatchQueue(label: "com.hypnograph.framecompositor", qos: .userInteractive)
 
+    // Export manager - created lazily when first export frame is rendered
+    // Uses same code path as preview, just with frozen recipe and isolated state
+    private var exportManager: RenderHookManager?
+
     // MARK: - Initialization
 
     override init() {
@@ -92,14 +96,30 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
             height: CVPixelBufferGetHeight(outputBuffer)
         )
 
+        // Get the manager: preview uses global shared manager, export uses dedicated manager
+        let isExport = instruction.recipeSnapshot != nil
+        let manager: RenderHookManager?
+        if isExport {
+            // Create export manager on first frame (lazy, with frozen recipe)
+            if exportManager == nil, let recipe = instruction.recipeSnapshot {
+                exportManager = RenderHookManager.forExport(recipe: recipe)
+            }
+            manager = exportManager
+        } else {
+            manager = GlobalRenderHooks.manager
+        }
+
+        // Both paths now use the same manager interface
+        let frameIndex = manager?.nextFrameIndex() ?? 0
+
         // Composite all layers
         var composited: CIImage?
 
         for (index, trackID) in instruction.layerTrackIDs.enumerated() {
-            // Check flash solo - skip layers that shouldn't be rendered
-            if instruction.enableEffects,
-               let manager = GlobalRenderHooks.manager,
-               !manager.shouldRenderSource(at: instruction.sourceIndices[index]) {
+            let sourceIndex = instruction.sourceIndices[index]
+
+            // Check flash solo - skip layers that shouldn't be rendered (preview only)
+            if let manager = manager, !manager.shouldRenderSource(at: sourceIndex) {
                 continue
             }
 
@@ -118,7 +138,6 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
             }
 
             guard var img = layerImage else {
-                // No image for layer - skip silently
                 continue
             }
 
@@ -129,44 +148,45 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
             // Aspect-fill to output size (handles origin normalization internally)
             img = ImageUtils.aspectFill(image: img, to: outputSize)
 
-            // Apply per-source effects if enabled
-            if instruction.enableEffects, let manager = GlobalRenderHooks.manager {
-                let sourceIndex = instruction.sourceIndices[index]
-                var sourceContext = RenderContext(
-                    frameIndex: 0,
-                    time: request.compositionTime,
-                    isPreview: true,
-                    outputSize: outputSize,
-                    frameBuffer: manager.frameBuffer
-                )
-                img = manager.applyToSource(
-                    sourceIndex: sourceIndex,
-                    context: &sourceContext,
-                    image: img
-                )
+            // Apply per-source effects from recipe
+            if instruction.enableEffects, let manager = manager {
+                let recipe = manager.recipeProvider?()
+                if let recipe = recipe, sourceIndex < recipe.sources.count {
+                    let effects = recipe.sources[sourceIndex].effects
+                    if !effects.isEmpty {
+                        var sourceContext = RenderContext(
+                            frameIndex: frameIndex,
+                            time: request.compositionTime,
+                            outputSize: outputSize,
+                            frameBuffer: manager.frameBuffer
+                        )
+                        for effect in effects {
+                            img = effect.willRenderFrame(&sourceContext, image: img)
+                        }
+                    }
+                }
             }
 
             // Blend with previous layers
             if let base = composited {
-                // Get blend mode from manager if available (for dynamic changes),
-                // otherwise fall back to instruction (for export)
+                // Get blend mode from recipe
                 let blendMode: String
-                let opacity: CGFloat
+                let recipe = manager?.recipeProvider?()
 
-                if instruction.enableEffects,
-                   let manager = GlobalRenderHooks.manager {
-                    let sourceIndex = instruction.sourceIndices[index]
-                    blendMode = manager.blendMode(for: sourceIndex)
-                    // Get compensated opacity from normalization strategy
-                    opacity = manager.compensatedOpacity(
-                        layerIndex: index,
-                        totalLayers: instruction.layerTrackIDs.count,
-                        blendMode: blendMode
-                    )
+                if let recipe = recipe, sourceIndex < recipe.sources.count {
+                    blendMode = sourceIndex == 0
+                        ? BlendMode.sourceOver
+                        : (recipe.sources[sourceIndex].blendMode ?? BlendMode.defaultMontage)
                 } else {
                     blendMode = instruction.blendModes[index]
-                    opacity = 1.0  // No compensation during export (baked in)
                 }
+
+                // Get compensated opacity from manager (same for preview and export)
+                let opacity = manager?.compensatedOpacity(
+                    layerIndex: index,
+                    totalLayers: instruction.layerTrackIDs.count,
+                    blendMode: blendMode
+                ) ?? 1.0
 
                 img = ImageUtils.blend(layer: img, over: base, mode: blendMode, opacity: opacity)
                 composited = img
@@ -181,29 +201,29 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
             return
         }
 
-        // Apply blend normalization (after compositing, before global effects)
-        if instruction.enableEffects, let manager = GlobalRenderHooks.manager {
+        // Apply blend normalization (same for preview and export)
+        if let manager = manager {
             finalImage = manager.applyNormalization(to: finalImage)
         }
 
-        // Apply global effects if enabled
-        if instruction.enableEffects, let manager = GlobalRenderHooks.manager {
-            var context = RenderContext(
-                frameIndex: 0,
-                time: request.compositionTime,
-                isPreview: true,
-                outputSize: outputSize,
-                frameBuffer: manager.frameBuffer
-            )
-
-            let effectResult = manager.applyGlobal(to: &context, image: finalImage)
-            if !effectResult.extent.isEmpty {
-                finalImage = effectResult
+        // Apply global effects from recipe
+        if instruction.enableEffects, let manager = manager {
+            let recipe = manager.recipeProvider?()
+            if let recipe = recipe, !recipe.effects.isEmpty {
+                var context = RenderContext(
+                    frameIndex: frameIndex,
+                    time: request.compositionTime,
+                    outputSize: outputSize,
+                    frameBuffer: manager.frameBuffer
+                )
+                for effect in recipe.effects {
+                    finalImage = effect.willRenderFrame(&context, image: finalImage)
+                }
             }
         }
 
-        // Store the final composited frame in the frame buffer for snapshots
-        if instruction.enableEffects, let manager = GlobalRenderHooks.manager {
+        // Store frame in buffer
+        if let manager = manager {
             manager.frameBuffer.addFrame(finalImage, at: request.compositionTime)
         }
 
