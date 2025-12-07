@@ -15,6 +15,9 @@ import CoreGraphics
 final class HoldFrameHook: RenderHook {
     var name: String { "Hold Frame" }
 
+    /// Light temporal needs - just tracks its own frozen frame
+    var requiredLookback: Int { 5 }
+
     // MARK: - Configuration
 
     /// Base interval between freezes (seconds)

@@ -14,13 +14,16 @@ import CoreGraphics
 /// Great for creating ghostly motion trails on dark backgrounds
 struct FrameDifferenceHook: RenderHook {
     var name: String { "Frame Difference" }
-    
+
+    /// Only needs previous frame for comparison
+    var requiredLookback: Int { 2 }
+
     /// How much original image to blend back (0.0 = pure difference, 1.0 = mostly original)
     let originalBlend: Float
-    
+
     /// Boost the difference signal
     let boost: Float
-    
+
     init(originalBlend: Float = 0.3, boost: Float = 2.0) {
         self.originalBlend = originalBlend
         self.boost = boost

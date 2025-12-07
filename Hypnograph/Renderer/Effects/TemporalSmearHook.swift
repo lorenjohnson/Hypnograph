@@ -14,13 +14,16 @@ import CoreGraphics
 /// Creates painterly streaks in the direction of motion
 struct TemporalSmearHook: RenderHook {
     var name: String { "Temporal Smear" }
-    
+
+    /// Needs lookback frames of history
+    var requiredLookback: Int { lookback + 1 }
+
     /// Smear intensity (0.0 = subtle, 1.0 = extreme)
     let intensity: Float
-    
+
     /// How far back to sample for motion
     let lookback: Int
-    
+
     init(intensity: Float = 0.6, lookback: Int = 4) {
         self.intensity = intensity
         self.lookback = lookback

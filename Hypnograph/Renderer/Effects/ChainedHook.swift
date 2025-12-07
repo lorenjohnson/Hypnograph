@@ -16,6 +16,11 @@ final class ChainedHook: RenderHook {
     /// Display name for the chain
     let name: String
 
+    /// Maximum lookback of any hook in the chain
+    var requiredLookback: Int {
+        hooks.map { $0.requiredLookback }.max() ?? 0
+    }
+
     /// The hooks to apply in order
     private let hooks: [RenderHook]
 

@@ -16,16 +16,9 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
 
     // MARK: - Properties
 
-    private let renderContext: CIContext = {
-        // Use Metal for GPU-accelerated rendering
-        if let device = MTLCreateSystemDefaultDevice() {
-            return CIContext(mtlDevice: device, options: [
-                .cacheIntermediates: false,
-                .priorityRequestLow: false
-            ])
-        }
-        return CIContext()
-    }()
+    /// Use shared CIContext for GPU-efficient rendering (no duplicate Metal contexts)
+    private var ciContext: CIContext { SharedRenderer.ciContext }
+
     private let renderQueue = DispatchQueue(label: "com.hypnograph.framecompositor", qos: .userInteractive)
 
     // Export manager - created lazily when first export frame is rendered
@@ -228,7 +221,7 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
         }
 
         // Render to output buffer
-        renderContext.render(finalImage, to: outputBuffer)
+        ciContext.render(finalImage, to: outputBuffer)
 
         // Finish request
         request.finish(withComposedVideoFrame: outputBuffer)

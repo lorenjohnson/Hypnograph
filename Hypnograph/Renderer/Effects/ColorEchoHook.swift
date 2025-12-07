@@ -16,6 +16,9 @@ import CoreGraphics
 struct ColorEchoHook: RenderHook {
     var name: String { "Color Echo" }
 
+    /// Needs 2x channel offset frames (blue channel is furthest back)
+    var requiredLookback: Int { channelOffset * 2 + 1 }
+
     /// Frame offset between channels
     let channelOffset: Int
 
