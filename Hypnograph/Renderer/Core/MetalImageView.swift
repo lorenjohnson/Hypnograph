@@ -13,13 +13,14 @@ import AppKit
 
 /// NSView wrapper for MTKView that displays CIImages with effects
 final class MetalImageView: NSView {
-    
+
     private let mtkView: MTKView
-    private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
-    private let ciContext: CIContext
     private let frameProcessor: FrameProcessor
-    
+
+    /// Use shared CIContext for GPU efficiency
+    private var ciContext: CIContext { SharedRenderer.ciContext }
+
     /// Current image to display (before processing)
     private var sourceImage: CIImage?
 
@@ -34,31 +35,26 @@ final class MetalImageView: NSView {
 
     /// Processing configuration
     private var processingConfig: ProcessingConfig?
-    
+
     /// Display link for animation (effects that change over time)
     private var displayLink: CVDisplayLink?
     private var isAnimating = false
-    
+
     /// Time tracking for animated effects
     private var startTime: CFTimeInterval = 0
-    
+
     override init(frame frameRect: NSRect) {
-        guard let device = MTLCreateSystemDefaultDevice(),
+        guard let device = SharedRenderer.metalDevice,
               let commandQueue = device.makeCommandQueue() else {
             fatalError("Metal is not supported on this device")
         }
-        
-        self.device = device
+
         self.commandQueue = commandQueue
-        self.ciContext = CIContext(mtlDevice: device, options: [
-            .useSoftwareRenderer: false,
-            .priorityRequestLow: false
-        ])
-        self.frameProcessor = FrameProcessor(ciContext: ciContext)
+        self.frameProcessor = FrameProcessor()
         self.mtkView = MTKView(frame: frameRect, device: device)
-        
+
         super.init(frame: frameRect)
-        
+
         setupMTKView()
     }
     

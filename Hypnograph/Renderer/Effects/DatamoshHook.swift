@@ -14,6 +14,9 @@ import CoreGraphics
 struct DatamoshHook: RenderHook {
     var name: String { "Datamosh" }
 
+    /// Needs deep history for chaotic frame selection (up to full buffer)
+    var requiredLookback: Int { 60 }
+
     /// Intensity of the effect (0.0 = subtle, 1.0 = extreme)
     let intensity: Float
 

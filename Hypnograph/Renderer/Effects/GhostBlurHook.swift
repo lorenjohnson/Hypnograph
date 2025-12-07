@@ -14,16 +14,19 @@ import CoreGraphics
 /// Each older frame is more blurred, creating smooth ethereal motion
 struct GhostBlurHook: RenderHook {
     var name: String { "Ghost Blur" }
-    
+
+    /// Needs trailLength frames of history
+    var requiredLookback: Int { trailLength + 1 }
+
     /// Overall intensity of the ghosting (0.0 = subtle, 1.0 = heavy)
     let intensity: Float
-    
+
     /// How many frames back to sample for ghost trails
     let trailLength: Int
-    
+
     /// Base blur amount (multiplied by frame age)
     let blurAmount: CGFloat
-    
+
     init(intensity: Float = 0.5, trailLength: Int = 6, blurAmount: CGFloat = 8.0) {
         self.intensity = intensity
         self.trailLength = trailLength

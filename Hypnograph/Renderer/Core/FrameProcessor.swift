@@ -51,14 +51,12 @@ struct ProcessingConfig {
 /// Unified frame processor - handles all CIImage processing
 /// Used by both preview (MTKView, AVPlayer) and export (AVAssetWriter)
 final class FrameProcessor {
-    
-    private let ciContext: CIContext
-    
-    init(ciContext: CIContext? = nil) {
-        self.ciContext = ciContext ?? CIContext(options: [
-            .useSoftwareRenderer: false,
-            .priorityRequestLow: false
-        ])
+
+    /// Use shared CIContext for GPU efficiency (avoids duplicate Metal contexts)
+    private var ciContext: CIContext { SharedRenderer.ciContext }
+
+    init() {
+        // No setup needed - uses shared context
     }
     
     // MARK: - Single Layer Processing

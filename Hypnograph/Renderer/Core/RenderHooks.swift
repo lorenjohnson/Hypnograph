@@ -8,84 +8,241 @@
 import CoreGraphics
 import CoreMedia
 import CoreImage
+import CoreVideo
+import Metal
+
+// MARK: - Shared Renderer
+
+/// Shared Metal device and CIContext for efficient GPU resource reuse
+enum SharedRenderer {
+    static let metalDevice: MTLDevice? = MTLCreateSystemDefaultDevice()
+
+    /// Shared CIContext for all rendering - Metal-backed, no intermediate caching
+    static let ciContext: CIContext = {
+        if let device = metalDevice {
+            return CIContext(mtlDevice: device, options: [
+                .cacheIntermediates: false,
+                .priorityRequestLow: false
+            ])
+        }
+        return CIContext(options: [.cacheIntermediates: false])
+    }()
+}
 
 // MARK: - Frame Buffer
 
-/// Holds a circular buffer of recent frames for motion-based effects.
-/// Frames are "baked" to CGImage to prevent CIImage filter chain accumulation.
+/// GPU-efficient ring buffer for temporal effects.
+/// Stores CVPixelBuffers backed by IOSurface for zero-copy GPU access.
+/// Supports up to 120 frames (~4 seconds at 30fps) for advanced datamosh/AI effects.
 final class FrameBuffer {
-    private var frames: [CGImage] = []
-    private let maxFrames: Int
+
+    // MARK: - Configuration
+
+    /// Maximum buffer capacity (default 120 for full datamosh/AI support)
+    let maxFrames: Int
+
+    /// Current active capacity (can be reduced for lighter effects)
+    private(set) var activeCapacity: Int
+
+    // MARK: - Storage
+
+    /// Ring buffer of pixel buffers (IOSurface-backed for GPU sharing)
+    private var buffers: [CVPixelBuffer?]
+
+    /// Write position in the ring buffer
+    private var writeIndex: Int = 0
+
+    /// Number of valid frames currently stored
+    private var validCount: Int = 0
+
+    /// Last frame time for discontinuity detection
     private var lastTime: CMTime?
+
+    /// Thread-safe access
     private let queue = DispatchQueue(label: "FrameBuffer.queue")
 
-    /// CIContext for baking CIImages to CGImages (prevents filter chain accumulation)
-    private let ciContext: CIContext = {
-        if let device = MTLCreateSystemDefaultDevice() {
-            return CIContext(mtlDevice: device, options: [.cacheIntermediates: false])
-        }
-        return CIContext()
-    }()
+    /// Pixel buffer pool for efficient allocation
+    private var pixelBufferPool: CVPixelBufferPool?
 
-    init(maxFrames: Int = 5) {
+    /// Current buffer dimensions
+    private var bufferWidth: Int = 0
+    private var bufferHeight: Int = 0
+
+    // MARK: - Init
+
+    /// Initialize with maximum capacity
+    /// - Parameter maxFrames: Maximum frames to store (default 120 for ~4s at 30fps)
+    init(maxFrames: Int = 120) {
         self.maxFrames = maxFrames
+        self.activeCapacity = maxFrames
+        self.buffers = Array(repeating: nil, count: maxFrames)
     }
 
-    func addFrame(_ image: CIImage, at time: CMTime) {
-        // Bake to CGImage outside the queue to avoid blocking
-        guard let cgImage = ciContext.createCGImage(image, from: image.extent) else {
+    // MARK: - Pool Management
+
+    /// Create or recreate the pixel buffer pool for the given dimensions
+    private func ensurePool(width: Int, height: Int) {
+        if bufferWidth == width && bufferHeight == height && pixelBufferPool != nil {
             return
         }
+
+        bufferWidth = width
+        bufferHeight = height
+
+        let poolAttributes: [String: Any] = [
+            kCVPixelBufferPoolMinimumBufferCountKey as String: maxFrames
+        ]
+
+        let pixelBufferAttributes: [String: Any] = [
+            kCVPixelBufferWidthKey as String: width,
+            kCVPixelBufferHeightKey as String: height,
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:],  // Enable IOSurface backing
+            kCVPixelBufferMetalCompatibilityKey as String: true
+        ]
+
+        var pool: CVPixelBufferPool?
+        let status = CVPixelBufferPoolCreate(
+            kCFAllocatorDefault,
+            poolAttributes as CFDictionary,
+            pixelBufferAttributes as CFDictionary,
+            &pool
+        )
+
+        if status == kCVReturnSuccess {
+            pixelBufferPool = pool
+        } else {
+            print("⚠️ FrameBuffer: Failed to create pixel buffer pool: \(status)")
+            pixelBufferPool = nil
+        }
+    }
+
+    /// Get a pixel buffer from the pool
+    private func getPooledBuffer() -> CVPixelBuffer? {
+        guard let pool = pixelBufferPool else { return nil }
+
+        var pixelBuffer: CVPixelBuffer?
+        let status = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pixelBuffer)
+
+        if status != kCVReturnSuccess {
+            print("⚠️ FrameBuffer: Failed to get buffer from pool: \(status)")
+            return nil
+        }
+
+        return pixelBuffer
+    }
+
+    // MARK: - Frame Operations
+
+    /// Add a frame to the buffer
+    /// - Parameters:
+    ///   - image: The CIImage to store
+    ///   - time: Frame timestamp (for discontinuity detection)
+    func addFrame(_ image: CIImage, at time: CMTime) {
+        let extent = image.extent
+        guard extent.width > 0, extent.height > 0 else { return }
+
+        let width = Int(extent.width)
+        let height = Int(extent.height)
 
         queue.sync {
             // Detect discontinuity (seek/loop) - clear buffer if time jumps backwards
             if let last = lastTime, time < last {
-                // Time went backwards - video looped or seeked
-                frames.removeAll()
+                clearInternal()
             }
-
             lastTime = time
-            frames.append(cgImage)
-            if frames.count > maxFrames {
-                frames.removeFirst()
-            }
+
+            // Ensure pool is configured for current dimensions
+            ensurePool(width: width, height: height)
+
+            // Get a buffer from the pool
+            guard let pixelBuffer = getPooledBuffer() else { return }
+
+            // Render CIImage directly to the pixel buffer (GPU-efficient)
+            SharedRenderer.ciContext.render(
+                image,
+                to: pixelBuffer,
+                bounds: extent,
+                colorSpace: CGColorSpaceCreateDeviceRGB()
+            )
+
+            // Store in ring buffer
+            buffers[writeIndex] = pixelBuffer
+            writeIndex = (writeIndex + 1) % activeCapacity
+            validCount = min(validCount + 1, activeCapacity)
         }
     }
 
-    /// Get previous frame (offset: 1 = previous, 2 = two frames ago, etc.)
+    /// Get previous frame as CIImage (offset: 1 = previous, 2 = two frames ago, etc.)
     func previousFrame(offset: Int = 1) -> CIImage? {
         queue.sync {
-            let index = frames.count - 1 - offset
-            guard index >= 0, index < frames.count else { return nil }
-            return CIImage(cgImage: frames[index])
+            guard offset > 0, offset <= validCount else { return nil }
+
+            // Calculate read position (writeIndex - 1 is most recent)
+            let readIndex = (writeIndex - offset + activeCapacity) % activeCapacity
+
+            guard let pixelBuffer = buffers[readIndex] else { return nil }
+
+            // Wrap CVPixelBuffer in CIImage (zero-copy - shares IOSurface)
+            return CIImage(cvPixelBuffer: pixelBuffer)
         }
     }
 
+    /// Get the most recently added frame
     var currentFrame: CIImage? {
         queue.sync {
-            guard let last = frames.last else { return nil }
-            return CIImage(cgImage: last)
+            guard validCount > 0 else { return nil }
+            let readIndex = (writeIndex - 1 + activeCapacity) % activeCapacity
+            guard let pixelBuffer = buffers[readIndex] else { return nil }
+            return CIImage(cvPixelBuffer: pixelBuffer)
         }
     }
 
-    /// Check if buffer is filled to minimum capacity
+    /// Check if buffer has minimum frames for temporal effects
     var isFilled: Bool {
         queue.sync {
-            frames.count >= min(3, maxFrames) // Need at least 3 frames for good temporal effects
+            validCount >= min(3, activeCapacity)
         }
     }
 
-    /// Number of frames currently in the buffer
+    /// Number of valid frames currently stored
     var frameCount: Int {
+        queue.sync { validCount }
+    }
+
+    /// Clear all stored frames
+    func clear() {
+        queue.sync { clearInternal() }
+    }
+
+    private func clearInternal() {
+        for i in 0..<buffers.count {
+            buffers[i] = nil
+        }
+        writeIndex = 0
+        validCount = 0
+        lastTime = nil
+    }
+
+    // MARK: - Capacity Control
+
+    /// Set active capacity (for effects that need fewer frames)
+    /// - Parameter capacity: New capacity (clamped to maxFrames)
+    func setActiveCapacity(_ capacity: Int) {
         queue.sync {
-            frames.count
+            let newCapacity = min(max(1, capacity), maxFrames)
+            if newCapacity != activeCapacity {
+                // Clear and resize
+                clearInternal()
+                activeCapacity = newCapacity
+            }
         }
     }
 
-    func clear() {
+    /// Memory estimate in bytes
+    var estimatedMemoryUsage: Int {
         queue.sync {
-            frames.removeAll()
-            lastTime = nil
+            validCount * bufferWidth * bufferHeight * 4  // 4 bytes per BGRA pixel
         }
     }
 }
@@ -134,6 +291,16 @@ protocol RenderHook {
     /// Display name for UI
     var name: String { get }
 
+    /// Number of past frames this effect needs access to.
+    /// Used for buffer sizing and effect filtering by capability.
+    ///
+    /// Guidelines:
+    /// - 0: No temporal dependency (pure per-frame effects)
+    /// - 1-10: Simple temporal effects (frame diff, hold frame)
+    /// - 10-40: Ghost trails, smear, basic datamosh
+    /// - 40-120: Advanced datamosh, block propagation, AI effects
+    var requiredLookback: Int { get }
+
     /// Apply effect to the current frame
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage
 
@@ -142,6 +309,9 @@ protocol RenderHook {
 }
 
 extension RenderHook {
+    /// Default: no lookback required (pure per-frame effect)
+    var requiredLookback: Int { 0 }
+
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         image
     }
@@ -196,8 +366,8 @@ enum Effect {
 /// Provides mutation methods that write back to the recipe via closures.
 final class RenderHookManager {
     /// Shared frame buffer that persists across frames
-    /// 60 frames at 30fps = 2 seconds of history for temporal effects
-    let frameBuffer = FrameBuffer(maxFrames: 60)
+    /// 120 frames at 30fps = 4 seconds of history for advanced datamosh/AI effects
+    let frameBuffer = FrameBuffer(maxFrames: 120)
 
     /// Global frame counter - increments each frame, persists across video loops
     /// Used by temporal effects that need consistent timing
@@ -223,6 +393,12 @@ final class RenderHookManager {
         // No setters needed - export is read-only
         // flashSoloIndex stays nil - export renders all layers
         return manager
+    }
+
+    /// Get the maximum lookback required by the current effect chain
+    var maxRequiredLookback: Int {
+        guard let recipe = recipeProvider?() else { return 0 }
+        return recipe.effects.map { $0.requiredLookback }.max() ?? 0
     }
 
     /// Flash solo: when set, only this source index is rendered (others hidden)
