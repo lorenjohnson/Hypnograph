@@ -30,4 +30,24 @@ struct HypnogramRecipe {
         self.targetDuration = targetDuration
         self.effects = effects
     }
+
+    /// Create a deep copy with fresh effect instances for export.
+    /// This prevents export from sharing mutable state with preview.
+    func copyForExport() -> HypnogramRecipe {
+        // Copy global effects
+        let copiedEffects = effects.map { $0.copy() }
+
+        // Copy per-source effects
+        let copiedSources = sources.map { source in
+            var copy = source
+            copy.effects = source.effects.map { $0.copy() }
+            return copy
+        }
+
+        return HypnogramRecipe(
+            sources: copiedSources,
+            targetDuration: targetDuration,
+            effects: copiedEffects
+        )
+    }
 }

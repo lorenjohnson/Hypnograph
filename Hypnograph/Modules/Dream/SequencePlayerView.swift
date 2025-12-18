@@ -194,6 +194,14 @@ struct SequencePlayerView: NSViewRepresentable {
                 return
             }
 
+            // Pre-fill frame buffer with the still image for effects to have full history from frame 1
+            if let frameBuffer = GlobalRenderHooks.manager?.frameBuffer {
+                let count = frameBuffer.prefill(with: ciImage)
+                print("🖼️ SequencePlayer: Prefilled \(count) frames for still image, buffer has \(frameBuffer.frameCount) frames")
+            } else {
+                print("⚠️ SequencePlayer: No frame buffer available for prefill")
+            }
+
             // Compose user transforms array into single transform
             let userTransform = source.transforms.reduce(CGAffineTransform.identity) { $0.concatenating($1) }
             metalView.display(
@@ -265,6 +273,17 @@ struct SequencePlayerView: NSViewRepresentable {
             let preferredTransform = try? await videoTrack.load(.preferredTransform)
             let naturalSize = try? await videoTrack.load(.naturalSize)
             let audioTrack = try? await asset.loadTracks(withMediaType: .audio).first
+
+            guard !Task.isCancelled else { return }
+
+            // Pre-roll frame buffer for effects to have full history from frame 1
+            if let frameBuffer = GlobalRenderHooks.manager?.frameBuffer {
+                print("🎬 SequencePlayer: Starting preroll for video...")
+                let count = await frameBuffer.preroll(from: asset, startTime: CMTime.zero)
+                print("🎬 SequencePlayer: Preroll complete, \(count) frames loaded, buffer now has \(frameBuffer.frameCount) frames")
+            } else {
+                print("⚠️ SequencePlayer: No frame buffer available for preroll")
+            }
 
             guard !Task.isCancelled else { return }
 

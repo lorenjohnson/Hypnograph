@@ -506,8 +506,8 @@ final class Dream: ObservableObject {
             return
         }
 
-        // Copy recipe and set target duration based on mode
-        var renderRecipe = state.recipe
+        // Deep copy recipe with fresh effect instances to avoid sharing state with preview
+        var renderRecipe = state.recipe.copyForExport()
         switch mode {
         case .montage:
             renderRecipe.targetDuration = state.settings.outputDuration

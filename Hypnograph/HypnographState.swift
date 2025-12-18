@@ -404,37 +404,40 @@ final class HypnographState: ObservableObject {
 
     /// Toggle a library (folder or Photos) on/off
     func toggleLibrary(key: String) {
-        Task {
-            var keys = activeLibraryKeys
+        // Defer state changes to next run loop to avoid modifying @Published during view update
+        DispatchQueue.main.async { [self] in
+            Task { @MainActor in
+                var keys = activeLibraryKeys
 
-            if keys.contains(key) {
-                // Removing - ensure at least one library remains
-                if keys.count > 1 {
-                    keys.remove(key)
+                if keys.contains(key) {
+                    // Removing - ensure at least one library remains
+                    if keys.count > 1 {
+                        keys.remove(key)
+                    } else {
+                        // Can't remove the last one
+                        return
+                    }
                 } else {
-                    // Can't remove the last one
-                    return
+                    // Adding - handle "All" keys that should deselect others of same type
+                    if key == Self.photosAllItemsKey {
+                        // Deselect all other Photos albums
+                        keys = keys.filter { !$0.hasPrefix("photos:") }
+                    } else if key == Self.foldersAllKey {
+                        // Deselect all individual folder libraries
+                        let folderKeys = Set(settings.sourceLibraryOrder)
+                        keys = keys.subtracting(folderKeys)
+                    } else if key.hasPrefix("photos:") {
+                        // Selecting a specific album deselects "All Items"
+                        keys.remove(Self.photosAllItemsKey)
+                    } else if settings.sourceLibraries[key] != nil {
+                        // Selecting a specific folder deselects "All Folders"
+                        keys.remove(Self.foldersAllKey)
+                    }
+                    keys.insert(key)
                 }
-            } else {
-                // Adding - handle "All" keys that should deselect others of same type
-                if key == Self.photosAllItemsKey {
-                    // Deselect all other Photos albums
-                    keys = keys.filter { !$0.hasPrefix("photos:") }
-                } else if key == Self.foldersAllKey {
-                    // Deselect all individual folder libraries
-                    let folderKeys = Set(settings.sourceLibraryOrder)
-                    keys = keys.subtracting(folderKeys)
-                } else if key.hasPrefix("photos:") {
-                    // Selecting a specific album deselects "All Items"
-                    keys.remove(Self.photosAllItemsKey)
-                } else if settings.sourceLibraries[key] != nil {
-                    // Selecting a specific folder deselects "All Folders"
-                    keys.remove(Self.foldersAllKey)
-                }
-                keys.insert(key)
-            }
 
-            await applyActiveLibrariesUnified(keys, saveToModule: true)
+                await applyActiveLibrariesUnified(keys, saveToModule: true)
+            }
         }
     }
 
@@ -523,23 +526,26 @@ final class HypnographState: ObservableObject {
     }
 
     func toggleMediaType(_ type: SourceMediaType) {
-        Task {
-            var types = settings.sourceMediaTypes
+        // Defer state changes to next run loop to avoid modifying @Published during view update
+        DispatchQueue.main.async { [self] in
+            Task { @MainActor in
+                var types = settings.sourceMediaTypes
 
-            if types.contains(type) {
-                // Don't allow removing the last type
-                if types.count > 1 {
-                    types.remove(type)
+                if types.contains(type) {
+                    // Don't allow removing the last type
+                    if types.count > 1 {
+                        types.remove(type)
+                    }
+                } else {
+                    types.insert(type)
                 }
-            } else {
-                types.insert(type)
-            }
 
-            settings.sourceMediaTypes = types
-            saveSettingsToDisk()
-            // Rebuild library with new filter - reapply current libraries
-            await applyActiveLibrariesUnified(activeLibraryKeys, saveToModule: false)
-            AppNotifications.show("Takes effect on next Hypnogram", flash: true, duration: 1.5)
+                settings.sourceMediaTypes = types
+                saveSettingsToDisk()
+                // Rebuild library with new filter - reapply current libraries
+                await applyActiveLibrariesUnified(activeLibraryKeys, saveToModule: false)
+                AppNotifications.show("Takes effect on next Hypnogram", flash: true, duration: 1.5)
+            }
         }
     }
 
@@ -548,8 +554,11 @@ final class HypnographState: ObservableObject {
         // Get the module's saved library keys (which now include both folder and Photos keys)
         let keys = perModuleLibraryKeys[module] ?? [settings.defaultSourceLibraryKey]
 
-        Task {
-            await applyActiveLibrariesUnified(keys, saveToModule: false)
+        // Defer to avoid modifying @Published during view update
+        DispatchQueue.main.async { [self] in
+            Task { @MainActor in
+                await applyActiveLibrariesUnified(keys, saveToModule: false)
+            }
         }
     }
 
