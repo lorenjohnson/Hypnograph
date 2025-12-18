@@ -104,6 +104,15 @@ final class HoldFrameHook: RenderHook {
         print("🔄 HoldFrame: reset() called - state cleared")
     }
 
+    func copy() -> RenderHook {
+        // Return a fresh instance with same configuration but reset state
+        return HoldFrameHook(
+            freezeInterval: freezeIntervalBase,
+            holdDuration: holdDurationBase,
+            trailBoost: trailBoost
+        )
+    }
+
     private func resetState() {
         isHolding = false
         holdFrame = nil

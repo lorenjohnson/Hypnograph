@@ -52,5 +52,11 @@ final class ChainedHook: RenderHook {
             hook.reset()
         }
     }
+
+    func copy() -> RenderHook {
+        // Copy all child hooks to create fresh instances
+        let copiedHooks = hooks.map { $0.copy() }
+        return ChainedHook(name: name, hooks: copiedHooks)
+    }
 }
 

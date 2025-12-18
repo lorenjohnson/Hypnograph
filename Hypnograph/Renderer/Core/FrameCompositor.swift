@@ -96,6 +96,7 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
             // Create export manager on first frame (lazy, with frozen recipe)
             if exportManager == nil, let recipe = instruction.recipeSnapshot {
                 exportManager = RenderHookManager.forExport(recipe: recipe)
+                print("📦 FrameCompositor: Created export manager with \(recipe.sources.count) sources, \(recipe.effects.count) global effects")
             }
             manager = exportManager
         } else {
@@ -112,7 +113,11 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
             let sourceIndex = instruction.sourceIndices[index]
 
             // Check flash solo - skip layers that shouldn't be rendered (preview only)
+            // Export should never have flash solo set
             if let manager = manager, !manager.shouldRenderSource(at: sourceIndex) {
+                if isExport {
+                    print("⚠️ FrameCompositor: Flash solo active during export! sourceIndex=\(sourceIndex), flashSoloIndex=\(manager.flashSoloIndex ?? -1)")
+                }
                 continue
             }
 

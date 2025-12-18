@@ -10,6 +10,7 @@ import CoreMedia
 import CoreImage
 import CoreVideo
 import Metal
+import AVFoundation
 
 // MARK: - Shared Renderer
 
@@ -43,6 +44,11 @@ final class FrameBuffer {
 
     /// Current active capacity (can be reduced for lighter effects)
     private(set) var activeCapacity: Int
+
+    /// When true, buffer wraps around for looping clips instead of clearing on time discontinuity.
+    /// When requesting frames beyond what's available, wraps to end of buffer (simulating clip loop).
+    /// Toggle this to test looping vs non-looping behavior for temporal effects.
+    static let loopingModeEnabled: Bool = true
 
     // MARK: - Storage
 
@@ -146,8 +152,10 @@ final class FrameBuffer {
         let height = Int(extent.height)
 
         queue.sync {
-            // Detect discontinuity (seek/loop) - clear buffer if time jumps backwards
-            if let last = lastTime, time < last {
+            // Detect discontinuity (seek/loop)
+            // In looping mode, preserve buffer across loops for continuous effects
+            // In non-looping mode, clear buffer when time jumps backwards
+            if let last = lastTime, time < last, !Self.loopingModeEnabled {
                 clearInternal()
             }
             lastTime = time
@@ -174,12 +182,24 @@ final class FrameBuffer {
     }
 
     /// Get previous frame as CIImage (offset: 1 = previous, 2 = two frames ago, etc.)
+    /// In looping mode, wraps around if offset exceeds available frames.
     func previousFrame(offset: Int = 1) -> CIImage? {
         queue.sync {
-            guard offset > 0, offset <= validCount else { return nil }
+            guard offset > 0, validCount > 0 else { return nil }
+
+            // In looping mode, wrap offset to available frames
+            // This simulates continuous looping where "before the start" wraps to "end of clip"
+            let effectiveOffset: Int
+            if Self.loopingModeEnabled && offset > validCount {
+                effectiveOffset = ((offset - 1) % validCount) + 1
+            } else if offset > validCount {
+                return nil
+            } else {
+                effectiveOffset = offset
+            }
 
             // Calculate read position (writeIndex - 1 is most recent)
-            let readIndex = (writeIndex - offset + activeCapacity) % activeCapacity
+            let readIndex = (writeIndex - effectiveOffset + activeCapacity) % activeCapacity
 
             guard let pixelBuffer = buffers[readIndex] else { return nil }
 
@@ -216,12 +236,16 @@ final class FrameBuffer {
     }
 
     private func clearInternal() {
+        let previousCount = validCount
         for i in 0..<buffers.count {
             buffers[i] = nil
         }
         writeIndex = 0
         validCount = 0
         lastTime = nil
+        // Flush texture cache to release any cached Metal textures from old pixel buffers
+        Self.flushTextureCache()
+        print("🔄 FrameBuffer: cleared \(previousCount) frames, flushed texture cache")
     }
 
     // MARK: - Capacity Control
@@ -244,6 +268,205 @@ final class FrameBuffer {
         queue.sync {
             validCount * bufferWidth * bufferHeight * 4  // 4 bytes per BGRA pixel
         }
+    }
+
+    // MARK: - Pre-roll
+
+    /// Pre-roll the buffer by extracting frames from a video asset before playback starts.
+    /// This fills the buffer so effects have full history from frame 1.
+    /// - Parameters:
+    ///   - asset: The video asset to extract frames from
+    ///   - startTime: Where playback will begin (frames before this are extracted)
+    ///   - frameCount: Number of frames to pre-roll (default: activeCapacity)
+    ///   - frameRate: Frame rate for extraction (default: 30)
+    /// - Returns: Number of frames successfully pre-rolled
+    @discardableResult
+    func preroll(from asset: AVAsset, startTime: CMTime, frameCount: Int? = nil, frameRate: Double = 30) async -> Int {
+        let targetCount = min(frameCount ?? activeCapacity, activeCapacity)
+        guard targetCount > 0 else { return 0 }
+
+        // Get asset duration and video track
+        guard let duration = try? await asset.load(.duration),
+              let videoTrack = try? await asset.loadTracks(withMediaType: .video).first else {
+            print("⚠️ FrameBuffer: Failed to load asset for preroll")
+            return 0
+        }
+
+        // Calculate start time for extraction
+        // We want to extract `targetCount` frames ending at `startTime`
+        let frameDuration = CMTime(seconds: 1.0 / frameRate, preferredTimescale: 600)
+        let prerollDuration = CMTimeMultiply(frameDuration, multiplier: Int32(targetCount))
+        var extractionStart = startTime - prerollDuration
+
+        // Handle wrapping for looping mode
+        if Self.loopingModeEnabled && extractionStart < .zero {
+            // Wrap to end of clip
+            let wrappedSeconds = duration.seconds + extractionStart.seconds.truncatingRemainder(dividingBy: duration.seconds)
+            extractionStart = CMTime(seconds: max(0, wrappedSeconds), preferredTimescale: 600)
+        } else if extractionStart < .zero {
+            extractionStart = .zero
+        }
+
+        // Set up AVAssetReader for fast sequential reading
+        guard let reader = try? AVAssetReader(asset: asset) else {
+            print("⚠️ FrameBuffer: Failed to create AVAssetReader")
+            return 0
+        }
+
+        // Configure output for BGRA pixel buffers (compatible with CIImage)
+        let outputSettings: [String: Any] = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+        ]
+
+        let readerOutput = AVAssetReaderTrackOutput(track: videoTrack, outputSettings: outputSettings)
+        readerOutput.alwaysCopiesSampleData = false  // Zero-copy when possible
+
+        guard reader.canAdd(readerOutput) else {
+            print("⚠️ FrameBuffer: Cannot add reader output")
+            return 0
+        }
+        reader.add(readerOutput)
+
+        // Set time range for extraction
+        let timeRange = CMTimeRange(start: extractionStart, duration: prerollDuration)
+        reader.timeRange = timeRange
+
+        // Clear buffer before pre-roll
+        clear()
+
+        // Start reading
+        guard reader.startReading() else {
+            print("⚠️ FrameBuffer: Failed to start reading: \(reader.error?.localizedDescription ?? "unknown")")
+            return 0
+        }
+
+        var prerolledCount = 0
+        let startTimestamp = CACurrentMediaTime()
+
+        // Read frames sequentially (much faster than AVAssetImageGenerator)
+        while prerolledCount < targetCount {
+            guard let sampleBuffer = readerOutput.copyNextSampleBuffer() else {
+                break  // No more samples
+            }
+
+            guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+                continue
+            }
+
+            let presentationTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+            let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+            addFrame(ciImage, at: presentationTime)
+            prerolledCount += 1
+        }
+
+        reader.cancelReading()  // Clean up
+
+        let elapsed = CACurrentMediaTime() - startTimestamp
+        print("🎬 FrameBuffer: Pre-rolled \(prerolledCount)/\(targetCount) frames in \(String(format: "%.2f", elapsed))s")
+        return prerolledCount
+    }
+
+    /// Pre-fill the buffer with copies of a still image.
+    /// Used for still images so effects have full history from frame 1.
+    /// - Parameters:
+    ///   - image: The still image to fill with
+    ///   - frameCount: Number of frames to fill (default: activeCapacity)
+    /// - Returns: Number of frames filled
+    @discardableResult
+    func prefill(with image: CIImage, frameCount: Int? = nil) -> Int {
+        let targetCount = min(frameCount ?? activeCapacity, activeCapacity)
+        guard targetCount > 0 else { return 0 }
+
+        // Clear buffer before pre-fill
+        clear()
+
+        // Add the same image multiple times with incrementing fake timestamps
+        for i in 0..<targetCount {
+            let fakeTime = CMTime(value: CMTimeValue(i), timescale: 30)
+            addFrame(image, at: fakeTime)
+        }
+
+        print("🖼️ FrameBuffer: Pre-filled \(targetCount) frames with still image")
+        return targetCount
+    }
+
+    // MARK: - Metal Texture Access
+
+    /// Texture cache for CVPixelBuffer -> MTLTexture conversion
+    private static var textureCache: CVMetalTextureCache? = {
+        guard let device = SharedRenderer.metalDevice else { return nil }
+        var cache: CVMetalTextureCache?
+        CVMetalTextureCacheCreate(kCFAllocatorDefault, nil, device, nil, &cache)
+        return cache
+    }()
+
+    /// Flush the texture cache (call when clearing buffer to release old textures)
+    static func flushTextureCache() {
+        if let cache = textureCache {
+            CVMetalTextureCacheFlush(cache, 0)
+        }
+    }
+
+    /// Get previous frame as MTLTexture for Metal compute shaders
+    /// - Parameter offset: History offset (1 = previous frame, 2 = two frames ago, etc.)
+    /// - Returns: MTLTexture backed by the same IOSurface (zero-copy)
+    /// In looping mode, wraps around if offset exceeds available frames.
+    func previousTexture(offset: Int = 1) -> MTLTexture? {
+        queue.sync {
+            guard offset > 0, validCount > 0 else { return nil }
+
+            // In looping mode, wrap offset to available frames
+            let effectiveOffset: Int
+            if Self.loopingModeEnabled && offset > validCount {
+                effectiveOffset = ((offset - 1) % validCount) + 1
+            } else if offset > validCount {
+                return nil
+            } else {
+                effectiveOffset = offset
+            }
+
+            let readIndex = (writeIndex - effectiveOffset + activeCapacity) % activeCapacity
+            guard let pixelBuffer = buffers[readIndex] else { return nil }
+
+            return textureFromPixelBuffer(pixelBuffer)
+        }
+    }
+
+    /// Get texture at specific history offset (thread-safe)
+    /// - Parameter offset: How far back in history (0 = most recent)
+    func texture(atHistoryOffset offset: Int) -> MTLTexture? {
+        return previousTexture(offset: offset + 1)  // previousTexture uses 1-based offset
+    }
+
+    /// Current buffer dimensions
+    var currentWidth: Int { queue.sync { bufferWidth } }
+    var currentHeight: Int { queue.sync { bufferHeight } }
+
+    /// Convert CVPixelBuffer to MTLTexture (zero-copy via IOSurface)
+    private func textureFromPixelBuffer(_ pixelBuffer: CVPixelBuffer) -> MTLTexture? {
+        guard let cache = Self.textureCache else { return nil }
+
+        let width = CVPixelBufferGetWidth(pixelBuffer)
+        let height = CVPixelBufferGetHeight(pixelBuffer)
+
+        var cvTexture: CVMetalTexture?
+        let status = CVMetalTextureCacheCreateTextureFromImage(
+            kCFAllocatorDefault,
+            cache,
+            pixelBuffer,
+            nil,
+            .bgra8Unorm,
+            width,
+            height,
+            0,
+            &cvTexture
+        )
+
+        guard status == kCVReturnSuccess, let cvTex = cvTexture else {
+            return nil
+        }
+
+        return CVMetalTextureGetTexture(cvTex)
     }
 }
 
@@ -306,6 +529,11 @@ protocol RenderHook {
 
     /// Reset internal state (call when switching montages/effects)
     func reset()
+
+    /// Create a fresh copy of this effect with the same configuration but reset state.
+    /// Used for export to avoid sharing mutable state with preview.
+    /// Stateless effects can return self. Class-based stateful effects MUST return a fresh instance.
+    func copy() -> RenderHook
 }
 
 extension RenderHook {
@@ -319,6 +547,12 @@ extension RenderHook {
     func reset() {
         // Default: no-op for stateless hooks
     }
+
+    func copy() -> RenderHook {
+        // Default: return self (for struct-based stateless effects)
+        // Class-based stateful effects MUST override this to return a fresh instance
+        return self
+    }
 }
 
 // MARK: - Available Effects
@@ -329,27 +563,45 @@ enum Effect {
     static let all: [RenderHook] = [
         // Classics
         BlackAndWhiteHook(contrast: 1.0),
-        RGBSplitSimpleHook(offsetAmount: 15.0, animated: true),
+        // RGBSplitSimpleHook(offsetAmount: 15.0, animated: true),
 
-        // Temporal/destructive effects
-        GhostBlurHook(intensity: 0.5, trailLength: 6, blurAmount: 8.0),
-        FrameDifferenceHook(originalBlend: 0.6, boost: 0.1),
-        ColorEchoHook(channelOffset: 3),
-        HoldFrameHook(),
+        // // Temporal/destructive effects
+        // GhostBlurHook(intensity: 0.5, trailLength: 6, blurAmount: 8.0),
+        // FrameDifferenceHook(originalBlend: 0.6, boost: 0.1),
+        // ColorEchoHook(channelOffset: 3),
+        // HoldFrameHook(),
 
-        // Chained effects - compound combinations
-        ChainedHook(name: "Hold + Echo", hooks: [
-            HoldFrameHook(freezeInterval: 6.0, holdDuration: 3.0, trailBoost: 1.2),
-            ColorEchoHook(channelOffset: 2)
+        // Metal datamosh - codec-style block artifacts
+        ChainedHook(name: "Datamosh: Default", hooks: [
+            DatamoshMetalHook(params: .default)
         ]),
-        ChainedHook(name: "Diff + Echo", hooks: [
-            FrameDifferenceHook(originalBlend: 2.0, boost: 10.8),
-            ColorEchoHook(channelOffset: 3)
+        ChainedHook(name: "Datamosh: Subtle", hooks: [
+            DatamoshMetalHook(params: .subtle)
         ]),
+        ChainedHook(name: "Datamosh: Mash", hooks: [
+            DatamoshMetalHook(params: .extreme)
+        ]),
+
+        ChainedHook(name: "Datamosh: Frozen", hooks: [
+            DatamoshMetalHook(params: .frozen)
+        ]),
+        // // Chained effects - compound combinations
+        // ChainedHook(name: "Hold + Echo", hooks: [
+        //     HoldFrameHook(freezeInterval: 6.0, holdDuration: 3.0, trailBoost: 1.2),
+        //     ColorEchoHook(channelOffset: 2)
+        // ]),
+        // ChainedHook(name: "Diff + Echo", hooks: [
+        //     FrameDifferenceHook(originalBlend: 2.0, boost: 10.8),
+        //     ColorEchoHook(channelOffset: 3)
+        // ]),
         ChainedHook(name: "Hold + Ghost", hooks: [
             HoldFrameHook(freezeInterval: 6.0, holdDuration: 10.0, trailBoost: 10.0),
             GhostBlurHook(intensity: 0.2, trailLength: 10, blurAmount: 8.0),
             BlackAndWhiteHook(contrast: 1.0)
+        ]),
+        ChainedHook(name: "Mosh + Ghost", hooks: [
+            DatamoshMetalHook(params: .default),
+            GhostBlurHook(intensity: 0.3, trailLength: 8, blurAmount: 4.0)
         ])
     ]
 
@@ -395,10 +647,17 @@ final class RenderHookManager {
         return manager
     }
 
-    /// Get the maximum lookback required by the current effect chain
+    /// Get the maximum lookback required by any effect (global or per-source)
     var maxRequiredLookback: Int {
         guard let recipe = recipeProvider?() else { return 0 }
-        return recipe.effects.map { $0.requiredLookback }.max() ?? 0
+
+        // Check global effects
+        let globalMax = recipe.effects.map { $0.requiredLookback }.max() ?? 0
+
+        // Check per-source effects
+        let sourceMax = recipe.sources.flatMap { $0.effects }.map { $0.requiredLookback }.max() ?? 0
+
+        return max(globalMax, sourceMax)
     }
 
     /// Flash solo: when set, only this source index is rendered (others hidden)
@@ -548,6 +807,12 @@ final class RenderHookManager {
         // Global effect is not tied to a particular source.
         context.sourceIndex = nil
 
+        // Skip global effects during flash solo - show raw source
+        if flashSoloIndex != nil {
+            frameBuffer.addFrame(image, at: context.time)
+            return image
+        }
+
         guard let recipe = recipeProvider?(), !recipe.effects.isEmpty else {
             // Even if no effect, still update buffer for future use
             frameBuffer.addFrame(image, at: context.time)
@@ -588,10 +853,12 @@ final class RenderHookManager {
     }
 
     func clearFrameBuffer() {
+        print("🔄 RenderHookManager: clearFrameBuffer() - clearing \(frameBuffer.frameCount) frames")
         frameBuffer.clear()
         resetFrameIndex()
 
-        // Reset all effects that have internal state (HoldFrameHook, etc.)
+        // Reset all effects that have internal state (HoldFrameHook, DatamoshMetalHook, etc.)
+        // Important: Do this BEFORE the recipe clears effects, because effects may be preserved
         if let recipe = recipeProvider?() {
             for effect in recipe.effects {
                 effect.reset()
