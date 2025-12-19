@@ -172,7 +172,7 @@ final class FrameBuffer {
                 to: pixelBuffer,
                 bounds: extent,
                 colorSpace: CGColorSpaceCreateDeviceRGB()
-            )
+            )   
 
             // Store in ring buffer
             buffers[writeIndex] = pixelBuffer
@@ -555,6 +555,34 @@ extension RenderHook {
     }
 }
 
+// MARK: - Named Hook Wrapper
+
+/// Wrapper that overrides the name of any RenderHook
+/// Used by the config loader to apply custom names from JSON without modifying each hook implementation
+struct NamedHook: RenderHook {
+    private let wrapped: RenderHook
+    let name: String
+
+    var requiredLookback: Int { wrapped.requiredLookback }
+
+    init(wrapping hook: RenderHook, name: String) {
+        self.wrapped = hook
+        self.name = name
+    }
+
+    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+        wrapped.willRenderFrame(&context, image: image)
+    }
+
+    func reset() {
+        wrapped.reset()
+    }
+
+    func copy() -> RenderHook {
+        NamedHook(wrapping: wrapped.copy(), name: name)
+    }
+}
+
 // MARK: - Available Effects
 
 /// Namespace for available render effects
@@ -591,29 +619,63 @@ enum Effect {
         return result.effects
     }
 
+    /// Update a single effect in the cache (used for live parameter updates)
+    static func updateCachedEffect(at index: Int, with hook: RenderHook) {
+        guard var result = cachedResult, index >= 0, index < result.effects.count else { return }
+        var effects = result.effects
+        effects[index] = hook
+        cachedResult = EffectConfigLoader.LoadResult(effects: effects, source: result.source, error: result.error)
+    }
+
     /// Reload effects from config (call when config file changes)
+    /// - Parameter silent: If true, don't show notification (used for live parameter updates)
     @discardableResult
-    static func reload() -> EffectConfigLoader.LoadResult {
+    static func reload(silent: Bool = false) -> EffectConfigLoader.LoadResult {
+        // Clear loader cache first so we get fresh data
+        EffectConfigLoader.clearCache()
+
         let result = EffectConfigLoader.loadEffects()
         cachedResult = result
 
-        // Notify user of reload result
-        switch result.source {
-        case .user:
-            print("✓ Effects reloaded from user config (\(result.effects.count) effects)")
-            AppNotifications.show("Effects reloaded (\(result.effects.count))", flash: true, duration: 2.0)
-        case .bundled:
-            print("✓ Effects reloaded from bundled defaults")
-            AppNotifications.show("Effects reloaded from defaults", flash: true, duration: 2.0)
-        case .hardcoded:
-            print("⚠️ Effects reload failed, using hardcoded fallback")
-            AppNotifications.show("⚠️ Effects config error - using defaults", flash: true, duration: 4.0)
+        // Notify user of reload result (unless silent)
+        if !silent {
+            switch result.source {
+            case .user:
+                print("✓ Effects reloaded from user config (\(result.effects.count) effects)")
+                AppNotifications.show("Effects reloaded (\(result.effects.count))", flash: true, duration: 2.0)
+            case .bundled:
+                print("✓ Effects reloaded from bundled defaults")
+                AppNotifications.show("Effects reloaded from defaults", flash: true, duration: 2.0)
+            case .hardcoded:
+                print("⚠️ Effects reload failed, using hardcoded fallback")
+                AppNotifications.show("⚠️ Effects config error - using defaults", flash: true, duration: 4.0)
+            }
         }
 
         // Notify listeners to re-apply active effects with new config
         onReload?()
 
         return result
+    }
+
+    /// Reload effects from a specific URL (for library switching)
+    @discardableResult
+    static func reload(from url: URL) -> EffectConfigLoader.LoadResult {
+        do {
+            let effects = try EffectConfigLoader.loadFromURL(url)
+            let result = EffectConfigLoader.LoadResult(effects: effects, source: .user, error: nil)
+            cachedResult = result
+            print("✓ Effects loaded from library: \(url.lastPathComponent) (\(effects.count) effects)")
+
+            // Notify listeners to re-apply active effects
+            onReload?()
+
+            return result
+        } catch {
+            print("⚠️ Failed to load effects from \(url.path): \(error)")
+            // Fall back to normal reload
+            return reload()
+        }
     }
 
     /// Returns a random effect
@@ -838,6 +900,52 @@ final class RenderHookManager {
         let currentIndex = Effect.all.firstIndex { $0.name == currentName } ?? -1
         let nextIndex = (currentIndex + 2) % (Effect.all.count + 1) - 1
         setSourceEffect(nextIndex >= 0 ? Effect.all[nextIndex] : nil, for: sourceIndex)
+    }
+
+    // MARK: - Unified Layer API (layer -1 = global, 0+ = source)
+
+    /// Get effect name for a layer (-1 = global, 0+ = source index)
+    func effectName(for layer: Int) -> String {
+        if layer == -1 {
+            return globalEffectName
+        }
+        return sourceEffectName(for: layer)
+    }
+
+    /// Set effect for a layer (-1 = global, 0+ = source index)
+    func setEffect(_ effect: RenderHook?, for layer: Int) {
+        if layer == -1 {
+            setGlobalEffect(effect)
+        } else {
+            setSourceEffect(effect, for: layer)
+        }
+    }
+
+    /// Cycle effect for a layer (-1 = global, 0+ = source index)
+    /// direction: 1 = forward, -1 = backward
+    func cycleEffect(for layer: Int, direction: Int = 1) {
+        // Clear frame buffer and reset frame counter so new effect starts fresh
+        frameBuffer.clear()
+        resetFrameIndex()
+
+        let currentName = effectName(for: layer)
+        let currentIndex = Effect.all.firstIndex { $0.name == currentName } ?? -1
+
+        // Cycle through effects: -1 (None) -> 0 -> 1 -> ... -> count-1 -> -1
+        let effectCount = Effect.all.count
+        let totalStates = effectCount + 1  // +1 for "None"
+
+        // Convert to 0-based index where 0 = None, 1+ = effects
+        let current0Based = currentIndex + 1
+        let next0Based = (current0Based + direction + totalStates) % totalStates
+        let nextIndex = next0Based - 1  // Back to -1 based
+
+        setEffect(nextIndex >= 0 ? Effect.all[nextIndex] : nil, for: layer)
+    }
+
+    /// Clear effect for a specific layer (-1 = global, 0+ = source index)
+    func clearEffect(for layer: Int) {
+        setEffect(nil, for: layer)
     }
 
     // MARK: - Application

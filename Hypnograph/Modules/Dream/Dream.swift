@@ -121,14 +121,16 @@ final class Dream: ObservableObject {
 
     // MARK: - Effects
 
-    func cycleGlobalEffect() {
+    /// Cycle effect for current layer (global when -1, source when 0+)
+    func cycleEffect(direction: Int = 1) {
         state.noteUserInteraction()
-        state.renderHooks.cycleGlobalEffect()
+        state.renderHooks.cycleEffect(for: state.currentSourceIndex, direction: direction)
     }
 
-    func cycleSourceEffect() {
+    /// Clear effect for current layer only
+    func clearCurrentLayerEffect() {
         state.noteUserInteraction()
-        state.renderHooks.cycleSourceEffect(for: state.currentSourceIndex)
+        state.renderHooks.clearEffect(for: state.currentSourceIndex)
     }
 
     // MARK: - HUD
@@ -150,30 +152,28 @@ final class Dream: ObservableObject {
         }
         items.append(.padding(8, order: 21))
 
-        // Global effect
-        items.append(.text("Global Effect (E): \(state.renderHooks.globalEffectName)", order: 22))
-        items.append(.padding(16, order: 24))
+        // Layer info (Global or Source X of Y)
+        items.append(.text(state.editingLayerDisplay, order: 22))
+        items.append(.text("Effect (E): \(state.renderHooks.effectName(for: state.currentSourceIndex))", order: 23))
 
-        // Source info
-        items.append(.text("Source \(currentDisplayIndex) of \(sourceCount)", order: 25))
-
-        switch mode {
-        case .montage:
-            items.append(.text("Blend mode (M): \(currentBlendModeDisplayName())", order: 26))
-        case .sequence:
-            let totalSecs = sequenceTotalDuration().seconds
-            items.append(.text(String(format: "Duration: %.1fs", totalSecs), order: 26))
-            if let clip = state.currentClip {
-                items.append(.text("Clip: \(String(format: "%.1fs", clip.duration.seconds))", order: 27))
+        // Source-specific info (only when on a source layer, not global)
+        if !state.isOnGlobalLayer {
+            switch mode {
+            case .montage:
+                items.append(.text("Blend mode (M): \(currentBlendModeDisplayName())", order: 26))
+            case .sequence:
+                let totalSecs = sequenceTotalDuration().seconds
+                items.append(.text(String(format: "Duration: %.1fs", totalSecs), order: 26))
+                if let clip = state.currentClip {
+                    items.append(.text("Clip: \(String(format: "%.1fs", clip.duration.seconds))", order: 27))
+                }
             }
-        }
 
-        items.append(.text("Source Effect (F): \(state.renderHooks.sourceEffectName(for: state.currentSourceIndex))", order: 28))
-
-        // Favorite status
-        if let source = state.currentSource?.clip.file.source,
-           FavoriteStore.shared.isFavorited(source) {
-            items.append(.text("★ Favorite", order: 29))
+            // Favorite status
+            if let source = state.currentSource?.clip.file.source,
+               FavoriteStore.shared.isFavorited(source) {
+                items.append(.text("★ Favorite", order: 29))
+            }
         }
 
         items.append(.padding(16, order: 39))
@@ -181,11 +181,11 @@ final class Dream: ObservableObject {
         // Keyboard hints
         items.append(.text("Shortcuts", order: 40, font: .subheadline))
         items.append(.text("R = Rotate | N = New clip | M = Blend", order: 41))
-        items.append(.text("E = Global effect | F = Source effect | 0 = Clear", order: 42))
-        items.append(.text("←/→ = Navigate | 1-9 = Jump to source", order: 43))
+        items.append(.text("E/⇧E = Effect | 0 = Global | 1-9 = Source", order: 42))
+        items.append(.text("←/→ = Navigate | ⇧C = Clear | ⌃⇧C = Clear all", order: 43))
         items.append(.text("Space = New | Cmd-S = Save", order: 44))
         items.append(.text("` = Toggle Montage/Sequence", order: 45))
-        items.append(.text("Shift+F/X/D = Favorite/Exclude/Delete", order: 46))
+        items.append(.text("⇧F/X/D = Favorite/Exclude/Delete", order: 46))
 
         return items
     }
@@ -201,10 +201,15 @@ final class Dream: ObservableObject {
 
         Divider()
 
-        Button("Cycle Global Effect") { [self] in
-            cycleGlobalEffect()
+        Button("Cycle Effect Forward") { [self] in
+            cycleEffect(direction: 1)
         }
         .keyboardShortcut("e", modifiers: [])
+
+        Button("Cycle Effect Backward") { [self] in
+            cycleEffect(direction: -1)
+        }
+        .keyboardShortcut("e", modifiers: [.shift])
 
         Button("Add Source") { [self] in
             addSource()
@@ -228,12 +233,22 @@ final class Dream: ObservableObject {
             .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
         }
 
+        Button("Select Global Layer") { [self] in
+            state.selectGlobalLayer()
+        }
+        .keyboardShortcut("0", modifiers: [])
+
         Divider()
+
+        Button("Clear Current Layer Effect") { [self] in
+            clearCurrentLayerEffect()
+        }
+        .keyboardShortcut("c", modifiers: [.shift])
 
         Button("Clear All Effects") { [self] in
             clearAllEffects()
         }
-        .keyboardShortcut("0", modifiers: [])
+        .keyboardShortcut("c", modifiers: [.control, .shift])
 
         Divider()
 
@@ -295,11 +310,6 @@ final class Dream: ObservableObject {
             rotateCurrentSource()
         }
         .keyboardShortcut("r", modifiers: [])
-
-        Button("Cycle Effect") { [self] in
-            cycleSourceEffect()
-        }
-        .keyboardShortcut("f", modifiers: [])
 
         Button("New Random Clip") { [self] in
             newRandomClip()

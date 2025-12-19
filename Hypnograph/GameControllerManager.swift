@@ -9,9 +9,9 @@ import GameController
 /// - **B** (right) - Save (Cmd+S)
 /// - **X** (left) - Cycle global effect (E)
 /// - **Y** (top) - Snapshot (S)
-/// - **D-Pad Left/Right** - Previous/Next source (Arrow keys)
-/// - **D-Pad Up** - Add source (.)
-/// - **D-Pad Down** - Delete source (Delete)
+/// - **D-Pad Up/Down** - Navigate effects list or parameters (when Effects Editor is open)
+/// - **D-Pad Left/Right** - Adjust parameter values (when Effects Editor is open), or Previous/Next source
+/// - **Left Stick X** - Switch between effects and parameters panels (when Effects Editor is open)
 /// - **LB** (Left Bumper) - Cycle blend mode (M) - current layer
 /// - **RB** (Right Bumper) - Cycle source effect (F) - current layer
 /// - **RT** (Right Trigger) - Toggle style (Montage/Sequence) - Dream mode
@@ -50,13 +50,13 @@ final class GameControllerManager {
             setupController(controller)
         }
     }
-    
+
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
-    
+
     // MARK: - Controller Connection
-    
+
     private func setupControllerObservers() {
         NotificationCenter.default.addObserver(
             forName: .GCControllerDidConnect,
@@ -67,7 +67,7 @@ final class GameControllerManager {
             self?.setupController(controller)
             print("🎮 Game controller connected: \(controller.vendorName ?? "Unknown")")
         }
-        
+
         NotificationCenter.default.addObserver(
             forName: .GCControllerDidDisconnect,
             object: nil,
@@ -80,20 +80,31 @@ final class GameControllerManager {
             }
         }
     }
-    
+
     private func setupController(_ controller: GCController) {
         connectedController = controller
-        
+
         // Xbox/PlayStation controllers have extendedGamepad profile
         guard let gamepad = controller.extendedGamepad else {
             print("⚠️ Controller doesn't support extended gamepad profile")
             return
         }
-        
+
         setupButtonHandlers(gamepad)
         setupDPadHandlers(gamepad)
         setupBumperHandlers(gamepad)
         setupSpecialButtonHandlers(gamepad)
+        setupLeftThumbstickHandlers(gamepad)
+    }
+
+    /// Check if the effects editor is currently visible
+    private var isEffectsEditorVisible: Bool {
+        state?.isEffectsEditorVisible ?? false
+    }
+
+    /// Get the effects editor view model
+    private var effectsViewModel: EffectsEditorViewModel? {
+        state?.effectsEditorViewModel
     }
     
     // MARK: - Button Handlers
@@ -119,10 +130,10 @@ final class GameControllerManager {
             }
         }
 
-        // X Button (left) - Cycle global effect (E)
+        // X Button (left) - Cycle effect (E) for current layer
         gamepad.buttonX.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed else { return }
-            self?.dream?.cycleGlobalEffect()
+            self?.dream?.cycleEffect()
         }
 
         // Y Button (top) - Snapshot (S)
@@ -133,45 +144,179 @@ final class GameControllerManager {
     }
 
     private func setupDPadHandlers(_ gamepad: GCExtendedGamepad) {
-        // D-Pad Left - Previous source
+        // D-Pad Left - Adjust parameter OR previous source
         gamepad.dpad.left.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed, let self = self else { return }
-            switch self.state?.currentModuleType {
-            case .dream: self.dream?.previousSource()
-            case .divine: self.divine?.previousCard()
-            case .none: break
+
+            if self.isEffectsEditorVisible, let vm = self.effectsViewModel {
+                // In effects editor with parameters focused: adjust parameter down
+                if vm.focusedPanel == .parameters {
+                    self.adjustSelectedParameterByStep(direction: -1)
+                }
+                // If on effects panel, do nothing (can't go more left)
+            } else {
+                // Normal mode: previous source
+                switch self.state?.currentModuleType {
+                case .dream: self.dream?.previousSource()
+                case .divine: self.divine?.previousCard()
+                case .none: break
+                }
             }
         }
 
-        // D-Pad Right - Next source
+        // D-Pad Right - Adjust parameter OR next source
         gamepad.dpad.right.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed, let self = self else { return }
-            switch self.state?.currentModuleType {
-            case .dream: self.dream?.nextSource()
-            case .divine: self.divine?.nextCard()
-            case .none: break
+
+            if self.isEffectsEditorVisible, let vm = self.effectsViewModel {
+                // In effects editor with parameters focused: adjust parameter up
+                if vm.focusedPanel == .parameters {
+                    self.adjustSelectedParameterByStep(direction: 1)
+                }
+                // If on effects panel, do nothing (use joystick to switch)
+            } else {
+                // Normal mode: next source
+                switch self.state?.currentModuleType {
+                case .dream: self.dream?.nextSource()
+                case .divine: self.divine?.nextCard()
+                case .none: break
+                }
             }
         }
 
-        // D-Pad Up - Add source (.)
+        // D-Pad Up - Navigate up in effects/parameters
         gamepad.dpad.up.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed, let self = self else { return }
-            switch self.state?.currentModuleType {
-            case .dream: self.dream?.addSource()
-            case .divine: self.divine?.addCard()
-            case .none: break
+
+            if self.isEffectsEditorVisible {
+                self.navigateEffectsEditor(delta: -1)
+            } else {
+                // Normal mode: add source
+                switch self.state?.currentModuleType {
+                case .dream: self.dream?.addSource()
+                case .divine: self.divine?.addCard()
+                case .none: break
+                }
             }
         }
 
-        // D-Pad Down - Delete source (Delete)
+        // D-Pad Down - Navigate down in effects/parameters
         gamepad.dpad.down.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed, let self = self else { return }
-            switch self.state?.currentModuleType {
-            case .dream: self.dream?.deleteCurrentSource()
-            case .divine: self.divine?.deleteCurrentCard()
-            case .none: break
+
+            if self.isEffectsEditorVisible {
+                self.navigateEffectsEditor(delta: 1)
+            } else {
+                // Normal mode: delete source
+                switch self.state?.currentModuleType {
+                case .dream: self.dream?.deleteCurrentSource()
+                case .divine: self.divine?.deleteCurrentCard()
+                case .none: break
+                }
             }
         }
+    }
+
+    /// Navigate up/down in the effects editor (effects list or parameters)
+    private func navigateEffectsEditor(delta: Int) {
+        guard let vm = effectsViewModel, let state = state else { return }
+
+        let globalEffectName = state.renderHooks.globalEffectName
+
+        switch vm.focusedPanel {
+        case .effects:
+            // Move effect selection up/down
+            let defs = vm.effectDefinitions
+            let currentIndex = vm.selectedEffectIndex(for: globalEffectName)  // -1 = None
+            let newIndex = currentIndex + delta
+
+            if newIndex < -1 || newIndex >= defs.count {
+                return  // Out of bounds
+            }
+
+            if newIndex == -1 {
+                state.renderHooks.setGlobalEffect(nil)
+            } else if newIndex >= 0 && newIndex < Effect.all.count {
+                state.renderHooks.setGlobalEffect(Effect.all[newIndex])
+            }
+            vm.resetParameterSelection()
+
+        case .parameters:
+            // Move parameter selection up/down
+            let def = vm.selectedDefinition(for: globalEffectName)
+            let params = vm.navigableParameters(for: def)
+            vm.moveParameterSelection(by: delta, totalParams: params.count)
+        }
+    }
+
+    /// Adjust the selected parameter by one step in the given direction (-1 or +1)
+    private func adjustSelectedParameterByStep(direction: Int) {
+        guard let state = state,
+              let vm = effectsViewModel,
+              vm.focusedPanel == .parameters else { return }
+
+        let globalEffectName = state.renderHooks.globalEffectName
+        let effectIndex = vm.selectedEffectIndex(for: globalEffectName)
+        guard effectIndex >= 0 else { return }
+
+        let def = vm.selectedDefinition(for: globalEffectName)
+        let params = vm.navigableParameters(for: def)
+        guard vm.selectedParameterIndex < params.count else { return }
+
+        let param = params[vm.selectedParameterIndex]
+
+        // Get the effect type for this specific parameter
+        // For chained hooks, use the child hook's type from hookIndex
+        let effectType = getEffectType(for: def, hookIndex: param.hookIndex)
+        let range = getParameterRange(for: effectType, paramName: param.paramName)
+
+        switch param.value {
+        case .double(let d):
+            // Use step from registry if available, otherwise calculate based on range
+            let step = getParameterStep(for: effectType, paramName: param.paramName, range: range)
+            let newValue = max(range.min, min(range.max, d + step * Double(direction)))
+            vm.updateParameter(effectIndex: effectIndex, hookIndex: param.hookIndex, paramName: param.paramName, value: .double(newValue))
+
+        case .int(let i):
+            // For integers, use step of 1 or registry step
+            let step = max(1, Int(getParameterStep(for: effectType, paramName: param.paramName, range: range)))
+            let newValue = max(Int(range.min), min(Int(range.max), i + step * direction))
+            vm.updateParameter(effectIndex: effectIndex, hookIndex: param.hookIndex, paramName: param.paramName, value: .int(newValue))
+
+        case .bool(let b):
+            // Toggle boolean
+            vm.updateParameter(effectIndex: effectIndex, hookIndex: param.hookIndex, paramName: param.paramName, value: .bool(!b))
+
+        case .string:
+            // Can't adjust strings with D-pad
+            break
+        }
+    }
+
+    /// Get the effect type for a parameter, handling chained hooks
+    private func getEffectType(for def: EffectDefinition?, hookIndex: Int?) -> String? {
+        guard let def = def else { return nil }
+
+        if let hookIndex = hookIndex, let hooks = def.hooks, hookIndex < hooks.count {
+            // This is a child hook in a chain - use its type
+            return hooks[hookIndex].resolvedType
+        }
+
+        // Top-level effect
+        return def.resolvedType
+    }
+
+    /// Get the step size for a parameter
+    private func getParameterStep(for effectType: String?, paramName: String, range: (min: Double, max: Double)) -> Double {
+        // Try to get step from registry
+        if let effectType = effectType,
+           let paramRange = EffectRegistry.range(for: effectType, param: paramName),
+           let step = paramRange.step {
+            return step
+        }
+
+        // Default: divide range into ~20 steps for smooth control
+        return (range.max - range.min) / 20.0
     }
 
     private func setupBumperHandlers(_ gamepad: GCExtendedGamepad) {
@@ -181,10 +326,10 @@ final class GameControllerManager {
             self?.dream?.cycleBlendMode()
         }
 
-        // Right Bumper - Cycle source effect (F) for current layer
+        // Right Bumper - Cycle effect backward for current layer
         gamepad.rightShoulder.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed else { return }
-            self?.dream?.cycleSourceEffect()
+            self?.dream?.cycleEffect(direction: -1)
         }
 
         // Left Trigger - Clear all effects and reset blend modes
@@ -230,6 +375,48 @@ final class GameControllerManager {
                 self?.cycleModuleHandler?()
             }
         }
+    }
+
+    // MARK: - Left Thumbstick for Panel Switching
+
+    private func setupLeftThumbstickHandlers(_ gamepad: GCExtendedGamepad) {
+        // Left stick X-axis - Switch between effects and parameters panels
+        gamepad.leftThumbstick.valueChangedHandler = { [weak self] _, xValue, _ in
+            guard let self = self else { return }
+
+            // Only handle when effects editor is open
+            guard self.isEffectsEditorVisible, let vm = self.effectsViewModel else { return }
+
+            // Use a dead zone and threshold to avoid drift and accidental switches
+            let threshold: Float = 0.5
+
+            if xValue < -threshold && !self.joystickPanelSwitchTriggered {
+                // Joystick pushed left - switch to effects panel
+                vm.focusedPanel = .effects
+                self.joystickPanelSwitchTriggered = true
+            } else if xValue > threshold && !self.joystickPanelSwitchTriggered {
+                // Joystick pushed right - switch to parameters panel (if effect selected)
+                if vm.selectedDefinition(for: self.state?.renderHooks.globalEffectName) != nil {
+                    vm.focusedPanel = .parameters
+                }
+                self.joystickPanelSwitchTriggered = true
+            } else if abs(xValue) < 0.2 {
+                // Joystick returned to center - reset trigger
+                self.joystickPanelSwitchTriggered = false
+            }
+        }
+    }
+
+    /// Tracks whether a panel switch has been triggered (prevents repeated switching)
+    private var joystickPanelSwitchTriggered = false
+
+    /// Get parameter range from the effect registry
+    private func getParameterRange(for effectType: String?, paramName: String) -> (min: Double, max: Double) {
+        guard let effectType = effectType,
+              let range = EffectRegistry.range(for: effectType, param: paramName) else {
+            return (min: 0, max: 1)  // Default range
+        }
+        return (min: range.min, max: range.max)
     }
 }
 

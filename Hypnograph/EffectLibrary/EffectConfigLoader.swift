@@ -10,9 +10,204 @@ import Foundation
 
 /// Loads effect configurations from JSON files
 enum EffectConfigLoader {
-    
+
+    // MARK: - Cached State (for Effects Editor)
+
+    /// Cached effect definitions for editing
+    private static var cachedConfig: EffectConfig?
+    private static var cachedConfigURL: URL?
+
+    /// Current effect definitions (for UI editing)
+    static var currentDefinitions: [EffectDefinition] {
+        if let config = cachedConfig {
+            return config.effects
+        }
+        // Load and cache
+        _ = loadEffectsWithDefinitions()
+        return cachedConfig?.effects ?? []
+    }
+
+    /// Callback for live effect application (set by RenderHookManager)
+    static var onEffectUpdated: ((Int, RenderHook) -> Void)?
+
+    /// Debounce timer for async file save
+    private static var saveTimer: Timer?
+    private static let saveDebounceInterval: TimeInterval = 0.5
+
+    /// Update a parameter value - applies immediately, saves async
+    static func updateParameter(effectIndex: Int, hookIndex: Int?, paramName: String, value: AnyCodableValue) {
+        guard var config = cachedConfig else { return }
+        guard effectIndex >= 0 && effectIndex < config.effects.count else { return }
+
+        var effect = config.effects[effectIndex]
+
+        if let hookIdx = hookIndex, var hooks = effect.hooks {
+            // Update a child hook's parameter
+            guard hookIdx >= 0 && hookIdx < hooks.count else { return }
+            var hook = hooks[hookIdx]
+            var params = hook.params ?? [:]
+            params[paramName] = value
+            hook = EffectDefinition(name: hook.name, type: hook.type, params: params, hooks: hook.hooks)
+            hooks[hookIdx] = hook
+            effect = EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+        } else {
+            // Update the effect's own parameter
+            var params = effect.params ?? [:]
+            params[paramName] = value
+            effect = EffectDefinition(name: effect.name, type: effect.type, params: params, hooks: effect.hooks)
+        }
+
+        var effects = config.effects
+        effects[effectIndex] = effect
+        config = EffectConfig(version: config.version, effects: effects)
+        cachedConfig = config
+
+        // 1. Instantiate and apply effect immediately
+        if let newHook = instantiateEffect(effect) {
+            onEffectUpdated?(effectIndex, newHook)
+        }
+
+        // 2. Schedule async file save (debounced)
+        scheduleSave(config)
+    }
+
+    /// Add a hook to a chained effect
+    static func addHookToChain(effectIndex: Int, hookType: String) {
+        guard var config = cachedConfig else { return }
+        guard effectIndex >= 0 && effectIndex < config.effects.count else { return }
+
+        var effect = config.effects[effectIndex]
+        guard effect.isChained else { return }
+
+        var hooks = effect.hooks ?? []
+
+        // Create new hook with default params from registry
+        let defaultParams = EffectRegistry.defaults(for: hookType)
+        let newHook = EffectDefinition(
+            name: hookType.replacingOccurrences(of: "Hook", with: ""),
+            type: hookType,
+            params: defaultParams,
+            hooks: nil
+        )
+        hooks.append(newHook)
+
+        effect = EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+
+        var effects = config.effects
+        effects[effectIndex] = effect
+        config = EffectConfig(version: config.version, effects: effects)
+        cachedConfig = config
+
+        if let newRenderHook = instantiateEffect(effect) {
+            onEffectUpdated?(effectIndex, newRenderHook)
+        }
+        scheduleSave(config)
+    }
+
+    /// Remove a hook from a chained effect
+    static func removeHookFromChain(effectIndex: Int, hookIndex: Int) {
+        guard var config = cachedConfig else { return }
+        guard effectIndex >= 0 && effectIndex < config.effects.count else { return }
+
+        var effect = config.effects[effectIndex]
+        guard effect.isChained, var hooks = effect.hooks else { return }
+        guard hookIndex >= 0 && hookIndex < hooks.count else { return }
+
+        hooks.remove(at: hookIndex)
+
+        effect = EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+
+        var effects = config.effects
+        effects[effectIndex] = effect
+        config = EffectConfig(version: config.version, effects: effects)
+        cachedConfig = config
+
+        if let newRenderHook = instantiateEffect(effect) {
+            onEffectUpdated?(effectIndex, newRenderHook)
+        }
+        scheduleSave(config)
+    }
+
+    /// Reorder hooks in a chained effect
+    static func reorderHooksInChain(effectIndex: Int, fromIndex: Int, toIndex: Int) {
+        guard var config = cachedConfig else { return }
+        guard effectIndex >= 0 && effectIndex < config.effects.count else { return }
+
+        var effect = config.effects[effectIndex]
+        guard effect.isChained, var hooks = effect.hooks else { return }
+        guard fromIndex >= 0 && fromIndex < hooks.count else { return }
+        guard toIndex >= 0 && toIndex < hooks.count else { return }
+
+        let hook = hooks.remove(at: fromIndex)
+        hooks.insert(hook, at: toIndex)
+
+        effect = EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+
+        var effects = config.effects
+        effects[effectIndex] = effect
+        config = EffectConfig(version: config.version, effects: effects)
+        cachedConfig = config
+
+        if let newRenderHook = instantiateEffect(effect) {
+            onEffectUpdated?(effectIndex, newRenderHook)
+        }
+        scheduleSave(config)
+    }
+
+    /// Toggle hook enabled state (store as a param for now)
+    static func setHookEnabled(effectIndex: Int, hookIndex: Int, enabled: Bool) {
+        updateParameter(effectIndex: effectIndex, hookIndex: hookIndex, paramName: "_enabled", value: .bool(enabled))
+    }
+
+    /// Update the name of an effect
+    static func updateEffectName(effectIndex: Int, name: String) {
+        guard var config = cachedConfig else { return }
+        guard effectIndex >= 0 && effectIndex < config.effects.count else { return }
+
+        var effect = config.effects[effectIndex]
+        effect = EffectDefinition(name: name, type: effect.type, params: effect.params, hooks: effect.hooks)
+
+        var effects = config.effects
+        effects[effectIndex] = effect
+        config = EffectConfig(version: config.version, effects: effects)
+        cachedConfig = config
+
+        if let newRenderHook = instantiateEffect(effect) {
+            onEffectUpdated?(effectIndex, newRenderHook)
+        }
+        scheduleSave(config)
+    }
+
+    /// Schedule a debounced save to file
+    private static func scheduleSave(_ config: EffectConfig) {
+        // Cancel any pending save
+        saveTimer?.invalidate()
+
+        // Schedule new save after debounce interval
+        saveTimer = Timer.scheduledTimer(withTimeInterval: saveDebounceInterval, repeats: false) { _ in
+            saveToFile(config)
+        }
+    }
+
+    /// Save config to file asynchronously
+    private static func saveToFile(_ config: EffectConfig) {
+        guard let url = cachedConfigURL else { return }
+
+        // Save on background queue
+        DispatchQueue.global(qos: .utility).async {
+            do {
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                let data = try encoder.encode(config)
+                try data.write(to: url)
+            } catch {
+                print("⚠️ EffectConfigLoader: Failed to save config: \(error)")
+            }
+        }
+    }
+
     // MARK: - File Locations
-    
+
     /// User's custom config location
     static var userConfigURL: URL {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -54,10 +249,17 @@ enum EffectConfigLoader {
     
     /// Load effects, with fallback chain: user config → source file (debug) → bundled → hardcoded
     static func loadEffects() -> LoadResult {
+        loadEffectsWithDefinitions()
+    }
+
+    /// Load effects and cache definitions for editing
+    private static func loadEffectsWithDefinitions() -> LoadResult {
         // Try user config first
         if FileManager.default.fileExists(atPath: userConfigURL.path) {
             do {
-                let effects = try loadFromURL(userConfigURL)
+                let (effects, config) = try loadFromURLWithConfig(userConfigURL)
+                cachedConfig = config
+                cachedConfigURL = userConfigURL
                 return LoadResult(effects: effects, source: .user, error: nil)
             } catch {
                 print("⚠️ EffectConfigLoader: Failed to load user config: \(error)")
@@ -69,7 +271,9 @@ enum EffectConfigLoader {
         #if DEBUG
         if let sourceURL = sourceConfigURL {
             do {
-                let effects = try loadFromURL(sourceURL)
+                let (effects, config) = try loadFromURLWithConfig(sourceURL)
+                cachedConfig = config
+                cachedConfigURL = sourceURL
                 return LoadResult(effects: effects, source: .bundled, error: nil)
             } catch {
                 print("⚠️ EffectConfigLoader: Failed to load source config: \(error)")
@@ -81,7 +285,9 @@ enum EffectConfigLoader {
         // Try bundled default
         if let bundledURL = bundledConfigURL {
             do {
-                let effects = try loadFromURL(bundledURL)
+                let (effects, config) = try loadFromURLWithConfig(bundledURL)
+                cachedConfig = config
+                cachedConfigURL = bundledURL
                 return LoadResult(effects: effects, source: .bundled, error: nil)
             } catch {
                 print("⚠️ EffectConfigLoader: Failed to load bundled config: \(error)")
@@ -91,24 +297,38 @@ enum EffectConfigLoader {
 
         // Hardcoded fallback
         print("ℹ️ EffectConfigLoader: Using hardcoded defaults")
+        cachedConfig = nil
+        cachedConfigURL = nil
         return LoadResult(effects: hardcodedDefaults, source: .hardcoded, error: nil)
     }
-    
+
+    /// Clear cached config (call on reload)
+    static func clearCache() {
+        cachedConfig = nil
+        cachedConfigURL = nil
+    }
+
     /// Load effects from a specific URL
     static func loadFromURL(_ url: URL) throws -> [RenderHook] {
+        let (effects, _) = try loadFromURLWithConfig(url)
+        return effects
+    }
+
+    /// Load effects from a specific URL and return both hooks and raw config
+    private static func loadFromURLWithConfig(_ url: URL) throws -> ([RenderHook], EffectConfig) {
         let data = try Data(contentsOf: url)
         guard let jsonString = String(data: data, encoding: .utf8) else {
             throw LoadError.invalidEncoding
         }
-        
+
         // Strip comments before parsing
         let cleanJSON = stripJSONComments(jsonString)
         guard let cleanData = cleanJSON.data(using: .utf8) else {
             throw LoadError.invalidEncoding
         }
-        
+
         let config = try JSONDecoder().decode(EffectConfig.self, from: cleanData)
-        return instantiateEffects(from: config)
+        return (instantiateEffects(from: config), config)
     }
     
     // MARK: - Comment Stripping (JSONC Support)
@@ -173,19 +393,41 @@ enum EffectConfigLoader {
     }
     
     private static func instantiateEffect(_ def: EffectDefinition) -> RenderHook? {
-        // Special handling for ChainedHook
-        if def.type == "ChainedHook" {
+        // Check if this hook is disabled
+        if let enabled = def.params?["_enabled"]?.boolValue, !enabled {
+            return nil
+        }
+
+        // ChainedHook: either explicit type or inferred from presence of hooks array
+        if def.isChained {
             guard let childDefs = def.hooks, !childDefs.isEmpty else {
-                print("⚠️ ChainedHook '\(def.name)' has no hooks")
+                print("⚠️ ChainedHook '\(def.name ?? "unnamed")' has no hooks")
                 return nil
             }
-            let childHooks = childDefs.compactMap { instantiateEffect($0) }
+            // Filter out disabled child hooks
+            let enabledChildDefs = childDefs.filter { childDef in
+                childDef.params?["_enabled"]?.boolValue ?? true
+            }
+            let childHooks = enabledChildDefs.compactMap { instantiateEffect($0) }
             guard !childHooks.isEmpty else { return nil }
-            return ChainedHook(name: def.name, hooks: childHooks)
+            // Name is required for chained effects
+            return ChainedHook(name: def.name ?? "Chain", hooks: childHooks)
         }
-        
-        // Regular hook
-        return EffectRegistry.create(type: def.type, params: def.params)
+
+        // Regular hook - create from registry
+        guard let effectType = def.resolvedType else {
+            print("⚠️ Effect definition missing type")
+            return nil
+        }
+        guard let hook = EffectRegistry.create(type: effectType, params: def.params) else {
+            return nil
+        }
+
+        // Apply name override if specified using NamedHook wrapper
+        if let customName = def.name {
+            return NamedHook(wrapping: hook, name: customName)
+        }
+        return hook
     }
     
     // MARK: - Errors

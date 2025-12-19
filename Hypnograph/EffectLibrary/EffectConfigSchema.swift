@@ -15,17 +15,27 @@ struct EffectConfig: Codable {
 
 /// Definition of a single effect or chained effect
 struct EffectDefinition: Codable {
-    /// Display name for the effect
-    let name: String
-    
-    /// Hook type (e.g., "BlackAndWhiteHook", "ChainedHook")
-    let type: String
-    
+    /// Display name for the effect (required for chains, optional override for single effects)
+    let name: String?
+
+    /// Hook type (e.g., "BlackAndWhiteHook") - optional if `hooks` is present (implies ChainedHook)
+    let type: String?
+
     /// Parameters for this hook (varies by type)
     let params: [String: AnyCodableValue]?
-    
+
     /// For ChainedHook: the child hooks to apply in sequence
+    /// Presence of this key implies type is ChainedHook (no need to specify type)
     let hooks: [EffectDefinition]?
+
+    /// Returns true if this is a chained effect (has hooks array)
+    var isChained: Bool { hooks != nil }
+
+    /// Resolved type - infers ChainedHook if hooks present
+    var resolvedType: String? {
+        if hooks != nil { return "ChainedHook" }
+        return type
+    }
 }
 
 /// Type-erased codable value to handle mixed parameter types

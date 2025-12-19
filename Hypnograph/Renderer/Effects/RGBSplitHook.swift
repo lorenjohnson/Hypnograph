@@ -12,10 +12,10 @@ import CoreGraphics
 /// RGB channel separation effect using CoreImage filters
 struct RGBSplitSimpleHook: RenderHook {
     var name: String { "RGB Split" }
-    
+
     let offsetAmount: Float
     let animated: Bool
-    
+
     init(offsetAmount: Float = 10.0, animated: Bool = true) {
         self.offsetAmount = offsetAmount
         self.animated = animated
@@ -26,8 +26,17 @@ struct RGBSplitSimpleHook: RenderHook {
         var offset = CGFloat(offsetAmount)
         if animated {
             let t = CMTimeGetSeconds(context.time)
-            // Oscillate the offset with some randomness
-            let phase = sin(t * 2.0) * 0.5 + 0.5 // 0 to 1
+            // Multiple overlapping waves at different frequencies for organic motion
+            let slow = sin(t * 0.7)                    // Slow drift
+            let medium = sin(t * 2.3 + 1.5) * 0.4      // Medium variation
+            let fast = sin(t * 7.1 + 3.0) * 0.15       // Fast jitter
+            let erratic = sin(t * 13.7 + t * 0.3) * 0.1 // Slightly chaotic
+
+            // Combine waves (stays roughly in -1 to 1 range)
+            let combined = slow + medium + fast + erratic
+
+            // Map to 0.1-1.0 range (never fully zero for visibility)
+            let phase = (combined + 1.0) * 0.45 + 0.1
             offset *= phase
         }
         
