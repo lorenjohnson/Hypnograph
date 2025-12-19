@@ -14,7 +14,8 @@ import CoreGraphics
 /// Red from now, green from N frames ago, blue from 2N frames ago
 /// Uses max blend instead of additive to prevent white blowout
 struct ColorEchoHook: RenderHook {
-    var name: String { "Color Echo" }
+    private let nameOverride: String?
+    var name: String { nameOverride ?? "Color Echo" }
 
     /// Needs 2x channel offset frames (blue channel is furthest back)
     var requiredLookback: Int { channelOffset * 2 + 1 }
@@ -22,8 +23,9 @@ struct ColorEchoHook: RenderHook {
     /// Frame offset between channels
     let channelOffset: Int
 
-    init(channelOffset: Int = 2) {
+    init(channelOffset: Int = 2, name: String? = nil) {
         self.channelOffset = channelOffset
+        self.nameOverride = name
     }
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {

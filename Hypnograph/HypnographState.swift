@@ -53,6 +53,30 @@ final class HypnographState: ObservableObject {
 
     @Published var isHUDVisible: Bool = true
     @Published var isInfoVisible: Bool = false
+    @Published var isEffectsEditorVisible: Bool = false
+
+    /// Shared effects editor view model for controller/keyboard navigation
+    let effectsEditorViewModel = EffectsEditorViewModel()
+
+    /// Whether the global layer is selected (currentSourceIndex == -1)
+    var isOnGlobalLayer: Bool {
+        currentSourceIndex == -1
+    }
+
+    /// Display string for the current editing layer
+    /// Layer 0 = Global, Layer 1-N = Source 1-N
+    var editingLayerDisplay: String {
+        if currentSourceIndex == -1 {
+            return "Global"
+        }
+        return "Source \(currentSourceIndex + 1) of \(sources.count)"
+    }
+
+    /// Select the global layer (for effects editing)
+    func selectGlobalLayer() {
+        noteUserInteraction()
+        currentSourceIndex = -1
+    }
 
     /// Pause/play state for video playback (Dream mode)
     @Published var isPaused: Bool = false
@@ -162,6 +186,11 @@ final class HypnographState: ObservableObject {
         // Subscribe to effect config reloads - reapply active effects with fresh instances
         Effect.onReload = { [weak self] in
             self?.renderHooks.reapplyActiveEffects()
+        }
+
+        // Subscribe to live effect parameter updates - apply directly without reload
+        EffectConfigLoader.onEffectUpdated = { [weak self] effectIndex, updatedHook in
+            self?.applyLiveEffectUpdate(effectIndex: effectIndex, hook: updatedHook)
         }
 
         // Load custom photo selection from disk (must be after all properties initialized)
@@ -283,10 +312,42 @@ final class HypnographState: ObservableObject {
         deleteSource(at: currentSourceIndex)
     }
 
+    // MARK: - Live Effect Updates
+
+    /// Apply a live effect update directly without file reload
+    func applyLiveEffectUpdate(effectIndex: Int, hook: RenderHook) {
+        // Update the Effect.all cache so the library stays in sync
+        Effect.updateCachedEffect(at: effectIndex, with: hook)
+
+        // Get the effect name from the library
+        let allEffects = Effect.all
+        guard effectIndex >= 0 && effectIndex < allEffects.count else { return }
+        let effectName = allEffects[effectIndex].name
+
+        // Check if this effect is the current global effect
+        if let currentEffect = recipe.effects.first, currentEffect.name == effectName {
+            // Replace the global effect with the updated one
+            recipe.effects = [hook]
+            effectsChangeCounter += 1
+        }
+
+        // Check if this effect is applied to any sources
+        for i in 0..<recipe.sources.count {
+            if let sourceEffect = recipe.sources[i].effects.first, sourceEffect.name == effectName {
+                recipe.sources[i].effects = [hook]
+                effectsChangeCounter += 1
+            }
+        }
+    }
+
     // MARK: - Priming
 
     func toggleHUD() {
         isHUDVisible.toggle()
+    }
+
+    func toggleEffectsEditor() {
+        isEffectsEditorVisible.toggle()
     }
 
     func togglePause() {

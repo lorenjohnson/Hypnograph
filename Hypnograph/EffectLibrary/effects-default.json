@@ -1,256 +1,279 @@
 {
-  "version": 1,
-  "effects": [
-    // Simple Metal shader example - pixelate effect
+  "effects" : [
     {
-      "name": "Metal Basic",
-      "type": "PixelateMetalHook",
-      "params": { "blockSize": 56 }
+      "name" : "Metal Basic",
+      "params" : {
+        "blockSize" : 7
+      },
+      "type" : "PixelateMetalHook"
     },
-
     {
-      "name": "Metal Chained",
-      "type": "ChainedHook",
-      "hooks": [
+      "hooks" : [
         {
-          "name": "RGB Split",
-          "type": "RGBSplitSimpleHook",
-          "params": { 
-            "offsetAmount": 4.0, 
-            "animated": true 
-          }
+          "name" : "RGB Split",
+          "params" : {
+            "animated" : true,
+            "offsetAmount" : 38.85
+          },
+          "type" : "RGBSplitSimpleHook"
         },
         {
-          "name": "Metal Basic",
-          "type": "PixelateMetalHook",
-          "params": { "blockSize": 3 }
-        }
-      ]
-    },
-
-    // Classic film looks
-    {
-      "name": "B&W",
-      "type": "BlackAndWhiteHook",
-      "params": { "contrast": 1.0 }
-    },
-    
-    // VHS-style RGB separation
-    {
-      "name": "RGB Split",
-      "type": "RGBSplitSimpleHook",
-      "params": { 
-        "offsetAmount": 4.0, 
-        "animated": true 
-      }
-    },
-    
-    // Datamosh variations - all params inlined
-    {
-      "name": "Datamosh: Pixelate",
-      "type": "ChainedHook",
-      "hooks": [
-        {
-          "name": "Datamosh",
-          "type": "DatamoshMetalHook",
-          "params": {
-            "minHistoryOffset": 0,
-            "maxHistoryOffset": 100,
-            "freezeReference": true,
-            "blockSize": 40,
-            "blockMoshProbability": 0.1,
-            "motionSensitivity": 0.2,
-            "updateProbability": 0.0,
-            "smearStrength": 0.0,
-            "jitterAmount": 0.0,
-            "feedbackAmount": 0.7,
-            "blockiness": 0.0,
-            "burstChance": 0.9,
-            "minBurstDuration": 0,
-            "maxBurstDuration": 0,
-            "cleanFrameChance": 0.0,
-            "intensityVariation": 0.0
-          }
+          "name" : "Metal Basic",
+          "params" : {
+            "_enabled" : true,
+            "blockSize" : 11
+          },
+          "type" : "PixelateMetalHook"
         },
         {
-          "name": "RGB Split",
-          "type": "RGBSplitSimpleHook",
-          "params": { 
-            "offsetAmount": 10.0, 
-            "animated": true 
-          }
+          "name" : "HoldFrame",
+          "params" : {
+            "_enabled" : false,
+            "freezeInterval" : 1.2379320879888276,
+            "holdDuration" : 3.7599947625698333,
+            "trailBoost" : 3.6810623254189943
+          },
+          "type" : "HoldFrameHook"
         },
         {
-          "name": "Metal Basic",
-          "type": "PixelateMetalHook",
-          "params": { "blockSize": 8 }
+          "name" : "FrameDifference",
+          "params" : {
+            "boost" : 0.982083624301677,
+            "originalBlend" : 1
+          },
+          "type" : "FrameDifferenceHook"
         }
-      ]
+      ],
+      "name" : "Metal Chained",
+      "type" : "ChainedHook"
     },
-    
     {
-      "name": "Datamosh: Subtle",
-      "type": "ChainedHook",
-      "hooks": [
-        {
-          "name": "Datamosh",
-          "type": "DatamoshMetalHook",
-          "params": {
-            "minHistoryOffset": 10,
-            "maxHistoryOffset": 45,
-            "freezeReference": false,
-            "blockSize": 8,
-            "blockMoshProbability": 0.15,
-            "motionSensitivity": 0.95,
-            "updateProbability": 0.0,
-            "smearStrength": 0.6,
-            "jitterAmount": 0.15,
-            "feedbackAmount": 0.25,
-            "blockiness": 0.0,
-            "burstChance": 0.005,
-            "minBurstDuration": 45,
-            "maxBurstDuration": 150,
-            "cleanFrameChance": 0.0,
-            "intensityVariation": 0.6
-          }
-        }
-      ]
+      "name" : "B&W",
+      "params" : {
+        "contrast" : 1.2003125
+      },
+      "type" : "BlackAndWhiteHook"
     },
-    
-    // Datamosh + RGB combo
     {
-      "name": "Datamosh: Subtle + RGB",
-      "type": "ChainedHook",
-      "hooks": [
+      "name" : "RGB Split",
+      "params" : {
+        "animated" : true,
+        "offsetAmount" : 28.914464285714285
+      },
+      "type" : "RGBSplitSimpleHook"
+    },
+    {
+      "hooks" : [
         {
-          "name": "Datamosh",
-          "type": "DatamoshMetalHook",
-          "params": {
-            "minHistoryOffset": 10,
-            "maxHistoryOffset": 45,
-            "blockSize": 8,
-            "blockMoshProbability": 0.15,
-            "motionSensitivity": 0.95,
-            "smearStrength": 0.6,
-            "jitterAmount": 0.15,
-            "feedbackAmount": 0.25,
-            "blockiness": 0.0
-          }
+          "name" : "FrameDifference",
+          "params" : {
+            "_enabled" : true,
+            "boost" : 7.075887044270834,
+            "originalBlend" : 1
+          },
+          "type" : "FrameDifferenceHook"
         },
         {
-          "name": "RGB Split",
-          "type": "RGBSplitSimpleHook",
-          "params": { "offsetAmount": 12.0, "animated": true }
-        }
-      ]
-    },
-    
-    // Extreme destruction
-    {
-      "name": "Datamosh: Mash",
-      "type": "ChainedHook",
-      "hooks": [
-        {
-          "name": "Datamosh",
-          "type": "DatamoshMetalHook",
-          "params": {
-            "minHistoryOffset": 30,
-            "maxHistoryOffset": 120,
-            "blockSize": 14,
-            "blockMoshProbability": 0.6,
-            "motionSensitivity": 0.7,
-            "smearStrength": 0.1,
-            "jitterAmount": 0.5,
-            "feedbackAmount": 0.85,
-            "blockiness": 0.0,
-            "burstChance": 1.0,
-            "minBurstDuration": 99999,
-            "maxBurstDuration": 99999
-          }
-        }
-      ]
-    },
-    
-    // Frozen reference
-    {
-      "name": "Datamosh: Frozen",
-      "type": "ChainedHook",
-      "hooks": [
-        {
-          "name": "Datamosh",
-          "type": "DatamoshMetalHook",
-          "params": {
-            "minHistoryOffset": 60,
-            "maxHistoryOffset": 60,
-            "freezeReference": true,
-            "frozenHistoryOffset": 60,
-            "blockSize": 12,
-            "blockMoshProbability": 0.5,
-            "motionSensitivity": 0.8,
-            "smearStrength": 0.15,
-            "jitterAmount": 0.25,
-            "feedbackAmount": 0.8,
-            "blockiness": 0.0
-          }
-        }
-      ]
-    },
-    
-    // Hold frame with ghost trails
-    {
-      "name": "Hold + Ghost",
-      "type": "ChainedHook",
-      "hooks": [
-        {
-          "name": "Hold",
-          "type": "HoldFrameHook",
-          "params": {
-            "freezeInterval": 6.0,
-            "holdDuration": 5.0,
-            "trailBoost": 2.5
-          }
+          "name" : "MirrorKaleido",
+          "params" : {
+            "_enabled" : false,
+            "intensity" : 0
+          },
+          "type" : "MirrorKaleidoHook"
         },
         {
-          "name": "Ghost",
-          "type": "GhostBlurHook",
-          "params": {
-            "intensity": 0.2,
-            "trailLength": 10,
-            "blurAmount": 8.0
-          }
-        }
-      ]
-    },
-    
-    // Datamosh + Ghost combo
-    {
-      "name": "Mosh + Ghost",
-      "type": "ChainedHook",
-      "hooks": [
-        {
-          "name": "Datamosh",
-          "type": "DatamoshMetalHook",
-          "params": {
-            "minHistoryOffset": 15,
-            "maxHistoryOffset": 70,
-            "blockSize": 10,
-            "blockMoshProbability": 0.25,
-            "motionSensitivity": 0.85,
-            "smearStrength": 0.45,
-            "feedbackAmount": 0.4
-          }
+          "name" : "ColorEcho",
+          "params" : {
+            "_enabled" : false,
+            "channelOffset" : 8
+          },
+          "type" : "ColorEchoHook"
         },
         {
-          "name": "Ghost",
-          "type": "GhostBlurHook",
-          "params": {
-            "intensity": 0.3,
-            "trailLength": 8,
-            "blurAmount": 4.0
-          }
+          "name" : "RGB Split",
+          "params" : {
+            "_enabled" : true,
+            "animated" : true,
+            "offsetAmount" : 34.08929818435754
+          },
+          "type" : "RGBSplitSimpleHook"
+        },
+        {
+          "name" : "Metal Basic",
+          "params" : {
+            "_enabled" : true,
+            "blockSize" : 4
+          },
+          "type" : "PixelateMetalHook"
+        },
+        {
+          "name" : "BlackAndWhite",
+          "params" : {
+            "_enabled" : false,
+            "contrast" : 1.0081834846368716
+          },
+          "type" : "BlackAndWhiteHook"
         }
-      ]
+      ],
+      "name" : "Datamosh: Pixelate",
+      "type" : "ChainedHook"
+    },
+    {
+      "hooks" : [
+        {
+          "name" : "Datamosh",
+          "params" : {
+            "blockMoshProbability" : 1,
+            "blockSize" : 55,
+            "blockiness" : 1,
+            "burstChance" : 0.07615241022050483,
+            "cleanFrameChance" : 0,
+            "feedbackAmount" : 0.7325808502906976,
+            "freezeReference" : true,
+            "intensityVariation" : 0.36975835755813957,
+            "jitterAmount" : 0.47362827034883725,
+            "maxBurstDuration" : 472,
+            "maxHistoryOffset" : 94,
+            "minBurstDuration" : 187,
+            "minHistoryOffset" : 23,
+            "motionSensitivity" : 0.95,
+            "smearStrength" : 0.7823900799418604,
+            "updateProbability" : 1
+          },
+          "type" : "DatamoshMetalHook"
+        }
+      ],
+      "name" : "Datamosh: Subtle",
+      "type" : "ChainedHook"
+    },
+    {
+      "hooks" : [
+        {
+          "name" : "Datamosh",
+          "params" : {
+            "blockMoshProbability" : 0.15,
+            "blockSize" : 19,
+            "blockiness" : 0,
+            "feedbackAmount" : 0.25,
+            "jitterAmount" : 0.15,
+            "maxHistoryOffset" : 45,
+            "minHistoryOffset" : 10,
+            "motionSensitivity" : 0.95,
+            "smearStrength" : 0.6
+          },
+          "type" : "DatamoshMetalHook"
+        },
+        {
+          "name" : "RGB Split",
+          "params" : {
+            "animated" : true,
+            "offsetAmount" : 12
+          },
+          "type" : "RGBSplitSimpleHook"
+        }
+      ],
+      "name" : "Datamosh: Subtle + RGB",
+      "type" : "ChainedHook"
+    },
+    {
+      "hooks" : [
+        {
+          "name" : "Datamosh",
+          "params" : {
+            "blockMoshProbability" : 0.6605695857558139,
+            "blockSize" : 12,
+            "blockiness" : 0.30377906976744184,
+            "burstChance" : 1,
+            "feedbackAmount" : 0.85,
+            "jitterAmount" : 0.5,
+            "maxBurstDuration" : 415,
+            "maxHistoryOffset" : 79,
+            "minBurstDuration" : 211,
+            "minHistoryOffset" : 5,
+            "motionSensitivity" : 0.25548237645348826,
+            "smearStrength" : 0.7385356104651162
+          },
+          "type" : "DatamoshMetalHook"
+        }
+      ],
+      "name" : "Datamosh: Mash",
+      "type" : "ChainedHook"
+    },
+    {
+      "hooks" : [
+        {
+          "name" : "Datamosh",
+          "params" : {
+            "blockMoshProbability" : 0.5,
+            "blockSize" : 12,
+            "blockiness" : 0,
+            "feedbackAmount" : 0.8,
+            "freezeReference" : true,
+            "frozenHistoryOffset" : 60,
+            "jitterAmount" : 0.25,
+            "maxHistoryOffset" : 60,
+            "minHistoryOffset" : 60,
+            "motionSensitivity" : 0.8,
+            "smearStrength" : 0.15
+          },
+          "type" : "DatamoshMetalHook"
+        }
+      ],
+      "name" : "Datamosh: Frozen",
+      "type" : "ChainedHook"
+    },
+    {
+      "hooks" : [
+        {
+          "name" : "Hold",
+          "params" : {
+            "freezeInterval" : 1,
+            "holdDuration" : 0.3854990138206631,
+            "trailBoost" : 0.5
+          },
+          "type" : "HoldFrameHook"
+        },
+        {
+          "name" : "Ghost",
+          "params" : {
+            "blurAmount" : 0.9199999999999999,
+            "intensity" : 0.6360970334350105,
+            "trailLength" : 14
+          },
+          "type" : "GhostBlurHook"
+        }
+      ],
+      "name" : "Hold + Ghost",
+      "type" : "ChainedHook"
+    },
+    {
+      "hooks" : [
+        {
+          "name" : "Datamosh",
+          "params" : {
+            "blockMoshProbability" : 0.6110461229946524,
+            "blockSize" : 37,
+            "feedbackAmount" : 1,
+            "maxHistoryOffset" : 112,
+            "minHistoryOffset" : 37,
+            "motionSensitivity" : 0.09548796791443845,
+            "smearStrength" : 0.12607369652406406
+          },
+          "type" : "DatamoshMetalHook"
+        },
+        {
+          "name" : "Ghost",
+          "params" : {
+            "blurAmount" : 42,
+            "intensity" : 0.15196774732620322,
+            "trailLength" : 8
+          },
+          "type" : "GhostBlurHook"
+        }
+      ],
+      "name" : "Mosh + Ghost",
+      "type" : "ChainedHook"
     }
-  ]
+  ],
+  "version" : 1
 }
-

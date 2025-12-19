@@ -9,6 +9,11 @@ struct ContentView: View {
     @ObservedObject var dream: Dream
     @ObservedObject var divine: Divine
 
+    /// Use shared view model from state for controller/keyboard navigation
+    private var effectsEditorViewModel: EffectsEditorViewModel {
+        state.effectsEditorViewModel
+    }
+
     private var soloIndicatorText: String? {
         // Only Dream shows solo indicator
         if state.currentModuleType == .dream, !state.sources.isEmpty {
@@ -56,6 +61,14 @@ struct ContentView: View {
                     .font(.system(size: 48, weight: .bold))
                     .foregroundColor(.red)
                     .padding()
+            }
+        }
+        .overlay(alignment: .trailing) {
+            if state.isEffectsEditorVisible {
+                EffectsEditorView(viewModel: effectsEditorViewModel, state: state)
+                    .padding(.trailing, 16)
+                    .transition(.move(edge: .trailing))
+                    .animation(.easeInOut(duration: 0.2), value: state.isEffectsEditorVisible)
             }
         }
         .appNotifications()

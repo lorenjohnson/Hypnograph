@@ -40,9 +40,6 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
         // Request notification authorization
         AppNotifications.requestAuthorization()
 
-        // Start watching effect config files for hot-reload
-        EffectConfigWatcher.shared.startWatching()
-
         // Request Photos library authorization and refresh hidden assets cache
         Task {
             let status = await ApplePhotos.shared.requestAuthorization()
@@ -316,6 +313,9 @@ struct AppCommands: Commands {
 
                 Toggle("Info", isOn: $state.isInfoVisible)
                     .keyboardShortcut("i", modifiers: [])
+
+                Toggle("Effects Editor", isOn: $state.isEffectsEditorVisible)
+                    .keyboardShortcut("e", modifiers: [.control])
             }
         }
 
@@ -414,5 +414,6 @@ struct AppCommands: Commands {
                 divine.sourceMenu()
             }
         }
+
     }
 }
