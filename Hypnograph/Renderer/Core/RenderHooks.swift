@@ -558,52 +558,63 @@ extension RenderHook {
 // MARK: - Available Effects
 
 /// Namespace for available render effects
+/// Effects are loaded from JSON config with fallback to bundled defaults
 enum Effect {
+    /// Cached loaded effects and source info
+    private static var cachedResult: EffectConfigLoader.LoadResult?
+
+    /// Callback triggered after effects are reloaded - allows managers to re-apply active effects
+    static var onReload: (() -> Void)?
+
     /// All available effects (None is implicit, represented by nil)
-    static let all: [RenderHook] = [
-        // Classics
-        BlackAndWhiteHook(contrast: 1.0),
-        // RGBSplitSimpleHook(offsetAmount: 15.0, animated: true),
+    /// Loaded from: user config → bundled default → hardcoded fallback
+    static var all: [RenderHook] {
+        if let cached = cachedResult {
+            return cached.effects
+        }
+        let result = EffectConfigLoader.loadEffects()
+        cachedResult = result
 
-        // // Temporal/destructive effects
-        // GhostBlurHook(intensity: 0.5, trailLength: 6, blurAmount: 8.0),
-        // FrameDifferenceHook(originalBlend: 0.6, boost: 0.1),
-        // ColorEchoHook(channelOffset: 3),
-        // HoldFrameHook(),
+        // Log source and notify on errors
+        switch result.source {
+        case .user:
+            print("✓ Effects loaded from user config (\(result.effects.count) effects)")
+        case .bundled:
+            print("✓ Effects loaded from bundled defaults (\(result.effects.count) effects)")
+        case .hardcoded:
+            print("⚠️ Effects using hardcoded fallback")
+            if result.error != nil {
+                AppNotifications.show("⚠️ Effects config error - using defaults", flash: true, duration: 4.0)
+            }
+        }
 
-        // Metal datamosh - codec-style block artifacts
-        ChainedHook(name: "Datamosh: Default", hooks: [
-            DatamoshMetalHook(params: .default)
-        ]),
-        ChainedHook(name: "Datamosh: Subtle", hooks: [
-            DatamoshMetalHook(params: .subtle)
-        ]),
-        ChainedHook(name: "Datamosh: Mash", hooks: [
-            DatamoshMetalHook(params: .extreme)
-        ]),
+        return result.effects
+    }
 
-        ChainedHook(name: "Datamosh: Frozen", hooks: [
-            DatamoshMetalHook(params: .frozen)
-        ]),
-        // // Chained effects - compound combinations
-        // ChainedHook(name: "Hold + Echo", hooks: [
-        //     HoldFrameHook(freezeInterval: 6.0, holdDuration: 3.0, trailBoost: 1.2),
-        //     ColorEchoHook(channelOffset: 2)
-        // ]),
-        // ChainedHook(name: "Diff + Echo", hooks: [
-        //     FrameDifferenceHook(originalBlend: 2.0, boost: 10.8),
-        //     ColorEchoHook(channelOffset: 3)
-        // ]),
-        ChainedHook(name: "Hold + Ghost", hooks: [
-            HoldFrameHook(freezeInterval: 6.0, holdDuration: 10.0, trailBoost: 10.0),
-            GhostBlurHook(intensity: 0.2, trailLength: 10, blurAmount: 8.0),
-            BlackAndWhiteHook(contrast: 1.0)
-        ]),
-        ChainedHook(name: "Mosh + Ghost", hooks: [
-            DatamoshMetalHook(params: .default),
-            GhostBlurHook(intensity: 0.3, trailLength: 8, blurAmount: 4.0)
-        ])
-    ]
+    /// Reload effects from config (call when config file changes)
+    @discardableResult
+    static func reload() -> EffectConfigLoader.LoadResult {
+        let result = EffectConfigLoader.loadEffects()
+        cachedResult = result
+
+        // Notify user of reload result
+        switch result.source {
+        case .user:
+            print("✓ Effects reloaded from user config (\(result.effects.count) effects)")
+            AppNotifications.show("Effects reloaded (\(result.effects.count))", flash: true, duration: 2.0)
+        case .bundled:
+            print("✓ Effects reloaded from bundled defaults")
+            AppNotifications.show("Effects reloaded from defaults", flash: true, duration: 2.0)
+        case .hardcoded:
+            print("⚠️ Effects reload failed, using hardcoded fallback")
+            AppNotifications.show("⚠️ Effects config error - using defaults", flash: true, duration: 4.0)
+        }
+
+        // Notify listeners to re-apply active effects with new config
+        onReload?()
+
+        return result
+    }
 
     /// Returns a random effect
     static func random() -> RenderHook? {
@@ -771,6 +782,35 @@ final class RenderHookManager {
         // Cycle: -1 -> 0 -> 1 -> ... -> count-1 -> -1
         let nextIndex = (currentIndex + 2) % (Effect.all.count + 1) - 1
         setGlobalEffect(nextIndex >= 0 ? Effect.all[nextIndex] : nil)
+    }
+
+    /// Re-apply active effects using fresh instances from the reloaded config.
+    /// Called when effects config changes to apply parameter updates immediately.
+    func reapplyActiveEffects() {
+        guard let recipe = recipeProvider?() else { return }
+
+        // Re-apply global effect by name
+        if let currentEffect = recipe.effects.first {
+            let currentName = currentEffect.name
+            if let freshEffect = Effect.all.first(where: { $0.name == currentName }) {
+                // Found matching effect - replace with fresh copy
+                effectsSetter?([freshEffect.copy()])
+                print("🔄 Reapplied global effect: \(currentName)")
+            }
+        }
+
+        // Re-apply per-source effects by name
+        for (index, source) in recipe.sources.enumerated() {
+            if let currentEffect = source.effects.first {
+                let currentName = currentEffect.name
+                if let freshEffect = Effect.all.first(where: { $0.name == currentName }) {
+                    sourceEffectSetter?(index, [freshEffect.copy()])
+                    print("🔄 Reapplied source \(index) effect: \(currentName)")
+                }
+            }
+        }
+
+        onEffectChanged?()
     }
 
     // MARK: - Per-Source Effects (reads from recipe sources)

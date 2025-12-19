@@ -34,10 +34,8 @@ struct GhostBlurHook: RenderHook {
     }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
-        guard context.frameBuffer.isFilled else {
-            return image
-        }
-        
+        // Work with whatever frames are available (preroll fills buffer from frame 1)
+        // Gracefully degrade if buffer isn't full yet
         let availableFrames = min(trailLength, context.frameBuffer.frameCount - 1)
         guard availableFrames >= 1 else { return image }
         

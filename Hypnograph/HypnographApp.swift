@@ -40,6 +40,9 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
         // Request notification authorization
         AppNotifications.requestAuthorization()
 
+        // Start watching effect config files for hot-reload
+        EffectConfigWatcher.shared.startWatching()
+
         // Request Photos library authorization and refresh hidden assets cache
         Task {
             let status = await ApplePhotos.shared.requestAuthorization()

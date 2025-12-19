@@ -174,30 +174,39 @@ final class HoldFrameHook: RenderHook {
             return frozen
         }
 
-        // 3. Accumulate trails: blend new difference with previous trails
+        // 3. Accumulate trails: blend new difference with decayed previous trails
+        // Use dissolve blend so trails always decay - prevents "stuck" bright pixels
         let currentTrails: CIImage
         if let previousTrails = accumulatedTrails {
-            // Lighten blend: keeps the brighter of previous trails or new motion
-            guard let lighten = CIFilter(name: "CILightenBlendMode") else {
+            // Dissolve: mix previous trails (decayed) with new motion
+            // trailDecay controls how much old trails persist (0.7 = 70% old, 30% new)
+            let trailDecay: Double = 0.7
+
+            guard let dissolve = CIFilter(name: "CIDissolveTransition") else {
                 currentTrails = boostedDiff
                 accumulatedTrails = currentTrails
                 return applyTrailsToFrozen(frozen: frozen, trails: currentTrails, live: live, outputRect: outputRect)
             }
-            lighten.setValue(boostedDiff, forKey: kCIInputImageKey)
-            lighten.setValue(previousTrails, forKey: kCIInputBackgroundImageKey)
+            dissolve.setValue(previousTrails, forKey: kCIInputImageKey)
+            dissolve.setValue(boostedDiff, forKey: kCIInputTargetImageKey)
+            dissolve.setValue(1.0 - trailDecay, forKey: kCIInputTimeKey)  // 0.3 = 30% new
 
-            if let blended = lighten.outputImage {
-                // Slight fade on accumulated trails to prevent total blowout
-                if let fade = CIFilter(name: "CIExposureAdjust") {
-                    fade.setValue(blended, forKey: kCIInputImageKey)
-                    fade.setValue(-0.05, forKey: kCIInputEVKey)  // Very slight darkening
-                    currentTrails = fade.outputImage ?? blended
-                } else {
-                    currentTrails = blended
-                }
-            } else {
+            guard let blended = dissolve.outputImage else {
                 currentTrails = boostedDiff
+                accumulatedTrails = currentTrails
+                return applyTrailsToFrozen(frozen: frozen, trails: currentTrails, live: live, outputRect: outputRect)
             }
+
+            // Apply additional fade to prevent runaway brightness
+            guard let fade = CIFilter(name: "CIExposureAdjust") else {
+                currentTrails = blended
+                accumulatedTrails = currentTrails
+                return applyTrailsToFrozen(frozen: frozen, trails: currentTrails, live: live, outputRect: outputRect)
+            }
+            fade.setValue(blended, forKey: kCIInputImageKey)
+            fade.setValue(-0.15, forKey: kCIInputEVKey)  // Gentle continuous fade
+
+            currentTrails = fade.outputImage ?? blended
         } else {
             currentTrails = boostedDiff
         }
@@ -210,14 +219,15 @@ final class HoldFrameHook: RenderHook {
 
     /// Blend the accumulated trails over the frozen frame, with progressive live blend
     private func applyTrailsToFrozen(frozen: CIImage, trails: CIImage, live: CIImage, outputRect: CGRect) -> CIImage {
-        // Screen blend: trails appear as bright ghostly additions over frozen
-        guard let screen = CIFilter(name: "CIScreenBlendMode") else {
+        // Overlay blend: trails affect frozen without blowing out to white
+        // (Screen always adds, Overlay preserves midtones better)
+        guard let overlay = CIFilter(name: "CIOverlayBlendMode") else {
             return frozen
         }
-        screen.setValue(trails, forKey: kCIInputImageKey)
-        screen.setValue(frozen, forKey: kCIInputBackgroundImageKey)
+        overlay.setValue(trails, forKey: kCIInputImageKey)
+        overlay.setValue(frozen, forKey: kCIInputBackgroundImageKey)
 
-        guard let frozenWithTrails = screen.outputImage else {
+        guard let frozenWithTrails = overlay.outputImage else {
             return frozen
         }
 

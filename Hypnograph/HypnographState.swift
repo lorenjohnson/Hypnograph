@@ -159,6 +159,11 @@ final class HypnographState: ObservableObject {
             self.recipe.sources[sourceIndex].blendMode = mode
         }
 
+        // Subscribe to effect config reloads - reapply active effects with fresh instances
+        Effect.onReload = { [weak self] in
+            self?.renderHooks.reapplyActiveEffects()
+        }
+
         // Load custom photo selection from disk (must be after all properties initialized)
         loadCustomSelectionFromDisk()
     }

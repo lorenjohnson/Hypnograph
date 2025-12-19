@@ -30,10 +30,7 @@ struct TemporalSmearHook: RenderHook {
     }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
-        guard context.frameBuffer.isFilled else {
-            return image
-        }
-        
+        // Work with whatever frames are available (preroll fills buffer from frame 1)
         let maxOffset = min(lookback, context.frameBuffer.frameCount - 1)
         guard maxOffset >= 2 else { return image }
         

@@ -27,11 +27,10 @@ struct ColorEchoHook: RenderHook {
     }
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
-        guard context.frameBuffer.isFilled else {
-            return image
-        }
+        // Work with whatever frames are available (preroll fills buffer from frame 1)
+        let maxOffset = max(0, context.frameBuffer.frameCount - 1)
+        guard maxOffset >= 1 else { return image }  // Need at least 1 frame of history
 
-        let maxOffset = context.frameBuffer.frameCount - 1
         let greenOffset = min(channelOffset, maxOffset)
         let blueOffset = min(channelOffset * 2, maxOffset)
 
