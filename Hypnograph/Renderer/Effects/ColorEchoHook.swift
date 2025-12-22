@@ -12,14 +12,15 @@ import CoreGraphics
 
 /// Color echo - each color channel comes from a different point in time
 /// Red from now, green from N frames ago, blue from 2N frames ago
-/// Uses max blend instead of additive to prevent white blowout
+/// Uses additive blend with intensity control to prevent white blowout
 struct ColorEchoHook: RenderHook {
 
     // MARK: - Parameter Specs (source of truth)
 
     static var parameterSpecs: [String: ParameterSpec] {
         [
-            "channelOffset": .int(default: 2, range: 1...30)
+            "channelOffset": .int(default: 4, range: 1...30),
+            "intensity": .float(default: 0.85, range: 0.1...1.0)
         ]
     }
 
@@ -34,8 +35,12 @@ struct ColorEchoHook: RenderHook {
     /// Frame offset between channels
     let channelOffset: Int
 
-    init(channelOffset: Int = 2, name: String? = nil) {
+    /// Intensity of each channel (lower = less white accumulation)
+    let intensity: Float
+
+    init(channelOffset: Int = 4, intensity: Float = 0.85, name: String? = nil) {
         self.channelOffset = channelOffset
+        self.intensity = max(0.1, min(1.0, intensity))
         self.nameOverride = name
     }
 
@@ -52,12 +57,18 @@ struct ColorEchoHook: RenderHook {
             return image
         }
 
+        // Scale factor for each channel - reduces intensity to prevent white blowout
+        // Also apply slight decay to older channels
+        let redScale = CGFloat(intensity)
+        let greenScale = CGFloat(intensity) * 0.95  // Slight decay for older channel
+        let blueScale = CGFloat(intensity) * 0.90   // More decay for oldest channel
+
         // Extract red from current frame (zero out G and B)
         guard let redFilter = CIFilter(name: "CIColorMatrix") else {
             return image
         }
         redFilter.setValue(image, forKey: kCIInputImageKey)
-        redFilter.setValue(CIVector(x: 1, y: 0, z: 0, w: 0), forKey: "inputRVector")
+        redFilter.setValue(CIVector(x: redScale, y: 0, z: 0, w: 0), forKey: "inputRVector")
         redFilter.setValue(CIVector(x: 0, y: 0, z: 0, w: 0), forKey: "inputGVector")
         redFilter.setValue(CIVector(x: 0, y: 0, z: 0, w: 0), forKey: "inputBVector")
         redFilter.setValue(CIVector(x: 0, y: 0, z: 0, w: 1), forKey: "inputAVector")
@@ -68,7 +79,7 @@ struct ColorEchoHook: RenderHook {
         }
         greenFilter.setValue(greenFrame, forKey: kCIInputImageKey)
         greenFilter.setValue(CIVector(x: 0, y: 0, z: 0, w: 0), forKey: "inputRVector")
-        greenFilter.setValue(CIVector(x: 0, y: 1, z: 0, w: 0), forKey: "inputGVector")
+        greenFilter.setValue(CIVector(x: 0, y: greenScale, z: 0, w: 0), forKey: "inputGVector")
         greenFilter.setValue(CIVector(x: 0, y: 0, z: 0, w: 0), forKey: "inputBVector")
         greenFilter.setValue(CIVector(x: 0, y: 0, z: 0, w: 1), forKey: "inputAVector")
 
@@ -79,7 +90,7 @@ struct ColorEchoHook: RenderHook {
         blueFilter.setValue(blueFrame, forKey: kCIInputImageKey)
         blueFilter.setValue(CIVector(x: 0, y: 0, z: 0, w: 0), forKey: "inputRVector")
         blueFilter.setValue(CIVector(x: 0, y: 0, z: 0, w: 0), forKey: "inputGVector")
-        blueFilter.setValue(CIVector(x: 0, y: 0, z: 1, w: 0), forKey: "inputBVector")
+        blueFilter.setValue(CIVector(x: 0, y: 0, z: blueScale, w: 0), forKey: "inputBVector")
         blueFilter.setValue(CIVector(x: 0, y: 0, z: 0, w: 1), forKey: "inputAVector")
 
         guard let red = redFilter.outputImage,
@@ -88,24 +99,25 @@ struct ColorEchoHook: RenderHook {
             return image
         }
 
-        // Combine using lighten blend (max per channel) - prevents white blowout
-        // Since each image only has one non-zero channel, lighten picks that channel's value
-        guard let blend1 = CIFilter(name: "CILightenBlendMode"),
-              let blend2 = CIFilter(name: "CILightenBlendMode") else {
+        // Use CIAdditionCompositing to combine channels
+        // Since each image only has one non-zero channel, addition gives us R+G+B
+        // The intensity scaling above prevents this from blowing out to white
+        guard let add1 = CIFilter(name: "CIAdditionCompositing"),
+              let add2 = CIFilter(name: "CIAdditionCompositing") else {
             return image
         }
 
-        blend1.setValue(red, forKey: kCIInputImageKey)
-        blend1.setValue(green, forKey: kCIInputBackgroundImageKey)
+        add1.setValue(red, forKey: kCIInputImageKey)
+        add1.setValue(green, forKey: kCIInputBackgroundImageKey)
 
-        guard let rg = blend1.outputImage else {
+        guard let rg = add1.outputImage else {
             return image
         }
 
-        blend2.setValue(rg, forKey: kCIInputImageKey)
-        blend2.setValue(blue, forKey: kCIInputBackgroundImageKey)
+        add2.setValue(rg, forKey: kCIInputImageKey)
+        add2.setValue(blue, forKey: kCIInputBackgroundImageKey)
 
-        guard let result = blend2.outputImage else {
+        guard let result = add2.outputImage else {
             return image
         }
 

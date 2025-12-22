@@ -13,12 +13,13 @@ import GameController
 /// - **D-Pad Left/Right** - Adjust parameter values (when Effects Editor is open), or Previous/Next source
 /// - **Left Stick X** - Switch between effects and parameters panels (when Effects Editor is open)
 /// - **LB** (Left Bumper) - Cycle blend mode (M) - current layer
-/// - **RB** (Right Bumper) - Cycle source effect (F) - current layer
+/// - **RB** (Right Bumper) - Cycle source effect backward (F) - current layer
+/// - **LT** (Left Trigger) - Clear all effects and reset blend modes
 /// - **RT** (Right Trigger) - Toggle style (Montage/Sequence) - Dream mode
 /// - **Start/Menu** - Pause/Play (P)
 /// - **Back/Options** - Toggle HUD (H)
 /// - **Left Stick Click** - Toggle watch mode (W)
-/// - **Right Stick Click** - Cycle mode (~)
+/// - **Right Stick Click** - Send to Performance Display (Cmd+Return)
 ///
 /// Automatically detects and connects to controllers when they're paired via Bluetooth.
 @MainActor
@@ -311,12 +312,38 @@ final class GameControllerManager {
             }
         }
 
-        // Right Stick Click - Cycle module (~) (if available)
+        // Right Stick Click - Send to Performance Display (Cmd+Return) (if available)
         if let rightThumbButton = gamepad.rightThumbstickButton {
             rightThumbButton.pressedChangedHandler = { [weak self] _, _, pressed in
                 guard pressed else { return }
-                self?.cycleModuleHandler?()
+                self?.sendToPerformanceDisplay()
             }
+        }
+    }
+
+    // MARK: - Performance Display
+
+    private func sendToPerformanceDisplay() {
+        guard let state = state else { return }
+
+        // Only works when performance display is visible
+        guard state.performanceDisplay.isVisible else {
+            print("🎮 Performance Display not visible, ignoring send")
+            return
+        }
+
+        switch state.currentModuleType {
+        case .dream:
+            guard let dream = dream else { return }
+            state.performanceDisplay.send(
+                recipe: dream.currentRecipe,
+                aspectRatio: state.aspectRatio,
+                resolution: state.outputResolution,
+                mode: dream.mode
+            )
+            print("🎮 Sent to Performance Display")
+        case .divine:
+            print("🎮 Performance Display: Divine mode not supported yet")
         }
     }
 

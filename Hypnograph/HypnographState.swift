@@ -96,6 +96,9 @@ final class HypnographState: ObservableObject {
     // Transition manager for smooth crossfades between hypnograms
     let transitionManager = TransitionManager()
 
+    // Performance display for clean output to external monitor
+    let performanceDisplay = PerformanceDisplay()
+
     // Watch timer - generates new hypnograms at intervals when watch mode is enabled
     private var watchTimer: Timer?
 

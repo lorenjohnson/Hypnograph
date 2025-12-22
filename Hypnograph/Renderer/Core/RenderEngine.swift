@@ -43,19 +43,27 @@ final class RenderEngine {
         let stillImagesBySourceIndex: [Int: CIImage]
     }
 
-    /// Build a player item for preview
+    /// Build a player item for preview or isolated playback
+    /// - Parameters:
+    ///   - recipe: The recipe to build
+    ///   - strategy: Montage or sequence timeline
+    ///   - config: Render configuration
+    ///   - isolatedPlayback: If true, bakes recipe into instructions so effects are independent of global hooks
     func makePlayerItem(
         recipe: HypnogramRecipe,
         strategy: CompositionBuilder.TimelineStrategy,
-        config: Config
+        config: Config,
+        isolatedPlayback: Bool = false
     ) async -> Result<PlayerItemResult, RenderError> {
 
         // Build composition
+        // When isolatedPlayback is true, treat like export so it gets its own RenderHookManager
         let buildResult = await compositionBuilder.build(
             recipe: recipe,
             strategy: strategy,
             outputSize: config.outputSize,
-            frameRate: config.frameRate
+            frameRate: config.frameRate,
+            isExport: isolatedPlayback
         )
 
         guard case .success(let build) = buildResult else {

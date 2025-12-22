@@ -219,6 +219,35 @@ enum EffectConfigLoader {
         updateParameter(effectIndex: effectIndex, hookIndex: hookIndex, paramName: "_enabled", value: .bool(enabled))
     }
 
+    /// Reset a hook's parameters to their default values
+    static func resetHookToDefaults(effectIndex: Int, hookIndex: Int) {
+        guard var config = cachedConfig else { return }
+        guard effectIndex >= 0 && effectIndex < config.effects.count else { return }
+
+        var effect = config.effects[effectIndex]
+        guard var hooks = effect.hooks, hookIndex >= 0 && hookIndex < hooks.count else { return }
+
+        var hook = hooks[hookIndex]
+        guard let hookType = hook.resolvedType else { return }
+
+        // Get defaults, preserve _enabled state
+        var defaults = EffectRegistry.defaults(for: hookType)
+        if let wasEnabled = hook.params?["_enabled"] {
+            defaults["_enabled"] = wasEnabled
+        }
+
+        hook = EffectDefinition(name: hook.name, type: hook.type, params: defaults, hooks: hook.hooks)
+        hooks[hookIndex] = hook
+        effect = EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+
+        var effects = config.effects
+        effects[effectIndex] = effect
+        config = EffectConfig(version: config.version, effects: effects)
+        cachedConfig = config
+
+        scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
+    }
+
     /// Update the name of an effect
     static func updateEffectName(effectIndex: Int, name: String) {
         guard var config = cachedConfig else { return }
