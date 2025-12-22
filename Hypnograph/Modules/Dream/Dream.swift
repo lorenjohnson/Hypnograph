@@ -399,6 +399,11 @@ final class Dream: ObservableObject {
         }
     }
 
+    /// Get the current recipe for display (with proper duration set)
+    var currentRecipe: HypnogramRecipe {
+        makeDisplayRecipe()
+    }
+
     private func makeDisplayRecipe() -> HypnogramRecipe {
         // Use the recipe directly, just adjust target duration based on mode
         var recipe = state.recipe

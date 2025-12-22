@@ -77,8 +77,15 @@ enum EffectRegistry {
         },
 
         "ColorEchoHook": { params in
-            let channelOffset = params?["channelOffset"]?.intValue ?? 2
-            return ColorEchoHook(channelOffset: channelOffset)
+            let channelOffset = params?["channelOffset"]?.intValue ?? 4
+            let intensity = params?["intensity"]?.floatValue ?? 0.85
+            return ColorEchoHook(channelOffset: channelOffset, intensity: intensity)
+        },
+
+        "ColorEchoMetalHook": { params in
+            let channelOffset = params?["channelOffset"]?.intValue ?? 4
+            let intensity = params?["intensity"]?.floatValue ?? 1.0
+            return ColorEchoMetalHook(channelOffset: channelOffset, intensity: intensity)
         },
 
         "FrameDifferenceHook": { params in
@@ -141,6 +148,41 @@ enum EffectRegistry {
             let brightness = params?["brightness"]?.floatValue ?? 0.0
             let saturation = params?["saturation"]?.floatValue ?? 0.0
             return BasicHook(opacity: opacity, contrast: contrast, brightness: brightness, saturation: saturation)
+        },
+
+        "GaussianBlurMetalHook": { params in
+            let radius = params?["radius"]?.floatValue ?? 10.0
+            return GaussianBlurMetalHook(radius: radius)
+        },
+
+        // MARK: - Simplified Glitch Effects
+
+        "BlockFreezeMetalHook": { params in
+            let blockSize = params?["blockSize"]?.intValue ?? 24
+            let freezeAmount = params?["freezeAmount"]?.floatValue ?? 0.4
+            let streakAmount = params?["streakAmount"]?.floatValue ?? 0.3
+            return BlockFreezeMetalHook(blockSize: blockSize, freezeAmount: freezeAmount, streakAmount: streakAmount)
+        },
+
+        "PixelDriftMetalHook": { params in
+            let driftStrength = params?["driftStrength"]?.floatValue ?? 8.0
+            let threshold = params?["threshold"]?.floatValue ?? 0.05
+            let decay = params?["decay"]?.floatValue ?? 0.6
+            return PixelDriftMetalHook(driftStrength: driftStrength, threshold: threshold, decay: decay)
+        },
+
+        "GlitchBlocksMetalHook": { params in
+            let blockSize = params?["blockSize"]?.intValue ?? 32
+            let glitchAmount = params?["glitchAmount"]?.floatValue ?? 0.3
+            let corruption = params?["corruption"]?.floatValue ?? 0.5
+            return GlitchBlocksMetalHook(blockSize: blockSize, glitchAmount: glitchAmount, corruption: corruption)
+        },
+
+        "TimeShuffleMetalHook": { params in
+            let numRegions = params?["numRegions"]?.intValue ?? 4
+            let chunkSize = params?["chunkSize"]?.intValue ?? 20
+            let shuffleRate = params?["shuffleRate"]?.floatValue ?? 0.02
+            return TimeShuffleMetalHook(numRegions: numRegions, chunkSize: chunkSize, shuffleRate: shuffleRate)
         }
     ]
 
@@ -192,12 +234,18 @@ enum EffectRegistry {
         "GhostBlurHook": GhostBlurHook.self,
         "HoldFrameHook": HoldFrameHook.self,
         "ColorEchoHook": ColorEchoHook.self,
+        "ColorEchoMetalHook": ColorEchoMetalHook.self,
         "FrameDifferenceHook": FrameDifferenceHook.self,
         "FeedbackLoopHook": FeedbackLoopHook.self,
         "DatamoshMetalHook": DatamoshMetalHook.self,
         "MirrorKaleidoHook": MirrorKaleidoHook.self,
         "PixelateMetalHook": PixelateMetalHook.self,
-        "BasicHook": BasicHook.self
+        "BasicHook": BasicHook.self,
+        "GaussianBlurMetalHook": GaussianBlurMetalHook.self,
+        "BlockFreezeMetalHook": BlockFreezeMetalHook.self,
+        "PixelDriftMetalHook": PixelDriftMetalHook.self,
+        "GlitchBlocksMetalHook": GlitchBlocksMetalHook.self,
+        "TimeShuffleMetalHook": TimeShuffleMetalHook.self
     ]
 
     // MARK: - Parameter Specs (from hooks)

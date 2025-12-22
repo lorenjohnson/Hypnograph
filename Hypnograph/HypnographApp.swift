@@ -131,6 +131,25 @@ struct HypnographApp: App {
         }
     }
 
+    func sendToPerformanceDisplay() {
+        // Get recipe from current module
+        let recipe: HypnogramRecipe
+        switch state.currentModuleType {
+        case .dream:
+            recipe = dream.currentRecipe
+        case .divine:
+            // Divine doesn't use recipes the same way, skip for now
+            print("⚠️ Performance Display: Divine mode not supported yet")
+            return
+        }
+
+        state.performanceDisplay.send(
+            recipe: recipe,
+            aspectRatio: state.aspectRatio,
+            resolution: state.outputResolution
+        )
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView(
@@ -144,7 +163,8 @@ struct HypnographApp: App {
                     guard let window = NSApp.windows.first else { return }
 
                     let screens = NSScreen.screens
-                    let targetScreen = (screens.count > 1 ? screens[1] : screens[0])
+                    // Main window stays on primary screen; performance display uses external
+                    let targetScreen = screens[0]
 
                     window.makeHypnographBorderless(on: targetScreen)
                     appDelegate.mainWindow = window
@@ -316,6 +336,39 @@ struct AppCommands: Commands {
 
                 Toggle("Effects Editor", isOn: $state.isEffectsEditorVisible)
                     .keyboardShortcut("e", modifiers: [.command])
+            }
+
+            Divider()
+
+            Section("Performance Display") {
+                Toggle("Show Performance Display", isOn: Binding(
+                    get: { state.performanceDisplay.isVisible },
+                    set: { _ in state.performanceDisplay.toggle() }
+                ))
+                .keyboardShortcut("p", modifiers: [.command, .shift])
+
+                Button("Send to Performance Display") {
+                    // Get recipe from current module and send to performance display
+                    switch state.currentModuleType {
+                    case .dream:
+                        state.performanceDisplay.send(
+                            recipe: dream.currentRecipe,
+                            aspectRatio: state.aspectRatio,
+                            resolution: state.outputResolution,
+                            mode: dream.mode
+                        )
+                    case .divine:
+                        print("⚠️ Performance Display: Divine mode not supported yet")
+                    }
+                }
+                .keyboardShortcut(.return, modifiers: [.command])
+                .disabled(!state.performanceDisplay.isVisible)
+
+                Button("Reset Performance Display") {
+                    state.performanceDisplay.reset()
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+                .disabled(!state.performanceDisplay.isVisible)
             }
         }
 

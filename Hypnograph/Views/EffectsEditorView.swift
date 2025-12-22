@@ -308,6 +308,26 @@ final class EffectsEditorViewModel: ObservableObject {
         EffectConfigLoader.setHookEnabled(effectIndex: effectIndex, hookIndex: hookIndex, enabled: enabled)
     }
 
+    /// Reset a hook's parameters to their default values
+    func resetHookToDefaults(effectIndex: Int, hookIndex: Int) {
+        updateLocalDefinition(at: effectIndex) { effect in
+            var hooks = effect.hooks ?? []
+            guard hookIndex >= 0 && hookIndex < hooks.count else { return effect }
+            var hook = hooks[hookIndex]
+            guard let hookType = hook.resolvedType else { return effect }
+
+            // Get defaults from EffectRegistry, preserve _enabled state
+            var defaults = EffectRegistry.defaults(for: hookType)
+            if let wasEnabled = hook.params?["_enabled"] {
+                defaults["_enabled"] = wasEnabled
+            }
+            hook = EffectDefinition(name: hook.name, type: hook.type, params: defaults, hooks: hook.hooks)
+            hooks[hookIndex] = hook
+            return EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+        }
+        EffectConfigLoader.resetHookToDefaults(effectIndex: effectIndex, hookIndex: hookIndex)
+    }
+
     /// Update the name of the selected effect
     func updateEffectName(effectIndex: Int, name: String) {
         updateLocalDefinition(at: effectIndex) { effect in
@@ -774,7 +794,7 @@ struct EffectsEditorView: View {
 
                 Spacer()
 
-                // Delete button (before enable/disable)
+                // Delete button
                 Image(systemName: "trash")
                     .font(.system(size: 12))
                     .foregroundColor(.red.opacity(0.7))
@@ -784,6 +804,17 @@ struct EffectsEditorView: View {
                         viewModel.removeHookFromChain(effectIndex: effectIndex, hookIndex: childIndex)
                     }
                     .help("Remove from chain")
+
+                // Reset to defaults button
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.system(size: 12))
+                    .foregroundColor(.orange.opacity(0.8))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        viewModel.resetHookToDefaults(effectIndex: effectIndex, hookIndex: childIndex)
+                    }
+                    .help("Reset to defaults")
 
                 // Enable/disable toggle
                 Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
@@ -939,15 +970,7 @@ struct EffectsEditorView: View {
 
                 Spacer()
 
-                Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 14))
-                    .foregroundColor(isEnabled ? .green : .white.opacity(0.5))
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        viewModel.setHookEnabled(effectIndex: effectIndex, hookIndex: childIndex, enabled: !isEnabled)
-                    }
-
+                // Delete button
                 Image(systemName: "trash")
                     .font(.system(size: 12))
                     .foregroundColor(.red.opacity(0.7))
@@ -956,6 +979,29 @@ struct EffectsEditorView: View {
                     .onTapGesture {
                         viewModel.removeHookFromChain(effectIndex: effectIndex, hookIndex: childIndex)
                     }
+                    .help("Remove from chain")
+
+                // Reset to defaults button
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.system(size: 12))
+                    .foregroundColor(.orange.opacity(0.8))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        viewModel.resetHookToDefaults(effectIndex: effectIndex, hookIndex: childIndex)
+                    }
+                    .help("Reset to defaults")
+
+                // Enable/disable toggle
+                Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 14))
+                    .foregroundColor(isEnabled ? .green : .white.opacity(0.5))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        viewModel.setHookEnabled(effectIndex: effectIndex, hookIndex: childIndex, enabled: !isEnabled)
+                    }
+                    .help(isEnabled ? "Disable effect" : "Enable effect")
             }
 
             if isEnabled {
