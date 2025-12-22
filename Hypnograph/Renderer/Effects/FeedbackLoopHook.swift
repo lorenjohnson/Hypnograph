@@ -13,17 +13,30 @@ import CoreGraphics
 /// Feedback loop - simulates analog video feedback
 /// Scales down and rotates previous frame, blends with current
 struct FeedbackLoopHook: RenderHook {
+
+    // MARK: - Parameter Specs (source of truth)
+
+    static var parameterSpecs: [String: ParameterSpec] {
+        [
+            "scale": .double(default: 0.95, range: 0.1...3.0),
+            "rotation": .double(default: 0.01, range: -1.0...1.0),
+            "intensity": .float(default: 0.5, range: 0...1)
+        ]
+    }
+
+    // MARK: - Properties
+
     var name: String { "Feedback Loop" }
-    
+
     /// How much to scale down the feedback (0.9 = subtle zoom, 0.5 = aggressive)
     let scale: CGFloat
-    
+
     /// Rotation per frame in radians
     let rotation: CGFloat
-    
+
     /// Blend amount of feedback
     let intensity: Float
-    
+
     init(scale: CGFloat = 0.95, rotation: CGFloat = 0.01, intensity: Float = 0.5) {
         self.scale = scale
         self.rotation = rotation

@@ -30,11 +30,14 @@ enum EffectConfigLoader {
     /// Callback for live effect application (set by RenderHookManager)
     static var onEffectUpdated: ((Int, RenderHook) -> Void)?
 
-    /// Debounce timer for async file save
+    /// Debounce timer for async file save AND effect instantiation
     private static var saveTimer: Timer?
-    private static let saveDebounceInterval: TimeInterval = 0.5
+    private static let saveDebounceInterval: TimeInterval = 0.3
 
-    /// Update a parameter value - applies immediately, saves async
+    /// Track which effects need re-instantiation
+    private static var pendingInstantiations: Set<Int> = []
+
+    /// Update a parameter value - updates cache immediately, defers instantiation and save
     static func updateParameter(effectIndex: Int, hookIndex: Int?, paramName: String, value: AnyCodableValue) {
         guard var config = cachedConfig else { return }
         guard effectIndex >= 0 && effectIndex < config.effects.count else { return }
@@ -62,13 +65,8 @@ enum EffectConfigLoader {
         config = EffectConfig(version: config.version, effects: effects)
         cachedConfig = config
 
-        // 1. Instantiate and apply effect immediately
-        if let newHook = instantiateEffect(effect) {
-            onEffectUpdated?(effectIndex, newHook)
-        }
-
-        // 2. Schedule async file save (debounced)
-        scheduleSave(config)
+        // Schedule debounced instantiation and save
+        scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
     }
 
     /// Add a hook to a chained effect
@@ -98,10 +96,7 @@ enum EffectConfigLoader {
         config = EffectConfig(version: config.version, effects: effects)
         cachedConfig = config
 
-        if let newRenderHook = instantiateEffect(effect) {
-            onEffectUpdated?(effectIndex, newRenderHook)
-        }
-        scheduleSave(config)
+        scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
     }
 
     /// Remove a hook from a chained effect
@@ -122,10 +117,78 @@ enum EffectConfigLoader {
         config = EffectConfig(version: config.version, effects: effects)
         cachedConfig = config
 
-        if let newRenderHook = instantiateEffect(effect) {
-            onEffectUpdated?(effectIndex, newRenderHook)
+        scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
+    }
+
+    /// Create a new effect (ChainedHook with Basic as default)
+    /// Returns the index of the new effect
+    @discardableResult
+    static func createNewEffect() -> Int {
+        var config = cachedConfig ?? EffectConfig(version: 1, effects: [])
+
+        // Generate unique name
+        let baseName = "Effect"
+        let existingNames = Set(config.effects.compactMap { $0.name })
+        var uniqueName = baseName
+        var counter = 1
+        while existingNames.contains(uniqueName) {
+            counter += 1
+            uniqueName = "\(baseName) \(counter)"
         }
+
+        // Create ChainedHook with BasicHook as default child
+        let basicDefaults = EffectRegistry.defaults(for: "BasicHook")
+        let basicHook = EffectDefinition(
+            name: "Basic",
+            type: "BasicHook",
+            params: basicDefaults,
+            hooks: nil
+        )
+
+        let newEffect = EffectDefinition(
+            name: uniqueName,
+            type: "ChainedHook",
+            params: nil,
+            hooks: [basicHook]
+        )
+
+        var effects = config.effects
+        effects.append(newEffect)
+        config = EffectConfig(version: config.version, effects: effects)
+        cachedConfig = config
+
+        // Reload Effect.all to include the new effect
+        reloadEffectAll()
+
         scheduleSave(config)
+        return effects.count - 1
+    }
+
+    /// Delete an effect at the given index
+    static func deleteEffect(at index: Int) {
+        guard var config = cachedConfig else { return }
+        guard index >= 0 && index < config.effects.count else { return }
+
+        var effects = config.effects
+        effects.remove(at: index)
+        config = EffectConfig(version: config.version, effects: effects)
+        cachedConfig = config
+
+        // Reload Effect.all to reflect the deletion
+        reloadEffectAll()
+
+        scheduleSave(config)
+    }
+
+    /// Reload Effect.all from cached config
+    /// This directly updates Effect's cache without clearing our in-memory config
+    private static func reloadEffectAll() {
+        guard let config = cachedConfig else { return }
+        let hooks = instantiateEffects(from: config)
+
+        // Directly update Effect's cached result without going through reload()
+        // which would clear our in-memory config
+        Effect.updateCache(with: hooks)
     }
 
     /// Reorder hooks in a chained effect
@@ -148,10 +211,7 @@ enum EffectConfigLoader {
         config = EffectConfig(version: config.version, effects: effects)
         cachedConfig = config
 
-        if let newRenderHook = instantiateEffect(effect) {
-            onEffectUpdated?(effectIndex, newRenderHook)
-        }
-        scheduleSave(config)
+        scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
     }
 
     /// Toggle hook enabled state (store as a param for now)
@@ -172,13 +232,43 @@ enum EffectConfigLoader {
         config = EffectConfig(version: config.version, effects: effects)
         cachedConfig = config
 
-        if let newRenderHook = instantiateEffect(effect) {
-            onEffectUpdated?(effectIndex, newRenderHook)
-        }
-        scheduleSave(config)
+        scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
     }
 
-    /// Schedule a debounced save to file
+    /// Schedule debounced instantiation AND file save
+    /// Batches multiple rapid changes into a single heavy operation
+    private static func scheduleInstantiationAndSave(effectIndex: Int, config: EffectConfig) {
+        // Track which effects need re-instantiation
+        pendingInstantiations.insert(effectIndex)
+
+        // Cancel any pending timer
+        saveTimer?.invalidate()
+
+        // Schedule combined instantiation + save after debounce interval
+        saveTimer = Timer.scheduledTimer(withTimeInterval: saveDebounceInterval, repeats: false) { _ in
+            performPendingInstantiations()
+            saveToFile(config)
+        }
+    }
+
+    /// Perform all pending instantiations in one batch
+    private static func performPendingInstantiations() {
+        guard let config = cachedConfig else {
+            pendingInstantiations.removeAll()
+            return
+        }
+
+        for effectIndex in pendingInstantiations {
+            guard effectIndex >= 0 && effectIndex < config.effects.count else { continue }
+            let effect = config.effects[effectIndex]
+            if let newHook = instantiateEffect(effect) {
+                onEffectUpdated?(effectIndex, newHook)
+            }
+        }
+        pendingInstantiations.removeAll()
+    }
+
+    /// Schedule a debounced save to file (for operations that don't need re-instantiation)
     private static func scheduleSave(_ config: EffectConfig) {
         // Cancel any pending save
         saveTimer?.invalidate()
@@ -190,16 +280,22 @@ enum EffectConfigLoader {
     }
 
     /// Save config to file asynchronously
+    /// Always saves to userConfigURL (Application Support), regardless of where we loaded from
     private static func saveToFile(_ config: EffectConfig) {
-        guard let url = cachedConfigURL else { return }
+        let url = userConfigURL
 
         // Save on background queue
         DispatchQueue.global(qos: .utility).async {
             do {
+                // Ensure directory exists
+                let directory = url.deletingLastPathComponent()
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
                 let encoder = JSONEncoder()
                 encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
                 let data = try encoder.encode(config)
                 try data.write(to: url)
+                print("✓ Effects saved to \(url.path)")
             } catch {
                 print("⚠️ EffectConfigLoader: Failed to save config: \(error)")
             }
@@ -409,8 +505,8 @@ enum EffectConfigLoader {
                 childDef.params?["_enabled"]?.boolValue ?? true
             }
             let childHooks = enabledChildDefs.compactMap { instantiateEffect($0) }
-            guard !childHooks.isEmpty else { return nil }
-            // Name is required for chained effects
+            // Return chain even if empty (all hooks disabled) - keeps effect list indices stable
+            // An empty ChainedHook acts as a pass-through
             return ChainedHook(name: def.name ?? "Chain", hooks: childHooks)
         }
 

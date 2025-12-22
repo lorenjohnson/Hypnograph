@@ -15,11 +15,11 @@ struct ContentView: View {
     }
 
     private var soloIndicatorText: String? {
-        // Only Dream shows solo indicator
-        if state.currentModuleType == .dream, !state.sources.isEmpty {
-            return "\(state.currentSourceIndex + 1)/\(state.sources.count)"
+        // Only show during flash solo (when navigating sources in montage mode)
+        guard state.renderHooks.flashSoloIndex != nil, state.currentModuleType == .dream, !state.sources.isEmpty else {
+            return nil
         }
-        return nil
+        return "\(state.currentSourceIndex + 1)/\(state.sources.count)"
     }
 
     var body: some View {
@@ -66,7 +66,7 @@ struct ContentView: View {
         .overlay(alignment: .trailing) {
             if state.isEffectsEditorVisible {
                 EffectsEditorView(viewModel: effectsEditorViewModel, state: state)
-                    .padding(.trailing, 16)
+                    .frame(maxHeight: .infinity)
                     .transition(.move(edge: .trailing))
                     .animation(.easeInOut(duration: 0.2), value: state.isEffectsEditorVisible)
             }

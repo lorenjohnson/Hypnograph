@@ -12,7 +12,8 @@ import CoreGraphics
 /// Factory function type - takes params dictionary, returns RenderHook
 typealias EffectFactory = ([String: AnyCodableValue]?) -> RenderHook?
 
-/// Parameter range metadata for UI sliders
+/// Legacy parameter range metadata for UI sliders
+/// Now derived from hook's parameterSpecs, but kept for API compatibility
 struct ParameterRange {
     let min: Double
     let max: Double
@@ -26,6 +27,18 @@ struct ParameterRange {
 
     /// Default range for unknown parameters - uses value heuristics
     static let `default` = ParameterRange(0, 100)
+
+    /// Create from ParameterSpec
+    init(from spec: ParameterSpec) {
+        if let range = spec.rangeAsDoubles {
+            self.min = range.min
+            self.max = range.max
+        } else {
+            self.min = 0
+            self.max = 1
+        }
+        self.step = spec.step
+    }
 }
 
 /// Registry of effect types that can be instantiated from config
@@ -120,6 +133,14 @@ enum EffectRegistry {
         "PixelateMetalHook": { params in
             let blockSize = params?["blockSize"]?.intValue ?? 8
             return PixelateMetalHook(blockSize: blockSize)
+        },
+
+        "BasicHook": { params in
+            let opacity = params?["opacity"]?.floatValue ?? 1.0
+            let contrast = params?["contrast"]?.floatValue ?? 0.0
+            let brightness = params?["brightness"]?.floatValue ?? 0.0
+            let saturation = params?["saturation"]?.floatValue ?? 0.0
+            return BasicHook(opacity: opacity, contrast: contrast, brightness: brightness, saturation: saturation)
         }
     ]
 
@@ -138,129 +159,82 @@ enum EffectRegistry {
             .filter { $0 != "ChainedHook" }
             .sorted()
             .map { type in
-                let displayName = type
-                    .replacingOccurrences(of: "Hook", with: "")
-                    .replacingOccurrences(of: "Metal", with: " Metal")
-                return (type: type, displayName: displayName)
+                (type: type, displayName: formatEffectTypeName(type))
             }
     }
 
-    // MARK: - Parameter Ranges
+    /// Format effect type name for display: "FrameDifferenceHook" -> "Frame Difference"
+    static func formatEffectTypeName(_ type: String) -> String {
+        // Remove "Hook" suffix
+        var name = type
+        if name.hasSuffix("Hook") {
+            name = String(name.dropLast(4))
+        }
 
-    /// Parameter ranges by effect type and param name
-    static let parameterRanges: [String: [String: ParameterRange]] = [
-        "BlackAndWhiteHook": [
-            "contrast": ParameterRange(0.5, 2.0)
-        ],
-        "RGBSplitSimpleHook": [
-            "offsetAmount": ParameterRange(1, 100)
-        ],
-        "GhostBlurHook": [
-            "intensity": ParameterRange(0, 1),
-            "trailLength": ParameterRange(1, 20, step: 1),
-            "blurAmount": ParameterRange(0, 50)
-        ],
-        "HoldFrameHook": [
-            "freezeInterval": ParameterRange(1, 30),
-            "holdDuration": ParameterRange(0.5, 20),
-            "trailBoost": ParameterRange(0.5, 5)
-        ],
-        "ColorEchoHook": [
-            "channelOffset": ParameterRange(1, 10, step: 1)
-        ],
-        "FrameDifferenceHook": [
-            "originalBlend": ParameterRange(0, 1),
-            "boost": ParameterRange(0.5, 10)
-        ],
-        "FeedbackLoopHook": [
-            "scale": ParameterRange(0.8, 1.2),
-            "rotation": ParameterRange(-0.1, 0.1),
-            "intensity": ParameterRange(0, 1)
-        ],
-        "DatamoshMetalHook": [
-            "minHistoryOffset": ParameterRange(1, 60, step: 1),
-            "maxHistoryOffset": ParameterRange(10, 120, step: 1),
-            "blockSize": ParameterRange(4, 64, step: 1),
-            "blockMoshProbability": ParameterRange(0, 1),
-            "motionSensitivity": ParameterRange(0, 1),
-            "updateProbability": ParameterRange(0, 1),
-            "smearStrength": ParameterRange(0, 1),
-            "jitterAmount": ParameterRange(0, 1),
-            "feedbackAmount": ParameterRange(0, 1),
-            "blockiness": ParameterRange(0, 1),
-            "burstChance": ParameterRange(0, 0.1),
-            "minBurstDuration": ParameterRange(10, 300, step: 1),
-            "maxBurstDuration": ParameterRange(30, 600, step: 1),
-            "cleanFrameChance": ParameterRange(0, 0.1),
-            "intensityVariation": ParameterRange(0, 1)
-        ],
-        "MirrorKaleidoHook": [
-            "intensity": ParameterRange(0, 1)
-        ],
-        "PixelateMetalHook": [
-            "blockSize": ParameterRange(2, 128, step: 1)
-        ]
-    ]
-
-    /// Get parameter range for a specific effect type and parameter name
-    static func range(for effectType: String, param: String) -> ParameterRange? {
-        parameterRanges[effectType]?[param]
+        // Insert spaces before uppercase letters (camelCase to Title Case)
+        var result = ""
+        for (index, char) in name.enumerated() {
+            if char.isUppercase && index > 0 {
+                result += " "
+            }
+            result += String(char)
+        }
+        return result
     }
 
-    // MARK: - Default Parameters
+    // MARK: - Hook Type Mapping
 
-    /// Default parameter values for each effect type (used when adding new effects)
-    static let defaultParams: [String: [String: AnyCodableValue]] = [
-        "BlackAndWhiteHook": [
-            "contrast": .double(1.0)
-        ],
-        "RGBSplitSimpleHook": [
-            "offsetAmount": .double(15.0),
-            "animated": .bool(true)
-        ],
-        "GhostBlurHook": [
-            "intensity": .double(0.5),
-            "trailLength": .int(6),
-            "blurAmount": .double(8.0)
-        ],
-        "HoldFrameHook": [
-            "freezeInterval": .double(8.0),
-            "holdDuration": .double(4.0),
-            "trailBoost": .double(1.5)
-        ],
-        "ColorEchoHook": [
-            "channelOffset": .int(2)
-        ],
-        "FrameDifferenceHook": [
-            "originalBlend": .double(0.3),
-            "boost": .double(2.0)
-        ],
-        "FeedbackLoopHook": [
-            "scale": .double(0.95),
-            "rotation": .double(0.01),
-            "intensity": .double(0.5)
-        ],
-        "DatamoshMetalHook": [
-            "minHistoryOffset": .int(15),
-            "maxHistoryOffset": .int(70),
-            "blockSize": .int(10),
-            "blockMoshProbability": .double(0.25),
-            "motionSensitivity": .double(0.85),
-            "smearStrength": .double(0.45),
-            "jitterAmount": .double(0.25),
-            "feedbackAmount": .double(0.3)
-        ],
-        "MirrorKaleidoHook": [
-            "intensity": .double(0.8)
-        ],
-        "PixelateMetalHook": [
-            "blockSize": .int(8)
-        ]
+    /// Map of type names to hook metatypes for parameter introspection.
+    /// Each hook declares its own parameterSpecs - the hook is the source of truth.
+    static let hookTypes: [String: any RenderHook.Type] = [
+        "BlackAndWhiteHook": BlackAndWhiteHook.self,
+        "RGBSplitSimpleHook": RGBSplitSimpleHook.self,
+        "GhostBlurHook": GhostBlurHook.self,
+        "HoldFrameHook": HoldFrameHook.self,
+        "ColorEchoHook": ColorEchoHook.self,
+        "FrameDifferenceHook": FrameDifferenceHook.self,
+        "FeedbackLoopHook": FeedbackLoopHook.self,
+        "DatamoshMetalHook": DatamoshMetalHook.self,
+        "MirrorKaleidoHook": MirrorKaleidoHook.self,
+        "PixelateMetalHook": PixelateMetalHook.self,
+        "BasicHook": BasicHook.self
     ]
 
+    // MARK: - Parameter Specs (from hooks)
+
+    /// Get parameter specs for an effect type (from the hook's static property)
+    static func parameterSpecs(for effectType: String) -> [String: ParameterSpec] {
+        guard let hookType = hookTypes[effectType] else {
+            return [:]
+        }
+        return hookType.parameterSpecs
+    }
+
+    /// Get parameter range for a specific effect type and parameter name
+    /// Derived from the hook's parameterSpecs
+    static func range(for effectType: String, param: String) -> ParameterRange? {
+        guard let spec = parameterSpecs(for: effectType)[param] else {
+            return nil
+        }
+        return ParameterRange(from: spec)
+    }
+
+    /// Get all parameter names for an effect type (in consistent order)
+    static func parameterNames(for effectType: String) -> [String] {
+        parameterSpecs(for: effectType).keys.sorted()
+    }
+
+    // MARK: - Default Parameters (from hooks)
+
     /// Get default parameters for an effect type
+    /// Derived from the hook's parameterSpecs
     static func defaults(for effectType: String) -> [String: AnyCodableValue] {
-        defaultParams[effectType] ?? [:]
+        let specs = parameterSpecs(for: effectType)
+        var defaults: [String: AnyCodableValue] = [:]
+        for (name, spec) in specs {
+            defaults[name] = spec.defaultValue
+        }
+        return defaults
     }
 }
 

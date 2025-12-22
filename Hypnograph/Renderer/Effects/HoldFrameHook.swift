@@ -13,6 +13,19 @@ import CoreGraphics
 /// Pseudo-datamosh effect - freezes a frame and shows ghostly motion trails
 /// Combines the best of FrameDifference (visible motion) with temporal accumulation
 final class HoldFrameHook: RenderHook {
+
+    // MARK: - Parameter Specs (source of truth)
+
+    static var parameterSpecs: [String: ParameterSpec] {
+        [
+            "freezeInterval": .double(default: 8.0, range: 0.1...120),
+            "holdDuration": .double(default: 4.0, range: 0.1...60),
+            "trailBoost": .double(default: 1.5, range: 0...20)
+        ]
+    }
+
+    // MARK: - Properties
+
     var name: String { "Hold Frame" }
 
     /// Light temporal needs - just tracks its own frozen frame

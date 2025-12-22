@@ -27,18 +27,59 @@ final class EffectsEditorViewModel: ObservableObject {
     /// Selected parameter index in the parameters panel (for chained effects, this is a flat index across all hooks)
     @Published var selectedParameterIndex: Int = 0
 
-    /// Get current effect definitions with their parameters
-    var effectDefinitions: [EffectDefinition] {
-        EffectConfigLoader.currentDefinitions
+    /// Pending selection - updated immediately on click for instant UI feedback
+    /// Key: layer index (-1 = global, 0+ = source), Value: effect index (-1 = None)
+    @Published private var pendingSelection: [Int: Int] = [:]
+
+    /// Local copy of effect definitions for immediate UI updates
+    /// This is the source of truth for the UI - synced from EffectConfigLoader
+    @Published private(set) var effectDefinitions: [EffectDefinition] = []
+
+    init() {
+        // Initialize from current config
+        syncFromConfig()
     }
 
-    /// Get selected effect index from global effect name (-1 = None)
+    /// Sync local definitions from the config loader
+    func syncFromConfig() {
+        effectDefinitions = EffectConfigLoader.currentDefinitions
+    }
+
+    /// Set pending selection for immediate UI update
+    func setPendingSelection(effectIndex: Int, for layer: Int) {
+        pendingSelection[layer] = effectIndex
+    }
+
+    /// Clear pending selection (called when render catches up)
+    func clearPendingSelection(for layer: Int) {
+        pendingSelection.removeValue(forKey: layer)
+    }
+
+    /// Get selected effect index - uses pending selection if available, otherwise from recipe
+    func selectedEffectIndex(for globalEffectName: String?, layer: Int) -> Int {
+        // Return pending selection if we have one (immediate UI feedback)
+        if let pending = pendingSelection[layer] {
+            return pending
+        }
+        // Otherwise derive from recipe
+        guard let name = globalEffectName, name != "None" else { return -1 }
+        return effectDefinitions.firstIndex(where: { $0.name == name }) ?? -1
+    }
+
+    /// Get selected effect index from global effect name (-1 = None) - legacy for compatibility
     func selectedEffectIndex(for globalEffectName: String?) -> Int {
         guard let name = globalEffectName, name != "None" else { return -1 }
         return effectDefinitions.firstIndex(where: { $0.name == name }) ?? -1
     }
 
     /// Currently selected effect definition (nil for "None")
+    func selectedDefinition(for globalEffectName: String?, layer: Int) -> EffectDefinition? {
+        let index = selectedEffectIndex(for: globalEffectName, layer: layer)
+        guard index >= 0 && index < effectDefinitions.count else { return nil }
+        return effectDefinitions[index]
+    }
+
+    /// Currently selected effect definition - legacy for compatibility
     func selectedDefinition(for globalEffectName: String?) -> EffectDefinition? {
         let index = selectedEffectIndex(for: globalEffectName)
         guard index >= 0 && index < effectDefinitions.count else { return nil }
@@ -46,6 +87,8 @@ final class EffectsEditorViewModel: ObservableObject {
     }
 
     /// Get all navigable parameters for the current effect (flattened for chained effects)
+    /// Uses hook's parameterSpecs as source of truth for what parameters exist.
+    /// JSON values override defaults from specs.
     /// Returns: array of (hookIndex: Int?, paramName: String, paramValue: AnyCodableValue)
     func navigableParameters(for def: EffectDefinition?) -> [(hookIndex: Int?, paramName: String, value: AnyCodableValue)] {
         guard let def = def else { return [] }
@@ -57,9 +100,9 @@ final class EffectsEditorViewModel: ObservableObject {
                 let isEnabled = hook.params?["_enabled"]?.boolValue ?? true
                 guard isEnabled else { continue }
 
-                let visibleParams = (hook.params ?? [:]).filter { !$0.key.hasPrefix("_") }
-                for key in visibleParams.keys.sorted() {
-                    if let value = visibleParams[key] {
+                let mergedParams = Self.mergedParameters(for: hook)
+                for key in mergedParams.keys.sorted() {
+                    if let value = mergedParams[key] {
                         result.append((hookIndex: hookIndex, paramName: key, value: value))
                     }
                 }
@@ -67,12 +110,43 @@ final class EffectsEditorViewModel: ObservableObject {
             return result
         } else {
             // Single effect
-            let visibleParams = (def.params ?? [:]).filter { !$0.key.hasPrefix("_") }
-            return visibleParams.keys.sorted().compactMap { key in
-                guard let value = visibleParams[key] else { return nil }
+            let mergedParams = Self.mergedParameters(for: def)
+            return mergedParams.keys.sorted().compactMap { key in
+                guard let value = mergedParams[key] else { return nil }
                 return (hookIndex: nil, paramName: key, value: value)
             }
         }
+    }
+
+    /// Merge hook's parameterSpecs with JSON params.
+    /// Hook specs define what params exist (source of truth).
+    /// JSON values override defaults. Unknown JSON params are ignored.
+    static func mergedParameters(for def: EffectDefinition) -> [String: AnyCodableValue] {
+        guard let effectType = def.resolvedType else {
+            // No type info, fall back to JSON params only
+            return (def.params ?? [:]).filter { !$0.key.hasPrefix("_") }
+        }
+
+        let specs = EffectRegistry.parameterSpecs(for: effectType)
+        var result: [String: AnyCodableValue] = [:]
+
+        // Start with defaults from specs
+        for (name, spec) in specs {
+            result[name] = spec.defaultValue
+        }
+
+        // Overlay JSON values (only for params that exist in specs)
+        if let jsonParams = def.params {
+            for (name, value) in jsonParams {
+                // Skip internal params and params not in specs
+                if name.hasPrefix("_") { continue }
+                if specs[name] != nil {
+                    result[name] = value
+                }
+            }
+        }
+
+        return result
     }
 
     /// Move parameter selection up/down
@@ -88,6 +162,25 @@ final class EffectsEditorViewModel: ObservableObject {
 
     /// Update a parameter value for an effect (or child hook in a chain)
     func updateParameter(effectIndex: Int, hookIndex: Int?, paramName: String, value: AnyCodableValue) {
+        // Update local state for responsive UI
+        updateLocalDefinition(at: effectIndex) { effect in
+            if let hookIndex = hookIndex, var hooks = effect.hooks {
+                // Update parameter in a chained hook
+                guard hookIndex >= 0 && hookIndex < hooks.count else { return effect }
+                var hook = hooks[hookIndex]
+                var params = hook.params ?? [:]
+                params[paramName] = value
+                hook = EffectDefinition(name: hook.name, type: hook.type, params: params, hooks: hook.hooks)
+                hooks[hookIndex] = hook
+                return EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+            } else {
+                // Update parameter on the effect itself
+                var params = effect.params ?? [:]
+                params[paramName] = value
+                return EffectDefinition(name: effect.name, type: effect.type, params: params, hooks: effect.hooks)
+            }
+        }
+        // Persist to config
         EffectConfigLoader.updateParameter(
             effectIndex: effectIndex,
             hookIndex: hookIndex,
@@ -96,34 +189,160 @@ final class EffectsEditorViewModel: ObservableObject {
         )
     }
 
+    /// Adjust the currently selected parameter by one step in the given direction (-1 or +1)
+    /// Returns true if adjustment was made
+    @discardableResult
+    func adjustSelectedParameter(direction: Int, effectIndex: Int, definition: EffectDefinition?) -> Bool {
+        guard focusedPanel == .parameters else { return false }
+
+        let params = navigableParameters(for: definition)
+        guard selectedParameterIndex < params.count else { return false }
+
+        let param = params[selectedParameterIndex]
+
+        // Get the effect type for this specific parameter
+        let effectType = getEffectType(for: definition, hookIndex: param.hookIndex)
+        let range = getParameterRange(for: effectType, paramName: param.paramName)
+
+        switch param.value {
+        case .double(let d):
+            let step = getParameterStep(for: effectType, paramName: param.paramName, range: range)
+            let newValue = max(range.min, min(range.max, d + step * Double(direction)))
+            updateParameter(effectIndex: effectIndex, hookIndex: param.hookIndex, paramName: param.paramName, value: .double(newValue))
+            return true
+
+        case .int(let i):
+            let step = max(1, Int(getParameterStep(for: effectType, paramName: param.paramName, range: range)))
+            let newValue = max(Int(range.min), min(Int(range.max), i + step * direction))
+            updateParameter(effectIndex: effectIndex, hookIndex: param.hookIndex, paramName: param.paramName, value: .int(newValue))
+            return true
+
+        case .bool(let b):
+            updateParameter(effectIndex: effectIndex, hookIndex: param.hookIndex, paramName: param.paramName, value: .bool(!b))
+            return true
+
+        case .string:
+            return false
+        }
+    }
+
+    /// Get the effect type for a parameter, handling chained hooks
+    private func getEffectType(for def: EffectDefinition?, hookIndex: Int?) -> String? {
+        guard let def = def else { return nil }
+
+        if let hookIndex = hookIndex, let hooks = def.hooks, hookIndex < hooks.count {
+            return hooks[hookIndex].resolvedType
+        }
+        return def.resolvedType
+    }
+
+    /// Get parameter range from the effect registry
+    private func getParameterRange(for effectType: String?, paramName: String) -> (min: Double, max: Double) {
+        guard let effectType = effectType,
+              let range = EffectRegistry.range(for: effectType, param: paramName) else {
+            return (min: 0, max: 1)
+        }
+        return (min: range.min, max: range.max)
+    }
+
+    /// Get the step size for a parameter
+    private func getParameterStep(for effectType: String?, paramName: String, range: (min: Double, max: Double)) -> Double {
+        if let effectType = effectType,
+           let paramRange = EffectRegistry.range(for: effectType, param: paramName),
+           let step = paramRange.step {
+            return step
+        }
+        return (range.max - range.min) / 20.0
+    }
+
     /// Add a hook to the currently selected chained effect
     func addHookToChain(effectIndex: Int, hookType: String) {
+        // Update local state for responsive UI
+        updateLocalDefinition(at: effectIndex) { effect in
+            var hooks = effect.hooks ?? []
+            let defaults = EffectRegistry.defaults(for: hookType)
+            let newHook = EffectDefinition(name: nil, type: hookType, params: defaults, hooks: nil)
+            hooks.append(newHook)
+            return EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+        }
+        // Update config (instantiation is debounced in EffectConfigLoader)
         EffectConfigLoader.addHookToChain(effectIndex: effectIndex, hookType: hookType)
     }
 
     /// Remove a hook from the currently selected chained effect
     func removeHookFromChain(effectIndex: Int, hookIndex: Int) {
+        updateLocalDefinition(at: effectIndex) { effect in
+            var hooks = effect.hooks ?? []
+            guard hookIndex >= 0 && hookIndex < hooks.count else { return effect }
+            hooks.remove(at: hookIndex)
+            return EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+        }
         EffectConfigLoader.removeHookFromChain(effectIndex: effectIndex, hookIndex: hookIndex)
     }
 
     /// Reorder hooks in the currently selected chained effect
     func reorderHooks(effectIndex: Int, fromIndex: Int, toIndex: Int) {
+        updateLocalDefinition(at: effectIndex) { effect in
+            var hooks = effect.hooks ?? []
+            guard fromIndex >= 0 && fromIndex < hooks.count else { return effect }
+            guard toIndex >= 0 && toIndex < hooks.count else { return effect }
+            let hook = hooks.remove(at: fromIndex)
+            hooks.insert(hook, at: toIndex)
+            return EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+        }
         EffectConfigLoader.reorderHooksInChain(effectIndex: effectIndex, fromIndex: fromIndex, toIndex: toIndex)
     }
 
     /// Toggle hook enabled state
     func setHookEnabled(effectIndex: Int, hookIndex: Int, enabled: Bool) {
+        updateLocalDefinition(at: effectIndex) { effect in
+            var hooks = effect.hooks ?? []
+            guard hookIndex >= 0 && hookIndex < hooks.count else { return effect }
+            var hook = hooks[hookIndex]
+            var params = hook.params ?? [:]
+            params["_enabled"] = .bool(enabled)
+            hook = EffectDefinition(name: hook.name, type: hook.type, params: params, hooks: hook.hooks)
+            hooks[hookIndex] = hook
+            return EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+        }
         EffectConfigLoader.setHookEnabled(effectIndex: effectIndex, hookIndex: hookIndex, enabled: enabled)
     }
 
     /// Update the name of the selected effect
     func updateEffectName(effectIndex: Int, name: String) {
+        updateLocalDefinition(at: effectIndex) { effect in
+            EffectDefinition(name: name, type: effect.type, params: effect.params, hooks: effect.hooks)
+        }
         EffectConfigLoader.updateEffectName(effectIndex: effectIndex, name: name)
     }
 
     /// Available effect types for adding to chains
     var availableEffectTypes: [(type: String, displayName: String)] {
         EffectRegistry.availableEffectTypes
+    }
+
+    /// Create a new effect (ChainedHook with Basic as default)
+    /// Returns the index of the new effect
+    @discardableResult
+    func createNewEffect() -> Int {
+        let index = EffectConfigLoader.createNewEffect()
+        syncFromConfig()  // Sync to get the new effect
+        return index
+    }
+
+    /// Delete an effect at the given index
+    func deleteEffect(at index: Int) {
+        guard index >= 0 && index < effectDefinitions.count else { return }
+        effectDefinitions.remove(at: index)
+        EffectConfigLoader.deleteEffect(at: index)
+    }
+
+    // MARK: - Private Helpers
+
+    /// Update a local definition immediately (for responsive UI)
+    private func updateLocalDefinition(at index: Int, transform: (EffectDefinition) -> EffectDefinition) {
+        guard index >= 0 && index < effectDefinitions.count else { return }
+        effectDefinitions[index] = transform(effectDefinitions[index])
     }
 }
 
@@ -132,6 +351,9 @@ final class EffectsEditorViewModel: ObservableObject {
 struct EffectsEditorView: View {
     @ObservedObject var viewModel: EffectsEditorViewModel
     @ObservedObject var state: HypnographState
+
+    /// Focus state for keyboard navigation
+    @FocusState private var isFocused: Bool
 
     /// Current layer being edited (-1 = global, 0+ = source)
     private var currentLayer: Int {
@@ -144,18 +366,42 @@ struct EffectsEditorView: View {
     }
 
     /// Computed selected effect index from current layer's effect (-1 = None)
+    /// Uses pending selection for immediate UI feedback
     private var selectedEffectIndex: Int {
-        viewModel.selectedEffectIndex(for: currentLayerEffectName)
+        viewModel.selectedEffectIndex(for: currentLayerEffectName, layer: currentLayer)
     }
 
     /// Computed selected definition from current layer's effect
     private var selectedDefinition: EffectDefinition? {
-        viewModel.selectedDefinition(for: currentLayerEffectName)
+        viewModel.selectedDefinition(for: currentLayerEffectName, layer: currentLayer)
     }
 
     /// All navigable parameters for the current effect
     private var navigableParams: [(hookIndex: Int?, paramName: String, value: AnyCodableValue)] {
         viewModel.navigableParameters(for: selectedDefinition)
+    }
+
+    /// Select an effect with immediate UI feedback
+    private func selectEffect(at index: Int) {
+        // Update UI immediately via pending selection
+        viewModel.setPendingSelection(effectIndex: index, for: currentLayer)
+
+        // Defer the recipe update to next run loop to allow UI to update first
+        let layer = currentLayer
+        let hooks = state.renderHooks
+        DispatchQueue.main.async {
+            if index == -1 {
+                hooks.setEffect(nil, for: layer)
+            } else if index >= 0 && index < Effect.all.count {
+                hooks.setEffect(Effect.all[index], for: layer)
+            }
+        }
+
+        // Clear pending after a short delay to let recipe update propagate
+        let vm = viewModel
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            vm.clearPendingSelection(for: layer)
+        }
     }
 
     var body: some View {
@@ -167,6 +413,16 @@ struct EffectsEditorView: View {
                     .fontWeight(.bold)
                     .foregroundColor(state.isOnGlobalLayer ? .cyan : .orange)
                 Spacer()
+
+                // Close button
+                Button(action: {
+                    state.isEffectsEditorVisible = false
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+                .buttonStyle(.plain)
             }
             .padding(.bottom, 12)
 
@@ -178,34 +434,34 @@ struct EffectsEditorView: View {
                 // Left column: Effect list
                 effectListColumn
                     .frame(width: 180)
+                    .padding(4)
                     .overlay(
                         // Focus indicator for left panel
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.cyan, lineWidth: viewModel.focusedPanel == .effects ? 2 : 0)
-                            .padding(2)
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.cyan.opacity(0.6), lineWidth: viewModel.focusedPanel == .effects ? 1 : 0)
                     )
 
                 Divider()
                     .background(Color.white.opacity(0.3))
+                    .padding(.horizontal, 4)
 
                 // Right column: Parameters
                 parametersColumn
                     .frame(minWidth: 280)
+                    .padding(4)
                     .overlay(
                         // Focus indicator for right panel
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.cyan, lineWidth: viewModel.focusedPanel == .parameters ? 2 : 0)
-                            .padding(2)
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.cyan.opacity(0.6), lineWidth: viewModel.focusedPanel == .parameters ? 1 : 0)
                     )
             }
         }
         .foregroundColor(.white)
         .padding(16)
-        .background(
-            Color.black.opacity(0.75)
-                .cornerRadius(12)
-        )
-        .frame(maxWidth: 500, maxHeight: 600)
+        .background(Color.black.opacity(0.9))
+        .frame(width: 480)
+        .focusable()
+        .focused($isFocused)
         .onKeyPress(.tab) {
             togglePanel()
             return .handled
@@ -219,16 +475,18 @@ struct EffectsEditorView: View {
             return .handled
         }
         .onKeyPress(.leftArrow) {
-            if viewModel.focusedPanel == .parameters {
-                viewModel.focusedPanel = .effects
-            }
+            handleLeftRight(delta: -1)
             return .handled
         }
         .onKeyPress(.rightArrow) {
-            if viewModel.focusedPanel == .effects && selectedDefinition != nil {
-                viewModel.focusedPanel = .parameters
-            }
+            handleLeftRight(delta: 1)
             return .handled
+        }
+        .onAppear {
+            // Grab focus when panel appears
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isFocused = true
+            }
         }
     }
 
@@ -256,12 +514,9 @@ struct EffectsEditorView: View {
             } else if newIndex >= defs.count {
                 // Already at bottom
                 return
-            } else if newIndex == -1 {
-                // Select None
-                state.renderHooks.setEffect(nil, for: currentLayer)
-                viewModel.resetParameterSelection()
-            } else if newIndex >= 0 && newIndex < Effect.all.count {
-                state.renderHooks.setEffect(Effect.all[newIndex], for: currentLayer)
+            } else {
+                // Select new effect with immediate UI feedback
+                selectEffect(at: newIndex)
                 viewModel.resetParameterSelection()
             }
 
@@ -270,36 +525,84 @@ struct EffectsEditorView: View {
         }
     }
 
+    private func handleLeftRight(delta: Int) {
+        switch viewModel.focusedPanel {
+        case .effects:
+            // Left/right does nothing in effects panel
+            break
+        case .parameters:
+            // In parameters panel, left/right adjusts the selected parameter value
+            adjustCurrentParameter(delta: delta)
+        }
+    }
+
+    private func adjustCurrentParameter(delta: Int) {
+        viewModel.adjustSelectedParameter(
+            direction: delta,
+            effectIndex: selectedEffectIndex,
+            definition: selectedDefinition
+        )
+    }
+
+    /// Format hook type for display: "FrameDifferenceHook" -> "Frame Difference"
+    private func formatHookType(_ type: String?) -> String? {
+        guard let type = type else { return nil }
+        return EffectRegistry.formatEffectTypeName(type)
+    }
+
     // MARK: - Effect List Column
 
     private var effectListColumn: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        // Cache selected index once to avoid recomputing for every row
+        let currentlySelected = selectedEffectIndex
+
+        return VStack(alignment: .leading, spacing: 8) {
             Text("Effects")
                 .font(.headline)
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 4) {
+                LazyVStack(alignment: .leading, spacing: 4) {
                     // None option (always first)
-                    noneRow
+                    effectNoneRow(isSelected: currentlySelected == -1)
 
                     Divider()
                         .background(Color.white.opacity(0.2))
                         .padding(.vertical, 2)
 
                     ForEach(Array(viewModel.effectDefinitions.enumerated()), id: \.offset) { index, def in
-                        effectRow(index: index, definition: def)
+                        effectRowCached(index: index, definition: def, isSelected: index == currentlySelected)
                     }
                 }
             }
+
+            // Add Effect button at bottom
+            Button(action: {
+                let newIndex = viewModel.createNewEffect()
+                // Select the new effect
+                if newIndex < Effect.all.count {
+                    state.renderHooks.setEffect(Effect.all[newIndex], for: currentLayer)
+                }
+            }) {
+                HStack {
+                    Image(systemName: "plus.circle.fill")
+                    Text("Add Effect")
+                }
+                .font(.system(.caption, design: .monospaced))
+                .foregroundColor(.cyan)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity)
+                .background(Color.cyan.opacity(0.15))
+                .cornerRadius(6)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.trailing, 12)
     }
 
-    private var noneRow: some View {
-        let isSelected = selectedEffectIndex == -1
-
-        return Button(action: {
-            state.renderHooks.setEffect(nil, for: currentLayer)
+    private func effectNoneRow(isSelected: Bool) -> some View {
+        Button(action: {
+            selectEffect(at: -1)
         }) {
             Text("None")
                 .font(.system(.body, design: .monospaced))
@@ -315,26 +618,35 @@ struct EffectsEditorView: View {
         .buttonStyle(.plain)
     }
 
-    private func effectRow(index: Int, definition: EffectDefinition) -> some View {
-        let isSelected = index == selectedEffectIndex
-
-        return Button(action: {
-            // Set effect for the current layer
-            if index >= 0 && index < Effect.all.count {
-                let effect = Effect.all[index]
-                state.renderHooks.setEffect(effect, for: currentLayer)
-            }
-        }) {
+    private func effectRowCached(index: Int, definition: EffectDefinition, isSelected: Bool) -> some View {
+        HStack(spacing: 4) {
             Text(definition.name ?? "Unnamed")
                 .font(.system(.body, design: .monospaced))
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(isSelected ? Color.white.opacity(0.2) : Color.clear)
-                .cornerRadius(4)
+
+            // Delete button (only visible when selected)
+            if isSelected {
+                Button(action: {
+                    // Clear selection first if this effect is selected
+                    selectEffect(at: -1)
+                    viewModel.deleteEffect(at: index)
+                }) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 10))
+                        .foregroundColor(.red.opacity(0.8))
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(isSelected ? Color.white.opacity(0.2) : Color.clear)
+        .cornerRadius(4)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            selectEffect(at: index)
+        }
     }
 
     // MARK: - Parameters Column
@@ -354,7 +666,7 @@ struct EffectsEditorView: View {
                     .background(Color.white.opacity(0.3))
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
+                    LazyVStack(alignment: .leading, spacing: 12) {
                         parametersForDefinitionWithHighlight(def, effectIndex: selectedEffectIndex)
                     }
                 }
@@ -428,67 +740,61 @@ struct EffectsEditorView: View {
         VStack(alignment: .leading, spacing: 6) {
             // Header with controls
             HStack(spacing: 6) {
-                // Reorder buttons (horizontal, more compact)
-                HStack(spacing: 2) {
-                    Button(action: {
-                        if childIndex > 0 {
-                            viewModel.reorderHooks(effectIndex: effectIndex, fromIndex: childIndex, toIndex: childIndex - 1)
+                // Reorder buttons (horizontal, larger tap targets)
+                HStack(spacing: 0) {
+                    Image(systemName: "chevron.up")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(childIndex > 0 ? .white : .white.opacity(0.3))
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if childIndex > 0 {
+                                viewModel.reorderHooks(effectIndex: effectIndex, fromIndex: childIndex, toIndex: childIndex - 1)
+                            }
                         }
-                    }) {
-                        Image(systemName: "chevron.up")
-                            .font(.system(size: 10, weight: .bold))
-                            .frame(width: 16, height: 16)
-                            .foregroundColor(childIndex > 0 ? .white : .white.opacity(0.3))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(childIndex == 0)
 
-                    Button(action: {
-                        if childIndex < totalHooks - 1 {
-                            viewModel.reorderHooks(effectIndex: effectIndex, fromIndex: childIndex, toIndex: childIndex + 1)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(childIndex < totalHooks - 1 ? .white : .white.opacity(0.3))
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if childIndex < totalHooks - 1 {
+                                viewModel.reorderHooks(effectIndex: effectIndex, fromIndex: childIndex, toIndex: childIndex + 1)
+                            }
                         }
-                    }) {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10, weight: .bold))
-                            .frame(width: 16, height: 16)
-                            .foregroundColor(childIndex < totalHooks - 1 ? .white : .white.opacity(0.3))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(childIndex == totalHooks - 1)
                 }
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
                 .background(Color.white.opacity(0.1))
                 .cornerRadius(4)
 
-                // Effect name
-                Text(childDef.name ?? childDef.type ?? "Hook \(childIndex + 1)")
+                // Effect name - use formatted type name if no custom name
+                Text(childDef.name ?? formatHookType(childDef.type) ?? "Hook \(childIndex + 1)")
                     .font(.system(.body, design: .monospaced).bold())
                     .foregroundColor(isEnabled ? .white : .white.opacity(0.5))
 
                 Spacer()
 
                 // Delete button (before enable/disable)
-                Button(action: {
-                    viewModel.removeHookFromChain(effectIndex: effectIndex, hookIndex: childIndex)
-                }) {
-                    Image(systemName: "trash")
-                        .font(.system(size: 12))
-                        .foregroundColor(.red.opacity(0.7))
-                }
-                .buttonStyle(.plain)
-                .help("Remove from chain")
+                Image(systemName: "trash")
+                    .font(.system(size: 12))
+                    .foregroundColor(.red.opacity(0.7))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        viewModel.removeHookFromChain(effectIndex: effectIndex, hookIndex: childIndex)
+                    }
+                    .help("Remove from chain")
 
                 // Enable/disable toggle
-                Button(action: {
-                    viewModel.setHookEnabled(effectIndex: effectIndex, hookIndex: childIndex, enabled: !isEnabled)
-                }) {
-                    Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 14))
-                        .foregroundColor(isEnabled ? .green : .white.opacity(0.5))
-                }
-                .buttonStyle(.plain)
-                .help(isEnabled ? "Disable effect" : "Enable effect")
+                Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 14))
+                    .foregroundColor(isEnabled ? .green : .white.opacity(0.5))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        viewModel.setHookEnabled(effectIndex: effectIndex, hookIndex: childIndex, enabled: !isEnabled)
+                    }
+                    .help(isEnabled ? "Disable effect" : "Enable effect")
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
@@ -514,7 +820,9 @@ struct EffectsEditorView: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "plus.circle.fill")
+                    .foregroundColor(.white)
                 Text("Add Effect")
+                    .foregroundColor(.white)
             }
             .font(.system(.body, design: .monospaced))
             .padding(.horizontal, 12)
@@ -522,18 +830,18 @@ struct EffectsEditorView: View {
             .background(Color.white.opacity(0.2))
             .cornerRadius(6)
         }
-        .foregroundColor(.white)
         .menuStyle(.borderlessButton)
+        .tint(.white)
     }
 
     @ViewBuilder
     private func parameterFields(for def: EffectDefinition, effectIndex: Int, hookIndex: Int?) -> some View {
-        // Filter out internal params (prefixed with _)
-        let visibleParams = (def.params ?? [:]).filter { !$0.key.hasPrefix("_") }
+        // Use hook's parameterSpecs as source of truth, merged with JSON values
+        let mergedParams = EffectsEditorViewModel.mergedParameters(for: def)
 
-        if !visibleParams.isEmpty {
-            ForEach(Array(visibleParams.keys.sorted()), id: \.self) { key in
-                if let value = visibleParams[key] {
+        if !mergedParams.isEmpty {
+            ForEach(Array(mergedParams.keys.sorted()), id: \.self) { key in
+                if let value = mergedParams[key] {
                     ParameterSliderRow(
                         name: key,
                         value: value,
@@ -558,12 +866,13 @@ struct EffectsEditorView: View {
 
     @ViewBuilder
     private func parameterFieldsWithHighlight(for def: EffectDefinition, effectIndex: Int, hookIndex: Int?, paramStartIndex: Int, isFocused: Bool) -> some View {
-        let visibleParams = (def.params ?? [:]).filter { !$0.key.hasPrefix("_") }
-        let sortedKeys = visibleParams.keys.sorted()
+        // Use hook's parameterSpecs as source of truth, merged with JSON values
+        let mergedParams = EffectsEditorViewModel.mergedParameters(for: def)
+        let sortedKeys = mergedParams.keys.sorted()
 
         if !sortedKeys.isEmpty {
             ForEach(Array(sortedKeys.enumerated()), id: \.offset) { localIndex, key in
-                if let value = visibleParams[key] {
+                if let value = mergedParams[key] {
                     let flatIndex = paramStartIndex + localIndex
                     let isHighlighted = isFocused && flatIndex == viewModel.selectedParameterIndex
 
@@ -595,60 +904,58 @@ struct EffectsEditorView: View {
         let isEnabled = childDef.params?["_enabled"]?.boolValue ?? true
 
         VStack(alignment: .leading, spacing: 6) {
-            // Header with controls (same as chainedHookSection)
+            // Header with controls (larger tap targets)
             HStack(spacing: 6) {
-                HStack(spacing: 2) {
-                    Button(action: {
-                        if childIndex > 0 {
-                            viewModel.reorderHooks(effectIndex: effectIndex, fromIndex: childIndex, toIndex: childIndex - 1)
+                HStack(spacing: 0) {
+                    Image(systemName: "chevron.up")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(childIndex > 0 ? .white : .white.opacity(0.3))
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if childIndex > 0 {
+                                viewModel.reorderHooks(effectIndex: effectIndex, fromIndex: childIndex, toIndex: childIndex - 1)
+                            }
                         }
-                    }) {
-                        Image(systemName: "chevron.up")
-                            .font(.system(size: 10, weight: .bold))
-                            .frame(width: 16, height: 16)
-                            .foregroundColor(childIndex > 0 ? .white : .white.opacity(0.3))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(childIndex == 0)
 
-                    Button(action: {
-                        if childIndex < totalHooks - 1 {
-                            viewModel.reorderHooks(effectIndex: effectIndex, fromIndex: childIndex, toIndex: childIndex + 1)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(childIndex < totalHooks - 1 ? .white : .white.opacity(0.3))
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if childIndex < totalHooks - 1 {
+                                viewModel.reorderHooks(effectIndex: effectIndex, fromIndex: childIndex, toIndex: childIndex + 1)
+                            }
                         }
-                    }) {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10, weight: .bold))
-                            .frame(width: 16, height: 16)
-                            .foregroundColor(childIndex < totalHooks - 1 ? .white : .white.opacity(0.3))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(childIndex == totalHooks - 1)
                 }
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(4)
 
-                Text(childDef.resolvedType ?? "Unknown")
+                Text(formatHookType(childDef.resolvedType) ?? "Unknown")
                     .font(.system(.subheadline, design: .monospaced))
                     .fontWeight(.medium)
                     .foregroundColor(isEnabled ? .white : .white.opacity(0.5))
 
                 Spacer()
 
-                Button(action: {
-                    viewModel.setHookEnabled(effectIndex: effectIndex, hookIndex: childIndex, enabled: !isEnabled)
-                }) {
-                    Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 14))
-                        .foregroundColor(isEnabled ? .green : .white.opacity(0.5))
-                }
-                .buttonStyle(.plain)
+                Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 14))
+                    .foregroundColor(isEnabled ? .green : .white.opacity(0.5))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        viewModel.setHookEnabled(effectIndex: effectIndex, hookIndex: childIndex, enabled: !isEnabled)
+                    }
 
-                Button(action: {
-                    viewModel.removeHookFromChain(effectIndex: effectIndex, hookIndex: childIndex)
-                }) {
-                    Image(systemName: "trash")
-                        .font(.system(size: 12))
-                        .foregroundColor(.red.opacity(0.7))
-                }
-                .buttonStyle(.plain)
+                Image(systemName: "trash")
+                    .font(.system(size: 12))
+                    .foregroundColor(.red.opacity(0.7))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        viewModel.removeHookFromChain(effectIndex: effectIndex, hookIndex: childIndex)
+                    }
             }
 
             if isEnabled {
@@ -672,10 +979,31 @@ struct ParameterSliderRow: View {
 
     @State private var textValue: String = ""
     @State private var sliderValue: Double = 0
+    /// Track last known external value to detect actual user changes vs. re-render
+    @State private var lastExternalValue: Double = 0
+
+    /// Convert camelCase to readable title: "maxHistoryOffset" -> "Max History Offset"
+    private var displayName: String {
+        Self.formatCamelCase(name)
+    }
+
+    /// Convert camelCase string to "Title Case With Spaces"
+    static func formatCamelCase(_ input: String) -> String {
+        guard !input.isEmpty else { return input }
+
+        var result = ""
+        for (index, char) in input.enumerated() {
+            if char.isUppercase && index > 0 {
+                result += " "
+            }
+            result += index == 0 ? String(char).uppercased() : String(char)
+        }
+        return result
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(name)
+            Text(displayName)
                 .font(.caption)
                 .foregroundColor(isHighlighted ? .cyan : .white.opacity(0.7))
 
@@ -757,9 +1085,13 @@ struct ParameterSliderRow: View {
     private func initializeFromValue(_ val: AnyCodableValue) {
         switch val {
         case .double(let d):
+            // Set lastExternalValue BEFORE sliderValue to prevent spurious onChange triggers
+            lastExternalValue = d
             sliderValue = d
             textValue = String(format: "%.2f", d)
         case .int(let i):
+            // Set lastExternalValue BEFORE sliderValue to prevent spurious onChange triggers
+            lastExternalValue = Double(i)
             sliderValue = Double(i)
             textValue = "\(i)"
         default:
@@ -767,37 +1099,38 @@ struct ParameterSliderRow: View {
         }
     }
 
-    /// Creates a slider with safe step handling
+    /// Creates a slider without the step parameter to avoid slow tick mark layout
+    /// Step values are enforced programmatically in onChange instead
     @ViewBuilder
     private func numericSlider(isInt: Bool) -> some View {
         let range = sliderRange
         let step = safeSliderStep(isInt: isInt, range: range)
 
-        if let step = step {
-            Slider(value: $sliderValue, in: range, step: step)
-                .frame(minWidth: 100)
-                .onChange(of: sliderValue) { _, newVal in
-                    if isInt {
-                        textValue = "\(Int(newVal))"
-                        onChange(.int(Int(newVal)))
-                    } else {
-                        textValue = String(format: "%.2f", newVal)
-                        onChange(.double(newVal))
-                    }
+        // NOTE: Do NOT use Slider(step:) - it causes AppKit to create tick marks
+        // which triggers extremely slow layout calculations (1+ seconds per slider).
+        // Instead, we snap values to step in the onChange handler.
+        Slider(value: $sliderValue, in: range)
+            .frame(minWidth: 100)
+            .onChange(of: sliderValue) { _, newVal in
+                // Snap to step if we have one
+                let snappedVal: Double
+                if let step = step, step > 0 {
+                    snappedVal = (newVal / step).rounded() * step
+                } else {
+                    snappedVal = newVal
                 }
-        } else {
-            Slider(value: $sliderValue, in: range)
-                .frame(minWidth: 100)
-                .onChange(of: sliderValue) { _, newVal in
-                    if isInt {
-                        textValue = "\(Int(newVal))"
-                        onChange(.int(Int(newVal)))
-                    } else {
-                        textValue = String(format: "%.2f", newVal)
-                        onChange(.double(newVal))
-                    }
+
+                // Only trigger onChange if value actually changed from external value
+                guard abs(snappedVal - lastExternalValue) > 0.0001 else { return }
+
+                if isInt {
+                    textValue = "\(Int(snappedVal))"
+                    onChange(.int(Int(snappedVal)))
+                } else {
+                    textValue = String(format: "%.2f", snappedVal)
+                    onChange(.double(snappedVal))
                 }
-        }
+            }
     }
 
     /// Safe slider step - returns nil if step would be invalid
@@ -923,18 +1256,19 @@ struct EditableEffectNameHeader: View {
 
                 Spacer()
 
-                Button(action: {
-                    editedName = name
-                    isEditing = true
-                }) {
-                    Image(systemName: "pencil")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
-                }
-                .buttonStyle(.plain)
+                Image(systemName: "pencil")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.6))
             }
         }
         .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if !isEditing {
+                editedName = name
+                isEditing = true
+            }
+        }
     }
 
     private func saveAndClose() {
