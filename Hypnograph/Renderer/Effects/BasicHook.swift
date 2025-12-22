@@ -1,43 +1,52 @@
 //
-//  PixelateMetalHook.swift
+//  BasicHook.swift
 //  Hypnograph
 //
-//  Simple Metal compute shader-based pixelate effect.
-//  Demonstrates the basic pattern for Metal-based render hooks.
+//  Basic image adjustments via Metal compute shader.
+//  Provides opacity, contrast, brightness, and saturation controls.
 //
 
 import Foundation
 import CoreImage
 import Metal
 
-/// GPU parameters struct - must match layout in PixelateShader.metal
-struct PixelateParamsGPU {
-    var blockSize: Int32
+/// GPU parameters struct - must match layout in BasicShader.metal
+struct BasicParamsGPU {
+    var opacity: Float
+    var contrast: Float
+    var brightness: Float
+    var saturation: Float
     var textureWidth: Int32
     var textureHeight: Int32
 }
 
-/// Simple Metal-based pixelate effect.
-/// Demonstrates clean Metal shader integration pattern.
-final class PixelateMetalHook: RenderHook {
+/// Basic image adjustments effect.
+/// Provides opacity, contrast, brightness, and saturation controls.
+final class BasicHook: RenderHook {
 
     // MARK: - Parameter Specs (source of truth)
 
     static var parameterSpecs: [String: ParameterSpec] {
         [
-            "blockSize": .int(default: 8, range: 1...512)
+            "opacity": .float(default: 1.0, range: 0...1),
+            "contrast": .float(default: 0.0, range: -1...1),
+            "brightness": .float(default: 0.0, range: -1...1),
+            "saturation": .float(default: 0.0, range: -1...1)
         ]
     }
 
     // MARK: - Properties
 
-    var name: String { customName ?? "Metal Basic" }
+    var name: String { customName ?? "Basic" }
     var requiredLookback: Int { 0 }  // No frame history needed
 
     // MARK: - Configuration
 
     private let customName: String?
-    var blockSize: Int
+    var opacity: Float
+    var contrast: Float
+    var brightness: Float
+    var saturation: Float
 
     // MARK: - Metal State
 
@@ -48,8 +57,11 @@ final class PixelateMetalHook: RenderHook {
 
     // MARK: - Init
 
-    init(blockSize: Int = 8, name: String? = nil) {
-        self.blockSize = max(1, blockSize)
+    init(opacity: Float = 1.0, contrast: Float = 0.0, brightness: Float = 0.0, saturation: Float = 0.0, name: String? = nil) {
+        self.opacity = max(0, min(1, opacity))
+        self.contrast = max(-1, min(1, contrast))
+        self.brightness = max(-1, min(1, brightness))
+        self.saturation = max(-1, min(1, saturation))
         self.customName = name
         self.device = MTLCreateSystemDefaultDevice()
         self.commandQueue = device?.makeCommandQueue()
@@ -63,40 +75,40 @@ final class PixelateMetalHook: RenderHook {
 
         loadShader()
     }
-    
+
     private func loadShader() {
         guard let device = device else {
-            print("⚠️ PixelateMetalHook: No Metal device")
+            print("⚠️ BasicHook: No Metal device")
             return
         }
-        
+
         do {
             let library = try device.makeDefaultLibrary(bundle: Bundle.main)
-            guard let function = library.makeFunction(name: "pixelateKernel") else {
-                print("⚠️ PixelateMetalHook: Kernel function not found")
+            guard let function = library.makeFunction(name: "basicKernel") else {
+                print("⚠️ BasicHook: Kernel function not found")
                 return
             }
             pipelineState = try device.makeComputePipelineState(function: function)
         } catch {
-            print("⚠️ PixelateMetalHook: Failed to create pipeline: \(error)")
+            print("⚠️ BasicHook: Failed to create pipeline: \(error)")
         }
     }
     
     // MARK: - RenderHook Protocol
-    
+
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         guard let device = device,
               let commandQueue = commandQueue,
               let pipeline = pipelineState else {
             return image
         }
-        
+
         let extent = image.extent
         let width = Int(extent.width)
         let height = Int(extent.height)
-        
+
         guard width > 0, height > 0 else { return image }
-        
+
         // Create textures
         let textureDescriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba8Unorm,
@@ -105,34 +117,37 @@ final class PixelateMetalHook: RenderHook {
             mipmapped: false
         )
         textureDescriptor.usage = [.shaderRead, .shaderWrite]
-        
+
         guard let inputTexture = device.makeTexture(descriptor: textureDescriptor),
               let outputTexture = device.makeTexture(descriptor: textureDescriptor) else {
             return image
         }
-        
+
         // Render CIImage to input texture
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         ciContext.render(image, to: inputTexture, commandBuffer: nil, bounds: extent, colorSpace: colorSpace)
-        
+
         // Setup GPU params
-        var gpuParams = PixelateParamsGPU(
-            blockSize: Int32(blockSize),
+        var gpuParams = BasicParamsGPU(
+            opacity: opacity,
+            contrast: contrast,
+            brightness: brightness,
+            saturation: saturation,
             textureWidth: Int32(width),
             textureHeight: Int32(height)
         )
-        
+
         // Run compute shader
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
               let encoder = commandBuffer.makeComputeCommandEncoder() else {
             return image
         }
-        
+
         encoder.setComputePipelineState(pipeline)
         encoder.setTexture(inputTexture, index: 0)
         encoder.setTexture(outputTexture, index: 1)
-        encoder.setBytes(&gpuParams, length: MemoryLayout<PixelateParamsGPU>.stride, index: 0)
-        
+        encoder.setBytes(&gpuParams, length: MemoryLayout<BasicParamsGPU>.stride, index: 0)
+
         // Calculate threadgroup size
         let threadWidth = pipeline.threadExecutionWidth
         let threadHeight = pipeline.maxTotalThreadsPerThreadgroup / threadWidth
@@ -142,12 +157,12 @@ final class PixelateMetalHook: RenderHook {
             height: (height + threadHeight - 1) / threadHeight,
             depth: 1
         )
-        
+
         encoder.dispatchThreadgroups(threadgroups, threadsPerThreadgroup: threadsPerGroup)
         encoder.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
-        
+
         // Convert back to CIImage
         guard let outputImage = CIImage(mtlTexture: outputTexture, options: [.colorSpace: colorSpace]) else {
             return image
@@ -155,9 +170,9 @@ final class PixelateMetalHook: RenderHook {
 
         return outputImage
     }
-    
+
     func copy() -> RenderHook {
-        PixelateMetalHook(blockSize: blockSize, name: customName)
+        BasicHook(opacity: opacity, contrast: contrast, brightness: brightness, saturation: saturation, name: customName)
     }
 }
 

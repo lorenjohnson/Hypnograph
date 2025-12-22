@@ -14,6 +14,17 @@ import CoreGraphics
 /// Red from now, green from N frames ago, blue from 2N frames ago
 /// Uses max blend instead of additive to prevent white blowout
 struct ColorEchoHook: RenderHook {
+
+    // MARK: - Parameter Specs (source of truth)
+
+    static var parameterSpecs: [String: ParameterSpec] {
+        [
+            "channelOffset": .int(default: 2, range: 1...30)
+        ]
+    }
+
+    // MARK: - Properties
+
     private let nameOverride: String?
     var name: String { nameOverride ?? "Color Echo" }
 

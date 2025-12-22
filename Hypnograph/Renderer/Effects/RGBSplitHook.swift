@@ -11,6 +11,18 @@ import CoreGraphics
 
 /// RGB channel separation effect using CoreImage filters
 struct RGBSplitSimpleHook: RenderHook {
+
+    // MARK: - Parameter Specs (source of truth)
+
+    static var parameterSpecs: [String: ParameterSpec] {
+        [
+            "offsetAmount": .float(default: 10.0, range: 0...500),
+            "animated": .bool(default: true)
+        ]
+    }
+
+    // MARK: - Properties
+
     var name: String { "RGB Split" }
 
     let offsetAmount: Float

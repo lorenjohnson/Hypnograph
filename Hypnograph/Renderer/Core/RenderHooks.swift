@@ -172,7 +172,7 @@ final class FrameBuffer {
                 to: pixelBuffer,
                 bounds: extent,
                 colorSpace: CGColorSpaceCreateDeviceRGB()
-            )   
+            )
 
             // Store in ring buffer
             buffers[writeIndex] = pixelBuffer
@@ -507,6 +507,45 @@ struct RenderContext {
     }
 }
 
+// MARK: - Parameter Metadata
+
+/// Metadata for a single effect parameter - defines type, range, and default value.
+/// Each hook declares its parameters using this, making the hook the source of truth.
+enum ParameterSpec: Equatable {
+    case double(default: Double, range: ClosedRange<Double>)
+    case float(default: Float, range: ClosedRange<Float>)
+    case int(default: Int, range: ClosedRange<Int>)
+    case bool(default: Bool)
+
+    /// Get the default value as AnyCodableValue
+    var defaultValue: AnyCodableValue {
+        switch self {
+        case .double(let d, _): return .double(d)
+        case .float(let f, _): return .double(Double(f))
+        case .int(let i, _): return .int(i)
+        case .bool(let b): return .bool(b)
+        }
+    }
+
+    /// Get range as (min, max) doubles (for UI sliders)
+    var rangeAsDoubles: (min: Double, max: Double)? {
+        switch self {
+        case .double(_, let range): return (range.lowerBound, range.upperBound)
+        case .float(_, let range): return (Double(range.lowerBound), Double(range.upperBound))
+        case .int(_, let range): return (Double(range.lowerBound), Double(range.upperBound))
+        case .bool: return nil
+        }
+    }
+
+    /// Step size for UI (1 for ints, nil for continuous)
+    var step: Double? {
+        switch self {
+        case .int: return 1
+        default: return nil
+        }
+    }
+}
+
 // MARK: - Render Hook Protocol
 
 /// Hooks: pure functions over (context, image) → image.
@@ -524,6 +563,10 @@ protocol RenderHook {
     /// - 40-120: Advanced datamosh, block propagation, AI effects
     var requiredLookback: Int { get }
 
+    /// Parameter metadata - defines what parameters this hook accepts,
+    /// their types, ranges, and default values. Hook is the source of truth.
+    static var parameterSpecs: [String: ParameterSpec] { get }
+
     /// Apply effect to the current frame
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage
 
@@ -539,6 +582,9 @@ protocol RenderHook {
 extension RenderHook {
     /// Default: no lookback required (pure per-frame effect)
     var requiredLookback: Int { 0 }
+
+    /// Default: no parameters
+    static var parameterSpecs: [String: ParameterSpec] { [:] }
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         image
@@ -625,6 +671,15 @@ enum Effect {
         var effects = result.effects
         effects[index] = hook
         cachedResult = EffectConfigLoader.LoadResult(effects: effects, source: result.source, error: result.error)
+    }
+
+    /// Replace the entire effects cache with new hooks
+    /// Used by EffectConfigLoader when effects are added/deleted in-memory
+    static func updateCache(with hooks: [RenderHook]) {
+        let source = cachedResult?.source ?? .user
+        cachedResult = EffectConfigLoader.LoadResult(effects: hooks, source: source, error: nil)
+        // Notify listeners to re-apply active effects
+        onReload?()
     }
 
     /// Reload effects from config (call when config file changes)

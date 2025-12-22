@@ -11,10 +11,21 @@ import CoreGraphics
 
 /// Kaleidoscope effect - mirrors and rotates image to create symmetrical patterns
 struct MirrorKaleidoHook: RenderHook {
+
+    // MARK: - Parameter Specs (source of truth)
+
+    static var parameterSpecs: [String: ParameterSpec] {
+        [
+            "intensity": .float(default: 0.8, range: 0...1)
+        ]
+    }
+
+    // MARK: - Properties
+
     var name: String { "Kaleidoscope" }
-    
+
     let intensity: Float
-    
+
     init(intensity: Float = 0.8) {
         self.intensity = intensity
     }

@@ -315,7 +315,7 @@ struct AppCommands: Commands {
                     .keyboardShortcut("i", modifiers: [])
 
                 Toggle("Effects Editor", isOn: $state.isEffectsEditorVisible)
-                    .keyboardShortcut("e", modifiers: [.control])
+                    .keyboardShortcut("e", modifiers: [.command])
             }
         }
 

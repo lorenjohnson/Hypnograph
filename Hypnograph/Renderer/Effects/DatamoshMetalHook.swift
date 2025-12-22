@@ -16,6 +16,30 @@ import CoreVideo
 /// Uses a compute shader to achieve codec-like drift and smear effects.
 final class DatamoshMetalHook: RenderHook {
 
+    // MARK: - Parameter Specs (source of truth)
+
+    static var parameterSpecs: [String: ParameterSpec] {
+        [
+            "minHistoryOffset": .int(default: 15, range: 1...120),
+            "maxHistoryOffset": .int(default: 70, range: 2...300),
+            "blockSize": .int(default: 10, range: 1...256),
+            "blockMoshProbability": .float(default: 0.25, range: 0...1),
+            "motionSensitivity": .float(default: 0.85, range: 0...2),
+            "updateProbability": .float(default: 0.0, range: 0...1),
+            "smearStrength": .float(default: 0.45, range: 0...2),
+            "jitterAmount": .float(default: 0.25, range: 0...2),
+            "feedbackAmount": .float(default: 0.4, range: 0...1),
+            "blockiness": .float(default: 0.0, range: 0...1),
+            "burstChance": .float(default: 0.008, range: 0...0.5),
+            "minBurstDuration": .int(default: 60, range: 1...600),
+            "maxBurstDuration": .int(default: 240, range: 1...1200),
+            "cleanFrameChance": .float(default: 0.0, range: 0...0.5),
+            "intensityVariation": .float(default: 0.5, range: 0...1)
+        ]
+    }
+
+    // MARK: - Properties
+
     var name: String { "Datamosh (Metal)" }
 
     /// Deep history needed for realistic datamosh (up to maxHistoryOffset)

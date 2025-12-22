@@ -11,6 +11,17 @@ import CoreGraphics
 
 /// Desaturate + configurable contrast for black & white look.
 struct BlackAndWhiteHook: RenderHook {
+
+    // MARK: - Parameter Specs (source of truth)
+
+    static var parameterSpecs: [String: ParameterSpec] {
+        [
+            "contrast": .float(default: 1.0, range: 0...10)
+        ]
+    }
+
+    // MARK: - Properties
+
     /// Contrast level (1.0 = normal, <1 = low contrast, >1 = high contrast)
     let contrast: Float
 

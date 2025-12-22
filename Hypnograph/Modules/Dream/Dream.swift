@@ -216,15 +216,26 @@ final class Dream: ObservableObject {
         }
         .keyboardShortcut(".", modifiers: [])
 
-        Button("> Next Source") { [self] in
-            nextSource()
-        }
-        .keyboardShortcut(.rightArrow, modifiers: [])
+        // Only use arrow shortcuts when effects editor is closed (otherwise they adjust params)
+        if !state.isEffectsEditorVisible {
+            Button("> Next Source") { [self] in
+                nextSource()
+            }
+            .keyboardShortcut(.rightArrow, modifiers: [])
 
-        Button("< Previous Source") { [self] in
-            previousSource()
+            Button("< Previous Source") { [self] in
+                previousSource()
+            }
+            .keyboardShortcut(.leftArrow, modifiers: [])
+        } else {
+            Button("> Next Source") { [self] in
+                nextSource()
+            }
+
+            Button("< Previous Source") { [self] in
+                previousSource()
+            }
         }
-        .keyboardShortcut(.leftArrow, modifiers: [])
 
         ForEach(0..<9, id: \.self) { idx in
             Button("Select Source \(idx + 1)") { [self] in

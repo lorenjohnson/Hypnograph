@@ -252,71 +252,14 @@ final class GameControllerManager {
     /// Adjust the selected parameter by one step in the given direction (-1 or +1)
     private func adjustSelectedParameterByStep(direction: Int) {
         guard let state = state,
-              let vm = effectsViewModel,
-              vm.focusedPanel == .parameters else { return }
+              let vm = effectsViewModel else { return }
 
         let globalEffectName = state.renderHooks.globalEffectName
         let effectIndex = vm.selectedEffectIndex(for: globalEffectName)
         guard effectIndex >= 0 else { return }
 
         let def = vm.selectedDefinition(for: globalEffectName)
-        let params = vm.navigableParameters(for: def)
-        guard vm.selectedParameterIndex < params.count else { return }
-
-        let param = params[vm.selectedParameterIndex]
-
-        // Get the effect type for this specific parameter
-        // For chained hooks, use the child hook's type from hookIndex
-        let effectType = getEffectType(for: def, hookIndex: param.hookIndex)
-        let range = getParameterRange(for: effectType, paramName: param.paramName)
-
-        switch param.value {
-        case .double(let d):
-            // Use step from registry if available, otherwise calculate based on range
-            let step = getParameterStep(for: effectType, paramName: param.paramName, range: range)
-            let newValue = max(range.min, min(range.max, d + step * Double(direction)))
-            vm.updateParameter(effectIndex: effectIndex, hookIndex: param.hookIndex, paramName: param.paramName, value: .double(newValue))
-
-        case .int(let i):
-            // For integers, use step of 1 or registry step
-            let step = max(1, Int(getParameterStep(for: effectType, paramName: param.paramName, range: range)))
-            let newValue = max(Int(range.min), min(Int(range.max), i + step * direction))
-            vm.updateParameter(effectIndex: effectIndex, hookIndex: param.hookIndex, paramName: param.paramName, value: .int(newValue))
-
-        case .bool(let b):
-            // Toggle boolean
-            vm.updateParameter(effectIndex: effectIndex, hookIndex: param.hookIndex, paramName: param.paramName, value: .bool(!b))
-
-        case .string:
-            // Can't adjust strings with D-pad
-            break
-        }
-    }
-
-    /// Get the effect type for a parameter, handling chained hooks
-    private func getEffectType(for def: EffectDefinition?, hookIndex: Int?) -> String? {
-        guard let def = def else { return nil }
-
-        if let hookIndex = hookIndex, let hooks = def.hooks, hookIndex < hooks.count {
-            // This is a child hook in a chain - use its type
-            return hooks[hookIndex].resolvedType
-        }
-
-        // Top-level effect
-        return def.resolvedType
-    }
-
-    /// Get the step size for a parameter
-    private func getParameterStep(for effectType: String?, paramName: String, range: (min: Double, max: Double)) -> Double {
-        // Try to get step from registry
-        if let effectType = effectType,
-           let paramRange = EffectRegistry.range(for: effectType, param: paramName),
-           let step = paramRange.step {
-            return step
-        }
-
-        // Default: divide range into ~20 steps for smooth control
-        return (range.max - range.min) / 20.0
+        vm.adjustSelectedParameter(direction: direction, effectIndex: effectIndex, definition: def)
     }
 
     private func setupBumperHandlers(_ gamepad: GCExtendedGamepad) {
@@ -409,14 +352,5 @@ final class GameControllerManager {
 
     /// Tracks whether a panel switch has been triggered (prevents repeated switching)
     private var joystickPanelSwitchTriggered = false
-
-    /// Get parameter range from the effect registry
-    private func getParameterRange(for effectType: String?, paramName: String) -> (min: Double, max: Double) {
-        guard let effectType = effectType,
-              let range = EffectRegistry.range(for: effectType, param: paramName) else {
-            return (min: 0, max: 1)  // Default range
-        }
-        return (min: range.min, max: range.max)
-    }
 }
 

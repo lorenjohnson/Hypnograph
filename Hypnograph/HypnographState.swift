@@ -93,6 +93,9 @@ final class HypnographState: ObservableObject {
     // Render hooks
     let renderHooks = RenderHookManager()
 
+    // Transition manager for smooth crossfades between hypnograms
+    let transitionManager = TransitionManager()
+
     // Watch timer - generates new hypnograms at intervals when watch mode is enabled
     private var watchTimer: Timer?
 
@@ -412,6 +415,8 @@ final class HypnographState: ObservableObject {
             let blendMode = (i == 0) ? BlendMode.sourceOver : BlendMode.random()
             addSource(blendMode: blendMode)
         }
+        // Default to global layer for effects editing
+        selectGlobalLayer()
     }
 
     /// Randomize blend modes and effects for all sources in current hypnogram

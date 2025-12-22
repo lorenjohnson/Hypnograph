@@ -13,6 +13,19 @@ import CoreGraphics
 /// Ghost blur effect - blurred trails from previous frames
 /// Each older frame is more blurred, creating smooth ethereal motion
 struct GhostBlurHook: RenderHook {
+
+    // MARK: - Parameter Specs (source of truth)
+
+    static var parameterSpecs: [String: ParameterSpec] {
+        [
+            "intensity": .float(default: 0.5, range: 0...2),
+            "trailLength": .int(default: 6, range: 1...60),
+            "blurAmount": .double(default: 8.0, range: 0...100)
+        ]
+    }
+
+    // MARK: - Properties
+
     var name: String { "Ghost Blur" }
 
     /// Needs trailLength frames of history
