@@ -10,6 +10,33 @@ import Foundation
 import CoreImage
 import Metal
 
+/// Color space options for BasicHook
+enum BasicColorSpace: String, CaseIterable {
+    case rgb = "rgb"
+    case yuv = "yuv"
+    case hsv = "hsv"
+    case lab = "lab"
+
+    var displayLabel: String {
+        switch self {
+        case .rgb: return "RGB"
+        case .yuv: return "YUV"
+        case .hsv: return "HSV"
+        case .lab: return "LAB"
+        }
+    }
+
+    /// GPU index for shader
+    var gpuIndex: Int32 {
+        switch self {
+        case .rgb: return 0
+        case .yuv: return 1
+        case .hsv: return 2
+        case .lab: return 3
+        }
+    }
+}
+
 /// GPU parameters struct - must match layout in BasicShader.metal
 struct BasicParamsGPU {
     var opacity: Float
@@ -17,6 +44,8 @@ struct BasicParamsGPU {
     var brightness: Float
     var saturation: Float
     var hueShift: Float
+    var colorSpace: Int32      // 0=RGB, 1=YUV, 2=HSV, 3=LAB
+    var invert: Int32          // 0=false, 1=true
     var textureWidth: Int32
     var textureHeight: Int32
 }
@@ -33,7 +62,9 @@ final class BasicHook: RenderHook {
             "contrast": .float(default: 0.0, range: -1...1),
             "brightness": .float(default: 0.0, range: -1...1),
             "saturation": .float(default: 0.0, range: -1...1),
-            "hueShift": .float(default: 0.0, range: -1...1)
+            "hueShift": .float(default: 0.0, range: -1...1),
+            "colorSpace": .choice(default: "rgb", options: BasicColorSpace.allCases.map { ($0.rawValue, $0.displayLabel) }),
+            "invert": .bool(default: false)
         ]
     }
 
@@ -50,6 +81,8 @@ final class BasicHook: RenderHook {
     var brightness: Float
     var saturation: Float
     var hueShift: Float
+    var colorSpace: BasicColorSpace
+    var invert: Bool
 
     // MARK: - Metal State
 
@@ -61,12 +94,15 @@ final class BasicHook: RenderHook {
     // MARK: - Init
 
     init(opacity: Float = 1.0, contrast: Float = 0.0, brightness: Float = 0.0,
-         saturation: Float = 0.0, hueShift: Float = 0.0, name: String? = nil) {
+         saturation: Float = 0.0, hueShift: Float = 0.0, colorSpace: BasicColorSpace = .rgb,
+         invert: Bool = false, name: String? = nil) {
         self.opacity = max(0, min(1, opacity))
         self.contrast = max(-1, min(1, contrast))
         self.brightness = max(-1, min(1, brightness))
         self.saturation = max(-1, min(1, saturation))
         self.hueShift = max(-1, min(1, hueShift))
+        self.colorSpace = colorSpace
+        self.invert = invert
         self.customName = name
         self.device = MTLCreateSystemDefaultDevice()
         self.commandQueue = device?.makeCommandQueue()
@@ -129,8 +165,8 @@ final class BasicHook: RenderHook {
         }
 
         // Render CIImage to input texture
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        ciContext.render(image, to: inputTexture, commandBuffer: nil, bounds: extent, colorSpace: colorSpace)
+        let cgColorSpace = CGColorSpaceCreateDeviceRGB()
+        ciContext.render(image, to: inputTexture, commandBuffer: nil, bounds: extent, colorSpace: cgColorSpace)
 
         // Setup GPU params
         var gpuParams = BasicParamsGPU(
@@ -139,6 +175,8 @@ final class BasicHook: RenderHook {
             brightness: brightness,
             saturation: saturation,
             hueShift: hueShift,
+            colorSpace: colorSpace.gpuIndex,
+            invert: invert ? 1 : 0,
             textureWidth: Int32(width),
             textureHeight: Int32(height)
         )
@@ -170,7 +208,7 @@ final class BasicHook: RenderHook {
         commandBuffer.waitUntilCompleted()
 
         // Convert back to CIImage
-        guard let outputImage = CIImage(mtlTexture: outputTexture, options: [.colorSpace: colorSpace]) else {
+        guard let outputImage = CIImage(mtlTexture: outputTexture, options: [.colorSpace: cgColorSpace]) else {
             return image
         }
 
@@ -179,7 +217,8 @@ final class BasicHook: RenderHook {
 
     func copy() -> RenderHook {
         BasicHook(opacity: opacity, contrast: contrast, brightness: brightness,
-                  saturation: saturation, hueShift: hueShift, name: customName)
+                  saturation: saturation, hueShift: hueShift, colorSpace: colorSpace,
+                  invert: invert, name: customName)
     }
 }
 

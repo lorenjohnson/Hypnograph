@@ -420,21 +420,23 @@ struct EffectsEditorView: View {
     private func handleUpDown(delta: Int) {
         switch focusedField {
         case .effectList:
-            // Move effect selection up/down
+            // Move effect selection up/down with wrap-around
             let defs = viewModel.effectDefinitions
             let currentIndex = selectedEffectIndex  // -1 = None, 0+ = effects
-            let newIndex = currentIndex + delta
+            var newIndex = currentIndex + delta
 
+            // Total items: None (-1) + effects (0 to defs.count-1)
+            // Wrap around: going up from None wraps to last effect, going down from last wraps to None
             if newIndex < -1 {
-                // Already at None, can't go higher
-                return
+                // Wrap to last effect
+                newIndex = defs.count - 1
             } else if newIndex >= defs.count {
-                // Already at bottom
-                return
-            } else {
-                // Select new effect with immediate UI feedback
-                selectEffect(at: newIndex)
+                // Wrap to None
+                newIndex = -1
             }
+
+            // Select new effect with immediate UI feedback
+            selectEffect(at: newIndex)
 
         default:
             // In parameters or text fields, let native focus handle navigation
@@ -462,10 +464,6 @@ struct EffectsEditorView: View {
                 LazyVStack(alignment: .leading, spacing: 4) {
                     // None option (always first)
                     effectNoneRow(isSelected: currentlySelected == -1)
-
-                    Divider()
-                        .background(Color.white.opacity(0.2))
-                        .padding(.vertical, 2)
 
                     ForEach(Array(viewModel.effectDefinitions.enumerated()), id: \.offset) { index, def in
                         effectRowCached(index: index, definition: def, isSelected: index == currentlySelected)
@@ -508,21 +506,22 @@ struct EffectsEditorView: View {
     }
 
     private func effectNoneRow(isSelected: Bool) -> some View {
-        Button(action: {
-            selectEffect(at: -1)
-        }) {
+        HStack {
             Text("None")
                 .font(.system(.body, design: .monospaced))
                 .italic()
                 .foregroundColor(.white.opacity(0.7))
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(effectRowBackground(isSelected: isSelected))
-                .cornerRadius(4)
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(effectRowBackground(isSelected: isSelected))
+        .cornerRadius(4)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            selectEffect(at: -1)
+        }
     }
 
     private func effectRowCached(index: Int, definition: EffectDefinition, isSelected: Bool) -> some View {
@@ -722,6 +721,7 @@ struct EffectsEditorView: View {
     private func parameterFields(for def: EffectDefinition, effectIndex: Int, hookIndex: Int?) -> some View {
         // Use hook's parameterSpecs as source of truth, merged with JSON values
         let mergedParams = EffectsEditorViewModel.mergedParameters(for: def)
+        let specs = def.resolvedType.map { EffectRegistry.parameterSpecs(for: $0) } ?? [:]
 
         if !mergedParams.isEmpty {
             ForEach(Array(mergedParams.keys.sorted()), id: \.self) { key in
@@ -730,6 +730,7 @@ struct EffectsEditorView: View {
                         name: key,
                         value: value,
                         effectType: def.resolvedType,
+                        spec: specs[key],
                         onChange: { newValue in
                             viewModel.updateParameter(
                                 effectIndex: effectIndex,
@@ -756,6 +757,7 @@ struct ParameterSliderRow: View {
     let name: String
     let value: AnyCodableValue
     let effectType: String?
+    let spec: ParameterSpec?
     let onChange: (AnyCodableValue) -> Void
 
     @State private var textValue: String = ""
@@ -833,18 +835,23 @@ struct ParameterSliderRow: View {
                     .labelsHidden()
 
                 case .string(let s):
-                    TextField("", text: Binding(
-                        get: { s },
-                        set: { onChange(.string($0)) }
-                    ))
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 11, design: .monospaced))
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 2)
-                    .background(isTextFieldFocused ? Color.white : Color.white.opacity(0.1))
-                    .foregroundColor(isTextFieldFocused ? .black : .white)
-                    .cornerRadius(3)
-                    .focused($isTextFieldFocused)
+                    // Check if this is a choice parameter
+                    if let options = spec?.choiceOptions {
+                        choicePicker(currentValue: s, options: options)
+                    } else {
+                        TextField("", text: Binding(
+                            get: { s },
+                            set: { onChange(.string($0)) }
+                        ))
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 11, design: .monospaced))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(isTextFieldFocused ? Color.white : Color.white.opacity(0.1))
+                        .foregroundColor(isTextFieldFocused ? .black : .white)
+                        .cornerRadius(3)
+                        .focused($isTextFieldFocused)
+                    }
                 }
             }
         }
@@ -956,6 +963,22 @@ struct ParameterSliderRow: View {
             .cornerRadius(3)
             .focused($isTextFieldFocused)
             .onSubmit(onSubmit)
+    }
+
+    /// Choice picker for enum-style parameters
+    @ViewBuilder
+    private func choicePicker(currentValue: String, options: [(key: String, label: String)]) -> some View {
+        Picker("", selection: Binding(
+            get: { currentValue },
+            set: { onChange(.string($0)) }
+        )) {
+            ForEach(options, id: \.key) { option in
+                Text(option.label).tag(option.key)
+            }
+        }
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Safe slider step - returns nil if step would be invalid

@@ -1,0 +1,11 @@
+- I would like a new effect for applying a lut. A CI effect is fine but if it is normal and more efficient as a Metal effect somehow then do that. It could either be a file selector of we could have a applicaiton support lut directoory we look to.
+
+- I need a place to set max number of sources
+
+- I need a place to set the % play speed which currently defaults to 80%
+
+- I would like when I save a Hypnogram that the JSON serilization of the Recipe also saves somewhere (named with a date/time stamp I guess). I would expect any current code we have for serializing is pretty out of date with the current recipe format so that needs throught through and caught-up. I would also like a Open option in the file menu for loading back a Hypnogram recipe (a .hypnogram file which will be json with comments)
+
+- Let's make the performance display when there's not a second monitor for now be a modal window that sits beneath the effects modal if it's open otherwise it's up top to the right actually keep it up top no yeah keep it to the bottom right corner of the preview window in a modal and it can just be switched on and off and then within that modal for performance display there'll be a button to press overlaying the image or at the top of it actually in the header of it to push it push the performance display to the external monitor and that will only be an active button if there is an external monitor, if that makes sense.
+
+- Let's add the timeline editor for sources. Pretty much a basic timeline editor with the ablity to specify the Basic effects properties for each layer including Blend Mode.
