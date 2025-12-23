@@ -58,7 +58,11 @@ final class TextOverlayHook: RenderHook {
             "opacity": .float(default: 0.8, range: 0.0...1.0),
             "maxTextCount": .int(default: 3, range: 1...10),
             "changeIntervalFrames": .int(default: 90, range: 10...600),
-            "durationMultiplier": .float(default: 2.0, range: 0.5...10.0)  // frames = chars * multiplier
+            "durationMultiplier": .float(default: 2.0, range: 0.5...10.0),  // frames = chars * multiplier
+            "colorRed": .float(default: 1.0, range: 0.0...1.0),
+            "colorGreen": .float(default: 1.0, range: 0.0...1.0),
+            "colorBlue": .float(default: 1.0, range: 0.0...1.0),
+            "antialiasing": .bool(default: true)
         ]
     }
 
@@ -74,6 +78,10 @@ final class TextOverlayHook: RenderHook {
     var changeIntervalFrames: Int
     var durationMultiplier: Float  // frames = text.count * multiplier
     var fontName: String
+    var colorRed: Float
+    var colorGreen: Float
+    var colorBlue: Float
+    var antialiasing: Bool
 
     /// Seed for reproducible randomness. Same seed = same text sequence, positions, timing.
     /// This enables performance display to match preview exactly.
@@ -103,7 +111,8 @@ final class TextOverlayHook: RenderHook {
 
     init(fontSize: Float = 32.0, fontSizeVariation: Float = 0.3, opacity: Float = 0.8,
          maxTextCount: Int = 3, changeIntervalFrames: Int = 90, durationMultiplier: Float = 2.0,
-         fontName: String = "Menlo", randomSeed: UInt64? = nil) {
+         fontName: String = "Menlo", colorRed: Float = 1.0, colorGreen: Float = 1.0, colorBlue: Float = 1.0,
+         antialiasing: Bool = true, randomSeed: UInt64? = nil) {
         self.fontSize = fontSize
         self.fontSizeVariation = fontSizeVariation
         self.opacity = opacity
@@ -111,6 +120,10 @@ final class TextOverlayHook: RenderHook {
         self.changeIntervalFrames = changeIntervalFrames
         self.durationMultiplier = durationMultiplier
         self.fontName = fontName
+        self.colorRed = colorRed
+        self.colorGreen = colorGreen
+        self.colorBlue = colorBlue
+        self.antialiasing = antialiasing
 
         // Generate a new seed if not provided (first creation)
         // Copy operations pass the existing seed for reproducibility
@@ -523,8 +536,21 @@ final class TextOverlayHook: RenderHook {
             return image
         }
 
+        // Set antialiasing mode
+        context.setShouldAntialias(antialiasing)
+        context.setAllowsAntialiasing(antialiasing)
+        context.setShouldSmoothFonts(antialiasing)
+
         // Clear to transparent
         context.clear(CGRect(x: 0, y: 0, width: width, height: height))
+
+        // Create text color from RGB parameters
+        let textColor = NSColor(
+            calibratedRed: CGFloat(colorRed),
+            green: CGFloat(colorGreen),
+            blue: CGFloat(colorBlue),
+            alpha: 1.0
+        )
 
         // Draw each snippet with word wrapping
         // Maximum allowed overflow beyond frame edges
@@ -556,7 +582,7 @@ final class TextOverlayHook: RenderHook {
 
             let attrs: [NSAttributedString.Key: Any] = [
                 .font: font,
-                .foregroundColor: NSColor.white.withAlphaComponent(CGFloat(alpha)),
+                .foregroundColor: textColor.withAlphaComponent(CGFloat(alpha)),
                 .paragraphStyle: paragraphStyle
             ]
 
@@ -606,7 +632,8 @@ final class TextOverlayHook: RenderHook {
         TextOverlayHook(fontSize: fontSize, fontSizeVariation: fontSizeVariation, opacity: opacity,
                         maxTextCount: maxTextCount, changeIntervalFrames: changeIntervalFrames,
                         durationMultiplier: durationMultiplier, fontName: fontName,
-                        randomSeed: randomSeed)
+                        colorRed: colorRed, colorGreen: colorGreen, colorBlue: colorBlue,
+                        antialiasing: antialiasing, randomSeed: randomSeed)
     }
 }
 

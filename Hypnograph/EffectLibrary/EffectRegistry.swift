@@ -149,11 +149,8 @@ enum EffectRegistry {
             let brightness = params?["brightness"]?.floatValue ?? 0.0
             let saturation = params?["saturation"]?.floatValue ?? 0.0
             let hueShift = params?["hueShift"]?.floatValue ?? 0.0
-            let colorizeHue = params?["colorizeHue"]?.floatValue ?? 0.0
-            let colorizeAmount = params?["colorizeAmount"]?.floatValue ?? 0.0
             return BasicHook(opacity: opacity, contrast: contrast, brightness: brightness,
-                            saturation: saturation, hueShift: hueShift,
-                            colorizeHue: colorizeHue, colorizeAmount: colorizeAmount)
+                            saturation: saturation, hueShift: hueShift)
         },
 
         "GaussianBlurMetalHook": { params in
@@ -217,10 +214,16 @@ enum EffectRegistry {
             let changeIntervalFrames = params?["changeIntervalFrames"]?.intValue ?? 90
             let durationMultiplier = params?["durationMultiplier"]?.floatValue ?? 2.0
             let fontName = params?["fontName"]?.stringValue ?? "Menlo"
+            let colorRed = params?["colorRed"]?.floatValue ?? 1.0
+            let colorGreen = params?["colorGreen"]?.floatValue ?? 1.0
+            let colorBlue = params?["colorBlue"]?.floatValue ?? 1.0
+            let antialiasing = params?["antialiasing"]?.boolValue ?? true
             return TextOverlayHook(fontSize: fontSize, fontSizeVariation: fontSizeVariation,
                                    opacity: opacity, maxTextCount: maxTextCount,
                                    changeIntervalFrames: changeIntervalFrames,
-                                   durationMultiplier: durationMultiplier, fontName: fontName)
+                                   durationMultiplier: durationMultiplier, fontName: fontName,
+                                   colorRed: colorRed, colorGreen: colorGreen, colorBlue: colorBlue,
+                                   antialiasing: antialiasing)
         }
     ]
 
