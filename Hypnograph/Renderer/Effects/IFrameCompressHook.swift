@@ -83,6 +83,16 @@ final class IFrameCompressHook: RenderHook {
         loadShader()
     }
 
+    required convenience init?(params: [String: AnyCodableValue]?) {
+        let quality = params?["quality"]?.floatValue ?? 0.5
+        let iframeInterval = params?["iframeInterval"]?.intValue ?? 300
+        let stickiness = params?["stickiness"]?.floatValue ?? 0.92
+        let glitch = params?["glitch"]?.floatValue ?? 0.0
+        let diffThreshold = params?["diffThreshold"]?.floatValue ?? 0.3
+        self.init(quality: quality, iframeInterval: iframeInterval, stickiness: stickiness,
+                  glitch: glitch, diffThreshold: diffThreshold)
+    }
+
     private func loadShader() {
         guard let device = device else { return }
 

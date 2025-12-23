@@ -78,6 +78,13 @@ final class BlockFreezeMetalHook: RenderHook {
         loadShader()
     }
 
+    required convenience init?(params: [String: AnyCodableValue]?) {
+        let blockSize = params?["blockSize"]?.intValue ?? 24
+        let freezeAmount = params?["freezeAmount"]?.floatValue ?? 0.4
+        let streakAmount = params?["streakAmount"]?.floatValue ?? 0.3
+        self.init(blockSize: blockSize, freezeAmount: freezeAmount, streakAmount: streakAmount)
+    }
+
     private func loadShader() {
         guard let device = device else { return }
 

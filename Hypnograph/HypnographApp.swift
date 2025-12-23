@@ -115,8 +115,6 @@ struct HypnographApp: App {
         let renderQueue = RenderQueue()
         self.renderQueue = renderQueue
 
-        GlobalRenderHooks.manager = state.renderHooks
-
         _state = StateObject(wrappedValue: state)
         _dream = StateObject(wrappedValue: Dream(state: state, renderQueue: renderQueue))
         _divine = StateObject(wrappedValue: Divine(state: state, renderQueue: renderQueue))
@@ -132,22 +130,13 @@ struct HypnographApp: App {
     }
 
     func sendToPerformanceDisplay() {
-        // Get recipe from current module
-        let recipe: HypnogramRecipe
         switch state.currentModuleType {
         case .dream:
-            recipe = dream.currentRecipe
+            dream.sendToPerformanceDisplay()
         case .divine:
             // Divine doesn't use recipes the same way, skip for now
             print("⚠️ Performance Display: Divine mode not supported yet")
-            return
         }
-
-        state.performanceDisplay.send(
-            recipe: recipe,
-            aspectRatio: state.aspectRatio,
-            resolution: state.outputResolution
-        )
     }
 
     var body: some Scene {
@@ -237,7 +226,7 @@ struct AppCommands: Commands {
             Button(state.isPaused ? "Play" : "Pause") {
                 state.togglePause()
             }
-            .keyboardShortcut("p", modifiers: [])
+            .keyboardShortcut(.space, modifiers: [])
 
             Button("Restart Session (Reload Settings)") {
                 switch state.currentModuleType {
@@ -268,7 +257,7 @@ struct AppCommands: Commands {
                 case .divine: divine.new()
                 }
             }
-            .keyboardShortcut("n", modifiers: [])
+            .keyboardShortcut("n", modifiers: [.command])
         }
 
         CommandGroup(replacing: .saveItem) {
@@ -335,13 +324,22 @@ struct AppCommands: Commands {
                     .keyboardShortcut("i", modifiers: [])
 
                 Toggle("Effects Editor", isOn: $state.isEffectsEditorVisible)
-                    .keyboardShortcut("e", modifiers: [.command])
+                    .keyboardShortcut("e", modifiers: [])
             }
 
             Divider()
 
             Section("Performance Display") {
-                Toggle("Show Performance Display", isOn: Binding(
+                Toggle("Performance Preview", isOn: $state.isPerformancePreviewVisible)
+                    .keyboardShortcut("p", modifiers: [])
+
+                Toggle("Live Mode", isOn: Binding(
+                    get: { state.isLiveMode },
+                    set: { _ in state.togglePerformanceMode() }
+                ))
+                .keyboardShortcut("p", modifiers: [.command])
+
+                Toggle("External Monitor", isOn: Binding(
                     get: { state.performanceDisplay.isVisible },
                     set: { _ in state.performanceDisplay.toggle() }
                 ))
@@ -349,20 +347,15 @@ struct AppCommands: Commands {
 
                 Button("Send to Performance Display") {
                     // Get recipe from current module and send to performance display
+                    // (auto-shows performance display if not visible)
                     switch state.currentModuleType {
                     case .dream:
-                        state.performanceDisplay.send(
-                            recipe: dream.currentRecipe,
-                            aspectRatio: state.aspectRatio,
-                            resolution: state.outputResolution,
-                            mode: dream.mode
-                        )
+                        dream.sendToPerformanceDisplay()
                     case .divine:
                         print("⚠️ Performance Display: Divine mode not supported yet")
                     }
                 }
                 .keyboardShortcut(.return, modifiers: [.command])
-                .disabled(!state.performanceDisplay.isVisible)
 
                 Button("Reset Performance Display") {
                     state.performanceDisplay.reset()

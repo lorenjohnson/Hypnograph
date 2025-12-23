@@ -44,6 +44,12 @@ struct ColorEchoHook: RenderHook {
         self.nameOverride = name
     }
 
+    init?(params: [String: AnyCodableValue]?) {
+        let channelOffset = params?["channelOffset"]?.intValue ?? 4
+        let intensity = params?["intensity"]?.floatValue ?? 0.85
+        self.init(channelOffset: channelOffset, intensity: intensity)
+    }
+
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         // Work with whatever frames are available (preroll fills buffer from frame 1)
         let maxOffset = max(0, context.frameBuffer.frameCount - 1)

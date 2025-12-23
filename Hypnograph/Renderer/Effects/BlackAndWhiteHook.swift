@@ -38,6 +38,11 @@ struct BlackAndWhiteHook: RenderHook {
         self.contrast = contrast
     }
 
+    init?(params: [String: AnyCodableValue]?) {
+        let contrast = params?["contrast"]?.floatValue ?? 1.0
+        self.init(contrast: contrast)
+    }
+
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         guard let filter = CIFilter(name: "CIColorControls") else { return image }
         filter.setValue(image, forKey: kCIInputImageKey)

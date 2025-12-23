@@ -75,6 +75,13 @@ final class PixelDriftMetalHook: RenderHook {
         loadShader()
     }
 
+    required convenience init?(params: [String: AnyCodableValue]?) {
+        let driftStrength = params?["driftStrength"]?.floatValue ?? 8.0
+        let threshold = params?["threshold"]?.floatValue ?? 0.05
+        let decay = params?["decay"]?.floatValue ?? 0.6
+        self.init(driftStrength: driftStrength, threshold: threshold, decay: decay)
+    }
+
     private func loadShader() {
         guard let device = device else { return }
 

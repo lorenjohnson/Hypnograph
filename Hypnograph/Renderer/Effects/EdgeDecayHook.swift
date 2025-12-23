@@ -21,6 +21,11 @@ struct EdgeDecayHook: RenderHook {
     init(intensity: Float = 0.6) {
         self.intensity = intensity
     }
+
+    init?(params: [String: AnyCodableValue]?) {
+        let intensity = params?["intensity"]?.floatValue ?? 0.6
+        self.init(intensity: intensity)
+    }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         // Detect edges

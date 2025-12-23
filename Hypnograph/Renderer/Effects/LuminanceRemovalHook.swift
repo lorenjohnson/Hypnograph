@@ -41,12 +41,26 @@ struct LuminanceRemovalHook: RenderHook {
         self.threshold = threshold
         self.highThreshold = highThreshold
         self.softness = softness
-        
+
         switch mode {
         case .removeDark: self.effectName = "Dark Removal"
         case .removeLight: self.effectName = "Light Removal"
         case .removeMid: self.effectName = "Mid Removal"
         }
+    }
+
+    init?(params: [String: AnyCodableValue]?) {
+        let modeStr = params?["mode"]?.stringValue ?? "removeDark"
+        let mode: Mode
+        switch modeStr {
+        case "removeLight": mode = .removeLight
+        case "removeMid": mode = .removeMid
+        default: mode = .removeDark
+        }
+        let threshold = params?["threshold"]?.floatValue ?? 0.3
+        let highThreshold = params?["highThreshold"]?.floatValue ?? 0.7
+        let softness = params?["softness"]?.floatValue ?? 0.1
+        self.init(mode: mode, threshold: threshold, highThreshold: highThreshold, softness: softness)
     }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {

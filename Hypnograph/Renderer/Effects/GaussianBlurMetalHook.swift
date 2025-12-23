@@ -68,6 +68,11 @@ final class GaussianBlurMetalHook: RenderHook {
         loadShader()
     }
 
+    required convenience init?(params: [String: AnyCodableValue]?) {
+        let radius = params?["radius"]?.floatValue ?? 10.0
+        self.init(radius: radius)
+    }
+
     private func loadShader() {
         guard let device = device else {
             print("⚠️ GaussianBlurMetalHook: No Metal device")

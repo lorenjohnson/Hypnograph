@@ -14,6 +14,7 @@ struct MontagePlayerView: NSViewRepresentable {
     let isPaused: Bool
     let effectsChangeCounter: Int
     let playRate: Float = 0.8
+    let renderHooks: RenderHookManager
 
     class Coordinator {
         var player: AVPlayer?
@@ -83,7 +84,8 @@ struct MontagePlayerView: NSViewRepresentable {
                 let result = await engine.makePlayerItem(
                     recipe: recipe,
                     strategy: strategy,
-                    config: config
+                    config: config,
+                    hookManager: renderHooks
                 )
 
                 guard !Task.isCancelled else {

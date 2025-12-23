@@ -25,6 +25,12 @@ struct SolarizeGlitchHook: RenderHook {
         self.intensity = intensity
         self.speed = speed
     }
+
+    init?(params: [String: AnyCodableValue]?) {
+        let intensity = params?["intensity"]?.floatValue ?? 0.7
+        let speed = params?["speed"]?.doubleValue ?? 0.3
+        self.init(intensity: intensity, speed: speed)
+    }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         let t = CMTimeGetSeconds(context.time)

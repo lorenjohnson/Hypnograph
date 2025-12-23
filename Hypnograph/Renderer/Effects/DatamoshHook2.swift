@@ -30,6 +30,13 @@ struct DatamoshHook2: RenderHook {
         self.timeScale = timeScale
     }
 
+    init?(params: [String: AnyCodableValue]?) {
+        let intensity = params?["intensity"]?.floatValue ?? 0.7
+        let blurAmount = params?["blurAmount"]?.floatValue ?? 8.0
+        let timeScale = params?["timeScale"]?.floatValue ?? 0.05
+        self.init(intensity: intensity, blurAmount: CGFloat(blurAmount), timeScale: Double(timeScale))
+    }
+
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         guard context.frameBuffer.isFilled else {
             return image

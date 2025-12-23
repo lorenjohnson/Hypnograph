@@ -24,6 +24,12 @@ struct ScanlinesHook: RenderHook {
         self.intensity = intensity
     }
 
+    init?(params: [String: AnyCodableValue]?) {
+        let lineWidth = params?["lineWidth"]?.floatValue ?? 2.0
+        let intensity = params?["intensity"]?.floatValue ?? 0.3
+        self.init(lineWidth: lineWidth, intensity: intensity)
+    }
+
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         let extent = image.extent
 

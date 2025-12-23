@@ -63,6 +63,11 @@ final class PixelateMetalHook: RenderHook {
 
         loadShader()
     }
+
+    required convenience init?(params: [String: AnyCodableValue]?) {
+        let blockSize = params?["blockSize"]?.intValue ?? 8
+        self.init(blockSize: blockSize)
+    }
     
     private func loadShader() {
         guard let device = device else {

@@ -46,6 +46,13 @@ struct FrameDifferenceHook: RenderHook {
         self.originalBlend = originalBlend
     }
 
+    init?(params: [String: AnyCodableValue]?) {
+        let sensitivity = params?["sensitivity"]?.floatValue ?? 0.1
+        let intensity = params?["intensity"]?.floatValue ?? 1.5
+        let originalBlend = params?["originalBlend"]?.floatValue ?? 0.3
+        self.init(sensitivity: sensitivity, intensity: intensity, originalBlend: originalBlend)
+    }
+
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         guard let prevFrame = context.frameBuffer.previousFrame(offset: 1) else {
             return image

@@ -42,8 +42,11 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
     /// Still images for layers that are images (indexed by layer, nil for video layers)
     let stillImages: [CIImage?]
 
-    /// Snapshot of recipe for export (nil = use GlobalRenderHooks.manager for live preview)
-    let recipeSnapshot: HypnogramRecipe?
+    /// The RenderHookManager to use for effects processing.
+    /// - Preview: passes state.renderHooks (mutable, changes affect playback)
+    /// - Performance Display: passes performanceDisplay.renderHooks (isolated instance)
+    /// - Export: passes a freshly created manager from recipe.copyForExport()
+    weak var hookManager: RenderHookManager?
 
     // MARK: - Initialization
 
@@ -55,7 +58,7 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
         sourceIndices: [Int],
         enableEffects: Bool = false,
         stillImages: [CIImage?] = [],
-        recipeSnapshot: HypnogramRecipe? = nil
+        hookManager: RenderHookManager? = nil
     ) {
         self.timeRange = timeRange
         self.layerTrackIDs = layerTrackIDs
@@ -64,7 +67,7 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
         self.sourceIndices = sourceIndices
         self.enableEffects = enableEffects
         self.stillImages = stillImages
-        self.recipeSnapshot = recipeSnapshot
+        self.hookManager = hookManager
 
         // Required track IDs for AVFoundation
         // Must wrap CMPersistentTrackID as NSNumber

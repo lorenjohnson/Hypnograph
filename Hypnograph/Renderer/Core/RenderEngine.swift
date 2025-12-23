@@ -48,22 +48,21 @@ final class RenderEngine {
     ///   - recipe: The recipe to build
     ///   - strategy: Montage or sequence timeline
     ///   - config: Render configuration
-    ///   - isolatedPlayback: If true, bakes recipe into instructions so effects are independent of global hooks
+    ///   - hookManager: The RenderHookManager to use. If nil, uses global hooks.
     func makePlayerItem(
         recipe: HypnogramRecipe,
         strategy: CompositionBuilder.TimelineStrategy,
         config: Config,
-        isolatedPlayback: Bool = false
+        hookManager: RenderHookManager? = nil
     ) async -> Result<PlayerItemResult, RenderError> {
 
         // Build composition
-        // When isolatedPlayback is true, treat like export so it gets its own RenderHookManager
         let buildResult = await compositionBuilder.build(
             recipe: recipe,
             strategy: strategy,
             outputSize: config.outputSize,
             frameRate: config.frameRate,
-            isExport: isolatedPlayback
+            hookManager: hookManager
         )
 
         guard case .success(let build) = buildResult else {
@@ -114,15 +113,20 @@ final class RenderEngine {
 
         print("🎬 RenderEngine.export: Starting export to \(outputURL.lastPathComponent)...")
 
-        // Build composition for export (effects baked into recipe snapshot, not from live GlobalRenderHooks)
+        // Create isolated copy of recipe with fresh effect state for export
+        // This prevents stateful effects (like TextOverlayHook) from sharing state with preview
+        let exportRecipe = recipe.copyForExport()
+        let exportManager = RenderHookManager.forExport(recipe: exportRecipe)
+
+        // Build composition with the export manager
         let builder = CompositionBuilder()
         let buildResult = await builder.build(
-            recipe: recipe,
+            recipe: exportRecipe,
             strategy: strategy,
             outputSize: config.outputSize,
             frameRate: config.frameRate,
             enableEffects: config.enableGlobalHooks,
-            isExport: true  // Bake recipe snapshot into instructions
+            hookManager: exportManager
         )
 
         guard case .success(let build) = buildResult else {

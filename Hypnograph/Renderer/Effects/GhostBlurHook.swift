@@ -45,6 +45,13 @@ struct GhostBlurHook: RenderHook {
         self.trailLength = trailLength
         self.blurAmount = blurAmount
     }
+
+    init?(params: [String: AnyCodableValue]?) {
+        let intensity = params?["intensity"]?.floatValue ?? 0.5
+        let trailLength = params?["trailLength"]?.intValue ?? 6
+        let blurAmount = params?["blurAmount"]?.doubleValue.map { CGFloat($0) } ?? 8.0
+        self.init(intensity: intensity, trailLength: trailLength, blurAmount: blurAmount)
+    }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         // Work with whatever frames are available (preroll fills buffer from frame 1)

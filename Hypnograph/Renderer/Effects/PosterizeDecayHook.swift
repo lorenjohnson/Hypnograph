@@ -25,6 +25,12 @@ struct PosterizeDecayHook: RenderHook {
         self.levels = levels
         self.decayAmount = decayAmount
     }
+
+    init?(params: [String: AnyCodableValue]?) {
+        let levels = params?["levels"]?.floatValue ?? 6.0
+        let decayAmount = params?["decayAmount"]?.floatValue ?? 0.4
+        self.init(levels: levels, decayAmount: decayAmount)
+    }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         // Posterize current frame

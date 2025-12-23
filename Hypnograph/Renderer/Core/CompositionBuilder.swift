@@ -34,16 +34,23 @@ final class CompositionBuilder {
     
     // MARK: - Build
 
+    /// Build a composition from a recipe
+    /// - Parameters:
+    ///   - recipe: The recipe to build
+    ///   - strategy: Montage or sequence timeline
+    ///   - outputSize: Output dimensions
+    ///   - frameRate: Frame rate (default 30)
+    ///   - enableEffects: Whether to apply effects
+    ///   - hookManager: The RenderHookManager to use for this composition.
+    ///                  Pass nil only for legacy callers; all new code should provide a manager.
     func build(
         recipe: HypnogramRecipe,
         strategy: TimelineStrategy,
         outputSize: CGSize,
         frameRate: Int = 30,
         enableEffects: Bool = true,
-        isExport: Bool = false  // When true, bakes recipe snapshot into instructions
+        hookManager: RenderHookManager? = nil
     ) async -> Result<BuildResult, RenderError> {
-
-        // Building logging removed to reduce noise
 
         // Validate
         guard !recipe.sources.isEmpty else {
@@ -54,29 +61,24 @@ final class CompositionBuilder {
             return .failure(.invalidOutputSize(outputSize))
         }
 
-        // For export/isolated playback, create a deep copy with fresh effect instances
-        // This prevents stateful effects (like TextOverlayHook) from sharing state between
-        // preview and export/performance display
-        let workingRecipe = isExport ? recipe.copyForExport() : recipe
-
         // Build based on strategy
         switch strategy {
         case .montage(let targetDuration):
             return await buildMontage(
-                recipe: workingRecipe,
+                recipe: recipe,
                 targetDuration: targetDuration,
                 outputSize: outputSize,
                 frameRate: frameRate,
                 enableEffects: enableEffects,
-                isExport: isExport
+                hookManager: hookManager
             )
         case .sequence:
             return await buildSequence(
-                recipe: workingRecipe,
+                recipe: recipe,
                 outputSize: outputSize,
                 frameRate: frameRate,
                 enableEffects: enableEffects,
-                isExport: isExport
+                hookManager: hookManager
             )
         }
     }
@@ -89,7 +91,7 @@ final class CompositionBuilder {
         outputSize: CGSize,
         frameRate: Int,
         enableEffects: Bool,
-        isExport: Bool
+        hookManager: RenderHookManager?
     ) async -> Result<BuildResult, RenderError> {
 
         // Load all sources
@@ -218,7 +220,7 @@ final class CompositionBuilder {
             composition.insertEmptyTimeRange(CMTimeRange(start: .zero, duration: targetDuration))
         }
 
-        // Create instruction - pass recipe snapshot for export so live changes don't affect it
+        // Create instruction with hook manager for effect processing
         let instruction = RenderInstruction(
             timeRange: CMTimeRange(start: .zero, duration: targetDuration),
             layerTrackIDs: trackIDs,
@@ -227,7 +229,7 @@ final class CompositionBuilder {
             sourceIndices: sourceIndices,
             enableEffects: enableEffects,
             stillImages: stillImages,
-            recipeSnapshot: isExport ? recipe : nil
+            hookManager: hookManager
         )
 
         // Create video composition
@@ -270,7 +272,7 @@ final class CompositionBuilder {
         outputSize: CGSize,
         frameRate: Int,
         enableEffects: Bool,
-        isExport: Bool
+        hookManager: RenderHookManager?
     ) async -> Result<BuildResult, RenderError> {
 
         // Load all sources (track original index for correct seeking)
@@ -343,7 +345,7 @@ final class CompositionBuilder {
                     sourceIndices: [originalIndex],
                     enableEffects: enableEffects,
                     stillImages: [loaded.ciImage],
-                    recipeSnapshot: isExport ? recipe : nil
+                    hookManager: hookManager
                 )
                 instructions.append(instruction)
             } else {
@@ -379,7 +381,7 @@ final class CompositionBuilder {
                     sourceIndices: [originalIndex],
                     enableEffects: enableEffects,
                     stillImages: [nil],
-                    recipeSnapshot: isExport ? recipe : nil
+                    hookManager: hookManager
                 )
                 instructions.append(instruction)
             }

@@ -42,6 +42,13 @@ struct FeedbackLoopHook: RenderHook {
         self.rotation = rotation
         self.intensity = intensity
     }
+
+    init?(params: [String: AnyCodableValue]?) {
+        let scale = params?["scale"]?.doubleValue.map { CGFloat($0) } ?? 0.95
+        let rotation = params?["rotation"]?.doubleValue.map { CGFloat($0) } ?? 0.01
+        let intensity = params?["intensity"]?.floatValue ?? 0.5
+        self.init(scale: scale, rotation: rotation, intensity: intensity)
+    }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         guard let prevFrame = context.frameBuffer.previousFrame(offset: 1) else {

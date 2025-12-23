@@ -26,7 +26,13 @@ struct DatamoshHook3: RenderHook {
         self.intensity = intensity
         self.historyDepth = historyDepth
     }
-    
+
+    init?(params: [String: AnyCodableValue]?) {
+        let intensity = params?["intensity"]?.floatValue ?? 0.6
+        let historyDepth = params?["historyDepth"]?.intValue ?? 8
+        self.init(intensity: intensity, historyDepth: historyDepth)
+    }
+
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         guard context.frameBuffer.isFilled else {
             return image
