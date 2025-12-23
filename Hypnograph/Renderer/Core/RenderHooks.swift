@@ -516,6 +516,10 @@ enum ParameterSpec: Equatable {
     case float(default: Float, range: ClosedRange<Float>)
     case int(default: Int, range: ClosedRange<Int>)
     case bool(default: Bool)
+    /// Choice parameter: stores as string, displays as dropdown
+    /// - default: the default choice key
+    /// - options: ordered list of (key, displayLabel) pairs
+    case choice(default: String, options: [(key: String, label: String)])
 
     /// Get the default value as AnyCodableValue
     var defaultValue: AnyCodableValue {
@@ -524,6 +528,7 @@ enum ParameterSpec: Equatable {
         case .float(let f, _): return .double(Double(f))
         case .int(let i, _): return .int(i)
         case .bool(let b): return .bool(b)
+        case .choice(let d, _): return .string(d)
         }
     }
 
@@ -533,7 +538,7 @@ enum ParameterSpec: Equatable {
         case .double(_, let range): return (range.lowerBound, range.upperBound)
         case .float(_, let range): return (Double(range.lowerBound), Double(range.upperBound))
         case .int(_, let range): return (Double(range.lowerBound), Double(range.upperBound))
-        case .bool: return nil
+        case .bool, .choice: return nil
         }
     }
 
@@ -542,6 +547,32 @@ enum ParameterSpec: Equatable {
         switch self {
         case .int: return 1
         default: return nil
+        }
+    }
+
+    /// Get choice options (for dropdown UI)
+    var choiceOptions: [(key: String, label: String)]? {
+        switch self {
+        case .choice(_, let options): return options
+        default: return nil
+        }
+    }
+
+    /// Custom Equatable for choice (tuples aren't Equatable by default)
+    static func == (lhs: ParameterSpec, rhs: ParameterSpec) -> Bool {
+        switch (lhs, rhs) {
+        case (.double(let d1, let r1), .double(let d2, let r2)):
+            return d1 == d2 && r1 == r2
+        case (.float(let f1, let r1), .float(let f2, let r2)):
+            return f1 == f2 && r1 == r2
+        case (.int(let i1, let r1), .int(let i2, let r2)):
+            return i1 == i2 && r1 == r2
+        case (.bool(let b1), .bool(let b2)):
+            return b1 == b2
+        case (.choice(let d1, let o1), .choice(let d2, let o2)):
+            return d1 == d2 && o1.map(\.key) == o2.map(\.key) && o1.map(\.label) == o2.map(\.label)
+        default:
+            return false
         }
     }
 }

@@ -149,8 +149,12 @@ enum EffectRegistry {
             let brightness = params?["brightness"]?.floatValue ?? 0.0
             let saturation = params?["saturation"]?.floatValue ?? 0.0
             let hueShift = params?["hueShift"]?.floatValue ?? 0.0
+            let colorSpaceStr = params?["colorSpace"]?.stringValue ?? "rgb"
+            let colorSpace = BasicColorSpace(rawValue: colorSpaceStr) ?? .rgb
+            let invert = params?["invert"]?.boolValue ?? false
             return BasicHook(opacity: opacity, contrast: contrast, brightness: brightness,
-                            saturation: saturation, hueShift: hueShift)
+                            saturation: saturation, hueShift: hueShift, colorSpace: colorSpace,
+                            invert: invert)
         },
 
         "GaussianBlurMetalHook": { params in
