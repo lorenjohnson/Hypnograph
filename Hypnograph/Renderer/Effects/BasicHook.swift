@@ -16,6 +16,9 @@ struct BasicParamsGPU {
     var contrast: Float
     var brightness: Float
     var saturation: Float
+    var hueShift: Float
+    var colorizeHue: Float
+    var colorizeAmount: Float
     var textureWidth: Int32
     var textureHeight: Int32
 }
@@ -31,7 +34,10 @@ final class BasicHook: RenderHook {
             "opacity": .float(default: 1.0, range: 0...1),
             "contrast": .float(default: 0.0, range: -1...1),
             "brightness": .float(default: 0.0, range: -1...1),
-            "saturation": .float(default: 0.0, range: -1...1)
+            "saturation": .float(default: 0.0, range: -1...1),
+            "hueShift": .float(default: 0.0, range: -1...1),
+            "colorizeHue": .float(default: 0.0, range: 0...1),
+            "colorizeAmount": .float(default: 0.0, range: 0...1)
         ]
     }
 
@@ -47,6 +53,9 @@ final class BasicHook: RenderHook {
     var contrast: Float
     var brightness: Float
     var saturation: Float
+    var hueShift: Float
+    var colorizeHue: Float
+    var colorizeAmount: Float
 
     // MARK: - Metal State
 
@@ -57,11 +66,16 @@ final class BasicHook: RenderHook {
 
     // MARK: - Init
 
-    init(opacity: Float = 1.0, contrast: Float = 0.0, brightness: Float = 0.0, saturation: Float = 0.0, name: String? = nil) {
+    init(opacity: Float = 1.0, contrast: Float = 0.0, brightness: Float = 0.0,
+         saturation: Float = 0.0, hueShift: Float = 0.0,
+         colorizeHue: Float = 0.0, colorizeAmount: Float = 0.0, name: String? = nil) {
         self.opacity = max(0, min(1, opacity))
         self.contrast = max(-1, min(1, contrast))
         self.brightness = max(-1, min(1, brightness))
         self.saturation = max(-1, min(1, saturation))
+        self.hueShift = max(-1, min(1, hueShift))
+        self.colorizeHue = max(0, min(1, colorizeHue))
+        self.colorizeAmount = max(0, min(1, colorizeAmount))
         self.customName = name
         self.device = MTLCreateSystemDefaultDevice()
         self.commandQueue = device?.makeCommandQueue()
@@ -133,6 +147,9 @@ final class BasicHook: RenderHook {
             contrast: contrast,
             brightness: brightness,
             saturation: saturation,
+            hueShift: hueShift,
+            colorizeHue: colorizeHue,
+            colorizeAmount: colorizeAmount,
             textureWidth: Int32(width),
             textureHeight: Int32(height)
         )
@@ -172,7 +189,9 @@ final class BasicHook: RenderHook {
     }
 
     func copy() -> RenderHook {
-        BasicHook(opacity: opacity, contrast: contrast, brightness: brightness, saturation: saturation, name: customName)
+        BasicHook(opacity: opacity, contrast: contrast, brightness: brightness,
+                  saturation: saturation, hueShift: hueShift,
+                  colorizeHue: colorizeHue, colorizeAmount: colorizeAmount, name: customName)
     }
 }
 

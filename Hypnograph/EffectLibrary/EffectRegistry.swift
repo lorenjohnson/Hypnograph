@@ -89,9 +89,10 @@ enum EffectRegistry {
         },
 
         "FrameDifferenceHook": { params in
+            let sensitivity = params?["sensitivity"]?.floatValue ?? 0.1
+            let intensity = params?["intensity"]?.floatValue ?? 1.5
             let originalBlend = params?["originalBlend"]?.floatValue ?? 0.3
-            let boost = params?["boost"]?.floatValue ?? 2.0
-            return FrameDifferenceHook(originalBlend: originalBlend, boost: boost)
+            return FrameDifferenceHook(sensitivity: sensitivity, intensity: intensity, originalBlend: originalBlend)
         },
 
         "FeedbackLoopHook": { params in
@@ -147,7 +148,12 @@ enum EffectRegistry {
             let contrast = params?["contrast"]?.floatValue ?? 0.0
             let brightness = params?["brightness"]?.floatValue ?? 0.0
             let saturation = params?["saturation"]?.floatValue ?? 0.0
-            return BasicHook(opacity: opacity, contrast: contrast, brightness: brightness, saturation: saturation)
+            let hueShift = params?["hueShift"]?.floatValue ?? 0.0
+            let colorizeHue = params?["colorizeHue"]?.floatValue ?? 0.0
+            let colorizeAmount = params?["colorizeAmount"]?.floatValue ?? 0.0
+            return BasicHook(opacity: opacity, contrast: contrast, brightness: brightness,
+                            saturation: saturation, hueShift: hueShift,
+                            colorizeHue: colorizeHue, colorizeAmount: colorizeAmount)
         },
 
         "GaussianBlurMetalHook": { params in
@@ -180,9 +186,41 @@ enum EffectRegistry {
 
         "TimeShuffleMetalHook": { params in
             let numRegions = params?["numRegions"]?.intValue ?? 4
-            let chunkSize = params?["chunkSize"]?.intValue ?? 20
-            let shuffleRate = params?["shuffleRate"]?.floatValue ?? 0.02
-            return TimeShuffleMetalHook(numRegions: numRegions, chunkSize: chunkSize, shuffleRate: shuffleRate)
+            let depth = params?["depth"]?.intValue ?? 60
+            let shuffleRate = params?["shuffleRate"]?.floatValue ?? 0.05
+            return TimeShuffleMetalHook(numRegions: numRegions, depth: depth, shuffleRate: shuffleRate)
+        },
+
+        "CompressionMetalHook": { params in
+            let quality = params?["quality"]?.floatValue ?? 0.05
+            let passes = params?["passes"]?.intValue ?? 3
+            let format = params?["format"]?.intValue ?? 0
+            let colorLevels = params?["colorLevels"]?.intValue ?? 4
+            return CompressionMetalHook(quality: quality, passes: passes,
+                                        format: format, colorLevels: colorLevels)
+        },
+
+        "IFrameCompressHook": { params in
+            let quality = params?["quality"]?.floatValue ?? 0.5
+            let iframeInterval = params?["iframeInterval"]?.intValue ?? 300
+            let stickiness = params?["stickiness"]?.floatValue ?? 0.92
+            let glitch = params?["glitch"]?.floatValue ?? 0.0
+            let diffThreshold = params?["diffThreshold"]?.floatValue ?? 0.3
+            return IFrameCompressHook(quality: quality, iframeInterval: iframeInterval,
+                                      stickiness: stickiness, glitch: glitch, diffThreshold: diffThreshold)
+        },
+        "TextOverlayHook": { params in
+            let fontSize = params?["fontSize"]?.floatValue ?? 32.0
+            let fontSizeVariation = params?["fontSizeVariation"]?.floatValue ?? 0.3
+            let opacity = params?["opacity"]?.floatValue ?? 0.8
+            let maxTextCount = params?["maxTextCount"]?.intValue ?? 3
+            let changeIntervalFrames = params?["changeIntervalFrames"]?.intValue ?? 90
+            let durationMultiplier = params?["durationMultiplier"]?.floatValue ?? 2.0
+            let fontName = params?["fontName"]?.stringValue ?? "Menlo"
+            return TextOverlayHook(fontSize: fontSize, fontSizeVariation: fontSizeVariation,
+                                   opacity: opacity, maxTextCount: maxTextCount,
+                                   changeIntervalFrames: changeIntervalFrames,
+                                   durationMultiplier: durationMultiplier, fontName: fontName)
         }
     ]
 
@@ -245,7 +283,10 @@ enum EffectRegistry {
         "BlockFreezeMetalHook": BlockFreezeMetalHook.self,
         "PixelDriftMetalHook": PixelDriftMetalHook.self,
         "GlitchBlocksMetalHook": GlitchBlocksMetalHook.self,
-        "TimeShuffleMetalHook": TimeShuffleMetalHook.self
+        "TimeShuffleMetalHook": TimeShuffleMetalHook.self,
+        "CompressionMetalHook": CompressionMetalHook.self,
+        "IFrameCompressHook": IFrameCompressHook.self,
+        "TextOverlayHook": TextOverlayHook.self
     ]
 
     // MARK: - Parameter Specs (from hooks)

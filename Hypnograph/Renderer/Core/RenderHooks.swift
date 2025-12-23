@@ -1028,8 +1028,8 @@ final class RenderHookManager {
             result = effect.willRenderFrame(&context, image: result)
         }
 
-        // Update frame buffer AFTER applying effect
-        frameBuffer.addFrame(image, at: context.time)
+        // Update frame buffer with processed result so temporal effects see prior effects
+        frameBuffer.addFrame(result, at: context.time)
 
         return result
     }

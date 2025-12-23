@@ -86,8 +86,8 @@ final class Divine: ObservableObject {
 
         // Keyboard hints
         items.append(.text("Shortcuts", order: 40, font: .subheadline))
-        items.append(.text("Space = Clear table", order: 41))
-        items.append(.text(". = Add card | N = New card", order: 42))
+        items.append(.text("N = Clear table", order: 41))
+        items.append(.text(". = Add card | ⇧N = New card", order: 42))
         items.append(.text("←/→ = Navigate | 1-9 = Select card", order: 43))
         items.append(.text("Delete = Remove card", order: 44))
         items.append(.text("Drag cards to arrange", order: 45))
@@ -126,7 +126,7 @@ final class Divine: ObservableObject {
         Button("Clear Table") { [self] in
             new()
         }
-        .keyboardShortcut(.space, modifiers: [])
+        .keyboardShortcut("n", modifiers: [])
 
         Button("Toggle Pause") { [self] in
             togglePause()
@@ -156,7 +156,7 @@ final class Divine: ObservableObject {
         Button("New Random Card") { [self] in
             newRandomCard()
         }
-        .keyboardShortcut("n", modifiers: [])
+        .keyboardShortcut("n", modifiers: [.shift])
 
         Divider()
 

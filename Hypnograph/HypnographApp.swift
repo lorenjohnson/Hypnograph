@@ -268,7 +268,7 @@ struct AppCommands: Commands {
                 case .divine: divine.new()
                 }
             }
-            .keyboardShortcut(.space, modifiers: [])
+            .keyboardShortcut("n", modifiers: [])
         }
 
         CommandGroup(replacing: .saveItem) {
