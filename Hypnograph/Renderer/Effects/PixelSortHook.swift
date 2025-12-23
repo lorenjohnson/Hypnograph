@@ -15,9 +15,14 @@ struct PixelSortHook: RenderHook {
     var name: String { "PixelSort" }
     
     let intensity: Float
-    
+
     init(intensity: Float = 0.8) {
         self.intensity = intensity
+    }
+
+    init?(params: [String: AnyCodableValue]?) {
+        let intensity = params?["intensity"]?.floatValue ?? 0.8
+        self.init(intensity: intensity)
     }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {

@@ -51,9 +51,27 @@ final class HypnographState: ObservableObject {
     /// Optional playhead offset for scrubbing, applies only on explicit user action.
     @Published var currentClipTimeOffset: CMTime?
 
-    @Published var isHUDVisible: Bool = true
+    @Published var isHUDVisible: Bool = false
     @Published var isInfoVisible: Bool = false
     @Published var isEffectsEditorVisible: Bool = false
+    @Published var isPerformancePreviewVisible: Bool = false
+
+    /// Performance mode: Edit (local preview) vs Live (mirror performance display)
+    enum PerformanceMode {
+        case edit  // Normal editing - preview shows local composition
+        case live  // Live mode - preview mirrors performance display, effects go live
+    }
+
+    @Published var performanceMode: PerformanceMode = .edit
+
+    /// Whether we're in live performance mode
+    var isLiveMode: Bool { performanceMode == .live }
+
+    /// Toggle between edit and live performance modes
+    func togglePerformanceMode() {
+        performanceMode = (performanceMode == .edit) ? .live : .edit
+        print("🎬 Performance Mode: \(performanceMode == .live ? "LIVE" : "Edit")")
+    }
 
     /// Shared effects editor view model for controller/keyboard navigation
     let effectsEditorViewModel = EffectsEditorViewModel()
@@ -354,6 +372,10 @@ final class HypnographState: ObservableObject {
 
     func toggleEffectsEditor() {
         isEffectsEditorVisible.toggle()
+    }
+
+    func togglePerformancePreview() {
+        isPerformancePreviewVisible.toggle()
     }
 
     func togglePause() {

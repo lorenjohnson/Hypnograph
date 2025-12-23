@@ -79,6 +79,13 @@ final class GlitchBlocksMetalHook: RenderHook {
         loadShader()
     }
 
+    required convenience init?(params: [String: AnyCodableValue]?) {
+        let blockSize = params?["blockSize"]?.intValue ?? 32
+        let glitchAmount = params?["glitchAmount"]?.floatValue ?? 0.3
+        let corruption = params?["corruption"]?.floatValue ?? 0.5
+        self.init(blockSize: blockSize, glitchAmount: glitchAmount, corruption: corruption)
+    }
+
     private func loadShader() {
         guard let device = device else { return }
 

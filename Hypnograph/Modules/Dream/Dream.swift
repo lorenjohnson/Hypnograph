@@ -121,16 +121,21 @@ final class Dream: ObservableObject {
 
     // MARK: - Effects
 
+    /// Get the appropriate renderHooks based on current mode (Edit vs Live)
+    private var activeRenderHooks: RenderHookManager {
+        state.isLiveMode ? state.performanceDisplay.renderHooks : state.renderHooks
+    }
+
     /// Cycle effect for current layer (global when -1, source when 0+)
     func cycleEffect(direction: Int = 1) {
         state.noteUserInteraction()
-        state.renderHooks.cycleEffect(for: state.currentSourceIndex, direction: direction)
+        activeRenderHooks.cycleEffect(for: state.currentSourceIndex, direction: direction)
     }
 
     /// Clear effect for current layer only
     func clearCurrentLayerEffect() {
         state.noteUserInteraction()
-        state.renderHooks.clearEffect(for: state.currentSourceIndex)
+        activeRenderHooks.clearEffect(for: state.currentSourceIndex)
     }
 
     // MARK: - HUD
@@ -154,7 +159,7 @@ final class Dream: ObservableObject {
 
         // Layer info (Global or Source X of Y)
         items.append(.text(state.editingLayerDisplay, order: 22))
-        items.append(.text("Effect (E): \(state.renderHooks.effectName(for: state.currentSourceIndex))", order: 23))
+        items.append(.text("Effect (E): \(activeRenderHooks.effectName(for: state.currentSourceIndex))", order: 23))
 
         // Source-specific info (only when on a source layer, not global)
         if !state.isOnGlobalLayer {
@@ -181,9 +186,9 @@ final class Dream: ObservableObject {
         // Keyboard hints
         items.append(.text("Shortcuts", order: 40, font: .subheadline))
         items.append(.text("R = Rotate | ⇧N = New clip | M = Blend", order: 41))
-        items.append(.text("E/⇧E = Effect | 0 = Global | 1-9 = Source", order: 42))
+        items.append(.text("⌘E/⌘⇧E = Effect | 0 = Global | 1-9 = Source", order: 42))
         items.append(.text("←/→ = Navigate | ⇧C = Clear | ⌃⇧C = Clear all", order: 43))
-        items.append(.text("N = New | Cmd-S = Save", order: 44))
+        items.append(.text("⌘N = New | ⌘S = Save | S = Snapshot", order: 44))
         items.append(.text("` = Toggle Montage/Sequence", order: 45))
         items.append(.text("⇧F/X/D = Favorite/Exclude/Delete", order: 46))
 
@@ -204,12 +209,12 @@ final class Dream: ObservableObject {
         Button("Cycle Effect Forward") { [self] in
             cycleEffect(direction: 1)
         }
-        .keyboardShortcut("e", modifiers: [])
+        .keyboardShortcut("e", modifiers: [.command])
 
         Button("Cycle Effect Backward") { [self] in
             cycleEffect(direction: -1)
         }
-        .keyboardShortcut("e", modifiers: [.shift])
+        .keyboardShortcut("e", modifiers: [.command, .shift])
 
         Button("Add Source") { [self] in
             addSource()
@@ -266,12 +271,7 @@ final class Dream: ObservableObject {
         Button("New Hypnogram") { [self] in
             new()
         }
-        .keyboardShortcut("n", modifiers: [])
-
-        Button("Toggle Pause") { [self] in
-            togglePause()
-        }
-        .keyboardShortcut("p", modifiers: [])
+        .keyboardShortcut("n", modifiers: [.command])
 
         Divider()
 
@@ -353,6 +353,13 @@ final class Dream: ObservableObject {
     // MARK: - Display
 
     func makeDisplayView() -> AnyView {
+        // In Live mode, mirror the Performance Display player instead of local preview
+        if state.isLiveMode {
+            return AnyView(
+                LiveModePlayerView(performanceDisplay: state.performanceDisplay)
+            )
+        }
+
         if mode == .sequence, state.sources.isEmpty {
             newRandomSequence()
         }
@@ -375,7 +382,8 @@ final class Dream: ObservableObject {
                         set: { [state] in state.currentClipTimeOffset = $0 }
                     ),
                     isPaused: state.isPaused,
-                    effectsChangeCounter: state.effectsChangeCounter
+                    effectsChangeCounter: state.effectsChangeCounter,
+                    renderHooks: state.renderHooks
                 )
                 .id("dream-montage-\(state.aspectRatio.displayString)-\(state.outputResolution.rawValue)")
             )
@@ -392,7 +400,8 @@ final class Dream: ObservableObject {
                     ),
                     isPaused: state.isPaused,
                     effectsChangeCounter: state.effectsChangeCounter,
-                    playRate: 0.8
+                    playRate: 0.8,
+                    renderHooks: state.renderHooks
                 )
                 .id("dream-sequence-\(state.sources.count)-\(state.aspectRatio.displayString)-\(state.outputResolution.rawValue)")
             )
@@ -420,6 +429,12 @@ final class Dream: ObservableObject {
     // MARK: - Lifecycle
 
     func new() {
+        // In Live mode, generate directly for performance display without changing edit state
+        if state.isLiveMode {
+            newForPerformanceDisplay()
+            return
+        }
+
         // Clear frame buffer to prevent memory bloat from stored CIImages
         state.renderHooks.clearFrameBuffer()
 
@@ -435,6 +450,58 @@ final class Dream: ObservableObject {
         case .sequence:
             newRandomSequence()
         }
+    }
+
+    /// Generate a new random recipe and send directly to performance display
+    /// Does NOT modify the edit state
+    private func newForPerformanceDisplay() {
+        // Clear performance display's frame buffer
+        state.performanceDisplay.renderHooks.clearFrameBuffer()
+
+        // Generate a standalone recipe
+        let recipe = generateRandomRecipe()
+
+        // Send directly to performance display
+        state.performanceDisplay.send(
+            recipe: recipe,
+            aspectRatio: state.aspectRatio,
+            resolution: state.outputResolution,
+            mode: mode
+        )
+    }
+
+    /// Generate a random recipe without modifying state
+    private func generateRandomRecipe() -> HypnogramRecipe {
+        var sources: [HypnogramSource] = []
+        let total = max(1, state.settings.maxSourcesForNew)
+        let minCount = min(2, total)
+        let count = Int.random(in: minCount...total)
+
+        for i in 0..<max(1, count) {
+            guard let clip = state.library.randomClip(clipLength: state.settings.outputDuration.seconds) else {
+                continue
+            }
+            // First source uses SourceOver, rest get random blend modes
+            let blendMode = (i == 0) ? BlendMode.sourceOver : BlendMode.random()
+            let source = HypnogramSource(clip: clip, blendMode: blendMode)
+            sources.append(source)
+        }
+
+        return HypnogramRecipe(
+            sources: sources,
+            targetDuration: state.settings.outputDuration,
+            effects: []  // Performance display can have its own effects
+        )
+    }
+
+    /// Send current hypnogram to performance display
+    func sendToPerformanceDisplay() {
+        state.performanceDisplay.send(
+            recipe: state.recipe,
+            aspectRatio: state.aspectRatio,
+            resolution: state.outputResolution,
+            mode: mode
+        )
     }
 
     func toggleHUD() {
@@ -469,8 +536,7 @@ final class Dream: ObservableObject {
     /// Save a snapshot of the current frame from the frame buffer
     func saveSnapshot() {
         // Grab the current frame from the frame buffer (which stores the fully composited frame)
-        guard let manager = GlobalRenderHooks.manager,
-              let currentFrame = manager.frameBuffer.currentFrame else {
+        guard let currentFrame = state.renderHooks.frameBuffer.currentFrame else {
             print("DreamMode: no current frame available for snapshot")
             return
         }
@@ -606,11 +672,18 @@ final class Dream: ObservableObject {
     /// Clear all effects AND reset blend modes to Screen (default)
     func clearAllEffects() {
         state.noteUserInteraction()
-        state.renderHooks.setGlobalEffect(nil)
-        for i in 0..<state.activeSourceCount {
-            state.renderHooks.setSourceEffect(nil, for: i)
-            // Reset blend mode on source (keep first one as SourceOver)
-            if i > 0 {
+        let noEffect: RenderHook? = nil
+        activeRenderHooks.setGlobalEffect(noEffect)
+
+        // Get source count from appropriate context
+        let sourceCount = state.isLiveMode
+            ? state.performanceDisplay.activeSourceCount
+            : state.activeSourceCount
+
+        for i in 0..<sourceCount {
+            activeRenderHooks.setSourceEffect(noEffect, for: i)
+            // Reset blend mode on source (keep first one as SourceOver) - only in Edit mode
+            if !state.isLiveMode && i > 0 && i < state.sources.count {
                 state.sources[i].blendMode = BlendMode.defaultMontage
             }
         }

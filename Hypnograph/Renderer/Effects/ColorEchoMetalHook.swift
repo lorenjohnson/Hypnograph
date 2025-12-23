@@ -72,6 +72,12 @@ final class ColorEchoMetalHook: RenderHook {
         loadShader()
     }
 
+    required convenience init?(params: [String: AnyCodableValue]?) {
+        let channelOffset = params?["channelOffset"]?.intValue ?? 4
+        let intensity = params?["intensity"]?.floatValue ?? 1.0
+        self.init(channelOffset: channelOffset, intensity: intensity)
+    }
+
     private func loadShader() {
         guard let device = device else {
             print("⚠️ ColorEchoMetalHook: No Metal device")

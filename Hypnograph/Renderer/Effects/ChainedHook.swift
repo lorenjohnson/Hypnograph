@@ -39,6 +39,11 @@ final class ChainedHook: RenderHook {
         self.init(name: name, hooks: hooks)
     }
 
+    /// ChainedHook cannot be created from params directly - it's created via EffectConfigLoader
+    convenience init?(params: [String: AnyCodableValue]?) {
+        return nil
+    }
+
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         var result = image
         for hook in hooks {

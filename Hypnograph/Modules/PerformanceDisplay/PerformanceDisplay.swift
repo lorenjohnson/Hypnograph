@@ -33,7 +33,19 @@ final class PerformanceDisplay: ObservableObject {
     @Published private(set) var isVisible: Bool = false
     @Published private(set) var isTransitioning: Bool = false
     @Published private(set) var currentRecipeDescription: String = ""
-    
+    @Published private(set) var activeSourceCount: Int = 0
+
+    /// Whether we have content loaded and playing
+    var hasContent: Bool {
+        activeAVPlayer != nil
+    }
+
+    /// The currently active AVPlayer (for preview mirroring)
+    var activeAVPlayer: AVPlayer? {
+        guard let content = contentView else { return nil }
+        return activePlayer == .a ? content.playerA.player : content.playerB.player
+    }
+
     // MARK: - Private
 
     private var window: PerformanceWindow?
@@ -48,12 +60,28 @@ final class PerformanceDisplay: ObservableObject {
     /// Render engine for building compositions
     private let renderEngine = RenderEngine()
 
+    /// This display's own RenderHookManager - independent of preview
+    let renderHooks = RenderHookManager()
+
     enum PlayerSlot {
         case a, b
         var opposite: PlayerSlot { self == .a ? .b : .a }
     }
     
     // MARK: - Public API
+
+    /// Ensure content view exists for playback (without showing window)
+    private func ensureContentView() {
+        guard contentView == nil else { return }
+
+        // Create content view at a reasonable default size
+        let contentFrame = NSRect(origin: .zero, size: NSSize(width: 1920, height: 1080))
+        let content = PerformanceContentView(frame: contentFrame)
+        content.autoresizingMask = [.width, .height]
+        contentView = content
+
+        print("🎬 PerformanceDisplay: Created content view (no window)")
+    }
 
     /// Show the performance display window
     /// - Automatically uses windowed mode on primary screen, fullscreen on external monitors
@@ -134,21 +162,46 @@ final class PerformanceDisplay: ObservableObject {
             print("🎬 PerformanceDisplay: Windowed mode (single monitor)")
         }
 
-        let content = PerformanceContentView(frame: contentFrame)
-        content.autoresizingMask = [.width, .height]
+        // Reuse existing content view if available, otherwise create new one
+        let content: PerformanceContentView
+        if let existingContent = contentView {
+            content = existingContent
+            content.frame = contentFrame
+        } else {
+            content = PerformanceContentView(frame: contentFrame)
+            content.autoresizingMask = [.width, .height]
+            contentView = content
+        }
         win.contentView = content
 
         // Show without activating (don't steal focus)
         win.orderFront(nil)
 
         window = win
-        contentView = content
         isVisible = true
     }
     
-    /// Hide the performance display window and reset all state
+    /// Hide the performance display window (keeps content/players running for preview)
     func hide() {
-        print("🎬 PerformanceDisplay: Closing...")
+        guard window != nil else { return }
+
+        print("🎬 PerformanceDisplay: Hiding window...")
+
+        // Close window but keep content view and players
+        if let win = window {
+            win.orderOut(nil)
+            win.close()
+        }
+
+        window = nil
+        isVisible = false
+
+        print("🎬 PerformanceDisplay: Window hidden (playback continues)")
+    }
+
+    /// Stop playback and reset all state
+    func stop() {
+        print("🎬 PerformanceDisplay: Stopping...")
 
         // Cancel any pending build
         pendingBuildTask?.cancel()
@@ -156,6 +209,9 @@ final class PerformanceDisplay: ObservableObject {
 
         // Remove notification observers
         NotificationCenter.default.removeObserver(self)
+
+        // Hide window first
+        hide()
 
         // Stop and clear players
         if let content = contentView {
@@ -168,21 +224,14 @@ final class PerformanceDisplay: ObservableObject {
             content.playerB.player = nil
         }
 
-        // Close window
-        if let win = window {
-            win.orderOut(nil)
-            win.close()
-        }
-
         // Reset state
-        window = nil
         contentView = nil
-        isVisible = false
         isTransitioning = false
         activePlayer = .a
         currentRecipeDescription = ""
+        activeSourceCount = 0
 
-        print("🎬 PerformanceDisplay: Closed and reset")
+        print("🎬 PerformanceDisplay: Stopped and reset")
     }
 
     /// Toggle visibility (also serves as reset if stuck)
@@ -194,11 +243,11 @@ final class PerformanceDisplay: ObservableObject {
         }
     }
 
-    /// Force reset - closes and immediately reopens
+    /// Force reset - stops everything and optionally reopens
     func reset() {
         print("🎬 PerformanceDisplay: Force reset")
         let wasVisible = isVisible
-        hide()
+        stop()
         if wasVisible {
             // Small delay to ensure cleanup completes
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
@@ -215,9 +264,17 @@ final class PerformanceDisplay: ObservableObject {
     ///   - resolution: Output resolution
     ///   - mode: Dream mode (montage or sequence)
     func send(recipe: HypnogramRecipe, aspectRatio: AspectRatio, resolution: OutputResolution, mode: DreamMode = .montage) {
-        guard isVisible, let content = contentView else {
-            print("⚠️ PerformanceDisplay: Not visible, ignoring send")
+        // Ensure we have a content view for playback
+        ensureContentView()
+
+        guard let content = contentView else {
+            print("⚠️ PerformanceDisplay: No content view, ignoring send")
             return
+        }
+
+        // Only show window if there's an external monitor
+        if !isVisible && NSScreen.screens.count > 1 {
+            show()
         }
 
         // Cancel any pending build
@@ -227,6 +284,7 @@ final class PerformanceDisplay: ObservableObject {
         self.outputResolution = resolution
 
         let sourceCount = recipe.sources.count
+        activeSourceCount = sourceCount
         let modeLabel = mode == .sequence ? "sequence" : "montage"
         currentRecipeDescription = "\(sourceCount) source\(sourceCount == 1 ? "" : "s") (\(modeLabel))"
 
@@ -242,9 +300,12 @@ final class PerformanceDisplay: ObservableObject {
     private func buildAndTransition(recipe: HypnogramRecipe, content: PerformanceContentView, mode: DreamMode) async {
         let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: outputResolution.maxDimension)
 
-        // Build the composition with isolatedPlayback: true
-        // This bakes the recipe into the instructions so it has its own RenderHookManager
-        // completely independent of the main preview
+        // Configure renderHooks to provide this recipe's effects
+        // This connects the hookManager to the recipe being sent
+        renderHooks.recipeProvider = { recipe }
+
+        // Build composition using PerformanceDisplay's own RenderHookManager
+        // This makes effects completely independent of the main preview
         let strategy: CompositionBuilder.TimelineStrategy
         switch mode {
         case .montage:
@@ -262,7 +323,7 @@ final class PerformanceDisplay: ObservableObject {
             recipe: recipe,
             strategy: strategy,
             config: config,
-            isolatedPlayback: true  // Uses dedicated RenderHookManager, not GlobalRenderHooks
+            hookManager: renderHooks  // Use PerformanceDisplay's own RenderHookManager
         )
 
         guard !Task.isCancelled else {

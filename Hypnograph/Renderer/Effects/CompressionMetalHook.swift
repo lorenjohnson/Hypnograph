@@ -54,6 +54,14 @@ final class CompressionMetalHook: RenderHook {
         self.colorLevels = max(2, min(32, colorLevels))
     }
 
+    convenience init?(params: [String: AnyCodableValue]?) {
+        let quality = params?["quality"]?.floatValue ?? 0.05
+        let passes = params?["passes"]?.intValue ?? 3
+        let format = params?["format"]?.intValue ?? 0
+        let colorLevels = params?["colorLevels"]?.intValue ?? 4
+        self.init(quality: quality, passes: passes, format: format, colorLevels: colorLevels)
+    }
+
     // MARK: - RenderHook Protocol
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {

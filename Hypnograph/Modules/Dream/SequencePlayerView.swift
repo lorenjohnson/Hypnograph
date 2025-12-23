@@ -24,6 +24,7 @@ struct SequencePlayerView: NSViewRepresentable {
     let isPaused: Bool
     let effectsChangeCounter: Int
     let playRate: Float
+    let renderHooks: RenderHookManager
     
     class Coordinator: NSObject {
         // Current display mode
@@ -195,12 +196,9 @@ struct SequencePlayerView: NSViewRepresentable {
             }
 
             // Pre-fill frame buffer with the still image for effects to have full history from frame 1
-            if let frameBuffer = GlobalRenderHooks.manager?.frameBuffer {
-                let count = frameBuffer.prefill(with: ciImage)
-                print("🖼️ SequencePlayer: Prefilled \(count) frames for still image, buffer has \(frameBuffer.frameCount) frames")
-            } else {
-                print("⚠️ SequencePlayer: No frame buffer available for prefill")
-            }
+            let frameBuffer = self.renderHooks.frameBuffer
+            let count = frameBuffer.prefill(with: ciImage)
+            print("🖼️ SequencePlayer: Prefilled \(count) frames for still image, buffer has \(frameBuffer.frameCount) frames")
 
             // Compose user transforms array into single transform
             let userTransform = source.transforms.reduce(CGAffineTransform.identity) { $0.concatenating($1) }
@@ -209,7 +207,8 @@ struct SequencePlayerView: NSViewRepresentable {
                 sourceIndex: index,
                 aspectRatio: aspectRatio,
                 transform: userTransform,
-                enableEffects: true
+                enableEffects: true,
+                renderHooks: self.renderHooks
             )
 
             // Start animation for time-based effects
@@ -277,13 +276,10 @@ struct SequencePlayerView: NSViewRepresentable {
             guard !Task.isCancelled else { return }
 
             // Pre-roll frame buffer for effects to have full history from frame 1
-            if let frameBuffer = GlobalRenderHooks.manager?.frameBuffer {
-                print("🎬 SequencePlayer: Starting preroll for video...")
-                let count = await frameBuffer.preroll(from: asset, startTime: CMTime.zero)
-                print("🎬 SequencePlayer: Preroll complete, \(count) frames loaded, buffer now has \(frameBuffer.frameCount) frames")
-            } else {
-                print("⚠️ SequencePlayer: No frame buffer available for preroll")
-            }
+            let frameBuffer = self.renderHooks.frameBuffer
+            print("🎬 SequencePlayer: Starting preroll for video...")
+            let count = await frameBuffer.preroll(from: asset, startTime: CMTime.zero)
+            print("🎬 SequencePlayer: Preroll complete, \(count) frames loaded, buffer now has \(frameBuffer.frameCount) frames")
 
             guard !Task.isCancelled else { return }
 

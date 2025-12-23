@@ -67,6 +67,13 @@ final class HoldFrameHook: RenderHook {
         self.trailBoost = trailBoost
     }
 
+    required convenience init?(params: [String: AnyCodableValue]?) {
+        let freezeInterval = params?["freezeInterval"]?.doubleValue ?? 8.0
+        let holdDuration = params?["holdDuration"]?.doubleValue ?? 4.0
+        let trailBoost = params?["trailBoost"]?.doubleValue ?? 1.5
+        self.init(freezeInterval: freezeInterval, holdDuration: holdDuration, trailBoost: trailBoost)
+    }
+
     // MARK: - RenderHook
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {

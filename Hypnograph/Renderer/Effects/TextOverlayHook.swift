@@ -59,9 +59,7 @@ final class TextOverlayHook: RenderHook {
             "maxTextCount": .int(default: 3, range: 1...10),
             "changeIntervalFrames": .int(default: 90, range: 10...600),
             "durationMultiplier": .float(default: 2.0, range: 0.5...10.0),  // frames = chars * multiplier
-            "colorRed": .float(default: 1.0, range: 0.0...1.0),
-            "colorGreen": .float(default: 1.0, range: 0.0...1.0),
-            "colorBlue": .float(default: 1.0, range: 0.0...1.0),
+            "textColor": .color(default: "#FFFFFF"),  // Text color (hex)
             "antialiasing": .bool(default: true)
         ]
     }
@@ -78,9 +76,7 @@ final class TextOverlayHook: RenderHook {
     var changeIntervalFrames: Int
     var durationMultiplier: Float  // frames = text.count * multiplier
     var fontName: String
-    var colorRed: Float
-    var colorGreen: Float
-    var colorBlue: Float
+    var textColor: String  // Hex color string (e.g., "#FFFFFF")
     var antialiasing: Bool
 
     /// Seed for reproducible randomness. Same seed = same text sequence, positions, timing.
@@ -111,7 +107,7 @@ final class TextOverlayHook: RenderHook {
 
     init(fontSize: Float = 32.0, fontSizeVariation: Float = 0.3, opacity: Float = 0.8,
          maxTextCount: Int = 3, changeIntervalFrames: Int = 90, durationMultiplier: Float = 2.0,
-         fontName: String = "Menlo", colorRed: Float = 1.0, colorGreen: Float = 1.0, colorBlue: Float = 1.0,
+         fontName: String = "Menlo", textColor: String = "#FFFFFF",
          antialiasing: Bool = true, randomSeed: UInt64? = nil) {
         self.fontSize = fontSize
         self.fontSizeVariation = fontSizeVariation
@@ -120,9 +116,7 @@ final class TextOverlayHook: RenderHook {
         self.changeIntervalFrames = changeIntervalFrames
         self.durationMultiplier = durationMultiplier
         self.fontName = fontName
-        self.colorRed = colorRed
-        self.colorGreen = colorGreen
-        self.colorBlue = colorBlue
+        self.textColor = textColor
         self.antialiasing = antialiasing
 
         // Generate a new seed if not provided (first creation)
@@ -132,6 +126,23 @@ final class TextOverlayHook: RenderHook {
         self.rng = SeededRandomNumberGenerator(seed: seed)
 
         // Don't load here - lazy load on first use
+    }
+
+    required convenience init?(params: [String: AnyCodableValue]?) {
+        let fontSize = params?["fontSize"]?.floatValue ?? 32.0
+        let fontSizeVariation = params?["fontSizeVariation"]?.floatValue ?? 0.3
+        let opacity = params?["opacity"]?.floatValue ?? 0.8
+        let maxTextCount = params?["maxTextCount"]?.intValue ?? 3
+        let changeIntervalFrames = params?["changeIntervalFrames"]?.intValue ?? 90
+        let durationMultiplier = params?["durationMultiplier"]?.floatValue ?? 2.0
+        let fontName = params?["fontName"]?.stringValue ?? "Menlo"
+        let textColor = params?["textColor"]?.stringValue ?? "#FFFFFF"
+        let antialiasing = params?["antialiasing"]?.boolValue ?? true
+        let randomSeed = params?["randomSeed"]?.intValue.map { UInt64($0) }
+        self.init(fontSize: fontSize, fontSizeVariation: fontSizeVariation, opacity: opacity,
+                  maxTextCount: maxTextCount, changeIntervalFrames: changeIntervalFrames,
+                  durationMultiplier: durationMultiplier, fontName: fontName, textColor: textColor,
+                  antialiasing: antialiasing, randomSeed: randomSeed)
     }
 
     // MARK: - Text Loading (Lazy, Async)
@@ -388,16 +399,17 @@ final class TextOverlayHook: RenderHook {
     /// Random position with spatial distribution to avoid clustering
     /// Uses rejection sampling against recent position history (not just active snippets)
     private func randomPosition(for size: CGSize) -> CGPoint {
-        // Can start slightly off-screen (negative) on top/left edges
-        let offscreenAmount: CGFloat = 50
+        // Allow text to go nearly to the edges (position is top-left of text)
+        // Small margin to ensure at least some text is visible
+        let margin: CGFloat = 10
 
-        // X: from -50 to 85% of width (exclude far right where only 1 char would show)
-        let minX = -offscreenAmount
-        let maxX = size.width * 0.85
+        // X: start within left 60% of frame to leave room for wrapping
+        let minX: CGFloat = margin
+        let maxX = size.width * 0.60
 
-        // Y: from -50 to 100% of height (text wraps down, so full range is fine)
-        let minY = -offscreenAmount
-        let maxY = size.height
+        // Y: start within top 80% to leave room for multi-line text
+        let minY: CGFloat = margin
+        let maxY = size.height * 0.80
 
         // Minimum distance from recent positions (as fraction of screen diagonal)
         let diagonal = sqrt(size.width * size.width + size.height * size.height)
@@ -544,17 +556,12 @@ final class TextOverlayHook: RenderHook {
         // Clear to transparent
         context.clear(CGRect(x: 0, y: 0, width: width, height: height))
 
-        // Create text color from RGB parameters
-        let textColor = NSColor(
-            calibratedRed: CGFloat(colorRed),
-            green: CGFloat(colorGreen),
-            blue: CGFloat(colorBlue),
-            alpha: 1.0
-        )
+        // Create text color from hex string
+        let color = NSColor.fromHex(textColor) ?? .white
 
         // Draw each snippet with word wrapping
-        // Maximum allowed overflow beyond frame edges
-        let maxOverflow: CGFloat = 50
+        // Allow text up to the edge with small margin
+        let margin: CGFloat = 10
 
         for snippet in activeSnippets {
             let font = NSFont(name: fontName, size: snippet.fontSize) ?? NSFont.systemFont(ofSize: snippet.fontSize)
@@ -565,15 +572,14 @@ final class TextOverlayHook: RenderHook {
             let fadeOut = min(1.0, Float(snippet.framesRemaining) / Float(fadeFrames))
             let alpha = snippet.opacity * fadeIn * fadeOut
 
-            // Calculate wrap width: from position to right edge + max overflow
-            // This ensures text stays within frame + ~50px
-            let rightEdge = CGFloat(width) + maxOverflow
-            let availableWidth = rightEdge - snippet.position.x
-            let wrapWidth = max(100, min(availableWidth, CGFloat(width) * 0.8))
+            // CoreText uses bottom-left origin. Convert from top-left to bottom-left:
+            // Our position.y is from top, CTFrame expects y from bottom
+            // First calculate text size to know height, then flip the y coordinate
 
-            // Calculate max height: from position to bottom edge + max overflow
-            let bottomEdge = CGFloat(height) + maxOverflow
-            let maxHeight = max(100, bottomEdge - snippet.position.y)
+            // Calculate wrap width: from position to right edge minus margin
+            let rightEdge = CGFloat(width) - margin
+            let availableWidth = max(100, rightEdge - snippet.position.x)
+            let wrapWidth = min(availableWidth, CGFloat(width) * 0.7)
 
             // Paragraph style for wrapping
             let paragraphStyle = NSMutableParagraphStyle()
@@ -582,7 +588,7 @@ final class TextOverlayHook: RenderHook {
 
             let attrs: [NSAttributedString.Key: Any] = [
                 .font: font,
-                .foregroundColor: textColor.withAlphaComponent(CGFloat(alpha)),
+                .foregroundColor: color.withAlphaComponent(CGFloat(alpha)),
                 .paragraphStyle: paragraphStyle
             ]
 
@@ -591,16 +597,28 @@ final class TextOverlayHook: RenderHook {
             // Use CTFramesetter for multi-line text with wrapping
             let framesetter = CTFramesetterCreateWithAttributedString(attrString)
 
-            // Calculate text size with constrained width and height
-            let constraints = CGSize(width: wrapWidth, height: maxHeight)
+            // Calculate text size with constrained width and max available height from top
+            let maxHeight = CGFloat(height) - snippet.position.y - margin
+            let constraints = CGSize(width: wrapWidth, height: max(100, maxHeight))
             let textSize = CTFramesetterSuggestFrameSizeWithConstraints(
                 framesetter, CFRange(location: 0, length: 0), nil, constraints, nil
             )
 
-            // Text rect stays within constrained bounds
-            let textRect = CGRect(x: snippet.position.x, y: snippet.position.y,
-                                  width: min(textSize.width, wrapWidth),
-                                  height: min(textSize.height, maxHeight))
+            // Convert from top-left origin to bottom-left origin for CoreText
+            // position.y is distance from TOP, we need distance from BOTTOM
+            // The text rect y should be: height - position.y - textHeight
+            let flippedY = CGFloat(height) - snippet.position.y - min(textSize.height, maxHeight)
+
+            // Clamp to stay within frame
+            let clampedX = max(margin, min(snippet.position.x, rightEdge - 100))
+            let clampedY = max(margin, flippedY)
+
+            let textRect = CGRect(
+                x: clampedX,
+                y: clampedY,
+                width: min(textSize.width, wrapWidth),
+                height: min(textSize.height, max(100, maxHeight))
+            )
             let path = CGPath(rect: textRect, transform: nil)
 
             let frame = CTFramesetterCreateFrame(framesetter, CFRange(location: 0, length: 0), path, nil)
@@ -632,7 +650,7 @@ final class TextOverlayHook: RenderHook {
         TextOverlayHook(fontSize: fontSize, fontSizeVariation: fontSizeVariation, opacity: opacity,
                         maxTextCount: maxTextCount, changeIntervalFrames: changeIntervalFrames,
                         durationMultiplier: durationMultiplier, fontName: fontName,
-                        colorRed: colorRed, colorGreen: colorGreen, colorBlue: colorBlue,
+                        textColor: textColor,
                         antialiasing: antialiasing, randomSeed: randomSeed)
     }
 }
@@ -642,5 +660,35 @@ final class TextOverlayHook: RenderHook {
 private extension Comparable {
     func clamped(to range: ClosedRange<Self>) -> Self {
         min(max(self, range.lowerBound), range.upperBound)
+    }
+}
+
+// MARK: - NSColor Hex Extension
+
+extension NSColor {
+    /// Create an NSColor from a hex string (e.g., "#FFFFFF" or "FF0000")
+    static func fromHex(_ hex: String) -> NSColor? {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+
+        guard hexSanitized.count == 6 else { return nil }
+
+        var rgb: UInt64 = 0
+        Scanner(string: hexSanitized).scanHexInt64(&rgb)
+
+        let r = CGFloat((rgb & 0xFF0000) >> 16) / 255.0
+        let g = CGFloat((rgb & 0x00FF00) >> 8) / 255.0
+        let b = CGFloat(rgb & 0x0000FF) / 255.0
+
+        return NSColor(calibratedRed: r, green: g, blue: b, alpha: 1.0)
+    }
+
+    /// Convert to hex string (e.g., "#FFFFFF")
+    func toHex() -> String {
+        guard let rgbColor = usingColorSpace(.sRGB) else { return "#FFFFFF" }
+        let r = Int(rgbColor.redComponent * 255)
+        let g = Int(rgbColor.greenComponent * 255)
+        let b = Int(rgbColor.blueComponent * 255)
+        return String(format: "#%02X%02X%02X", r, g, b)
     }
 }

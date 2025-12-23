@@ -24,6 +24,11 @@ struct DatamoshHook: RenderHook {
         self.intensity = intensity
     }
 
+    init?(params: [String: AnyCodableValue]?) {
+        let intensity = params?["intensity"]?.floatValue ?? 0.9
+        self.init(intensity: intensity)
+    }
+
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         guard context.frameBuffer.isFilled else {
             return image

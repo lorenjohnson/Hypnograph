@@ -18,6 +18,11 @@ struct VHSDecayHook: RenderHook {
     init(intensity: Float = 0.7) {
         self.intensity = intensity
     }
+
+    init?(params: [String: AnyCodableValue]?) {
+        let intensity = params?["intensity"]?.floatValue ?? 0.7
+        self.init(intensity: intensity)
+    }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         let t = CMTimeGetSeconds(context.time)

@@ -77,6 +77,13 @@ final class TimeShuffleMetalHook: RenderHook {
         loadShader()
     }
 
+    required convenience init?(params: [String: AnyCodableValue]?) {
+        let numRegions = params?["numRegions"]?.intValue ?? 4
+        let depth = params?["depth"]?.intValue ?? 60
+        let shuffleRate = params?["shuffleRate"]?.floatValue ?? 0.05
+        self.init(numRegions: numRegions, depth: depth, shuffleRate: shuffleRate)
+    }
+
     private func loadShader() {
         guard let device = device else { return }
 

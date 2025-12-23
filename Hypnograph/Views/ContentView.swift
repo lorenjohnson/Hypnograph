@@ -38,22 +38,36 @@ struct ContentView: View {
                     .ignoresSafeArea()
             }
 
-            // HUDs
-            VStack(alignment: .leading, spacing: 8) {
-                if state.isHUDVisible {
-                    HUDView(
-                        state: state,
-                        dream: dream,
-                        divine: divine
-                    )
-                }
-
-                if state.isInfoVisible {
-                    InfoHUD(state: state)
-                }
+            // LIVE indicator - top left, only in Live mode
+            if state.isLiveMode {
+                Text("LIVE")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.black.opacity(0.6).cornerRadius(6))
+                    .padding(.top, 12)
+                    .padding(.leading, 12)
             }
-            .padding(.top, 12)
-            .padding(.leading, 12)
+
+            // Info HUD - top left (below LIVE if visible)
+            if state.isInfoVisible {
+                InfoHUD(state: state)
+                    .padding(.top, state.isLiveMode ? 56 : 12)
+                    .padding(.leading, 12)
+            }
+        }
+        // HUD - bottom left
+        .overlay(alignment: .bottomLeading) {
+            if state.isHUDVisible {
+                HUDView(
+                    state: state,
+                    dream: dream,
+                    divine: divine
+                )
+                .padding(.bottom, 12)
+                .padding(.leading, 12)
+            }
         }
         .overlay(alignment: .topTrailing) {
             if let text = soloIndicatorText {
@@ -64,12 +78,32 @@ struct ContentView: View {
             }
         }
         .overlay(alignment: .trailing) {
-            if state.isEffectsEditorVisible {
-                EffectsEditorView(viewModel: effectsEditorViewModel, state: state)
-                    .frame(maxHeight: .infinity)
-                    .transition(.move(edge: .trailing))
-                    .animation(.easeInOut(duration: 0.2), value: state.isEffectsEditorVisible)
+            // Right-side panels: Effects editor (top) and Performance preview (bottom)
+            VStack(spacing: 0) {
+                if state.isEffectsEditorVisible {
+                    EffectsEditorView(viewModel: effectsEditorViewModel, state: state)
+                        .frame(maxHeight: state.isPerformancePreviewVisible ? .none : .infinity)
+                        .padding(.bottom, state.isPerformancePreviewVisible ? 12 : 0)
+                        .transition(.move(edge: .trailing))
+                }
+
+                Spacer(minLength: 0)
+
+                if state.isPerformancePreviewVisible {
+                    PerformancePreviewView(
+                        performanceDisplay: state.performanceDisplay,
+                        onClose: {
+                            state.isPerformancePreviewVisible = false
+                        }
+                    )
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
+            .padding(.top, 12)
+            .padding(.trailing, 12)
+            .padding(.bottom, 12)
+            .animation(.easeInOut(duration: 0.2), value: state.isEffectsEditorVisible)
+            .animation(.easeInOut(duration: 0.2), value: state.isPerformancePreviewVisible)
         }
         .appNotifications()
         .background(Color.black)

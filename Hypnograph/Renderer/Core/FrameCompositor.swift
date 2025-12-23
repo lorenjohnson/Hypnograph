@@ -21,9 +21,7 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
 
     private let renderQueue = DispatchQueue(label: "com.hypnograph.framecompositor", qos: .userInteractive)
 
-    // Export manager - created lazily when first export frame is rendered
-    // Uses same code path as preview, just with frozen recipe and isolated state
-    private var exportManager: RenderHookManager?
+
 
     // MARK: - Initialization
 
@@ -89,21 +87,9 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
             height: CVPixelBufferGetHeight(outputBuffer)
         )
 
-        // Get the manager: preview uses global shared manager, export uses dedicated manager
-        let isExport = instruction.recipeSnapshot != nil
-        let manager: RenderHookManager?
-        if isExport {
-            // Create export manager on first frame (lazy, with frozen recipe)
-            if exportManager == nil, let recipe = instruction.recipeSnapshot {
-                exportManager = RenderHookManager.forExport(recipe: recipe)
-                print("📦 FrameCompositor: Created export manager with \(recipe.sources.count) sources, \(recipe.effects.count) global effects")
-            }
-            manager = exportManager
-        } else {
-            manager = GlobalRenderHooks.manager
-        }
-
-        // Both paths now use the same manager interface
+        // Use the hook manager from the instruction
+        // All paths (preview, performance display, export) now pass their manager through
+        let manager = instruction.hookManager
         let frameIndex = manager?.nextFrameIndex() ?? 0
 
         // Composite all layers
@@ -112,12 +98,8 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
         for (index, trackID) in instruction.layerTrackIDs.enumerated() {
             let sourceIndex = instruction.sourceIndices[index]
 
-            // Check flash solo - skip layers that shouldn't be rendered (preview only)
-            // Export should never have flash solo set
+            // Check flash solo - skip layers that shouldn't be rendered
             if let manager = manager, !manager.shouldRenderSource(at: sourceIndex) {
-                if isExport {
-                    print("⚠️ FrameCompositor: Flash solo active during export! sourceIndex=\(sourceIndex), flashSoloIndex=\(manager.flashSoloIndex ?? -1)")
-                }
                 continue
             }
 

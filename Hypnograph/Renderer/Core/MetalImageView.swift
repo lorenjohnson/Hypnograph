@@ -36,6 +36,9 @@ final class MetalImageView: NSView {
     /// Processing configuration
     private var processingConfig: ProcessingConfig?
 
+    /// The RenderHookManager to use for effects processing
+    private var renderHooks: RenderHookManager?
+
     /// Display link for animation (effects that change over time)
     private var displayLink: CVDisplayLink?
     private var isAnimating = false
@@ -91,12 +94,14 @@ final class MetalImageView: NSView {
         sourceIndex: Int,
         aspectRatio: AspectRatio,
         transform: CGAffineTransform = .identity,
-        enableEffects: Bool = true
+        enableEffects: Bool = true,
+        renderHooks: RenderHookManager
     ) {
         self.sourceImage = image
         self.sourceIndex = sourceIndex
         self.userTransform = transform
         self.targetAspectRatio = aspectRatio
+        self.renderHooks = renderHooks
         self.processingConfig = ProcessingConfig(
             outputSize: mtkView.drawableSize,
             time: .zero,
@@ -192,7 +197,7 @@ extension MetalImageView: MTKViewDelegate {
             img,
             sourceIndex: sourceIndex,
             config: updatedConfig,
-            manager: GlobalRenderHooks.manager
+            manager: renderHooks
         )
 
         // Center content in drawable (letterbox/pillarbox)

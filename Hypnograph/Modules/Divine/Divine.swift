@@ -36,6 +36,13 @@ final class Divine: ObservableObject {
     // MARK: - Display
 
     func makeDisplayView() -> AnyView {
+        // In Live mode, mirror the Performance Display player instead of local preview
+        if state.isLiveMode {
+            return AnyView(
+                LiveModePlayerView(performanceDisplay: state.performanceDisplay)
+            )
+        }
+
         // Ensure at least one card exists (deferred from init to use correct per-mode library)
         if cardManager.cards.isEmpty {
             cardManager.addCardAtOffsetAtCenter()
@@ -126,12 +133,7 @@ final class Divine: ObservableObject {
         Button("Clear Table") { [self] in
             new()
         }
-        .keyboardShortcut("n", modifiers: [])
-
-        Button("Toggle Pause") { [self] in
-            togglePause()
-        }
-        .keyboardShortcut("p", modifiers: [])
+        .keyboardShortcut("n", modifiers: [.command])
 
         Divider()
 

@@ -32,6 +32,12 @@ struct RGBSplitSimpleHook: RenderHook {
         self.offsetAmount = offsetAmount
         self.animated = animated
     }
+
+    init?(params: [String: AnyCodableValue]?) {
+        let offsetAmount = params?["offsetAmount"]?.floatValue ?? 10.0
+        let animated = params?["animated"]?.boolValue ?? true
+        self.init(offsetAmount: offsetAmount, animated: animated)
+    }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         // Calculate offset (animate if enabled)

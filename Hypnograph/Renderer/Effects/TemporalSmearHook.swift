@@ -28,6 +28,12 @@ struct TemporalSmearHook: RenderHook {
         self.intensity = intensity
         self.lookback = lookback
     }
+
+    init?(params: [String: AnyCodableValue]?) {
+        let intensity = params?["intensity"]?.floatValue ?? 0.6
+        let lookback = params?["lookback"]?.intValue ?? 4
+        self.init(intensity: intensity, lookback: lookback)
+    }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         // Work with whatever frames are available (preroll fills buffer from frame 1)

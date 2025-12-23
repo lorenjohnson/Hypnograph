@@ -29,6 +29,11 @@ struct MirrorKaleidoHook: RenderHook {
     init(intensity: Float = 0.8) {
         self.intensity = intensity
     }
+
+    init?(params: [String: AnyCodableValue]?) {
+        let intensity = params?["intensity"]?.floatValue ?? 0.8
+        self.init(intensity: intensity)
+    }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         let t = CMTimeGetSeconds(context.time)

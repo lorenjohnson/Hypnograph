@@ -363,8 +363,7 @@ struct EffectsEditorView: View {
             HStack(alignment: .top, spacing: 0) {
                 // Left column: Effect list (Tab stop 1)
                 effectListColumn
-                    .frame(width: 180)
-                    .padding(4)
+                    .frame(width: 160)
                     .focusable()
                     .focused($focusedField, equals: .effectList)
                     .focusSection()
@@ -372,12 +371,11 @@ struct EffectsEditorView: View {
 
                 Divider()
                     .background(Color.white.opacity(0.3))
-                    .padding(.horizontal, 4)
+                    .padding(.horizontal, 12)
 
                 // Right column: Parameters (Tab stop 2)
                 parametersColumn
-                    .frame(minWidth: 280)
-                    .padding(4)
+                    .frame(minWidth: 240)
                     .focusable()
                     .focused($focusedField, equals: .parameterList)
                     .focusSection()
@@ -385,9 +383,10 @@ struct EffectsEditorView: View {
             }
         }
         .foregroundColor(.white)
-        .padding(16)
+        .padding(20)
+        .frame(width: 500)
         .background(Color.black.opacity(0.9))
-        .frame(width: 480)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         // Arrow key navigation - only when not in text fields
         .onKeyPress(.upArrow) {
             guard !isTextEditing else { return .ignored }
@@ -835,8 +834,11 @@ struct ParameterSliderRow: View {
                     .labelsHidden()
 
                 case .string(let s):
-                    // Check if this is a choice parameter
-                    if let options = spec?.choiceOptions {
+                    // Check if this is a color parameter
+                    if spec?.isColor == true {
+                        colorPicker(currentHex: s)
+                    } else if let options = spec?.choiceOptions {
+                        // Check if this is a choice parameter
                         choicePicker(currentValue: s, options: options)
                     } else {
                         TextField("", text: Binding(
@@ -977,6 +979,29 @@ struct ParameterSliderRow: View {
             }
         }
         .pickerStyle(.menu)
+        .labelsHidden()
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Color picker for hex color parameters
+    @ViewBuilder
+    private func colorPicker(currentHex: String) -> some View {
+        let nsColor = NSColor.fromHex(currentHex) ?? .white
+        let swiftUIColor = Color(nsColor: nsColor)
+
+        ColorPicker("", selection: Binding(
+            get: { swiftUIColor },
+            set: { newColor in
+                // Convert SwiftUI Color back to hex
+                if let components = NSColor(newColor).usingColorSpace(.sRGB) {
+                    let r = Int(components.redComponent * 255)
+                    let g = Int(components.greenComponent * 255)
+                    let b = Int(components.blueComponent * 255)
+                    let hex = String(format: "#%02X%02X%02X", r, g, b)
+                    onChange(.string(hex))
+                }
+            }
+        ))
         .labelsHidden()
         .frame(maxWidth: .infinity, alignment: .leading)
     }

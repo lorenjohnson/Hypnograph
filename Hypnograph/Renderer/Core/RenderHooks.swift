@@ -520,6 +520,8 @@ enum ParameterSpec: Equatable {
     /// - default: the default choice key
     /// - options: ordered list of (key, displayLabel) pairs
     case choice(default: String, options: [(key: String, label: String)])
+    /// Color parameter: stores as hex string (e.g., "#FFFFFF"), displays as color picker
+    case color(default: String)
 
     /// Get the default value as AnyCodableValue
     var defaultValue: AnyCodableValue {
@@ -529,6 +531,7 @@ enum ParameterSpec: Equatable {
         case .int(let i, _): return .int(i)
         case .bool(let b): return .bool(b)
         case .choice(let d, _): return .string(d)
+        case .color(let hex): return .string(hex)
         }
     }
 
@@ -538,7 +541,7 @@ enum ParameterSpec: Equatable {
         case .double(_, let range): return (range.lowerBound, range.upperBound)
         case .float(_, let range): return (Double(range.lowerBound), Double(range.upperBound))
         case .int(_, let range): return (Double(range.lowerBound), Double(range.upperBound))
-        case .bool, .choice: return nil
+        case .bool, .choice, .color: return nil
         }
     }
 
@@ -558,6 +561,12 @@ enum ParameterSpec: Equatable {
         }
     }
 
+    /// Check if this is a color parameter
+    var isColor: Bool {
+        if case .color = self { return true }
+        return false
+    }
+
     /// Custom Equatable for choice (tuples aren't Equatable by default)
     static func == (lhs: ParameterSpec, rhs: ParameterSpec) -> Bool {
         switch (lhs, rhs) {
@@ -571,6 +580,8 @@ enum ParameterSpec: Equatable {
             return b1 == b2
         case (.choice(let d1, let o1), .choice(let d2, let o2)):
             return d1 == d2 && o1.map(\.key) == o2.map(\.key) && o1.map(\.label) == o2.map(\.label)
+        case (.color(let c1), .color(let c2)):
+            return c1 == c2
         default:
             return false
         }
@@ -597,6 +608,11 @@ protocol RenderHook {
     /// Parameter metadata - defines what parameters this hook accepts,
     /// their types, ranges, and default values. Hook is the source of truth.
     static var parameterSpecs: [String: ParameterSpec] { get }
+
+    /// Create an instance from a parameters dictionary.
+    /// Each effect extracts its own parameters using parameterSpecs defaults as fallback.
+    /// Returns nil if the effect cannot be created (e.g., missing Metal device).
+    init?(params: [String: AnyCodableValue]?)
 
     /// Apply effect to the current frame
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage
@@ -645,6 +661,11 @@ struct NamedHook: RenderHook {
     init(wrapping hook: RenderHook, name: String) {
         self.wrapped = hook
         self.name = name
+    }
+
+    /// NamedHook cannot be created from params - it's only used to wrap existing hooks
+    init?(params: [String: AnyCodableValue]?) {
+        return nil
     }
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
@@ -1179,12 +1200,4 @@ final class RenderHookManager {
         }
         return sourceIndex == soloIndex
     }
-}
-
-// MARK: - Global Registry
-
-/// Global registry so code that can't be directly injected (e.g. AVVideoCompositing)
-/// can still see the current hook manager for this session.
-enum GlobalRenderHooks {
-    static var manager: RenderHookManager?
 }
