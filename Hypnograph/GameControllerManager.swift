@@ -145,43 +145,35 @@ final class GameControllerManager {
     }
 
     private func setupDPadHandlers(_ gamepad: GCExtendedGamepad) {
-        // D-Pad Left - Adjust parameter OR previous source
+        // D-Pad Left - Previous source (parameter adjustment uses native SwiftUI focus)
         gamepad.dpad.left.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed, let self = self else { return }
 
-            if self.isEffectsEditorVisible, let vm = self.effectsViewModel {
-                // In effects editor with parameters focused: adjust parameter down
-                if vm.activeSection == .parameterList {
-                    self.adjustSelectedParameterByStep(direction: -1)
-                }
-                // If on effects panel, do nothing (can't go more left)
-            } else {
-                // Normal mode: previous source
-                switch self.state?.currentModuleType {
-                case .dream: self.dream?.previousSource()
-                case .divine: self.divine?.previousCard()
-                case .none: break
-                }
+            if self.isEffectsEditorVisible {
+                // In effects editor: left/right handled by native SwiftUI slider focus
+                return
+            }
+            // Normal mode: previous source
+            switch self.state?.currentModuleType {
+            case .dream: self.dream?.previousSource()
+            case .divine: self.divine?.previousCard()
+            case .none: break
             }
         }
 
-        // D-Pad Right - Adjust parameter OR next source
+        // D-Pad Right - Next source (parameter adjustment uses native SwiftUI focus)
         gamepad.dpad.right.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed, let self = self else { return }
 
-            if self.isEffectsEditorVisible, let vm = self.effectsViewModel {
-                // In effects editor with parameters focused: adjust parameter up
-                if vm.activeSection == .parameterList {
-                    self.adjustSelectedParameterByStep(direction: 1)
-                }
-                // If on effects panel, do nothing (use joystick to switch)
-            } else {
-                // Normal mode: next source
-                switch self.state?.currentModuleType {
-                case .dream: self.dream?.nextSource()
-                case .divine: self.divine?.nextCard()
-                case .none: break
-                }
+            if self.isEffectsEditorVisible {
+                // In effects editor: left/right handled by native SwiftUI slider focus
+                return
+            }
+            // Normal mode: next source
+            switch self.state?.currentModuleType {
+            case .dream: self.dream?.nextSource()
+            case .divine: self.divine?.nextCard()
+            case .none: break
             }
         }
 
@@ -218,7 +210,8 @@ final class GameControllerManager {
         }
     }
 
-    /// Navigate up/down in the effects editor (effects list or parameters)
+    /// Navigate up/down in the effects editor (effect list only)
+    /// Parameter navigation is handled by native SwiftUI focus
     private func navigateEffectsEditor(delta: Int) {
         guard let vm = effectsViewModel, let state = state else { return }
 
@@ -240,31 +233,11 @@ final class GameControllerManager {
             } else if newIndex >= 0 && newIndex < Effect.all.count {
                 state.renderHooks.setGlobalEffect(Effect.all[newIndex])
             }
-            vm.resetParameterSelection()
-
-        case .parameterList:
-            // Move parameter selection up/down
-            let def = vm.selectedDefinition(for: globalEffectName)
-            let params = vm.navigableParameters(for: def)
-            vm.moveParameterSelection(by: delta, totalParams: params.count)
 
         default:
-            // In text fields, don't navigate
+            // Parameters and text fields use native SwiftUI focus
             break
         }
-    }
-
-    /// Adjust the selected parameter by one step in the given direction (-1 or +1)
-    private func adjustSelectedParameterByStep(direction: Int) {
-        guard let state = state,
-              let vm = effectsViewModel else { return }
-
-        let globalEffectName = state.renderHooks.globalEffectName
-        let effectIndex = vm.selectedEffectIndex(for: globalEffectName)
-        guard effectIndex >= 0 else { return }
-
-        let def = vm.selectedDefinition(for: globalEffectName)
-        vm.adjustSelectedParameter(direction: direction, effectIndex: effectIndex, definition: def)
     }
 
     private func setupBumperHandlers(_ gamepad: GCExtendedGamepad) {

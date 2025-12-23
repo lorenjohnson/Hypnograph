@@ -16,8 +16,6 @@ struct BasicParams {
     float brightness;    // -1 to 1: 0 = no change, -1 = black, 1 = white
     float saturation;    // -1 to 1: 0 = no change, -1 = grayscale, 1 = oversaturated
     float hueShift;      // -1 to 1: rotates hue (-1 = -180°, 0 = no change, 1 = +180°)
-    float colorizeHue;   // 0 to 1: target hue for colorize (0 = red, 0.33 = green, 0.67 = blue)
-    float colorizeAmount;// 0 to 1: 0 = no colorize, 1 = full colorize
     int textureWidth;
     int textureHeight;
 };
@@ -81,14 +79,6 @@ kernel void basicKernel(
         float3 hsv = rgb2hsv(rgb);
         hsv.x = fract(hsv.x + params.hueShift * 0.5f);  // -1..1 maps to -0.5..0.5 rotation
         rgb = hsv2rgb(hsv);
-    }
-
-    // Apply colorize (tint towards a specific hue while preserving luminance)
-    if (params.colorizeAmount > 0.001f) {
-        float3 hsv = rgb2hsv(rgb);
-        // Replace hue with target hue, optionally boost saturation
-        float3 colorized = hsv2rgb(float3(params.colorizeHue, max(hsv.y, 0.5f), hsv.z));
-        rgb = mix(rgb, colorized, params.colorizeAmount);
     }
 
     // Clamp to valid range
