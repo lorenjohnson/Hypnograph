@@ -17,9 +17,10 @@ struct TimeShuffleParamsGPU {
     var textureWidth: Int32
     var textureHeight: Int32
     var numRegions: Int32
-    var chunkSize: Int32
+    var depth: Int32          // How far back in time (for shader info)
     var maxHistoryFrames: Int32
     var shuffleSeed: UInt32
+    var orientation: Int32    // 0 = horizontal, 1 = vertical, 2 = diagonal
 }
 
 /// Time shuffle - regions show different chunks of frame history
@@ -30,18 +31,18 @@ final class TimeShuffleMetalHook: RenderHook {
     static var parameterSpecs: [String: ParameterSpec] {
         [
             "numRegions": .int(default: 4, range: 2...8),
-            "chunkSize": .int(default: 20, range: 15...60),
-            "shuffleRate": .float(default: 0.02, range: 0...0.2)
+            "depth": .int(default: 60, range: 20...200),       // How far back in time to sample
+            "shuffleRate": .float(default: 0.05, range: 0...0.3)  // How often pattern changes
         ]
     }
 
     // MARK: - Properties
 
     var name: String { "Time Shuffle" }
-    var requiredLookback: Int { 300 }  // Need deep history for chunks
+    var requiredLookback: Int { 300 }  // Need deep history
 
-    var numRegions: Int      // How many horizontal bands
-    var chunkSize: Int       // Frames per chunk
+    var numRegions: Int      // How many regions to divide into
+    var depth: Int           // How far back in time to sample (frames)
     var shuffleRate: Float   // Probability of reshuffling per frame
 
     // Metal state
@@ -59,10 +60,10 @@ final class TimeShuffleMetalHook: RenderHook {
 
     // MARK: - Init
 
-    init(numRegions: Int = 4, chunkSize: Int = 20, shuffleRate: Float = 0.02) {
+    init(numRegions: Int = 4, depth: Int = 60, shuffleRate: Float = 0.05) {
         self.numRegions = max(2, min(8, numRegions))
-        self.chunkSize = max(15, min(60, chunkSize))
-        self.shuffleRate = max(0, min(0.2, shuffleRate))
+        self.depth = max(20, min(200, depth))
+        self.shuffleRate = max(0, min(0.3, shuffleRate))
 
         self.device = MTLCreateSystemDefaultDevice()
         self.commandQueue = device?.makeCommandQueue()
@@ -123,16 +124,17 @@ final class TimeShuffleMetalHook: RenderHook {
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         frameCounter += 1
 
-        // Randomly reshuffle based on shuffleRate
+        // Randomly reshuffle based on shuffleRate - this changes the pattern
         if Float.random(in: 0...1) < shuffleRate {
             currentSeed = UInt32.random(in: 0..<UInt32.max)
         }
 
-        // Need some history, but start earlier
+        // Need some history
         let frameCount = context.frameBuffer.frameCount
-        guard frameCount >= chunkSize else { return image }
+        let minFrames = max(8, depth / 4)  // Need at least some history
+        guard frameCount >= minFrames else { return image }
 
-        guard let device = device,
+        guard let _ = device,
               let commandQueue = commandQueue,
               let pipeline = pipelineState else {
             return image
@@ -143,24 +145,39 @@ final class TimeShuffleMetalHook: RenderHook {
         let height = Int(extent.height)
         guard width > 0, height > 0 else { return image }
 
-        // Generate 8 random offsets based on current seed
-        // Each texture samples from a random point in available history
-        var historyTextures: [MTLTexture] = []
+        // Use seed to generate random but stable offsets within depth range
+        // This creates temporal variety - each slot shows a random point in history
+        // Offsets are regenerated each time seed changes (on shuffle)
         var rng = currentSeed
-        for _ in 0..<8 {
-            // Simple LCG for deterministic randomness from seed
+        func nextRandom() -> Int {
             rng = rng &* 1103515245 &+ 12345
-            let maxOffset = max(1, frameCount - 1)
-            // Ensure minimum chunk separation but randomize within available range
-            let randomOffset = Int(rng % UInt32(maxOffset))
-            let clampedOffset = max(chunkSize, min(randomOffset, frameCount - 1))
+            return Int((rng >> 16) & 0x7FFF)
+        }
 
-            if let tex = context.frameBuffer.texture(atHistoryOffset: clampedOffset) {
+        let maxOffset = min(depth, frameCount - 1)
+        var historyTextures: [MTLTexture] = []
+
+        // Always include current frame (offset 0) for continuity
+        if let tex = context.frameBuffer.texture(atHistoryOffset: 0) {
+            historyTextures.append(tex)
+        }
+
+        // 7 more random offsets within depth
+        for _ in 0..<7 {
+            let offset = nextRandom() % max(1, maxOffset)
+            if let tex = context.frameBuffer.texture(atHistoryOffset: offset) {
                 historyTextures.append(tex)
             }
         }
 
-        guard historyTextures.count == 8 else { return image }
+        // Pad with first texture if needed
+        while historyTextures.count < 8 {
+            if let first = historyTextures.first {
+                historyTextures.append(first)
+            } else {
+                return image
+            }
+        }
 
         ensureOutputBuffer(width: width, height: height)
         guard let outBuf = outputBuffer,
@@ -168,13 +185,17 @@ final class TimeShuffleMetalHook: RenderHook {
             return image
         }
 
+        // Orientation derived from seed (stable until reshuffle)
+        let orientation = Int32(currentSeed % 3)
+
         var gpuParams = TimeShuffleParamsGPU(
             textureWidth: Int32(width),
             textureHeight: Int32(height),
             numRegions: Int32(numRegions),
-            chunkSize: Int32(chunkSize),
+            depth: Int32(depth),
             maxHistoryFrames: Int32(frameCount),
-            shuffleSeed: currentSeed
+            shuffleSeed: currentSeed,
+            orientation: orientation
         )
 
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
@@ -213,7 +234,7 @@ final class TimeShuffleMetalHook: RenderHook {
     }
 
     func copy() -> RenderHook {
-        TimeShuffleMetalHook(numRegions: numRegions, chunkSize: chunkSize, shuffleRate: shuffleRate)
+        TimeShuffleMetalHook(numRegions: numRegions, depth: depth, shuffleRate: shuffleRate)
     }
 }
 

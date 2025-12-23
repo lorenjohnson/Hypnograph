@@ -2,7 +2,7 @@
 //  BasicShader.metal
 //  Hypnograph
 //
-//  Basic image adjustments: opacity, contrast, brightness, saturation.
+//  Basic image adjustments: opacity, contrast, brightness, saturation, hue.
 //  All adjustment parameters use -1 to 1 scale (0 = no change) except opacity (0-1).
 //
 
@@ -15,9 +15,29 @@ struct BasicParams {
     float contrast;      // -1 to 1: 0 = no change, -1 = flat, 1 = high contrast
     float brightness;    // -1 to 1: 0 = no change, -1 = black, 1 = white
     float saturation;    // -1 to 1: 0 = no change, -1 = grayscale, 1 = oversaturated
+    float hueShift;      // -1 to 1: rotates hue (-1 = -180°, 0 = no change, 1 = +180°)
+    float colorizeHue;   // 0 to 1: target hue for colorize (0 = red, 0.33 = green, 0.67 = blue)
+    float colorizeAmount;// 0 to 1: 0 = no colorize, 1 = full colorize
     int textureWidth;
     int textureHeight;
 };
+
+// RGB to HSV conversion
+float3 rgb2hsv(float3 c) {
+    float4 K = float4(0.0, -1.0/3.0, 2.0/3.0, -1.0);
+    float4 p = mix(float4(c.bg, K.wz), float4(c.gb, K.xy), step(c.b, c.g));
+    float4 q = mix(float4(p.xyw, c.r), float4(c.r, p.yzx), step(p.x, c.r));
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return float3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+
+// HSV to RGB conversion
+float3 hsv2rgb(float3 c) {
+    float4 K = float4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+    float3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
 
 // MARK: - Basic Adjustment Kernel
 
@@ -55,6 +75,21 @@ kernel void basicKernel(
     float satMult = 1.0f + params.saturation;  // Maps -1..1 to 0..2
     satMult = clamp(satMult, 0.0f, 2.0f);
     rgb = mix(float3(luma), rgb, satMult);
+
+    // Apply hue shift (convert to HSV, rotate hue, convert back)
+    if (abs(params.hueShift) > 0.001f) {
+        float3 hsv = rgb2hsv(rgb);
+        hsv.x = fract(hsv.x + params.hueShift * 0.5f);  // -1..1 maps to -0.5..0.5 rotation
+        rgb = hsv2rgb(hsv);
+    }
+
+    // Apply colorize (tint towards a specific hue while preserving luminance)
+    if (params.colorizeAmount > 0.001f) {
+        float3 hsv = rgb2hsv(rgb);
+        // Replace hue with target hue, optionally boost saturation
+        float3 colorized = hsv2rgb(float3(params.colorizeHue, max(hsv.y, 0.5f), hsv.z));
+        rgb = mix(rgb, colorized, params.colorizeAmount);
+    }
 
     // Clamp to valid range
     rgb = clamp(rgb, 0.0f, 1.0f);

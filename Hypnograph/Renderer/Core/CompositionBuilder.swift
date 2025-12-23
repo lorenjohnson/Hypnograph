@@ -54,11 +54,16 @@ final class CompositionBuilder {
             return .failure(.invalidOutputSize(outputSize))
         }
 
+        // For export/isolated playback, create a deep copy with fresh effect instances
+        // This prevents stateful effects (like TextOverlayHook) from sharing state between
+        // preview and export/performance display
+        let workingRecipe = isExport ? recipe.copyForExport() : recipe
+
         // Build based on strategy
         switch strategy {
         case .montage(let targetDuration):
             return await buildMontage(
-                recipe: recipe,
+                recipe: workingRecipe,
                 targetDuration: targetDuration,
                 outputSize: outputSize,
                 frameRate: frameRate,
@@ -67,7 +72,7 @@ final class CompositionBuilder {
             )
         case .sequence:
             return await buildSequence(
-                recipe: recipe,
+                recipe: workingRecipe,
                 outputSize: outputSize,
                 frameRate: frameRate,
                 enableEffects: enableEffects,

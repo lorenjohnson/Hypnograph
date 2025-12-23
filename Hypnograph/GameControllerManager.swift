@@ -151,7 +151,7 @@ final class GameControllerManager {
 
             if self.isEffectsEditorVisible, let vm = self.effectsViewModel {
                 // In effects editor with parameters focused: adjust parameter down
-                if vm.focusedPanel == .parameters {
+                if vm.activeSection == .parameterList {
                     self.adjustSelectedParameterByStep(direction: -1)
                 }
                 // If on effects panel, do nothing (can't go more left)
@@ -171,7 +171,7 @@ final class GameControllerManager {
 
             if self.isEffectsEditorVisible, let vm = self.effectsViewModel {
                 // In effects editor with parameters focused: adjust parameter up
-                if vm.focusedPanel == .parameters {
+                if vm.activeSection == .parameterList {
                     self.adjustSelectedParameterByStep(direction: 1)
                 }
                 // If on effects panel, do nothing (use joystick to switch)
@@ -224,8 +224,8 @@ final class GameControllerManager {
 
         let globalEffectName = state.renderHooks.globalEffectName
 
-        switch vm.focusedPanel {
-        case .effects:
+        switch vm.activeSection {
+        case .effectList:
             // Move effect selection up/down
             let defs = vm.effectDefinitions
             let currentIndex = vm.selectedEffectIndex(for: globalEffectName)  // -1 = None
@@ -242,11 +242,15 @@ final class GameControllerManager {
             }
             vm.resetParameterSelection()
 
-        case .parameters:
+        case .parameterList:
             // Move parameter selection up/down
             let def = vm.selectedDefinition(for: globalEffectName)
             let params = vm.navigableParameters(for: def)
             vm.moveParameterSelection(by: delta, totalParams: params.count)
+
+        default:
+            // In text fields, don't navigate
+            break
         }
     }
 
@@ -362,12 +366,12 @@ final class GameControllerManager {
 
             if xValue < -threshold && !self.joystickPanelSwitchTriggered {
                 // Joystick pushed left - switch to effects panel
-                vm.focusedPanel = .effects
+                vm.activeSection = .effectList
                 self.joystickPanelSwitchTriggered = true
             } else if xValue > threshold && !self.joystickPanelSwitchTriggered {
                 // Joystick pushed right - switch to parameters panel (if effect selected)
                 if vm.selectedDefinition(for: self.state?.renderHooks.globalEffectName) != nil {
-                    vm.focusedPanel = .parameters
+                    vm.activeSection = .parameterList
                 }
                 self.joystickPanelSwitchTriggered = true
             } else if abs(xValue) < 0.2 {

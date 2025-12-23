@@ -8,24 +8,30 @@
 
 import SwiftUI
 
-/// Which panel is focused in the effects editor
-enum EffectsEditorPanel {
-    case effects    // Left panel - effect list
-    case parameters // Right panel - parameter sliders
+/// Focus fields for the effects editor
+/// Uses SwiftUI's native focus system for tab/shift-tab navigation
+enum EffectsEditorField: Hashable {
+    case effectList           // Effect selection list
+    case parameterList        // Parameter sliders area
+    case effectName           // Effect name text field
+    case parameterText(Int)   // Parameter text field at index
 }
 
 /// View model for the effects editor
+/// Handles data operations and effect management.
+/// Focus state is managed by SwiftUI's @FocusState in the view.
 @MainActor
 final class EffectsEditorViewModel: ObservableObject {
     @Published var showingAddEffectPicker: Bool = false
 
     // MARK: - Navigation State
 
-    /// Which panel is currently focused
-    @Published var focusedPanel: EffectsEditorPanel = .effects
-
-    /// Selected parameter index in the parameters panel (for chained effects, this is a flat index across all hooks)
+    /// Selected parameter index in the parameters panel (for keyboard navigation)
     @Published var selectedParameterIndex: Int = 0
+
+    /// Which section has keyboard navigation focus (for arrow keys)
+    /// This is separate from SwiftUI focus - it tracks which section responds to arrow keys
+    @Published var activeSection: EffectsEditorField = .effectList
 
     /// Pending selection - updated immediately on click for instant UI feedback
     /// Key: layer index (-1 = global, 0+ = source), Value: effect index (-1 = None)
@@ -38,6 +44,16 @@ final class EffectsEditorViewModel: ObservableObject {
     init() {
         // Initialize from current config
         syncFromConfig()
+    }
+
+    /// Check if arrow key navigation should be active (not in a text field)
+    var isNavigationActive: Bool {
+        switch activeSection {
+        case .effectList, .parameterList:
+            return true
+        case .effectName, .parameterText:
+            return false
+        }
     }
 
     /// Sync local definitions from the config loader
@@ -193,7 +209,7 @@ final class EffectsEditorViewModel: ObservableObject {
     /// Returns true if adjustment was made
     @discardableResult
     func adjustSelectedParameter(direction: Int, effectIndex: Int, definition: EffectDefinition?) -> Bool {
-        guard focusedPanel == .parameters else { return false }
+        guard activeSection == .parameterList else { return false }
 
         let params = navigableParameters(for: definition)
         guard selectedParameterIndex < params.count else { return false }
@@ -372,8 +388,8 @@ struct EffectsEditorView: View {
     @ObservedObject var viewModel: EffectsEditorViewModel
     @ObservedObject var state: HypnographState
 
-    /// Focus state for keyboard navigation
-    @FocusState private var isFocused: Bool
+    /// SwiftUI focus state - tracks which field has keyboard focus
+    @FocusState private var focusedField: EffectsEditorField?
 
     /// Current layer being edited (-1 = global, 0+ = source)
     private var currentLayer: Int {
@@ -399,6 +415,16 @@ struct EffectsEditorView: View {
     /// All navigable parameters for the current effect
     private var navigableParams: [(hookIndex: Int?, paramName: String, value: AnyCodableValue)] {
         viewModel.navigableParameters(for: selectedDefinition)
+    }
+
+    /// Check if currently in a text editing state
+    private var isTextEditing: Bool {
+        switch focusedField {
+        case .effectName, .parameterText:
+            return true
+        default:
+            return false
+        }
     }
 
     /// Select an effect with immediate UI feedback
@@ -443,6 +469,7 @@ struct EffectsEditorView: View {
                         .foregroundColor(.white.opacity(0.6))
                 }
                 .buttonStyle(.plain)
+                .keyboardShortcut(.escape, modifiers: [])
             }
             .padding(.bottom, 12)
 
@@ -451,28 +478,32 @@ struct EffectsEditorView: View {
                 .padding(.bottom, 12)
 
             HStack(alignment: .top, spacing: 0) {
-                // Left column: Effect list
+                // Left column: Effect list (Tab stop 1)
                 effectListColumn
                     .frame(width: 180)
                     .padding(4)
+                    .focusable()
+                    .focused($focusedField, equals: .effectList)
+                    .focusSection()
                     .overlay(
-                        // Focus indicator for left panel
                         RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.cyan.opacity(0.6), lineWidth: viewModel.focusedPanel == .effects ? 1 : 0)
+                            .stroke(Color.cyan.opacity(0.6), lineWidth: focusedField == .effectList ? 1 : 0)
                     )
 
                 Divider()
                     .background(Color.white.opacity(0.3))
                     .padding(.horizontal, 4)
 
-                // Right column: Parameters
+                // Right column: Parameters (Tab stop 2)
                 parametersColumn
                     .frame(minWidth: 280)
                     .padding(4)
+                    .focusable()
+                    .focused($focusedField, equals: .parameterList)
+                    .focusSection()
                     .overlay(
-                        // Focus indicator for right panel
                         RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.cyan.opacity(0.6), lineWidth: viewModel.focusedPanel == .parameters ? 1 : 0)
+                            .stroke(Color.cyan.opacity(0.6), lineWidth: focusedField == .parameterList ? 1 : 0)
                     )
             }
         }
@@ -480,49 +511,48 @@ struct EffectsEditorView: View {
         .padding(16)
         .background(Color.black.opacity(0.9))
         .frame(width: 480)
-        .focusable()
-        .focused($isFocused)
-        .onKeyPress(.tab) {
-            togglePanel()
-            return .handled
-        }
+        // Arrow key navigation - only when not in text fields
         .onKeyPress(.upArrow) {
+            guard !isTextEditing else { return .ignored }
             handleUpDown(delta: -1)
             return .handled
         }
         .onKeyPress(.downArrow) {
+            guard !isTextEditing else { return .ignored }
             handleUpDown(delta: 1)
             return .handled
         }
         .onKeyPress(.leftArrow) {
+            guard !isTextEditing else { return .ignored }
             handleLeftRight(delta: -1)
             return .handled
         }
         .onKeyPress(.rightArrow) {
+            guard !isTextEditing else { return .ignored }
             handleLeftRight(delta: 1)
             return .handled
         }
+        // Tab/Shift-Tab handled natively by SwiftUI via .focusSection() on each column
         .onAppear {
-            // Grab focus when panel appears
+            // Set initial focus to effect list
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isFocused = true
+                focusedField = .effectList
+                viewModel.activeSection = .effectList
+            }
+        }
+        .onChange(of: focusedField) { _, newField in
+            // Sync active section when focus changes
+            if let field = newField {
+                viewModel.activeSection = field
             }
         }
     }
 
     // MARK: - Navigation Helpers
 
-    private func togglePanel() {
-        if viewModel.focusedPanel == .effects && selectedDefinition != nil {
-            viewModel.focusedPanel = .parameters
-        } else {
-            viewModel.focusedPanel = .effects
-        }
-    }
-
     private func handleUpDown(delta: Int) {
-        switch viewModel.focusedPanel {
-        case .effects:
+        switch focusedField {
+        case .effectList:
             // Move effect selection up/down
             let defs = viewModel.effectDefinitions
             let currentIndex = selectedEffectIndex  // -1 = None, 0+ = effects
@@ -540,19 +570,26 @@ struct EffectsEditorView: View {
                 viewModel.resetParameterSelection()
             }
 
-        case .parameters:
+        case .parameterList:
             viewModel.moveParameterSelection(by: delta, totalParams: navigableParams.count)
+
+        default:
+            // In text fields, let default behavior handle it
+            break
         }
     }
 
     private func handleLeftRight(delta: Int) {
-        switch viewModel.focusedPanel {
-        case .effects:
+        switch focusedField {
+        case .effectList:
             // Left/right does nothing in effects panel
             break
-        case .parameters:
+        case .parameterList:
             // In parameters panel, left/right adjusts the selected parameter value
             adjustCurrentParameter(delta: delta)
+        default:
+            // In text fields, let default behavior handle it
+            break
         }
     }
 
@@ -685,9 +722,19 @@ struct EffectsEditorView: View {
                 Divider()
                     .background(Color.white.opacity(0.3))
 
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 12) {
-                        parametersForDefinitionWithHighlight(def, effectIndex: selectedEffectIndex)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 12) {
+                            parametersForDefinitionWithHighlight(def, effectIndex: selectedEffectIndex)
+                        }
+                    }
+                    .onChange(of: viewModel.selectedParameterIndex) { _, newIndex in
+                        // Scroll to the selected parameter when navigating with keyboard/controller
+                        if focusedField == .parameterList {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                proxy.scrollTo("param-\(newIndex)", anchor: .center)
+                            }
+                        }
                     }
                 }
             } else {
@@ -702,7 +749,7 @@ struct EffectsEditorView: View {
     @ViewBuilder
     private func parametersForDefinitionWithHighlight(_ def: EffectDefinition, effectIndex: Int) -> some View {
         let params = navigableParams
-        let isFocused = viewModel.focusedPanel == .parameters
+        let isSectionFocused = focusedField == .parameterList
 
         if def.isChained, let hooks = def.hooks {
             // Chained effect: show each child with heading and controls
@@ -717,7 +764,7 @@ struct EffectsEditorView: View {
                         totalHooks: hooks.count,
                         effectIndex: effectIndex,
                         paramStartIndex: startIndex,
-                        isFocused: isFocused
+                        isFocused: isSectionFocused
                     )
                 }
 
@@ -726,7 +773,7 @@ struct EffectsEditorView: View {
             }
         } else {
             // Single effect
-            parameterFieldsWithHighlight(for: def, effectIndex: effectIndex, hookIndex: nil, paramStartIndex: 0, isFocused: isFocused)
+            parameterFieldsWithHighlight(for: def, effectIndex: effectIndex, hookIndex: nil, paramStartIndex: 0, isFocused: isSectionFocused)
         }
     }
 
@@ -921,6 +968,7 @@ struct EffectsEditorView: View {
                         },
                         isHighlighted: isHighlighted
                     )
+                    .id("param-\(flatIndex)")
                 }
             }
         } else {
@@ -1027,6 +1075,7 @@ struct ParameterSliderRow: View {
     @State private var sliderValue: Double = 0
     /// Track last known external value to detect actual user changes vs. re-render
     @State private var lastExternalValue: Double = 0
+    @FocusState private var isTextFieldFocused: Bool
 
     /// Convert camelCase to readable title: "maxHistoryOffset" -> "Max History Offset"
     private var displayName: String {
@@ -1062,6 +1111,7 @@ struct ParameterSliderRow: View {
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 60)
                         .foregroundColor(.black)
+                        .focused($isTextFieldFocused)
                         .onSubmit {
                             if let d = Double(textValue) {
                                 sliderValue = d
@@ -1078,6 +1128,7 @@ struct ParameterSliderRow: View {
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 60)
                         .foregroundColor(.black)
+                        .focused($isTextFieldFocused)
                         .onSubmit {
                             if treatAsDouble, let d = Double(textValue) {
                                 sliderValue = d
@@ -1102,6 +1153,7 @@ struct ParameterSliderRow: View {
                     ))
                     .textFieldStyle(.roundedBorder)
                     .foregroundColor(.black)
+                    .focused($isTextFieldFocused)
                 }
             }
         }
@@ -1145,8 +1197,36 @@ struct ParameterSliderRow: View {
         }
     }
 
+    /// Get the default value for this parameter from the registry
+    private var defaultValue: AnyCodableValue? {
+        guard let type = effectType else { return nil }
+        return EffectRegistry.defaults(for: type)[name]
+    }
+
+    /// Reset the parameter to its default value
+    private func resetToDefault() {
+        guard let defaultVal = defaultValue else { return }
+        switch defaultVal {
+        case .double(let d):
+            sliderValue = d
+            lastExternalValue = d
+            textValue = String(format: "%.2f", d)
+            onChange(.double(d))
+        case .int(let i):
+            sliderValue = Double(i)
+            lastExternalValue = Double(i)
+            textValue = "\(i)"
+            onChange(.int(i))
+        case .bool(let b):
+            onChange(.bool(b))
+        case .string(let s):
+            onChange(.string(s))
+        }
+    }
+
     /// Creates a slider without the step parameter to avoid slow tick mark layout
     /// Step values are enforced programmatically in onChange instead
+    /// Double-click resets to default value
     @ViewBuilder
     private func numericSlider(isInt: Bool) -> some View {
         let range = sliderRange
@@ -1176,6 +1256,10 @@ struct ParameterSliderRow: View {
                     textValue = String(format: "%.2f", snappedVal)
                     onChange(.double(snappedVal))
                 }
+            }
+            .onTapGesture(count: 2) {
+                // Double-click resets to default value
+                resetToDefault()
             }
     }
 
@@ -1270,6 +1354,7 @@ struct EditableEffectNameHeader: View {
 
     @State private var isEditing = false
     @State private var editedName: String = ""
+    @FocusState private var isTextFieldFocused: Bool
 
     var body: some View {
         HStack {
@@ -1278,8 +1363,15 @@ struct EditableEffectNameHeader: View {
                     .textFieldStyle(.roundedBorder)
                     .font(.system(.headline, design: .monospaced))
                     .foregroundColor(.black)
+                    .focused($isTextFieldFocused)
                     .onSubmit {
                         saveAndClose()
+                    }
+                    .onAppear {
+                        // Auto-focus the text field when editing starts
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            isTextFieldFocused = true
+                        }
                     }
 
                 Button(action: saveAndClose) {
