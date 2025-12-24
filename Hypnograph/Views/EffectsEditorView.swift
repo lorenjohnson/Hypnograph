@@ -345,6 +345,27 @@ struct EffectsEditorView: View {
 
                 Spacer()
 
+                // Add new effect button
+                Button(action: {
+                    let newIndex = viewModel.createNewEffect()
+                    // Select the new effect
+                    if newIndex < Effect.all.count {
+                        state.renderHooks.setEffect(Effect.all[newIndex], for: currentLayer)
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                        Text("Add")
+                    }
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.cyan.opacity(0.6))
+                .cornerRadius(4)
+
                 // Toggle effects list sidebar button (styled like Performance "Window" button)
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -499,28 +520,6 @@ struct EffectsEditorView: View {
                     }
                 }
             }
-
-            // Add Effect button at bottom
-            Button(action: {
-                let newIndex = viewModel.createNewEffect()
-                // Select the new effect
-                if newIndex < Effect.all.count {
-                    state.renderHooks.setEffect(Effect.all[newIndex], for: currentLayer)
-                }
-            }) {
-                HStack {
-                    Image(systemName: "plus.circle.fill")
-                    Text("Add Effect")
-                }
-                .font(.system(.caption, design: .monospaced))
-                .foregroundColor(.cyan)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .frame(maxWidth: .infinity)
-                .background(Color.cyan.opacity(0.15))
-                .cornerRadius(6)
-            }
-            .buttonStyle(.plain)
         }
         .padding(.trailing, 12)
     }
