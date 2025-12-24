@@ -20,7 +20,8 @@ final class HypnographState: ObservableObject {
 
     // MARK: - Core configuration
 
-    private(set) var settings: Settings
+    /// App settings - publicly settable for UI state changes, call saveSettings() to persist
+    var settings: Settings
 
     // Per-module library state
     private var perModuleLibraryKeys: [ModuleType: Set<String>] = [:]
@@ -870,13 +871,7 @@ final class HypnographState: ObservableObject {
         renderHooks.onEffectChanged?()
     }
 
-    /// Toggle effects list collapsed state and save to settings
-    func toggleEffectsListCollapsed() {
-        settings.effectsListCollapsed.toggle()
-        saveSettingsToDisk()
-    }
-
-    /// Save settings to disk (public wrapper)
+    /// Save settings to disk (public - call after modifying state.settings)
     func saveSettings() {
         saveSettingsToDisk()
     }

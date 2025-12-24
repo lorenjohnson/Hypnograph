@@ -342,7 +342,28 @@ struct EffectsEditorView: View {
                     .font(.system(.title3, design: .monospaced))
                     .fontWeight(.bold)
                     .foregroundColor(state.isOnGlobalLayer ? .cyan : .orange)
+
                 Spacer()
+
+                // Toggle effects list sidebar button (styled like Performance "Window" button)
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        state.settings.effectsListCollapsed.toggle()
+                        state.saveSettings()
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sidebar.left")
+                        Text(state.settings.effectsListCollapsed ? "Show List" : "Hide List")
+                    }
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(state.settings.effectsListCollapsed ? Color.gray.opacity(0.4) : Color.blue.opacity(0.6))
+                .cornerRadius(4)
 
                 // Close button
                 Button(action: {
@@ -362,21 +383,6 @@ struct EffectsEditorView: View {
                 .padding(.bottom, 12)
 
             HStack(alignment: .top, spacing: 0) {
-                // Collapse/expand toggle for effects list
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        state.toggleEffectsListCollapsed()
-                    }
-                }) {
-                    Image(systemName: state.settings.effectsListCollapsed ? "chevron.right" : "chevron.left")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.white.opacity(0.6))
-                        .frame(width: 16, height: 40)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help(state.settings.effectsListCollapsed ? "Expand effects list" : "Collapse effects list")
-
                 if !state.settings.effectsListCollapsed {
                     // Left column: Effect list (Tab stop 1)
                     effectListColumn
@@ -392,7 +398,7 @@ struct EffectsEditorView: View {
                         .padding(.horizontal, 12)
                 }
 
-                // Right column: Parameters (Tab stop 2)
+                // Right column: Parameters (Tab stop 2) - expands when list is collapsed
                 parametersColumn
                     .frame(minWidth: 240)
                     .focusable()
@@ -403,7 +409,7 @@ struct EffectsEditorView: View {
         }
         .foregroundColor(.white)
         .padding(20)
-        .frame(width: state.settings.effectsListCollapsed ? 320 : 500)
+        .frame(width: 500)
         .background(Color.black.opacity(0.6))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         // Arrow key navigation - only when not in text fields
