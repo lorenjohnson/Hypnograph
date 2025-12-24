@@ -761,10 +761,10 @@ struct EffectsEditorView: View {
                     set: { newValue in
                         expandedHookIndex = childIndex
                         // Update enabled state via recipe parameter update
-                        state.activeEffectManager.updateEffectParameter(
+                        state.activeEffectManager.updateHookParameter(
                             for: layer,
                             hookIndex: childIndex,
-                            paramName: "_enabled",
+                            key: "_enabled",
                             value: .bool(newValue)
                         )
                     }
@@ -839,12 +839,22 @@ struct EffectsEditorView: View {
                         spec: specs[key],
                         onChange: { newValue in
                             // Update the recipe's effect definition (per-hypnogram)
-                            state.activeEffectManager.updateEffectParameter(
-                                for: layer,
-                                hookIndex: hookIndex,
-                                paramName: key,
-                                value: newValue
-                            )
+                            if let hookIdx = hookIndex {
+                                // Update hook parameter in chain
+                                state.activeEffectManager.updateHookParameter(
+                                    for: layer,
+                                    hookIndex: hookIdx,
+                                    key: key,
+                                    value: newValue
+                                )
+                            } else {
+                                // Update top-level effect parameter
+                                state.activeEffectManager.updateEffectParameter(
+                                    for: layer,
+                                    key: key,
+                                    value: newValue
+                                )
+                            }
                         }
                     )
                 }
