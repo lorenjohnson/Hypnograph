@@ -1067,6 +1067,12 @@ final class RenderHookManager {
     /// Closure to update a source's blend mode at a given index
     var blendModeSetter: ((Int, String) -> Void)?
 
+    /// Closure to update the global effect definition
+    var globalEffectDefinitionSetter: ((EffectDefinition?) -> Void)?
+
+    /// Closure to update a source's effect definition
+    var sourceEffectDefinitionSetter: ((Int, EffectDefinition?) -> Void)?
+
     // MARK: - Recipe Effects (reads from recipe, the single source of truth)
 
     /// Get the current recipe's first effect name (UI currently supports one)
@@ -1081,6 +1087,54 @@ final class RenderHookManager {
             effectsSetter?([])
         }
         onEffectChanged?()
+    }
+
+    /// Set global effect from a definition - stores definition and instantiates hook
+    /// This is the preferred method for selecting effects from the library
+    func setGlobalEffect(from definition: EffectDefinition?) {
+        globalEffectDefinitionSetter?(definition)
+        if let def = definition, let hook = EffectConfigLoader.instantiateEffect(def) {
+            effectsSetter?([hook])
+        } else {
+            effectsSetter?([])
+        }
+        onEffectChanged?()
+    }
+
+    /// Get the current global effect definition (for editing)
+    var globalEffectDefinition: EffectDefinition? {
+        recipeProvider?()?.effectDefinition
+    }
+
+    /// Update a parameter in the recipe's effect definition and re-instantiate
+    /// - Parameters:
+    ///   - layer: -1 for global, 0+ for source index
+    ///   - hookIndex: nil for top-level effect, or index of child hook in chain
+    ///   - paramName: name of the parameter to update
+    ///   - value: new value for the parameter
+    func updateEffectParameter(for layer: Int, hookIndex: Int?, paramName: String, value: AnyCodableValue) {
+        // Get current definition
+        guard var definition = effectDefinition(for: layer) else { return }
+
+        // Update the parameter in the definition
+        if let hookIdx = hookIndex, var hooks = definition.hooks {
+            // Update parameter in a chained hook
+            guard hookIdx >= 0 && hookIdx < hooks.count else { return }
+            var hook = hooks[hookIdx]
+            var params = hook.params ?? [:]
+            params[paramName] = value
+            hook = EffectDefinition(name: hook.name, type: hook.type, params: params, hooks: hook.hooks)
+            hooks[hookIdx] = hook
+            definition = EffectDefinition(name: definition.name, type: definition.type, params: definition.params, hooks: hooks)
+        } else {
+            // Update parameter on the effect itself
+            var params = definition.params ?? [:]
+            params[paramName] = value
+            definition = EffectDefinition(name: definition.name, type: definition.type, params: params, hooks: definition.hooks)
+        }
+
+        // Store updated definition and re-instantiate
+        setEffect(from: definition, for: layer)
     }
 
     func cycleGlobalEffect() {
@@ -1145,6 +1199,27 @@ final class RenderHookManager {
         onEffectChanged?()
     }
 
+    /// Set source effect from a definition - stores definition and instantiates hook
+    func setSourceEffect(from definition: EffectDefinition?, for sourceIndex: Int) {
+        sourceEffectDefinitionSetter?(sourceIndex, definition)
+        if let def = definition, let hook = EffectConfigLoader.instantiateEffect(def) {
+            sourceEffectSetter?(sourceIndex, [hook])
+        } else {
+            sourceEffectSetter?(sourceIndex, [])
+        }
+        onEffectChanged?()
+    }
+
+    /// Get a source's effect definition (for editing)
+    func sourceEffectDefinition(for sourceIndex: Int) -> EffectDefinition? {
+        guard let recipe = recipeProvider?(),
+              sourceIndex >= 0,
+              sourceIndex < recipe.sources.count else {
+            return nil
+        }
+        return recipe.sources[sourceIndex].effectDefinition
+    }
+
     func cycleSourceEffect(for sourceIndex: Int) {
         let currentName = sourceEffectName(for: sourceIndex)
         let currentIndex = Effect.all.firstIndex { $0.name == currentName } ?? -1
@@ -1162,12 +1237,30 @@ final class RenderHookManager {
         return sourceEffectName(for: layer)
     }
 
+    /// Get effect definition for a layer (-1 = global, 0+ = source index)
+    func effectDefinition(for layer: Int) -> EffectDefinition? {
+        if layer == -1 {
+            return globalEffectDefinition
+        }
+        return sourceEffectDefinition(for: layer)
+    }
+
     /// Set effect for a layer (-1 = global, 0+ = source index)
     func setEffect(_ effect: RenderHook?, for layer: Int) {
         if layer == -1 {
             setGlobalEffect(effect)
         } else {
             setSourceEffect(effect, for: layer)
+        }
+    }
+
+    /// Set effect from a definition for a layer (-1 = global, 0+ = source index)
+    /// This is the preferred method for selecting effects from the library
+    func setEffect(from definition: EffectDefinition?, for layer: Int) {
+        if layer == -1 {
+            setGlobalEffect(from: definition)
+        } else {
+            setSourceEffect(from: definition, for: layer)
         }
     }
 

@@ -21,14 +21,21 @@ struct HypnogramRecipe {
     /// Currently the UI only supports one effect, but the model supports a chain.
     var effects: [RenderHook]
 
+    /// Editable effect definition - stores parameter values per-hypnogram.
+    /// This is the source of truth for the effects editor UI.
+    /// When modified, `effects` should be re-instantiated from this definition.
+    var effectDefinition: EffectDefinition?
+
     init(
         sources: [HypnogramSource],
         targetDuration: CMTime,
-        effects: [RenderHook] = []
+        effects: [RenderHook] = [],
+        effectDefinition: EffectDefinition? = nil
     ) {
         self.sources = sources
         self.targetDuration = targetDuration
         self.effects = effects
+        self.effectDefinition = effectDefinition
     }
 
     /// Create a deep copy with fresh effect instances for export.

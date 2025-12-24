@@ -118,6 +118,22 @@ final class PerformanceDisplay: ObservableObject {
             recipe.sources[sourceIndex].effects = effects
             self.currentRecipe = recipe
         }
+
+        // Wire up global effect definition setter
+        renderHooks.globalEffectDefinitionSetter = { [weak self] definition in
+            guard let self = self, var recipe = self.currentRecipe else { return }
+            recipe.effectDefinition = definition
+            self.currentRecipe = recipe
+        }
+
+        // Wire up source effect definition setter
+        renderHooks.sourceEffectDefinitionSetter = { [weak self] sourceIndex, definition in
+            guard let self = self,
+                  var recipe = self.currentRecipe,
+                  sourceIndex < recipe.sources.count else { return }
+            recipe.sources[sourceIndex].effectDefinition = definition
+            self.currentRecipe = recipe
+        }
     }
     
     // MARK: - Public API

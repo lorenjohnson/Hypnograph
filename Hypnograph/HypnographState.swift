@@ -56,6 +56,9 @@ final class HypnographState: ObservableObject {
     @Published var isEffectsEditorVisible: Bool = false
     @Published var isPerformancePreviewVisible: Bool = false
 
+    /// Whether a text field is currently focused (blocks single-key shortcuts)
+    @Published var isTextFieldFocused: Bool = false
+
     /// Performance mode: Edit (local preview) vs Live (mirror performance display)
     enum PerformanceMode {
         case edit  // Normal editing - preview shows local composition
@@ -211,6 +214,19 @@ final class HypnographState: ObservableObject {
                   sourceIndex >= 0,
                   sourceIndex < self.recipe.sources.count else { return }
             self.recipe.sources[sourceIndex].blendMode = mode
+        }
+
+        // Global effect definition setter
+        renderHooks.globalEffectDefinitionSetter = { [weak self] definition in
+            self?.recipe.effectDefinition = definition
+        }
+
+        // Per-source effect definition setter
+        renderHooks.sourceEffectDefinitionSetter = { [weak self] sourceIndex, definition in
+            guard let self = self,
+                  sourceIndex >= 0,
+                  sourceIndex < self.recipe.sources.count else { return }
+            self.recipe.sources[sourceIndex].effectDefinition = definition
         }
 
         // Subscribe to effect config reloads - reapply active effects with fresh instances
