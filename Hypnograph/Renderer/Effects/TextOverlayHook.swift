@@ -47,7 +47,7 @@ struct TextSnippet {
 }
 
 /// Overlays text loaded from text files onto frames
-final class TextOverlayHook: RenderHook {
+final class TextOverlayHook: Effect {
 
     // MARK: - Parameter Specs
 

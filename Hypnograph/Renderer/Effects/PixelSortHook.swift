@@ -11,7 +11,7 @@ import CoreGraphics
 
 /// Pixel sorting effect - creates horizontal/vertical streaks by sorting pixels
 /// Simulates the aesthetic of Kim Asendorf's pixel sorting algorithm
-struct PixelSortHook: RenderHook {
+struct PixelSortHook: Effect {
     var name: String { "PixelSort" }
     
     static var parameterSpecs: [String: ParameterSpec] {

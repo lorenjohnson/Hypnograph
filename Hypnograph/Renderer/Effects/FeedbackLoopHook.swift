@@ -12,7 +12,7 @@ import CoreGraphics
 
 /// Feedback loop - simulates analog video feedback
 /// Scales down and rotates previous frame, blends with current
-struct FeedbackLoopHook: RenderHook {
+struct FeedbackLoopHook: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 

@@ -23,7 +23,7 @@ struct BlockFreezeParamsGPU {
 }
 
 /// Simple block freeze effect - blocks randomly freeze in place
-final class BlockFreezeMetalHook: RenderHook {
+final class BlockFreezeMetalHook: Effect {
 
     // MARK: - Parameter Specs
 

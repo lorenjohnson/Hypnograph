@@ -19,7 +19,7 @@ struct PixelateParamsGPU {
 
 /// Simple Metal-based pixelate effect.
 /// Demonstrates clean Metal shader integration pattern.
-final class PixelateMetalHook: RenderHook {
+final class PixelateMetalHook: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 

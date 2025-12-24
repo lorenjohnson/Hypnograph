@@ -10,7 +10,7 @@ import CoreMedia
 import CoreGraphics
 
 /// RGB channel separation effect using CoreImage filters
-struct RGBSplitSimpleHook: RenderHook {
+struct RGBSplitSimpleHook: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 

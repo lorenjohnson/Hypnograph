@@ -21,7 +21,7 @@ struct GaussianBlurParamsGPU {
 
 /// Gaussian blur effect using Metal compute shader.
 /// Performs separable two-pass blur (horizontal then vertical) for efficiency.
-final class GaussianBlurMetalHook: RenderHook {
+final class GaussianBlurMetalHook: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 

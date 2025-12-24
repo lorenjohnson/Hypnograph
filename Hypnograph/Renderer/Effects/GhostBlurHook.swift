@@ -12,7 +12,7 @@ import CoreGraphics
 
 /// Ghost blur effect - blurred trails from previous frames
 /// Each older frame is more blurred, creating smooth ethereal motion
-struct GhostBlurHook: RenderHook {
+struct GhostBlurHook: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 

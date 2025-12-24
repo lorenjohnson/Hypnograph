@@ -24,7 +24,7 @@ struct TimeShuffleParamsGPU {
 }
 
 /// Time shuffle - regions show different chunks of frame history
-final class TimeShuffleMetalHook: RenderHook {
+final class TimeShuffleMetalHook: Effect {
 
     // MARK: - Parameter Specs
 

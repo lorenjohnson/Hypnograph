@@ -9,7 +9,7 @@ import CoreImage
 import CoreMedia
 
 /// Wobbles the hue over time with a sinusoidal oscillation.
-struct HueWobbleHook: RenderHook {
+struct HueWobbleHook: Effect {
     var name: String { "Hue Wobble" }
 
     init() {}

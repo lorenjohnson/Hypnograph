@@ -11,7 +11,7 @@ import CoreMedia
 import Foundation
 
 /// Applies a 3D color LUT from a .cube file
-final class LUTHook: RenderHook {
+final class LUTHook: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 

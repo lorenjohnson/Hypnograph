@@ -20,7 +20,7 @@ enum CompressionFormat: Int {
 }
 
 /// Real compression effect with multiple format options
-final class CompressionMetalHook: RenderHook {
+final class CompressionMetalHook: Effect {
 
     // MARK: - Parameter Specs
 

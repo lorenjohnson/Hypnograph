@@ -52,7 +52,7 @@ struct BasicParamsGPU {
 
 /// Basic image adjustments effect.
 /// Provides opacity, contrast, brightness, and saturation controls.
-final class BasicHook: RenderHook {
+final class BasicHook: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 

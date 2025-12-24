@@ -14,7 +14,7 @@ import CoreVideo
 
 /// Metal-based datamosh effect with block sampling from frame history.
 /// Uses a compute shader to achieve codec-like drift and smear effects.
-final class DatamoshMetalHook: RenderHook {
+final class DatamoshMetalHook: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 
