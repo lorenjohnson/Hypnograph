@@ -672,7 +672,7 @@ struct EffectsEditorView: View {
         let isExpanded = expandedHookIndex == childIndex
 
         VStack(alignment: .leading, spacing: 0) {
-            // Header with controls - clicking header expands this hook
+            // Header with controls - any interaction selects this hook
             HStack(spacing: 6) {
                 // Drag handle indicator
                 Image(systemName: "line.3.horizontal")
@@ -687,8 +687,9 @@ struct EffectsEditorView: View {
 
                 Spacer()
 
-                // Delete button - borderless style for macOS idiom
+                // Delete button - not focusable, selecting on interaction
                 Button(action: {
+                    expandedHookIndex = childIndex
                     viewModel.removeHookFromChain(effectIndex: effectIndex, hookIndex: childIndex)
                 }) {
                     Image(systemName: "xmark")
@@ -696,10 +697,12 @@ struct EffectsEditorView: View {
                         .foregroundColor(.red.opacity(0.8))
                 }
                 .buttonStyle(.borderless)
+                .focusable(false)
                 .help("Remove from chain")
 
-                // Reset to defaults button
+                // Reset to defaults button - not focusable, selecting on interaction
                 Button(action: {
+                    expandedHookIndex = childIndex
                     viewModel.resetHookToDefaults(effectIndex: effectIndex, hookIndex: childIndex)
                 }) {
                     Image(systemName: "arrow.uturn.backward")
@@ -707,12 +710,16 @@ struct EffectsEditorView: View {
                         .foregroundColor(.orange.opacity(0.8))
                 }
                 .buttonStyle(.borderless)
+                .focusable(false)
                 .help("Reset to defaults")
 
-                // Enable/disable toggle - real Toggle for keyboard/focus support
+                // Enable/disable toggle - focusable, selecting on interaction
                 Toggle("", isOn: Binding(
                     get: { isEnabled },
-                    set: { viewModel.setHookEnabled(effectIndex: effectIndex, hookIndex: childIndex, enabled: $0) }
+                    set: { newValue in
+                        expandedHookIndex = childIndex
+                        viewModel.setHookEnabled(effectIndex: effectIndex, hookIndex: childIndex, enabled: newValue)
+                    }
                 ))
                 .toggleStyle(.checkbox)
                 .labelsHidden()
