@@ -69,12 +69,11 @@ struct ContentView: View {
                     .padding()
             }
         }
-        .overlay(alignment: .trailing) {
-            // Right-side panels: Effects editor (top) and Performance preview (bottom)
+        .overlay(alignment: .topTrailing) {
+            // Right-side panels: Effects editor (top-aligned) and Performance preview (bottom)
             VStack(spacing: 0) {
                 if state.isEffectsEditorVisible {
                     EffectsEditorView(viewModel: effectsEditorViewModel, state: state)
-                        .frame(maxHeight: state.isPerformancePreviewVisible ? .none : .infinity)
                         .padding(.bottom, state.isPerformancePreviewVisible ? 12 : 0)
                         .transition(.move(edge: .trailing))
                 }
