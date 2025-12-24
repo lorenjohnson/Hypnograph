@@ -491,6 +491,8 @@ struct EffectsEditorView: View {
                 }
             }
         }
+        // Expose text editing state to Commands via FocusedValues
+        .focusedValue(\.isTyping, isTextEditing)
     }
 
     // MARK: - Navigation Helpers
@@ -647,9 +649,6 @@ struct EffectsEditorView: View {
                                 state.activeRenderHooks.setEffect(Effect.all[currentIndex], for: currentLayer)
                             }
                         }
-                    },
-                    onTextFieldFocusChange: { focused in
-                        state.isTextFieldFocused = focused
                     }
                 )
 
@@ -845,9 +844,6 @@ struct EffectsEditorView: View {
                                 paramName: key,
                                 value: newValue
                             )
-                        },
-                        onTextFieldFocusChange: { focused in
-                            state.isTextFieldFocused = focused
                         }
                     )
                 }
@@ -869,8 +865,6 @@ struct ParameterSliderRow: View {
     let effectType: String?
     let spec: ParameterSpec?
     let onChange: (AnyCodableValue) -> Void
-    /// Callback to notify parent when text field focus changes (for blocking keyboard shortcuts)
-    var onTextFieldFocusChange: ((Bool) -> Void)?
 
     @State private var textValue: String = ""
     @State private var sliderValue: Double = 0
@@ -983,9 +977,8 @@ struct ParameterSliderRow: View {
             // Re-initialize when value changes externally
             initializeFromValue(newValue)
         }
-        .onChange(of: isTextFieldFocused) { _, focused in
-            onTextFieldFocusChange?(focused)
-        }
+        // Expose text field focus to Commands via FocusedValues
+        .focusedValue(\.isTyping, isTextFieldFocused)
     }
 
     private func initializeValues() {
@@ -1273,8 +1266,6 @@ struct ParameterSliderRow: View {
 struct EditableEffectNameHeader: View {
     let name: String
     let onSave: (String) -> Void
-    /// Callback to notify parent when text field focus changes (for blocking keyboard shortcuts)
-    var onTextFieldFocusChange: ((Bool) -> Void)?
 
     @State private var isEditing = false
     @State private var editedName: String = ""
@@ -1297,9 +1288,8 @@ struct EditableEffectNameHeader: View {
                             isTextFieldFocused = true
                         }
                     }
-                    .onChange(of: isTextFieldFocused) { _, focused in
-                        onTextFieldFocusChange?(focused)
-                    }
+                    // Expose text field focus to Commands via FocusedValues
+                    .focusedValue(\.isTyping, isTextFieldFocused)
 
                 Button(action: saveAndClose) {
                     Image(systemName: "checkmark.circle.fill")
