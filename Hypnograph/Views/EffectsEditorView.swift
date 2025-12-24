@@ -729,11 +729,12 @@ struct EffectsEditorView: View {
                 }
             }
 
-            // Parameters (only if enabled AND expanded)
-            if isEnabled && isExpanded {
+            // Parameters (show when expanded, even if disabled - allows pre-configuration)
+            if isExpanded {
                 parameterFields(for: childDef, effectIndex: effectIndex, hookIndex: childIndex)
                     .padding(.leading, 28)
                     .padding(.top, 8)
+                    .opacity(isEnabled ? 1.0 : 0.5)
             }
         }
     }
