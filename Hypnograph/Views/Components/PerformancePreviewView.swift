@@ -114,7 +114,7 @@ struct PerformancePreviewView: View {
         .foregroundColor(.white)
         .padding(20)
         .frame(width: 500)
-        .background(Color.black.opacity(0.9))
+        .background(Color.black.opacity(0.6))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
