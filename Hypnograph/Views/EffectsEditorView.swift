@@ -639,16 +639,10 @@ struct EffectsEditorView: View {
                 EditableEffectNameHeader(
                     name: def.name ?? "Unnamed",
                     onSave: { newName in
-                        let currentIndex = selectedEffectIndex
-                        viewModel.updateEffectName(effectIndex: currentIndex, name: newName)
-                        // Re-apply the effect by index to update the recipe with the new name
-                        // This prevents the selection from jumping because the old name no longer matches
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                            // After debounce, Effect.all is updated with new name
-                            if currentIndex >= 0 && currentIndex < Effect.all.count {
-                                state.activeRenderHooks.setEffect(Effect.all[currentIndex], for: currentLayer)
-                            }
-                        }
+                        // Update library (for persistence)
+                        viewModel.updateEffectName(effectIndex: selectedEffectIndex, name: newName)
+                        // Update recipe immediately (for UI refresh - no debounce needed)
+                        state.activeRenderHooks.updateEffectName(for: currentLayer, name: newName)
                     }
                 )
 
@@ -688,10 +682,12 @@ struct EffectsEditorView: View {
                     .onDrop(of: [.text], delegate: HookDropDelegate(
                         currentIndex: childIndex,
                         draggingIndex: $draggingHookIndex,
-                        effectIndex: selectedEffectIndex,  // Still need library index for reorder
+                        effectIndex: selectedEffectIndex,
                         onReorder: { from, to in
-                            // TODO: Update to use recipe-based reordering
+                            // Update library (for persistence)
                             viewModel.reorderHooks(effectIndex: selectedEffectIndex, fromIndex: from, toIndex: to)
+                            // Update recipe (for immediate UI refresh)
+                            state.activeRenderHooks.reorderHooksInChain(for: layer, fromIndex: from, toIndex: to)
                         }
                     ))
                 }
@@ -726,10 +722,12 @@ struct EffectsEditorView: View {
 
                 Spacer()
 
-                // Delete button - not focusable, doesn't expand (hook is being removed)
+                // Delete button
                 Button(action: {
-                    // TODO: Update to use recipe-based removal
+                    // Update library (for persistence)
                     viewModel.removeHookFromChain(effectIndex: selectedEffectIndex, hookIndex: childIndex)
+                    // Update recipe (for immediate UI refresh)
+                    state.activeRenderHooks.removeHookFromChain(for: layer, hookIndex: childIndex)
                     // If we deleted the expanded hook, expand the first remaining hook
                     if expandedHookIndex >= totalHooks - 1 {
                         expandedHookIndex = max(0, totalHooks - 2)
@@ -740,21 +738,21 @@ struct EffectsEditorView: View {
                         .foregroundColor(.red.opacity(0.8))
                 }
                 .buttonStyle(.borderless)
-                .focusable(false)
                 .help("Remove from chain")
 
-                // Reset to defaults button - not focusable, selecting on interaction
+                // Reset to defaults button
                 Button(action: {
                     expandedHookIndex = childIndex
-                    // TODO: Update to use recipe-based reset
+                    // Update library (for persistence)
                     viewModel.resetHookToDefaults(effectIndex: selectedEffectIndex, hookIndex: childIndex)
+                    // Update recipe (for immediate UI refresh)
+                    state.activeRenderHooks.resetHookToDefaults(for: layer, hookIndex: childIndex)
                 }) {
                     Image(systemName: "arrow.uturn.backward")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.orange.opacity(0.8))
                 }
                 .buttonStyle(.borderless)
-                .focusable(false)
                 .help("Reset to defaults")
 
                 // Enable/disable toggle - focusable, Tab focus expands the effect
@@ -802,7 +800,10 @@ struct EffectsEditorView: View {
         Menu {
             ForEach(viewModel.availableEffectTypes, id: \.type) { effect in
                 Button(effect.displayName) {
+                    // Update library (for persistence)
                     viewModel.addHookToChain(effectIndex: selectedEffectIndex, hookType: effect.type)
+                    // Update recipe (for immediate UI refresh)
+                    state.activeRenderHooks.addHookToChain(for: currentLayer, hookType: effect.type)
                 }
             }
         } label: {

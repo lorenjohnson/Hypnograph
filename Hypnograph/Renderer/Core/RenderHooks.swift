@@ -1137,6 +1137,89 @@ final class RenderHookManager {
         setEffect(from: definition, for: layer)
     }
 
+    /// Add a hook to the recipe's effect chain for a layer
+    /// - Parameters:
+    ///   - layer: -1 for global, 0+ for source index
+    ///   - hookType: the type of hook to add (e.g. "DatamoshMetalHook")
+    func addHookToChain(for layer: Int, hookType: String) {
+        guard var definition = effectDefinition(for: layer) else { return }
+
+        var hooks = definition.hooks ?? []
+        let defaults = EffectRegistry.defaults(for: hookType)
+        let newHook = EffectDefinition(name: nil, type: hookType, params: defaults, hooks: nil)
+        hooks.append(newHook)
+        definition = EffectDefinition(name: definition.name, type: definition.type, params: definition.params, hooks: hooks)
+
+        setEffect(from: definition, for: layer)
+    }
+
+    /// Remove a hook from the recipe's effect chain for a layer
+    /// - Parameters:
+    ///   - layer: -1 for global, 0+ for source index
+    ///   - hookIndex: index of the hook to remove
+    func removeHookFromChain(for layer: Int, hookIndex: Int) {
+        guard var definition = effectDefinition(for: layer) else { return }
+        guard var hooks = definition.hooks, hookIndex >= 0, hookIndex < hooks.count else { return }
+
+        hooks.remove(at: hookIndex)
+        definition = EffectDefinition(name: definition.name, type: definition.type, params: definition.params, hooks: hooks)
+
+        setEffect(from: definition, for: layer)
+    }
+
+    /// Update the effect name in the recipe's definition
+    /// - Parameters:
+    ///   - layer: -1 for global, 0+ for source index
+    ///   - name: new name for the effect
+    func updateEffectName(for layer: Int, name: String) {
+        guard var definition = effectDefinition(for: layer) else { return }
+
+        definition = EffectDefinition(name: name, type: definition.type, params: definition.params, hooks: definition.hooks)
+
+        setEffect(from: definition, for: layer)
+    }
+
+    /// Reorder hooks in the recipe's effect chain for a layer
+    /// - Parameters:
+    ///   - layer: -1 for global, 0+ for source index
+    ///   - fromIndex: source index
+    ///   - toIndex: destination index
+    func reorderHooksInChain(for layer: Int, fromIndex: Int, toIndex: Int) {
+        guard var definition = effectDefinition(for: layer) else { return }
+        guard var hooks = definition.hooks else { return }
+        guard fromIndex >= 0, fromIndex < hooks.count, toIndex >= 0, toIndex < hooks.count else { return }
+
+        let hook = hooks.remove(at: fromIndex)
+        hooks.insert(hook, at: toIndex)
+        definition = EffectDefinition(name: definition.name, type: definition.type, params: definition.params, hooks: hooks)
+
+        setEffect(from: definition, for: layer)
+    }
+
+    /// Reset a hook's parameters to defaults in the recipe
+    /// - Parameters:
+    ///   - layer: -1 for global, 0+ for source index
+    ///   - hookIndex: index of the hook to reset
+    func resetHookToDefaults(for layer: Int, hookIndex: Int) {
+        guard var definition = effectDefinition(for: layer) else { return }
+        guard var hooks = definition.hooks, hookIndex >= 0, hookIndex < hooks.count else { return }
+
+        var hook = hooks[hookIndex]
+        guard let hookType = hook.resolvedType else { return }
+
+        // Get defaults from registry, preserve _enabled state
+        var defaults = EffectRegistry.defaults(for: hookType)
+        if let wasEnabled = hook.params?["_enabled"] {
+            defaults["_enabled"] = wasEnabled
+        }
+
+        hook = EffectDefinition(name: hook.name, type: hook.type, params: defaults, hooks: hook.hooks)
+        hooks[hookIndex] = hook
+        definition = EffectDefinition(name: definition.name, type: definition.type, params: definition.params, hooks: hooks)
+
+        setEffect(from: definition, for: layer)
+    }
+
     func cycleGlobalEffect() {
         // Clear frame buffer and reset frame counter so new effect starts fresh
         frameBuffer.clear()
