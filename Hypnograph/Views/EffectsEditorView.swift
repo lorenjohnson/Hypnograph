@@ -279,9 +279,6 @@ struct EffectsEditorView: View {
     /// SwiftUI focus state - tracks which field has keyboard focus
     @FocusState private var focusedField: EffectsEditorField?
 
-    /// Whether the effects list is collapsed (shows only current selection)
-    @State private var isEffectsListCollapsed: Bool = false
-
     /// Current layer being edited (-1 = global, 0+ = source)
     private var currentLayer: Int {
         state.currentSourceIndex
@@ -365,17 +362,35 @@ struct EffectsEditorView: View {
                 .padding(.bottom, 12)
 
             HStack(alignment: .top, spacing: 0) {
-                // Left column: Effect list (Tab stop 1)
-                effectListColumn
-                    .frame(width: 160)
-                    .focusable()
-                    .focused($focusedField, equals: .effectList)
-                    .focusSection()
-                    .focusEffectDisabled()  // Disable default focus ring on panel
+                // Collapse/expand toggle for effects list
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        state.toggleEffectsListCollapsed()
+                    }
+                }) {
+                    Image(systemName: state.settings.effectsListCollapsed ? "chevron.right" : "chevron.left")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white.opacity(0.6))
+                        .frame(width: 16, height: 40)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(state.settings.effectsListCollapsed ? "Expand effects list" : "Collapse effects list")
 
-                Divider()
-                    .background(Color.white.opacity(0.3))
-                    .padding(.horizontal, 12)
+                if !state.settings.effectsListCollapsed {
+                    // Left column: Effect list (Tab stop 1)
+                    effectListColumn
+                        .frame(width: 160)
+                        .focusable()
+                        .focused($focusedField, equals: .effectList)
+                        .focusSection()
+                        .focusEffectDisabled()  // Disable default focus ring on panel
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+
+                    Divider()
+                        .background(Color.white.opacity(0.3))
+                        .padding(.horizontal, 12)
+                }
 
                 // Right column: Parameters (Tab stop 2)
                 parametersColumn
@@ -388,7 +403,7 @@ struct EffectsEditorView: View {
         }
         .foregroundColor(.white)
         .padding(20)
-        .frame(width: 500)
+        .frame(width: state.settings.effectsListCollapsed ? 320 : 500)
         .background(Color.black.opacity(0.6))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         // Arrow key navigation - only when not in text fields
@@ -460,78 +475,41 @@ struct EffectsEditorView: View {
         let currentlySelected = selectedEffectIndex
 
         return VStack(alignment: .leading, spacing: 8) {
-            // Header with collapse toggle
-            HStack {
-                Text("Effects")
-                    .font(.headline)
-                Spacer()
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isEffectsListCollapsed.toggle()
+            Text("Effects")
+                .font(.headline)
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 4) {
+                    // None option (always first)
+                    effectNoneRow(isSelected: currentlySelected == -1)
+
+                    ForEach(Array(viewModel.effectDefinitions.enumerated()), id: \.offset) { index, def in
+                        effectRowCached(index: index, definition: def, isSelected: index == currentlySelected)
                     }
-                }) {
-                    Image(systemName: isEffectsListCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.white.opacity(0.6))
                 }
-                .buttonStyle(.plain)
             }
 
-            if isEffectsListCollapsed {
-                // Collapsed: show only current selection
+            // Add Effect button at bottom
+            Button(action: {
+                let newIndex = viewModel.createNewEffect()
+                // Select the new effect
+                if newIndex < Effect.all.count {
+                    state.renderHooks.setEffect(Effect.all[newIndex], for: currentLayer)
+                }
+            }) {
                 HStack {
-                    Text(selectedDefinition?.name ?? "None")
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundColor(selectedDefinition != nil ? .white : .white.opacity(0.7))
-                        .italic(selectedDefinition == nil)
-                        .lineLimit(1)
+                    Image(systemName: "plus.circle.fill")
+                    Text("Add Effect")
                 }
+                .font(.system(.caption, design: .monospaced))
+                .foregroundColor(.cyan)
                 .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.cyan.opacity(0.3))
-                .cornerRadius(4)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isEffectsListCollapsed = false
-                    }
-                }
-            } else {
-                // Expanded: full effect list
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 4) {
-                        // None option (always first)
-                        effectNoneRow(isSelected: currentlySelected == -1)
-
-                        ForEach(Array(viewModel.effectDefinitions.enumerated()), id: \.offset) { index, def in
-                            effectRowCached(index: index, definition: def, isSelected: index == currentlySelected)
-                        }
-                    }
-                }
-
-                // Add Effect button at bottom
-                Button(action: {
-                    let newIndex = viewModel.createNewEffect()
-                    // Select the new effect
-                    if newIndex < Effect.all.count {
-                        state.renderHooks.setEffect(Effect.all[newIndex], for: currentLayer)
-                    }
-                }) {
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Add Effect")
-                    }
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundColor(.cyan)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.cyan.opacity(0.15))
-                    .cornerRadius(6)
-                }
-                .buttonStyle(.plain)
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity)
+                .background(Color.cyan.opacity(0.15))
+                .cornerRadius(6)
             }
+            .buttonStyle(.plain)
         }
         .padding(.trailing, 12)
     }

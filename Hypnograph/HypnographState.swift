@@ -870,6 +870,17 @@ final class HypnographState: ObservableObject {
         renderHooks.onEffectChanged?()
     }
 
+    /// Toggle effects list collapsed state and save to settings
+    func toggleEffectsListCollapsed() {
+        settings.effectsListCollapsed.toggle()
+        saveSettingsToDisk()
+    }
+
+    /// Save settings to disk (public wrapper)
+    func saveSettings() {
+        saveSettingsToDisk()
+    }
+
     /// Save settings to disk
     private func saveSettingsToDisk() {
         do {

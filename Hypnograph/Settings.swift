@@ -145,6 +145,9 @@ struct Settings: Codable {
     /// Which media types to include in sources: "photos", "videos", or both
     var sourceMediaTypes: Set<SourceMediaType>
 
+    /// Whether the effects list column is collapsed in the Effects Editor
+    var effectsListCollapsed: Bool
+
     // Single source of truth for defaults
     private enum Defaults {
         static let watch: Bool = true
@@ -160,6 +163,7 @@ struct Settings: Codable {
         static let outputResolution: OutputResolution = .p1080
         static let displayResolution: OutputResolution = .p1080
         static let sourceMediaTypes: Set<SourceMediaType> = [.images, .videos]
+        static let effectsListCollapsed: Bool = false
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -167,6 +171,7 @@ struct Settings: Codable {
         case watch, maxSourcesForNew, outputSeconds, snapshotsFolder
         case activeLibrariesPerMode
         case aspectRatio, outputResolution, displayResolution, sourceMediaTypes
+        case effectsListCollapsed
     }
 
     init(
@@ -180,7 +185,8 @@ struct Settings: Codable {
         aspectRatio: AspectRatio = Defaults.aspectRatio,
         outputResolution: OutputResolution = Defaults.outputResolution,
         displayResolution: OutputResolution = Defaults.displayResolution,
-        sourceMediaTypes: Set<SourceMediaType> = Defaults.sourceMediaTypes
+        sourceMediaTypes: Set<SourceMediaType> = Defaults.sourceMediaTypes,
+        effectsListCollapsed: Bool = Defaults.effectsListCollapsed
     ) {
         self.outputFolder = outputFolder
         self.sourceFolders = sourceFolders
@@ -193,6 +199,7 @@ struct Settings: Codable {
         self.outputResolution = outputResolution
         self.displayResolution = displayResolution
         self.sourceMediaTypes = sourceMediaTypes
+        self.effectsListCollapsed = effectsListCollapsed
     }
 
     init(from decoder: Decoder) throws {
@@ -223,6 +230,8 @@ struct Settings: Codable {
         } else {
             sourceMediaTypes = Defaults.sourceMediaTypes
         }
+        effectsListCollapsed = try c.decodeIfPresent(Bool.self, forKey: .effectsListCollapsed)
+            ?? Defaults.effectsListCollapsed
     }
 
     func encode(to encoder: Encoder) throws {
@@ -238,6 +247,7 @@ struct Settings: Codable {
         try c.encode(outputResolution, forKey: .outputResolution)
         try c.encode(displayResolution, forKey: .displayResolution)
         try c.encode(Array(sourceMediaTypes), forKey: .sourceMediaTypes)
+        try c.encode(effectsListCollapsed, forKey: .effectsListCollapsed)
     }
 
     // MARK: - Derived values
