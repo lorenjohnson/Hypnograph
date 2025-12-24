@@ -263,3 +263,54 @@ If something goes wrong:
 - RenderContext is the public interface for frame access
 - Preroll/prefill are renderer responsibilities, not UI responsibilities
 - The renderer readiness API is a future enhancement enabled by this architecture
+
+---
+
+## Phase 6: Hook → Effect Terminology Cleanup (Added 2024-12-24)
+
+The "Hook" terminology is fully deprecated. Everything is now an "Effect".
+
+### Completed
+- [x] EffectChain type created (top-level container with name + hooks array)
+- [x] HypnogramRecipe/HypnogramSource use `effectChain` property
+- [x] EffectManager uses EffectChain terminology
+- [x] EffectsEditorView/ViewModel updated
+
+### Remaining Cleanup Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 1. Rename HookDefinition → EffectDefinition | The individual effect in a chain should be EffectDefinition | [ ] |
+| 2. Rename *Hook.swift files → *Effect.swift | 25 effect files need renaming | [ ] |
+| 3. Rename classes (BasicHook → BasicEffect, etc.) | Class names inside the files | [ ] |
+| 4. Remove resolvedType from HookDefinition | HookDefinition.type is the type directly, no resolution needed | [ ] |
+| 5. Remove ChainedHook references | EffectConfigLoader hardcodedDefaults, EffectRegistry | [ ] |
+| 6. Remove RenderHook/NamedHook typealiases | Effect.swift lines 74, 165 | [ ] |
+| 7. Rename hook methods → effect methods | addHookToChain → addEffectToChain, etc. | [ ] |
+
+### Files with *Hook.swift names to rename:
+- BasicHook.swift → BasicEffect.swift
+- BlockFreezeMetalHook.swift → BlockFreezeEffect.swift
+- ChainedHook.swift → ChainedEffect.swift
+- ColorEchoHook.swift → ColorEchoEffect.swift
+- ColorEchoMetalHook.swift → ColorEchoMetalEffect.swift
+- CompressionMetalHook.swift → CompressionEffect.swift
+- DatamoshMetalHook.swift → DatamoshEffect.swift
+- EdgeDecayHook.swift → EdgeDecayEffect.swift
+- FeedbackLoopHook.swift → FeedbackLoopEffect.swift
+- FrameDifferenceHook.swift → FrameDifferenceEffect.swift
+- GaussianBlurMetalHook.swift → GaussianBlurEffect.swift
+- GhostBlurHook.swift → GhostBlurEffect.swift
+- GlitchBlocksMetalHook.swift → GlitchBlocksEffect.swift
+- HoldFrameHook.swift → HoldFrameEffect.swift
+- HueWobbleHook.swift → HueWobbleEffect.swift
+- IFrameCompressHook.swift → IFrameCompressEffect.swift
+- LUTHook.swift → LUTEffect.swift
+- PixelateMetalHook.swift → PixelateEffect.swift
+- PixelDriftMetalHook.swift → PixelDriftEffect.swift
+- PixelSortHook.swift → PixelSortEffect.swift
+- PosterizeDecayHook.swift → PosterizeDecayEffect.swift
+- RGBSplitHook.swift → RGBSplitEffect.swift
+- TemporalSmearHook.swift → TemporalSmearEffect.swift
+- TextOverlayHook.swift → TextOverlayEffect.swift
+- TimeShuffleMetalHook.swift → TimeShuffleEffect.swift
