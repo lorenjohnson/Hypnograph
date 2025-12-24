@@ -227,6 +227,7 @@ struct AppCommands: Commands {
                 state.togglePause()
             }
             .keyboardShortcut(.space, modifiers: [])
+            .disabled(state.isTextFieldFocused)
 
             Button("Restart Session (Reload Settings)") {
                 switch state.currentModuleType {
@@ -270,10 +271,10 @@ struct AppCommands: Commands {
             .keyboardShortcut("s", modifiers: [.command])
 
             Button("Save Snapshot") {
-                // Only Dream supports snapshots
                 dream.saveSnapshot()
             }
             .keyboardShortcut("s", modifiers: [])
+            .disabled(state.isTextFieldFocused)
         }
 
         CommandGroup(after: .sidebar) {
@@ -297,6 +298,7 @@ struct AppCommands: Commands {
                 cycleModuleHandler()
             }
             .keyboardShortcut("~", modifiers: [])
+            .disabled(state.isTextFieldFocused)
 
             Divider()
 
@@ -305,15 +307,18 @@ struct AppCommands: Commands {
                 set: { _ in state.toggleWatchMode() }
             ))
             .keyboardShortcut("w", modifiers: [])
+            .disabled(state.isTextFieldFocused)
 
             Divider()
 
             Section("Overlays") {
                 Toggle("Info HUD", isOn: $state.isHUDVisible)
                     .keyboardShortcut("i", modifiers: [])
+                    .disabled(state.isTextFieldFocused)
 
                 Toggle("Effects Editor", isOn: $state.isEffectsEditorVisible)
                     .keyboardShortcut("e", modifiers: [])
+                    .disabled(state.isTextFieldFocused)
             }
 
             Divider()
@@ -321,6 +326,7 @@ struct AppCommands: Commands {
             Section("Performance Display") {
                 Toggle("Performance Preview", isOn: $state.isPerformancePreviewVisible)
                     .keyboardShortcut("p", modifiers: [])
+                    .disabled(state.isTextFieldFocused)
 
                 Toggle("Live Mode", isOn: Binding(
                     get: { state.isLiveMode },

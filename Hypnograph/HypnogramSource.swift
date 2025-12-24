@@ -140,15 +140,22 @@ struct HypnogramSource {
     var effects: [RenderHook]
     var blendMode: String?
 
+    /// Editable effect definition - stores parameter values per-source.
+    /// This is the source of truth for the effects editor UI.
+    /// When modified, `effects` should be re-instantiated from this definition.
+    var effectDefinition: EffectDefinition?
+
     init(
         clip: VideoClip,
         transforms: [CGAffineTransform] = [],
         effects: [RenderHook] = [],
-        blendMode: String? = nil
+        blendMode: String? = nil,
+        effectDefinition: EffectDefinition? = nil
     ) {
         self.clip = clip
         self.transforms = transforms
         self.effects = effects
         self.blendMode = blendMode
+        self.effectDefinition = effectDefinition
     }
 }

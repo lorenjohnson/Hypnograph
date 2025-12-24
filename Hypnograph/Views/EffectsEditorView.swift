@@ -303,8 +303,9 @@ struct EffectsEditorView: View {
     }
 
     /// Computed selected definition from current layer's effect
+    /// Reads from the recipe's stored definition (per-hypnogram), not the library
     private var selectedDefinition: EffectDefinition? {
-        viewModel.selectedDefinition(for: currentLayerEffectName, layer: currentLayer)
+        state.activeRenderHooks.effectDefinition(for: currentLayer)
     }
 
     /// Number of hooks in the current effect chain
@@ -323,9 +324,16 @@ struct EffectsEditorView: View {
     }
 
     /// Select an effect with immediate UI feedback
+    /// Copies the library definition into the recipe and instantiates the hook
     private func selectEffect(at index: Int) {
         // Update UI immediately via pending selection
         viewModel.setPendingSelection(effectIndex: index, for: currentLayer)
+
+        // Get the library definition to copy into the recipe
+        let libraryDefs = viewModel.effectDefinitions
+        let definition: EffectDefinition? = (index >= 0 && index < libraryDefs.count)
+            ? libraryDefs[index]
+            : nil
 
         // Defer the recipe update to next run loop to allow UI to update first
         // Use activeRenderHooks so effects go to performance display in live mode
@@ -334,12 +342,13 @@ struct EffectsEditorView: View {
         let isLive = state.isLiveMode
         print("🎨 EffectsEditor: selectEffect(\(index)) for layer \(layer), isLive=\(isLive)")
         DispatchQueue.main.async {
-            if index == -1 {
-                hooks.setEffect(nil, for: layer)
-            } else if index >= 0 && index < Effect.all.count {
-                let effect = Effect.all[index]
-                print("🎨 EffectsEditor: Setting effect '\(effect.name)' for layer \(layer)")
-                hooks.setEffect(effect, for: layer)
+            // Set effect from definition - this copies the definition into the recipe
+            // and instantiates the hook from it
+            hooks.setEffect(from: definition, for: layer)
+            if let def = definition {
+                print("🎨 EffectsEditor: Set effect '\(def.name ?? "unnamed")' for layer \(layer)")
+            } else {
+                print("🎨 EffectsEditor: Cleared effect for layer \(layer)")
             }
         }
 
@@ -638,6 +647,9 @@ struct EffectsEditorView: View {
                                 state.activeRenderHooks.setEffect(Effect.all[currentIndex], for: currentLayer)
                             }
                         }
+                    },
+                    onTextFieldFocusChange: { focused in
+                        state.isTextFieldFocused = focused
                     }
                 )
 
@@ -646,7 +658,7 @@ struct EffectsEditorView: View {
 
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
-                        parametersForDefinition(def, effectIndex: selectedEffectIndex, hookIndex: nil)
+                        parametersForDefinition(def, layer: currentLayer, hookIndex: nil)
                     }
                 }
             } else {
@@ -658,7 +670,7 @@ struct EffectsEditorView: View {
     }
 
     @ViewBuilder
-    private func parametersForDefinition(_ def: EffectDefinition, effectIndex: Int, hookIndex: Int?) -> some View {
+    private func parametersForDefinition(_ def: EffectDefinition, layer: Int, hookIndex: Int?) -> some View {
         if def.isChained, let hooks = def.hooks {
             // Chained effect: show each child with heading and controls
             VStack(alignment: .leading, spacing: 8) {
@@ -667,7 +679,7 @@ struct EffectsEditorView: View {
                         childDef: childDef,
                         childIndex: childIndex,
                         totalHooks: hooks.count,
-                        effectIndex: effectIndex
+                        layer: layer
                     )
                     .opacity(draggingHookIndex == childIndex ? 0.5 : 1.0)
                     .onDrag {
@@ -677,9 +689,10 @@ struct EffectsEditorView: View {
                     .onDrop(of: [.text], delegate: HookDropDelegate(
                         currentIndex: childIndex,
                         draggingIndex: $draggingHookIndex,
-                        effectIndex: effectIndex,
+                        effectIndex: selectedEffectIndex,  // Still need library index for reorder
                         onReorder: { from, to in
-                            viewModel.reorderHooks(effectIndex: effectIndex, fromIndex: from, toIndex: to)
+                            // TODO: Update to use recipe-based reordering
+                            viewModel.reorderHooks(effectIndex: selectedEffectIndex, fromIndex: from, toIndex: to)
                         }
                     ))
                 }
@@ -689,12 +702,12 @@ struct EffectsEditorView: View {
             }
         } else {
             // Single effect
-            parameterFields(for: def, effectIndex: effectIndex, hookIndex: nil)
+            parameterFields(for: def, layer: layer, hookIndex: nil)
         }
     }
 
     @ViewBuilder
-    private func chainedHookSection(childDef: EffectDefinition, childIndex: Int, totalHooks: Int, effectIndex: Int) -> some View {
+    private func chainedHookSection(childDef: EffectDefinition, childIndex: Int, totalHooks: Int, layer: Int) -> some View {
         let isEnabled = childDef.params?["_enabled"]?.boolValue ?? true
         let isExpanded = expandedHookIndex == childIndex
 
@@ -716,7 +729,8 @@ struct EffectsEditorView: View {
 
                 // Delete button - not focusable, doesn't expand (hook is being removed)
                 Button(action: {
-                    viewModel.removeHookFromChain(effectIndex: effectIndex, hookIndex: childIndex)
+                    // TODO: Update to use recipe-based removal
+                    viewModel.removeHookFromChain(effectIndex: selectedEffectIndex, hookIndex: childIndex)
                     // If we deleted the expanded hook, expand the first remaining hook
                     if expandedHookIndex >= totalHooks - 1 {
                         expandedHookIndex = max(0, totalHooks - 2)
@@ -733,7 +747,8 @@ struct EffectsEditorView: View {
                 // Reset to defaults button - not focusable, selecting on interaction
                 Button(action: {
                     expandedHookIndex = childIndex
-                    viewModel.resetHookToDefaults(effectIndex: effectIndex, hookIndex: childIndex)
+                    // TODO: Update to use recipe-based reset
+                    viewModel.resetHookToDefaults(effectIndex: selectedEffectIndex, hookIndex: childIndex)
                 }) {
                     Image(systemName: "arrow.uturn.backward")
                         .font(.system(size: 10, weight: .medium))
@@ -748,7 +763,13 @@ struct EffectsEditorView: View {
                     get: { isEnabled },
                     set: { newValue in
                         expandedHookIndex = childIndex
-                        viewModel.setHookEnabled(effectIndex: effectIndex, hookIndex: childIndex, enabled: newValue)
+                        // Update enabled state via recipe parameter update
+                        state.activeRenderHooks.updateEffectParameter(
+                            for: layer,
+                            hookIndex: childIndex,
+                            paramName: "_enabled",
+                            value: .bool(newValue)
+                        )
                     }
                 ))
                 .toggleStyle(.checkbox)
@@ -769,7 +790,7 @@ struct EffectsEditorView: View {
 
             // Parameters (show when expanded, even if disabled - allows pre-configuration)
             if isExpanded {
-                parameterFields(for: childDef, effectIndex: effectIndex, hookIndex: childIndex)
+                parameterFields(for: childDef, layer: layer, hookIndex: childIndex)
                     .padding(.leading, 28)
                     .padding(.top, 8)
                     .opacity(isEnabled ? 1.0 : 0.5)
@@ -803,7 +824,7 @@ struct EffectsEditorView: View {
     }
 
     @ViewBuilder
-    private func parameterFields(for def: EffectDefinition, effectIndex: Int, hookIndex: Int?) -> some View {
+    private func parameterFields(for def: EffectDefinition, layer: Int, hookIndex: Int?) -> some View {
         // Use hook's parameterSpecs as source of truth, merged with JSON values
         let mergedParams = EffectsEditorViewModel.mergedParameters(for: def)
         let specs = def.resolvedType.map { EffectRegistry.parameterSpecs(for: $0) } ?? [:]
@@ -817,12 +838,16 @@ struct EffectsEditorView: View {
                         effectType: def.resolvedType,
                         spec: specs[key],
                         onChange: { newValue in
-                            viewModel.updateParameter(
-                                effectIndex: effectIndex,
+                            // Update the recipe's effect definition (per-hypnogram)
+                            state.activeRenderHooks.updateEffectParameter(
+                                for: layer,
                                 hookIndex: hookIndex,
                                 paramName: key,
                                 value: newValue
                             )
+                        },
+                        onTextFieldFocusChange: { focused in
+                            state.isTextFieldFocused = focused
                         }
                     )
                 }
@@ -844,6 +869,8 @@ struct ParameterSliderRow: View {
     let effectType: String?
     let spec: ParameterSpec?
     let onChange: (AnyCodableValue) -> Void
+    /// Callback to notify parent when text field focus changes (for blocking keyboard shortcuts)
+    var onTextFieldFocusChange: ((Bool) -> Void)?
 
     @State private var textValue: String = ""
     @State private var sliderValue: Double = 0
@@ -955,6 +982,9 @@ struct ParameterSliderRow: View {
         .onChange(of: value) { _, newValue in
             // Re-initialize when value changes externally
             initializeFromValue(newValue)
+        }
+        .onChange(of: isTextFieldFocused) { _, focused in
+            onTextFieldFocusChange?(focused)
         }
     }
 
@@ -1243,6 +1273,8 @@ struct ParameterSliderRow: View {
 struct EditableEffectNameHeader: View {
     let name: String
     let onSave: (String) -> Void
+    /// Callback to notify parent when text field focus changes (for blocking keyboard shortcuts)
+    var onTextFieldFocusChange: ((Bool) -> Void)?
 
     @State private var isEditing = false
     @State private var editedName: String = ""
@@ -1264,6 +1296,9 @@ struct EditableEffectNameHeader: View {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             isTextFieldFocused = true
                         }
+                    }
+                    .onChange(of: isTextFieldFocused) { _, focused in
+                        onTextFieldFocusChange?(focused)
                     }
 
                 Button(action: saveAndClose) {

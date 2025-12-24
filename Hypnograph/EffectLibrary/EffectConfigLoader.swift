@@ -517,7 +517,9 @@ enum EffectConfigLoader {
         config.effects.compactMap { instantiateEffect($0) }
     }
     
-    private static func instantiateEffect(_ def: EffectDefinition) -> RenderHook? {
+    /// Instantiate a RenderHook from an EffectDefinition.
+    /// Public so recipes can instantiate effects from their stored definitions.
+    static func instantiateEffect(_ def: EffectDefinition) -> RenderHook? {
         // Check if this hook is disabled
         if let enabled = def.params?["_enabled"]?.boolValue, !enabled {
             return nil
