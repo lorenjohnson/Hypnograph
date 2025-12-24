@@ -45,7 +45,7 @@ enum EffectRegistry {
 
     /// Map of type names to hook metatypes.
     /// Each hook declares its own parameterSpecs and init?(params:) - the hook is the source of truth.
-    static let hookTypes: [String: any RenderHook.Type] = [
+    static let hookTypes: [String: any Effect.Type] = [
         // Core Effects
         "RGBSplitSimpleHook": RGBSplitSimpleHook.self,
 
@@ -85,8 +85,8 @@ enum EffectRegistry {
         "TextOverlayHook": TextOverlayHook.self
     ]
 
-    /// Create a RenderHook from a type name and parameters using init?(params:)
-    static func create(type: String, params: [String: AnyCodableValue]?) -> RenderHook? {
+    /// Create an Effect from a type name and parameters using init?(params:)
+    static func create(type: String, params: [String: AnyCodableValue]?) -> Effect? {
         guard let hookType = hookTypes[type] else {
             print("⚠️ EffectRegistry: Unknown effect type '\(type)'")
             return nil

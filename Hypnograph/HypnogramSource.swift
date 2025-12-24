@@ -137,7 +137,7 @@ struct HypnogramSource {
     var clip: VideoClip
     /// User-applied transforms (rotation, scale, translation). Applied after metadata orientation correction.
     var transforms: [CGAffineTransform]
-    var effects: [RenderHook]
+    var effects: [Effect]
     var blendMode: String?
 
     /// Editable effect definition - stores parameter values per-source.
@@ -148,7 +148,7 @@ struct HypnogramSource {
     init(
         clip: VideoClip,
         transforms: [CGAffineTransform] = [],
-        effects: [RenderHook] = [],
+        effects: [Effect] = [],
         blendMode: String? = nil,
         effectDefinition: EffectDefinition? = nil
     ) {

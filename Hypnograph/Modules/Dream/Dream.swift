@@ -114,11 +114,11 @@ final class Dream: ObservableObject {
         flashSoloTimer?.invalidate()
 
         // Set flash solo to current source
-        state.renderHooks.setFlashSolo(state.currentSourceIndex)
+        state.effectManager.setFlashSolo(state.currentSourceIndex)
 
         // Clear after delay
         flashSoloTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
-            self?.state.renderHooks.setFlashSolo(nil)
+            self?.state.effectManager.setFlashSolo(nil)
         }
     }
 
@@ -130,19 +130,19 @@ final class Dream: ObservableObject {
 
     // MARK: - Effects
 
-    /// Get the appropriate renderHooks based on current mode (Edit vs Live)
-    private var activeRenderHooks: RenderHookManager {
-        state.isLiveMode ? state.performanceDisplay.renderHooks : state.renderHooks
+    /// Get the appropriate effectManager based on current mode (Edit vs Live)
+    private var activeEffectManager: EffectManager {
+        state.isLiveMode ? state.performanceDisplay.effectManager : state.effectManager
     }
 
     /// Cycle effect for current layer (global when -1, source when 0+)
     func cycleEffect(direction: Int = 1) {
         state.noteUserInteraction()
-        activeRenderHooks.cycleEffect(for: state.currentSourceIndex, direction: direction)
+        activeEffectManager.cycleEffect(for: state.currentSourceIndex, direction: direction)
 
         // Show flash message when effects panel is not open
         if !state.isEffectsEditorVisible {
-            let effectName = activeRenderHooks.effectName(for: state.currentSourceIndex)
+            let effectName = activeEffectManager.effectName(for: state.currentSourceIndex)
             let layerLabel = state.currentSourceIndex == -1 ? "Global" : "Source \(state.currentSourceIndex + 1)"
             AppNotifications.show("\(layerLabel): \(effectName)", flash: true, duration: 1.5)
         }
@@ -151,7 +151,7 @@ final class Dream: ObservableObject {
     /// Clear effect for current layer only
     func clearCurrentLayerEffect() {
         state.noteUserInteraction()
-        activeRenderHooks.clearEffect(for: state.currentSourceIndex)
+        activeEffectManager.clearEffect(for: state.currentSourceIndex)
 
         // Show flash message when effects panel is not open
         if !state.isEffectsEditorVisible {
@@ -181,7 +181,7 @@ final class Dream: ObservableObject {
 
         // Layer info (Global or Source X of Y)
         items.append(.text(state.editingLayerDisplay, order: 22))
-        items.append(.text("Effect (E): \(activeRenderHooks.effectName(for: state.currentSourceIndex))", order: 23))
+        items.append(.text("Effect (E): \(activeEffectManager.effectName(for: state.currentSourceIndex))", order: 23))
 
         // Source-specific info (only when on a source layer, not global)
         if !state.isOnGlobalLayer {
@@ -405,7 +405,7 @@ final class Dream: ObservableObject {
                     ),
                     isPaused: state.isPaused,
                     effectsChangeCounter: state.effectsChangeCounter,
-                    renderHooks: state.renderHooks
+                    effectManager: state.effectManager
                 )
                 .id("dream-montage-\(state.aspectRatio.displayString)-\(state.outputResolution.rawValue)")
             )
@@ -423,7 +423,7 @@ final class Dream: ObservableObject {
                     isPaused: state.isPaused,
                     effectsChangeCounter: state.effectsChangeCounter,
                     playRate: 0.8,
-                    renderHooks: state.renderHooks,
+                    effectManager: state.effectManager,
                     onSourceIndexChanged: { [weak state] newIndex in
                         // Sync Performance Display when auto-advancing in sequence mode
                         state?.performanceDisplay.seekToSource(index: newIndex)
@@ -462,7 +462,7 @@ final class Dream: ObservableObject {
         }
 
         // Clear frame buffer to prevent memory bloat from stored CIImages
-        state.renderHooks.clearFrameBuffer()
+        state.effectManager.clearFrameBuffer()
 
         // Clear image cache if it's getting large to prevent memory bloat
         let cacheSize = StillImageCache.cacheSize()
@@ -482,7 +482,7 @@ final class Dream: ObservableObject {
     /// Does NOT modify the edit state
     private func newForPerformanceDisplay() {
         // Clear performance display's frame buffer
-        state.performanceDisplay.renderHooks.clearFrameBuffer()
+        state.performanceDisplay.effectManager.clearFrameBuffer()
 
         // Generate a standalone recipe
         let recipe = generateRandomRecipe()
@@ -562,7 +562,7 @@ final class Dream: ObservableObject {
     /// Save a snapshot of the current frame from the frame buffer
     func saveSnapshot() {
         // Grab the current frame from the frame buffer (which stores the fully composited frame)
-        guard let currentFrame = state.renderHooks.frameBuffer.currentFrame else {
+        guard let currentFrame = state.effectManager.frameBuffer.currentFrame else {
             print("DreamMode: no current frame available for snapshot")
             return
         }
@@ -677,7 +677,7 @@ final class Dream: ObservableObject {
         guard idx > 0, idx < state.sources.count else { return } // bottom layer stays SourceOver
 
         // Cycle blend mode - this writes directly to sources via the setter closure
-        state.renderHooks.cycleBlendMode(for: idx)
+        state.effectManager.cycleBlendMode(for: idx)
     }
 
     // MARK: - Transform
@@ -698,8 +698,8 @@ final class Dream: ObservableObject {
     /// Clear all effects AND reset blend modes to Screen (default)
     func clearAllEffects() {
         state.noteUserInteraction()
-        let noEffect: RenderHook? = nil
-        activeRenderHooks.setGlobalEffect(noEffect)
+        let noEffect: Effect? = nil
+        activeEffectManager.setGlobalEffect(noEffect)
 
         // Get source count from appropriate context
         let sourceCount = state.isLiveMode
@@ -707,7 +707,7 @@ final class Dream: ObservableObject {
             : state.activeSourceCount
 
         for i in 0..<sourceCount {
-            activeRenderHooks.setSourceEffect(noEffect, for: i)
+            activeEffectManager.setSourceEffect(noEffect, for: i)
             // Reset blend mode on source (keep first one as SourceOver) - only in Edit mode
             if !state.isLiveMode && i > 0 && i < state.sources.count {
                 state.sources[i].blendMode = BlendMode.defaultMontage

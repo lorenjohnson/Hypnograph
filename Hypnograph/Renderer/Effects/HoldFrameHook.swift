@@ -111,7 +111,7 @@ final class HoldFrameHook: Effect {
 
     // MARK: - State Management
 
-    /// Public reset for RenderHook protocol - clears all state when switching montages
+    /// Public reset for Effect protocol - clears all state when switching montages
     func reset() {
         resetState()
         lastFrameIndex = -1

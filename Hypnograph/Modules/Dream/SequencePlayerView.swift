@@ -24,7 +24,7 @@ struct SequencePlayerView: NSViewRepresentable {
     let isPaused: Bool
     let effectsChangeCounter: Int
     let playRate: Float
-    let renderHooks: RenderHookManager
+    let effectManager: EffectManager
 
     /// Optional callback when source index changes (for syncing Performance Display)
     var onSourceIndexChanged: ((Int) -> Void)?
@@ -199,7 +199,7 @@ struct SequencePlayerView: NSViewRepresentable {
             }
 
             // Pre-fill frame buffer with the still image for effects to have full history from frame 1
-            let frameBuffer = self.renderHooks.frameBuffer
+            let frameBuffer = self.effectManager.frameBuffer
             let count = frameBuffer.prefill(with: ciImage)
             print("🖼️ SequencePlayer: Prefilled \(count) frames for still image, buffer has \(frameBuffer.frameCount) frames")
 
@@ -211,7 +211,7 @@ struct SequencePlayerView: NSViewRepresentable {
                 aspectRatio: aspectRatio,
                 transform: userTransform,
                 enableEffects: true,
-                renderHooks: self.renderHooks
+                effectManager: self.effectManager
             )
 
             // Start animation for time-based effects
@@ -279,7 +279,7 @@ struct SequencePlayerView: NSViewRepresentable {
             guard !Task.isCancelled else { return }
 
             // Pre-roll frame buffer for effects to have full history from frame 1
-            let frameBuffer = self.renderHooks.frameBuffer
+            let frameBuffer = self.effectManager.frameBuffer
             print("🎬 SequencePlayer: Starting preroll for video...")
             let count = await frameBuffer.preroll(from: asset, startTime: CMTime.zero)
             print("🎬 SequencePlayer: Preroll complete, \(count) frames loaded, buffer now has \(frameBuffer.frameCount) frames")

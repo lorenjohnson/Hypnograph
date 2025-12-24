@@ -293,7 +293,7 @@ struct EffectsEditorView: View {
 
     /// Effect name for the current layer (from active hooks - edit or live mode)
     private var currentLayerEffectName: String {
-        state.activeRenderHooks.effectName(for: currentLayer)
+        state.activeEffectManager.effectName(for: currentLayer)
     }
 
     /// Computed selected effect index from current layer's effect (-1 = None)
@@ -305,7 +305,7 @@ struct EffectsEditorView: View {
     /// Computed selected definition from current layer's effect
     /// Reads from the recipe's stored definition (per-hypnogram), not the library
     private var selectedDefinition: EffectDefinition? {
-        state.activeRenderHooks.effectDefinition(for: currentLayer)
+        state.activeEffectManager.effectDefinition(for: currentLayer)
     }
 
     /// Number of hooks in the current effect chain
@@ -336,9 +336,9 @@ struct EffectsEditorView: View {
             : nil
 
         // Defer the recipe update to next run loop to allow UI to update first
-        // Use activeRenderHooks so effects go to performance display in live mode
+        // Use activeEffectManager so effects go to performance display in live mode
         let layer = currentLayer
-        let hooks = state.activeRenderHooks
+        let hooks = state.activeEffectManager
         let isLive = state.isLiveMode
         print("🎨 EffectsEditor: selectEffect(\(index)) for layer \(layer), isLive=\(isLive)")
         DispatchQueue.main.async {
@@ -642,7 +642,7 @@ struct EffectsEditorView: View {
                         // Update library (for persistence)
                         viewModel.updateEffectName(effectIndex: selectedEffectIndex, name: newName)
                         // Update recipe immediately (for UI refresh - no debounce needed)
-                        state.activeRenderHooks.updateEffectName(for: currentLayer, name: newName)
+                        state.activeEffectManager.updateEffectName(for: currentLayer, name: newName)
                     }
                 )
 
@@ -687,7 +687,7 @@ struct EffectsEditorView: View {
                             // Update library (for persistence)
                             viewModel.reorderHooks(effectIndex: selectedEffectIndex, fromIndex: from, toIndex: to)
                             // Update recipe (for immediate UI refresh)
-                            state.activeRenderHooks.reorderHooksInChain(for: layer, fromIndex: from, toIndex: to)
+                            state.activeEffectManager.reorderHooksInChain(for: layer, fromIndex: from, toIndex: to)
                         }
                     ))
                 }
@@ -727,7 +727,7 @@ struct EffectsEditorView: View {
                     // Update library (for persistence)
                     viewModel.removeHookFromChain(effectIndex: selectedEffectIndex, hookIndex: childIndex)
                     // Update recipe (for immediate UI refresh)
-                    state.activeRenderHooks.removeHookFromChain(for: layer, hookIndex: childIndex)
+                    state.activeEffectManager.removeHookFromChain(for: layer, hookIndex: childIndex)
                     // If we deleted the expanded hook, expand the first remaining hook
                     if expandedHookIndex >= totalHooks - 1 {
                         expandedHookIndex = max(0, totalHooks - 2)
@@ -746,7 +746,7 @@ struct EffectsEditorView: View {
                     // Update library (for persistence)
                     viewModel.resetHookToDefaults(effectIndex: selectedEffectIndex, hookIndex: childIndex)
                     // Update recipe (for immediate UI refresh)
-                    state.activeRenderHooks.resetHookToDefaults(for: layer, hookIndex: childIndex)
+                    state.activeEffectManager.resetHookToDefaults(for: layer, hookIndex: childIndex)
                 }) {
                     Image(systemName: "arrow.uturn.backward")
                         .font(.system(size: 10, weight: .medium))
@@ -761,7 +761,7 @@ struct EffectsEditorView: View {
                     set: { newValue in
                         expandedHookIndex = childIndex
                         // Update enabled state via recipe parameter update
-                        state.activeRenderHooks.updateEffectParameter(
+                        state.activeEffectManager.updateEffectParameter(
                             for: layer,
                             hookIndex: childIndex,
                             paramName: "_enabled",
@@ -803,7 +803,7 @@ struct EffectsEditorView: View {
                     // Update library (for persistence)
                     viewModel.addHookToChain(effectIndex: selectedEffectIndex, hookType: effect.type)
                     // Update recipe (for immediate UI refresh)
-                    state.activeRenderHooks.addHookToChain(for: currentLayer, hookType: effect.type)
+                    state.activeEffectManager.addHookToChain(for: currentLayer, hookType: effect.type)
                 }
             }
         } label: {
@@ -839,7 +839,7 @@ struct EffectsEditorView: View {
                         spec: specs[key],
                         onChange: { newValue in
                             // Update the recipe's effect definition (per-hypnogram)
-                            state.activeRenderHooks.updateEffectParameter(
+                            state.activeEffectManager.updateEffectParameter(
                                 for: layer,
                                 hookIndex: hookIndex,
                                 paramName: key,

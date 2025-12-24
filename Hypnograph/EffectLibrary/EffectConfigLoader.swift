@@ -27,8 +27,8 @@ enum EffectConfigLoader {
         return cachedConfig?.effects ?? []
     }
 
-    /// Callback for live effect application (set by RenderHookManager)
-    static var onEffectUpdated: ((Int, RenderHook) -> Void)?
+    /// Callback for live effect application (set by EffectManager)
+    static var onEffectUpdated: ((Int, Effect) -> Void)?
 
     /// Debounce timer for async file save AND effect instantiation
     private static var saveTimer: Timer?
@@ -361,7 +361,7 @@ enum EffectConfigLoader {
     
     /// Result of loading effects
     struct LoadResult {
-        let effects: [RenderHook]
+        let effects: [Effect]
         let source: Source
         let error: Error?
         
@@ -434,13 +434,13 @@ enum EffectConfigLoader {
     }
 
     /// Load effects from a specific URL
-    static func loadFromURL(_ url: URL) throws -> [RenderHook] {
+    static func loadFromURL(_ url: URL) throws -> [Effect] {
         let (effects, _) = try loadFromURLWithConfig(url)
         return effects
     }
 
     /// Load effects from a specific URL and return both hooks and raw config
-    private static func loadFromURLWithConfig(_ url: URL) throws -> ([RenderHook], EffectConfig) {
+    private static func loadFromURLWithConfig(_ url: URL) throws -> ([Effect], EffectConfig) {
         let data = try Data(contentsOf: url)
         guard let jsonString = String(data: data, encoding: .utf8) else {
             throw LoadError.invalidEncoding
@@ -512,14 +512,14 @@ enum EffectConfigLoader {
     
     // MARK: - Instantiation
     
-    /// Convert parsed config to RenderHook instances
-    private static func instantiateEffects(from config: EffectConfig) -> [RenderHook] {
+    /// Convert parsed config to Effect instances
+    private static func instantiateEffects(from config: EffectConfig) -> [Effect] {
         config.effects.compactMap { instantiateEffect($0) }
     }
     
-    /// Instantiate a RenderHook from an EffectDefinition.
+    /// Instantiate an Effect from an EffectDefinition.
     /// Public so recipes can instantiate effects from their stored definitions.
-    static func instantiateEffect(_ def: EffectDefinition) -> RenderHook? {
+    static func instantiateEffect(_ def: EffectDefinition) -> Effect? {
         // Check if this hook is disabled
         if let enabled = def.params?["_enabled"]?.boolValue, !enabled {
             return nil
@@ -571,7 +571,7 @@ enum EffectConfigLoader {
     // MARK: - Hardcoded Fallback
 
     /// Last-resort fallback if no config files work
-    static let hardcodedDefaults: [RenderHook] = [
+    static let hardcodedDefaults: [Effect] = [
         RGBSplitSimpleHook(offsetAmount: 15.0, animated: true),
         ChainedHook(name: "Datamosh: Default", hooks: [
             DatamoshMetalHook(params: .default)
