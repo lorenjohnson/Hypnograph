@@ -56,10 +56,11 @@ final class TextOverlayHook: RenderHook {
             "fontSize": .float(default: 32.0, range: 8.0...120.0),
             "fontSizeVariation": .float(default: 0.3, range: 0.0...1.0),  // ±30% by default
             "opacity": .float(default: 0.8, range: 0.0...1.0),
-            "maxTextCount": .int(default: 3, range: 1...10),
+            "maxTextCount": .int(default: 1, range: 1...10),
             "changeIntervalFrames": .int(default: 90, range: 10...600),
-            "durationMultiplier": .float(default: 2.0, range: 0.5...10.0),  // frames = chars * multiplier
+            "durationMultiplier": .float(default: 1.0, range: 0.5...10.0),  // frames = chars * multiplier * 4
             "textColor": .color(default: "#FFFFFF"),  // Text color (hex)
+            "strokeWidth": .float(default: 2.0, range: 0.0...8.0),  // Outline width (0 = no stroke)
             "antialiasing": .bool(default: true)
         ]
     }
@@ -77,6 +78,7 @@ final class TextOverlayHook: RenderHook {
     var durationMultiplier: Float  // frames = text.count * multiplier
     var fontName: String
     var textColor: String  // Hex color string (e.g., "#FFFFFF")
+    var strokeWidth: Float  // Outline width (0 = no stroke)
     var antialiasing: Bool
 
     /// Seed for reproducible randomness. Same seed = same text sequence, positions, timing.
@@ -106,8 +108,8 @@ final class TextOverlayHook: RenderHook {
     // MARK: - Init
 
     init(fontSize: Float = 32.0, fontSizeVariation: Float = 0.3, opacity: Float = 0.8,
-         maxTextCount: Int = 3, changeIntervalFrames: Int = 90, durationMultiplier: Float = 2.0,
-         fontName: String = "Menlo", textColor: String = "#FFFFFF",
+         maxTextCount: Int = 1, changeIntervalFrames: Int = 90, durationMultiplier: Float = 1.0,
+         fontName: String = "Menlo", textColor: String = "#FFFFFF", strokeWidth: Float = 2.0,
          antialiasing: Bool = true, randomSeed: UInt64? = nil) {
         self.fontSize = fontSize
         self.fontSizeVariation = fontSizeVariation
@@ -117,6 +119,7 @@ final class TextOverlayHook: RenderHook {
         self.durationMultiplier = durationMultiplier
         self.fontName = fontName
         self.textColor = textColor
+        self.strokeWidth = strokeWidth
         self.antialiasing = antialiasing
 
         // Generate a new seed if not provided (first creation)
@@ -132,17 +135,18 @@ final class TextOverlayHook: RenderHook {
         let fontSize = params?["fontSize"]?.floatValue ?? 32.0
         let fontSizeVariation = params?["fontSizeVariation"]?.floatValue ?? 0.3
         let opacity = params?["opacity"]?.floatValue ?? 0.8
-        let maxTextCount = params?["maxTextCount"]?.intValue ?? 3
+        let maxTextCount = params?["maxTextCount"]?.intValue ?? 1
         let changeIntervalFrames = params?["changeIntervalFrames"]?.intValue ?? 90
-        let durationMultiplier = params?["durationMultiplier"]?.floatValue ?? 2.0
+        let durationMultiplier = params?["durationMultiplier"]?.floatValue ?? 1.0
         let fontName = params?["fontName"]?.stringValue ?? "Menlo"
         let textColor = params?["textColor"]?.stringValue ?? "#FFFFFF"
+        let strokeWidth = params?["strokeWidth"]?.floatValue ?? 2.0
         let antialiasing = params?["antialiasing"]?.boolValue ?? true
         let randomSeed = params?["randomSeed"]?.intValue.map { UInt64($0) }
         self.init(fontSize: fontSize, fontSizeVariation: fontSizeVariation, opacity: opacity,
                   maxTextCount: maxTextCount, changeIntervalFrames: changeIntervalFrames,
                   durationMultiplier: durationMultiplier, fontName: fontName, textColor: textColor,
-                  antialiasing: antialiasing, randomSeed: randomSeed)
+                  strokeWidth: strokeWidth, antialiasing: antialiasing, randomSeed: randomSeed)
     }
 
     // MARK: - Text Loading (Lazy, Async)
@@ -187,11 +191,8 @@ final class TextOverlayHook: RenderHook {
             guard loadedLines.count < Self.maxTotalLines else { break }
 
             if let content = readAsText(file) {
-                // Split into blocks by double newlines (paragraphs)
-                let blocks = content.components(separatedBy: "\n\n")
-                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                    .filter { !$0.isEmpty }
-
+                // Split into text blocks, preferring natural break points
+                let blocks = splitIntoBlocks(content)
                 if blocks.isEmpty {
                     let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !trimmed.isEmpty {
@@ -294,6 +295,72 @@ final class TextOverlayHook: RenderHook {
         }
 
         return nil
+    }
+
+    /// Split text content into display blocks, preferring natural break points
+    /// Priority: double newlines (paragraphs) > single newlines > sentence endings (. ! ?)
+    private func splitIntoBlocks(_ content: String) -> [String] {
+        // First try splitting by double newlines (paragraphs)
+        let paragraphs = content.components(separatedBy: "\n\n")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        // If we got reasonable paragraph chunks, use them
+        if paragraphs.count > 1 {
+            // Further split very long paragraphs at sentence boundaries
+            return paragraphs.flatMap { splitLongBlock($0) }
+        }
+
+        // Try splitting by single newlines
+        let lines = content.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        if lines.count > 1 {
+            return lines.flatMap { splitLongBlock($0) }
+        }
+
+        // No line breaks - split at sentence endings
+        return splitAtSentences(content)
+    }
+
+    /// Split a long block at sentence boundaries if it exceeds a reasonable length
+    private func splitLongBlock(_ text: String) -> [String] {
+        // If short enough, return as-is
+        let maxChars = 200
+        if text.count <= maxChars {
+            return [text]
+        }
+
+        // Split at sentence endings
+        return splitAtSentences(text)
+    }
+
+    /// Split text at sentence-ending punctuation (. ! ?)
+    private func splitAtSentences(_ text: String) -> [String] {
+        var sentences: [String] = []
+        var current = ""
+
+        for char in text {
+            current.append(char)
+
+            // Check for sentence-ending punctuation followed by space or end
+            if char == "." || char == "!" || char == "?" {
+                let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    sentences.append(trimmed)
+                }
+                current = ""
+            }
+        }
+
+        // Add any remaining text
+        let remaining = current.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !remaining.isEmpty {
+            sentences.append(remaining)
+        }
+
+        return sentences.isEmpty ? [text] : sentences
     }
 
     /// Strip markdown formatting to plain text
@@ -513,9 +580,10 @@ final class TextOverlayHook: RenderHook {
         let wrapExt = randomCGFloat(in: 0...200)
 
         // Duration scales with text length: longer text stays longer
-        // Minimum 30 frames so short text is still readable
-        let baseDuration = Float(text.count) * durationMultiplier
-        let duration = max(30, Int(baseDuration))
+        // Internal 4x multiplier so user-facing multiplier of 1.0 gives reasonable duration
+        // Minimum 60 frames so short text is still readable
+        let baseDuration = Float(text.count) * durationMultiplier * 4.0
+        let duration = max(60, Int(baseDuration))
 
         let snippet = TextSnippet(
             text: text,
@@ -553,8 +621,11 @@ final class TextOverlayHook: RenderHook {
         context.setAllowsAntialiasing(antialiasing)
         context.setShouldSmoothFonts(antialiasing)
 
-        // Clear to transparent
-        context.clear(CGRect(x: 0, y: 0, width: width, height: height))
+        // Clear to fully transparent - must use setFillColor + fill, not just clear
+        context.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0))
+        context.setBlendMode(.copy)  // Overwrite, don't blend
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        context.setBlendMode(.normal)  // Reset for text drawing
 
         // Create text color from hex string
         let color = NSColor.fromHex(textColor) ?? .white
@@ -577,54 +648,90 @@ final class TextOverlayHook: RenderHook {
             // First calculate text size to know height, then flip the y coordinate
 
             // Calculate wrap width: from position to right edge minus margin
+            // Use 90% of screen width max to allow text to use more horizontal space
             let rightEdge = CGFloat(width) - margin
             let availableWidth = max(100, rightEdge - snippet.position.x)
-            let wrapWidth = min(availableWidth, CGFloat(width) * 0.7)
+            let wrapWidth = min(availableWidth, CGFloat(width) * 0.9)
 
             // Paragraph style for wrapping
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.lineBreakMode = .byWordWrapping
             paragraphStyle.alignment = .left
 
-            let attrs: [NSAttributedString.Key: Any] = [
+            // Calculate text rect first (needed for both stroke and fill)
+            // Skip snippets with invalid positions
+            let maxHeight = CGFloat(height) - snippet.position.y - margin
+            guard maxHeight > 20 else { continue }  // Skip if no room for text
+            let constraints = CGSize(width: wrapWidth, height: maxHeight)
+
+            // Base attributes for size calculation
+            let baseAttrs: [NSAttributedString.Key: Any] = [
                 .font: font,
-                .foregroundColor: color.withAlphaComponent(CGFloat(alpha)),
                 .paragraphStyle: paragraphStyle
             ]
-
-            let attrString = NSAttributedString(string: snippet.text, attributes: attrs)
-
-            // Use CTFramesetter for multi-line text with wrapping
-            let framesetter = CTFramesetterCreateWithAttributedString(attrString)
-
-            // Calculate text size with constrained width and max available height from top
-            let maxHeight = CGFloat(height) - snippet.position.y - margin
-            let constraints = CGSize(width: wrapWidth, height: max(100, maxHeight))
+            let baseString = NSAttributedString(string: snippet.text, attributes: baseAttrs)
+            let sizeFramesetter = CTFramesetterCreateWithAttributedString(baseString)
             let textSize = CTFramesetterSuggestFrameSizeWithConstraints(
-                framesetter, CFRange(location: 0, length: 0), nil, constraints, nil
+                sizeFramesetter, CFRange(location: 0, length: 0), nil, constraints, nil
             )
 
             // Convert from top-left origin to bottom-left origin for CoreText
-            // position.y is distance from TOP, we need distance from BOTTOM
-            // The text rect y should be: height - position.y - textHeight
             let flippedY = CGFloat(height) - snippet.position.y - min(textSize.height, maxHeight)
 
-            // Clamp to stay within frame
+            // Clamp to stay within frame - ensure valid rect
             let clampedX = max(margin, min(snippet.position.x, rightEdge - 100))
             let clampedY = max(margin, flippedY)
+            let clampedWidth = min(max(10, textSize.width), wrapWidth)
+            let clampedHeight = min(max(10, textSize.height), maxHeight)
+
+            // Skip if rect would be invalid
+            guard clampedWidth > 0, clampedHeight > 0,
+                  clampedX >= 0, clampedY >= 0,
+                  clampedX + clampedWidth <= CGFloat(width),
+                  clampedY + clampedHeight <= CGFloat(height) else { continue }
 
             let textRect = CGRect(
                 x: clampedX,
                 y: clampedY,
-                width: min(textSize.width, wrapWidth),
-                height: min(textSize.height, max(100, maxHeight))
+                width: clampedWidth,
+                height: clampedHeight
             )
             let path = CGPath(rect: textRect, transform: nil)
 
-            let frame = CTFramesetterCreateFrame(framesetter, CFRange(location: 0, length: 0), path, nil)
+            // Draw stroke first (if enabled) - contrasting color for visibility
+            if strokeWidth > 0 {
+                // Use inverted/contrasting stroke color (dark stroke for light text, vice versa)
+                let strokeColor = contrastingColor(for: color).withAlphaComponent(CGFloat(alpha))
+                let strokeAttrs: [NSAttributedString.Key: Any] = [
+                    .font: font,
+                    .foregroundColor: strokeColor,
+                    .strokeColor: strokeColor,
+                    .strokeWidth: CGFloat(strokeWidth),  // Positive = stroke only
+                    .paragraphStyle: paragraphStyle
+                ]
+                let strokeString = NSAttributedString(string: snippet.text, attributes: strokeAttrs)
+                let strokeFramesetter = CTFramesetterCreateWithAttributedString(strokeString)
+                let strokeFrame = CTFramesetterCreateFrame(
+                    strokeFramesetter, CFRange(location: 0, length: 0), path, nil
+                )
+                context.saveGState()
+                CTFrameDraw(strokeFrame, context)
+                context.restoreGState()
+            }
 
+            // Draw fill on top
+            let fillAttrs: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .foregroundColor: color.withAlphaComponent(CGFloat(alpha)),
+                .paragraphStyle: paragraphStyle
+            ]
+            let fillString = NSAttributedString(string: snippet.text, attributes: fillAttrs)
+            let fillFramesetter = CTFramesetterCreateWithAttributedString(fillString)
+            let fillFrame = CTFramesetterCreateFrame(
+                fillFramesetter, CFRange(location: 0, length: 0), path, nil
+            )
             context.saveGState()
-            CTFrameDraw(frame, context)
+            CTFrameDraw(fillFrame, context)
             context.restoreGState()
         }
 
@@ -650,8 +757,25 @@ final class TextOverlayHook: RenderHook {
         TextOverlayHook(fontSize: fontSize, fontSizeVariation: fontSizeVariation, opacity: opacity,
                         maxTextCount: maxTextCount, changeIntervalFrames: changeIntervalFrames,
                         durationMultiplier: durationMultiplier, fontName: fontName,
-                        textColor: textColor,
+                        textColor: textColor, strokeWidth: strokeWidth,
                         antialiasing: antialiasing, randomSeed: randomSeed)
+    }
+
+    /// Generate a contrasting color for text stroke (dark for light colors, light for dark)
+    private func contrastingColor(for color: NSColor) -> NSColor {
+        // Get RGB components (converting to sRGB if needed)
+        guard let rgbColor = color.usingColorSpace(.sRGB) else {
+            return .black
+        }
+        let r = rgbColor.redComponent
+        let g = rgbColor.greenComponent
+        let b = rgbColor.blueComponent
+
+        // Calculate perceived brightness (ITU-R BT.709)
+        let brightness = 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+        // Return dark for light colors, light for dark colors
+        return brightness > 0.5 ? NSColor(white: 0.1, alpha: 1.0) : NSColor(white: 0.9, alpha: 1.0)
     }
 }
 
