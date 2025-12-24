@@ -35,9 +35,9 @@ final class EffectsEditorViewModel: ObservableObject {
     /// Key: layer index (-1 = global, 0+ = source), Value: effect index (-1 = None)
     @Published private var pendingSelection: [Int: Int] = [:]
 
-    /// Local copy of effect definitions for immediate UI updates
+    /// Local copy of effect chains for immediate UI updates
     /// This is the source of truth for the UI - synced from EffectConfigLoader
-    @Published private(set) var effectDefinitions: [EffectDefinition] = []
+    @Published private(set) var effectChains: [EffectChain] = []
 
     init() {
         // Initialize from current config
@@ -54,9 +54,9 @@ final class EffectsEditorViewModel: ObservableObject {
         }
     }
 
-    /// Sync local definitions from the config loader
+    /// Sync local chains from the config loader
     func syncFromConfig() {
-        effectDefinitions = EffectConfigLoader.currentDefinitions
+        effectChains = EffectConfigLoader.currentChains
     }
 
     /// Set pending selection for immediate UI update
@@ -77,38 +77,34 @@ final class EffectsEditorViewModel: ObservableObject {
         }
         // Otherwise derive from recipe
         guard let name = globalEffectName, name != "None" else { return -1 }
-        return effectDefinitions.firstIndex(where: { $0.name == name }) ?? -1
+        return effectChains.firstIndex(where: { $0.name == name }) ?? -1
     }
 
     /// Get selected effect index from global effect name (-1 = None) - legacy for compatibility
     func selectedEffectIndex(for globalEffectName: String?) -> Int {
         guard let name = globalEffectName, name != "None" else { return -1 }
-        return effectDefinitions.firstIndex(where: { $0.name == name }) ?? -1
+        return effectChains.firstIndex(where: { $0.name == name }) ?? -1
     }
 
-    /// Currently selected effect definition (nil for "None")
-    func selectedDefinition(for globalEffectName: String?, layer: Int) -> EffectDefinition? {
+    /// Currently selected effect chain (nil for "None")
+    func selectedChain(for globalEffectName: String?, layer: Int) -> EffectChain? {
         let index = selectedEffectIndex(for: globalEffectName, layer: layer)
-        guard index >= 0 && index < effectDefinitions.count else { return nil }
-        return effectDefinitions[index]
+        guard index >= 0 && index < effectChains.count else { return nil }
+        return effectChains[index]
     }
 
-    /// Currently selected effect definition - legacy for compatibility
-    func selectedDefinition(for globalEffectName: String?) -> EffectDefinition? {
+    /// Currently selected effect chain - legacy for compatibility
+    func selectedChain(for globalEffectName: String?) -> EffectChain? {
         let index = selectedEffectIndex(for: globalEffectName)
-        guard index >= 0 && index < effectDefinitions.count else { return nil }
-        return effectDefinitions[index]
+        guard index >= 0 && index < effectChains.count else { return nil }
+        return effectChains[index]
     }
 
     /// Merge hook's parameterSpecs with JSON params.
     /// Hook specs define what params exist (source of truth).
     /// JSON values override defaults. Unknown JSON params are ignored.
-    static func mergedParameters(for def: EffectDefinition) -> [String: AnyCodableValue] {
-        guard let effectType = def.resolvedType else {
-            // No type info, fall back to JSON params only
-            return (def.params ?? [:]).filter { !$0.key.hasPrefix("_") }
-        }
-
+    static func mergedParametersForHook(_ hookDef: HookDefinition) -> [String: AnyCodableValue] {
+        let effectType = hookDef.type
         let specs = EffectRegistry.parameterSpecs(for: effectType)
         var result: [String: AnyCodableValue] = [:]
 
@@ -118,7 +114,7 @@ final class EffectsEditorViewModel: ObservableObject {
         }
 
         // Overlay JSON values (only for params that exist in specs)
-        if let jsonParams = def.params {
+        if let jsonParams = hookDef.params {
             for (name, value) in jsonParams {
                 // Skip internal params and params not in specs
                 if name.hasPrefix("_") { continue }
@@ -134,21 +130,22 @@ final class EffectsEditorViewModel: ObservableObject {
     /// Update a parameter value for an effect (or child hook in a chain)
     func updateParameter(effectIndex: Int, hookIndex: Int?, paramName: String, value: AnyCodableValue) {
         // Update local state for responsive UI
-        updateLocalDefinition(at: effectIndex) { effect in
-            if let hookIndex = hookIndex, var hooks = effect.hooks {
-                // Update parameter in a chained hook
-                guard hookIndex >= 0 && hookIndex < hooks.count else { return effect }
-                var hook = hooks[hookIndex]
-                var params = hook.params ?? [:]
+        updateLocalChain(at: effectIndex) { chain in
+            if let hookIndex = hookIndex {
+                // Update parameter in a hook
+                guard hookIndex >= 0 && hookIndex < chain.hooks.count else { return chain }
+                var updatedChain = chain
+                var params = updatedChain.hooks[hookIndex].params ?? [:]
                 params[paramName] = value
-                hook = EffectDefinition(name: hook.name, type: hook.type, params: params, hooks: hook.hooks)
-                hooks[hookIndex] = hook
-                return EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+                updatedChain.hooks[hookIndex].params = params
+                return updatedChain
             } else {
-                // Update parameter on the effect itself
-                var params = effect.params ?? [:]
+                // Update parameter on the chain itself (future: chain-level params)
+                var updatedChain = chain
+                var params = updatedChain.params ?? [:]
                 params[paramName] = value
-                return EffectDefinition(name: effect.name, type: effect.type, params: params, hooks: effect.hooks)
+                updatedChain.params = params
+                return updatedChain
             }
         }
         // Persist to config
@@ -163,12 +160,12 @@ final class EffectsEditorViewModel: ObservableObject {
     /// Add a hook to the currently selected chained effect
     func addHookToChain(effectIndex: Int, hookType: String) {
         // Update local state for responsive UI
-        updateLocalDefinition(at: effectIndex) { effect in
-            var hooks = effect.hooks ?? []
+        updateLocalChain(at: effectIndex) { chain in
+            var updatedChain = chain
             let defaults = EffectRegistry.defaults(for: hookType)
-            let newHook = EffectDefinition(name: nil, type: hookType, params: defaults, hooks: nil)
-            hooks.append(newHook)
-            return EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+            let newHook = HookDefinition(type: hookType, params: defaults)
+            updatedChain.hooks.append(newHook)
+            return updatedChain
         }
         // Update config (instantiation is debounced in EffectConfigLoader)
         EffectConfigLoader.addHookToChain(effectIndex: effectIndex, hookType: hookType)
@@ -176,67 +173,65 @@ final class EffectsEditorViewModel: ObservableObject {
 
     /// Remove a hook from the currently selected chained effect
     func removeHookFromChain(effectIndex: Int, hookIndex: Int) {
-        updateLocalDefinition(at: effectIndex) { effect in
-            var hooks = effect.hooks ?? []
-            guard hookIndex >= 0 && hookIndex < hooks.count else { return effect }
-            hooks.remove(at: hookIndex)
-            return EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+        updateLocalChain(at: effectIndex) { chain in
+            var updatedChain = chain
+            guard hookIndex >= 0 && hookIndex < updatedChain.hooks.count else { return chain }
+            updatedChain.hooks.remove(at: hookIndex)
+            return updatedChain
         }
         EffectConfigLoader.removeHookFromChain(effectIndex: effectIndex, hookIndex: hookIndex)
     }
 
     /// Reorder hooks in the currently selected chained effect
     func reorderHooks(effectIndex: Int, fromIndex: Int, toIndex: Int) {
-        updateLocalDefinition(at: effectIndex) { effect in
-            var hooks = effect.hooks ?? []
-            guard fromIndex >= 0 && fromIndex < hooks.count else { return effect }
-            guard toIndex >= 0 && toIndex < hooks.count else { return effect }
-            let hook = hooks.remove(at: fromIndex)
-            hooks.insert(hook, at: toIndex)
-            return EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+        updateLocalChain(at: effectIndex) { chain in
+            var updatedChain = chain
+            guard fromIndex >= 0 && fromIndex < updatedChain.hooks.count else { return chain }
+            guard toIndex >= 0 && toIndex < updatedChain.hooks.count else { return chain }
+            let hook = updatedChain.hooks.remove(at: fromIndex)
+            updatedChain.hooks.insert(hook, at: toIndex)
+            return updatedChain
         }
         EffectConfigLoader.reorderHooksInChain(effectIndex: effectIndex, fromIndex: fromIndex, toIndex: toIndex)
     }
 
     /// Toggle hook enabled state
     func setHookEnabled(effectIndex: Int, hookIndex: Int, enabled: Bool) {
-        updateLocalDefinition(at: effectIndex) { effect in
-            var hooks = effect.hooks ?? []
-            guard hookIndex >= 0 && hookIndex < hooks.count else { return effect }
-            var hook = hooks[hookIndex]
-            var params = hook.params ?? [:]
+        updateLocalChain(at: effectIndex) { chain in
+            var updatedChain = chain
+            guard hookIndex >= 0 && hookIndex < updatedChain.hooks.count else { return chain }
+            var params = updatedChain.hooks[hookIndex].params ?? [:]
             params["_enabled"] = .bool(enabled)
-            hook = EffectDefinition(name: hook.name, type: hook.type, params: params, hooks: hook.hooks)
-            hooks[hookIndex] = hook
-            return EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+            updatedChain.hooks[hookIndex].params = params
+            return updatedChain
         }
         EffectConfigLoader.setHookEnabled(effectIndex: effectIndex, hookIndex: hookIndex, enabled: enabled)
     }
 
     /// Reset a hook's parameters to their default values
     func resetHookToDefaults(effectIndex: Int, hookIndex: Int) {
-        updateLocalDefinition(at: effectIndex) { effect in
-            var hooks = effect.hooks ?? []
-            guard hookIndex >= 0 && hookIndex < hooks.count else { return effect }
-            var hook = hooks[hookIndex]
-            guard let hookType = hook.resolvedType else { return effect }
+        updateLocalChain(at: effectIndex) { chain in
+            var updatedChain = chain
+            guard hookIndex >= 0 && hookIndex < updatedChain.hooks.count else { return chain }
+            let hookType = updatedChain.hooks[hookIndex].type
 
             // Get defaults from EffectRegistry, preserve _enabled state
             var defaults = EffectRegistry.defaults(for: hookType)
-            if let wasEnabled = hook.params?["_enabled"] {
+            if let wasEnabled = updatedChain.hooks[hookIndex].params?["_enabled"] {
                 defaults["_enabled"] = wasEnabled
             }
-            hook = EffectDefinition(name: hook.name, type: hook.type, params: defaults, hooks: hook.hooks)
-            hooks[hookIndex] = hook
-            return EffectDefinition(name: effect.name, type: effect.type, params: effect.params, hooks: hooks)
+            updatedChain.hooks[hookIndex].params = defaults
+            return updatedChain
         }
         EffectConfigLoader.resetHookToDefaults(effectIndex: effectIndex, hookIndex: hookIndex)
     }
 
-    /// Update the name of the selected effect
+    /// Update the name of the selected effect chain
     func updateEffectName(effectIndex: Int, name: String) {
-        updateLocalDefinition(at: effectIndex) { effect in
-            EffectDefinition(name: name, type: effect.type, params: effect.params, hooks: effect.hooks)
+        updateLocalChain(at: effectIndex) { chain in
+            var updatedChain = chain
+            updatedChain.name = name
+            return updatedChain
         }
         EffectConfigLoader.updateEffectName(effectIndex: effectIndex, name: name)
     }
@@ -246,8 +241,8 @@ final class EffectsEditorViewModel: ObservableObject {
         EffectRegistry.availableEffectTypes
     }
 
-    /// Create a new effect (ChainedHook with Basic as default)
-    /// Returns the index of the new effect
+    /// Create a new effect chain (with Basic as default hook)
+    /// Returns the index of the new chain
     @discardableResult
     func createNewEffect() -> Int {
         let index = EffectConfigLoader.createNewEffect()
@@ -255,19 +250,19 @@ final class EffectsEditorViewModel: ObservableObject {
         return index
     }
 
-    /// Delete an effect at the given index
+    /// Delete an effect chain at the given index
     func deleteEffect(at index: Int) {
-        guard index >= 0 && index < effectDefinitions.count else { return }
-        effectDefinitions.remove(at: index)
+        guard index >= 0 && index < effectChains.count else { return }
+        effectChains.remove(at: index)
         EffectConfigLoader.deleteEffect(at: index)
     }
 
     // MARK: - Private Helpers
 
-    /// Update a local definition immediately (for responsive UI)
-    private func updateLocalDefinition(at index: Int, transform: (EffectDefinition) -> EffectDefinition) {
-        guard index >= 0 && index < effectDefinitions.count else { return }
-        effectDefinitions[index] = transform(effectDefinitions[index])
+    /// Update a local chain immediately (for responsive UI)
+    private func updateLocalChain(at index: Int, transform: (EffectChain) -> EffectChain) {
+        guard index >= 0 && index < effectChains.count else { return }
+        effectChains[index] = transform(effectChains[index])
     }
 }
 
@@ -302,15 +297,15 @@ struct EffectsEditorView: View {
         viewModel.selectedEffectIndex(for: currentLayerEffectName, layer: currentLayer)
     }
 
-    /// Computed selected definition from current layer's effect
-    /// Reads from the recipe's stored definition (per-hypnogram), not the library
-    private var selectedDefinition: EffectDefinition? {
-        state.activeEffectManager.effectDefinition(for: currentLayer)
+    /// Computed selected chain from current layer's effect
+    /// Reads from the recipe's stored chain (per-hypnogram), not the library
+    private var selectedDefinition: EffectChain? {
+        state.activeEffectManager.effectChain(for: currentLayer)
     }
 
     /// Number of hooks in the current effect chain
     private var currentHooksCount: Int {
-        selectedDefinition?.hooks?.count ?? 0
+        selectedDefinition?.hooks.count ?? 0
     }
 
     /// Check if currently in a text editing state
@@ -324,15 +319,15 @@ struct EffectsEditorView: View {
     }
 
     /// Select an effect with immediate UI feedback
-    /// Copies the library definition into the recipe and instantiates the hook
+    /// Copies the library chain into the recipe and instantiates the hook
     private func selectEffect(at index: Int) {
         // Update UI immediately via pending selection
         viewModel.setPendingSelection(effectIndex: index, for: currentLayer)
 
-        // Get the library definition to copy into the recipe
-        let libraryDefs = viewModel.effectDefinitions
-        let definition: EffectDefinition? = (index >= 0 && index < libraryDefs.count)
-            ? libraryDefs[index]
+        // Get the library chain to copy into the recipe
+        let libraryChains = viewModel.effectChains
+        let chain: EffectChain? = (index >= 0 && index < libraryChains.count)
+            ? libraryChains[index]
             : nil
 
         // Defer the recipe update to next run loop to allow UI to update first
@@ -342,11 +337,11 @@ struct EffectsEditorView: View {
         let isLive = state.isLiveMode
         print("🎨 EffectsEditor: selectEffect(\(index)) for layer \(layer), isLive=\(isLive)")
         DispatchQueue.main.async {
-            // Set effect from definition - this copies the definition into the recipe
+            // Set effect from chain - this copies the chain into the recipe
             // and instantiates the hook from it
-            hooks.setEffect(from: definition, for: layer)
-            if let def = definition {
-                print("🎨 EffectsEditor: Set effect '\(def.name ?? "unnamed")' for layer \(layer)")
+            hooks.setEffect(from: chain, for: layer)
+            if let c = chain {
+                print("🎨 EffectsEditor: Set effect '\(c.name ?? "unnamed")' for layer \(layer)")
             } else {
                 print("🎨 EffectsEditor: Cleared effect for layer \(layer)")
             }
@@ -501,16 +496,16 @@ struct EffectsEditorView: View {
         switch focusedField {
         case .effectList:
             // Move effect selection up/down with wrap-around
-            let defs = viewModel.effectDefinitions
+            let chains = viewModel.effectChains
             let currentIndex = selectedEffectIndex  // -1 = None, 0+ = effects
             var newIndex = currentIndex + delta
 
-            // Total items: None (-1) + effects (0 to defs.count-1)
+            // Total items: None (-1) + effects (0 to chains.count-1)
             // Wrap around: going up from None wraps to last effect, going down from last wraps to None
             if newIndex < -1 {
                 // Wrap to last effect
-                newIndex = defs.count - 1
-            } else if newIndex >= defs.count {
+                newIndex = chains.count - 1
+            } else if newIndex >= chains.count {
                 // Wrap to None
                 newIndex = -1
             }
@@ -562,8 +557,8 @@ struct EffectsEditorView: View {
                     // None option (always first)
                     effectNoneRow(isSelected: currentlySelected == -1)
 
-                    ForEach(Array(viewModel.effectDefinitions.enumerated()), id: \.offset) { index, def in
-                        effectRowCached(index: index, definition: def, isSelected: index == currentlySelected)
+                    ForEach(Array(viewModel.effectChains.enumerated()), id: \.offset) { index, chain in
+                        effectRowCached(index: index, chain: chain, isSelected: index == currentlySelected)
                     }
                 }
             }
@@ -599,9 +594,9 @@ struct EffectsEditorView: View {
         }
     }
 
-    private func effectRowCached(index: Int, definition: EffectDefinition, isSelected: Bool) -> some View {
+    private func effectRowCached(index: Int, chain: EffectChain, isSelected: Bool) -> some View {
         HStack(spacing: 4) {
-            Text(definition.name ?? "Unnamed")
+            Text(chain.name ?? "Unnamed")
                 .font(.system(.body, design: .monospaced))
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -642,7 +637,7 @@ struct EffectsEditorView: View {
                         // Update library (for persistence)
                         viewModel.updateEffectName(effectIndex: selectedEffectIndex, name: newName)
                         // Update recipe immediately (for UI refresh - no debounce needed)
-                        state.activeEffectManager.updateEffectName(for: currentLayer, name: newName)
+                        state.activeEffectManager.updateChainName(for: currentLayer, name: newName)
                     }
                 )
 
@@ -651,7 +646,7 @@ struct EffectsEditorView: View {
 
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
-                        parametersForDefinition(def, layer: currentLayer, hookIndex: nil)
+                        parametersForChain(def, layer: currentLayer)
                     }
                 }
             } else {
@@ -663,47 +658,42 @@ struct EffectsEditorView: View {
     }
 
     @ViewBuilder
-    private func parametersForDefinition(_ def: EffectDefinition, layer: Int, hookIndex: Int?) -> some View {
-        if def.isChained, let hooks = def.hooks {
-            // Chained effect: show each child with heading and controls
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(Array(hooks.enumerated()), id: \.offset) { childIndex, childDef in
-                    chainedHookSection(
-                        childDef: childDef,
-                        childIndex: childIndex,
-                        totalHooks: hooks.count,
-                        layer: layer
-                    )
-                    .opacity(draggingHookIndex == childIndex ? 0.5 : 1.0)
-                    .onDrag {
-                        draggingHookIndex = childIndex
-                        return NSItemProvider(object: String(childIndex) as NSString)
-                    }
-                    .onDrop(of: [.text], delegate: HookDropDelegate(
-                        currentIndex: childIndex,
-                        draggingIndex: $draggingHookIndex,
-                        effectIndex: selectedEffectIndex,
-                        onReorder: { from, to in
-                            // Update library (for persistence)
-                            viewModel.reorderHooks(effectIndex: selectedEffectIndex, fromIndex: from, toIndex: to)
-                            // Update recipe (for immediate UI refresh)
-                            state.activeEffectManager.reorderHooksInChain(for: layer, fromIndex: from, toIndex: to)
-                        }
-                    ))
+    private func parametersForChain(_ chain: EffectChain, layer: Int) -> some View {
+        // Effect chain: show each hook with heading and controls
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(chain.hooks.enumerated()), id: \.offset) { childIndex, hookDef in
+                chainedHookSection(
+                    hookDef: hookDef,
+                    childIndex: childIndex,
+                    totalHooks: chain.hooks.count,
+                    layer: layer
+                )
+                .opacity(draggingHookIndex == childIndex ? 0.5 : 1.0)
+                .onDrag {
+                    draggingHookIndex = childIndex
+                    return NSItemProvider(object: String(childIndex) as NSString)
                 }
-
-                // Add effect button
-                addEffectButton
+                .onDrop(of: [.text], delegate: HookDropDelegate(
+                    currentIndex: childIndex,
+                    draggingIndex: $draggingHookIndex,
+                    effectIndex: selectedEffectIndex,
+                    onReorder: { from, to in
+                        // Update library (for persistence)
+                        viewModel.reorderHooks(effectIndex: selectedEffectIndex, fromIndex: from, toIndex: to)
+                        // Update recipe (for immediate UI refresh)
+                        state.activeEffectManager.reorderHooksInChain(for: layer, fromIndex: from, toIndex: to)
+                    }
+                ))
             }
-        } else {
-            // Single effect
-            parameterFields(for: def, layer: layer, hookIndex: nil)
+
+            // Add effect button
+            addEffectButton
         }
     }
 
     @ViewBuilder
-    private func chainedHookSection(childDef: EffectDefinition, childIndex: Int, totalHooks: Int, layer: Int) -> some View {
-        let isEnabled = childDef.params?["_enabled"]?.boolValue ?? true
+    private func chainedHookSection(hookDef: HookDefinition, childIndex: Int, totalHooks: Int, layer: Int) -> some View {
+        let isEnabled = hookDef.params?["_enabled"]?.boolValue ?? true
         let isExpanded = expandedHookIndex == childIndex
 
         VStack(alignment: .leading, spacing: 0) {
@@ -715,8 +705,8 @@ struct EffectsEditorView: View {
                     .foregroundColor(.white.opacity(0.4))
                     .frame(width: 20)
 
-                // Effect name - use formatted type name if no custom name
-                Text(childDef.name ?? formatHookType(childDef.type) ?? "Effect \(childIndex + 1)")
+                // Effect name - use formatted type name
+                Text(formatHookType(hookDef.type) ?? "Effect \(childIndex + 1)")
                     .font(.system(.body, design: .monospaced).bold())
                     .foregroundColor(isEnabled ? .white : .white.opacity(0.5))
 
@@ -787,7 +777,7 @@ struct EffectsEditorView: View {
 
             // Parameters (show when expanded, even if disabled - allows pre-configuration)
             if isExpanded {
-                parameterFields(for: childDef, layer: layer, hookIndex: childIndex)
+                parameterFieldsForHook(hookDef, layer: layer, hookIndex: childIndex)
                     .padding(.leading, 28)
                     .padding(.top, 8)
                     .opacity(isEnabled ? 1.0 : 0.5)
@@ -824,10 +814,10 @@ struct EffectsEditorView: View {
     }
 
     @ViewBuilder
-    private func parameterFields(for def: EffectDefinition, layer: Int, hookIndex: Int?) -> some View {
+    private func parameterFieldsForHook(_ hookDef: HookDefinition, layer: Int, hookIndex: Int) -> some View {
         // Use hook's parameterSpecs as source of truth, merged with JSON values
-        let mergedParams = EffectsEditorViewModel.mergedParameters(for: def)
-        let specs = def.resolvedType.map { EffectRegistry.parameterSpecs(for: $0) } ?? [:]
+        let mergedParams = EffectsEditorViewModel.mergedParametersForHook(hookDef)
+        let specs = EffectRegistry.parameterSpecs(for: hookDef.type)
 
         if !mergedParams.isEmpty {
             ForEach(Array(mergedParams.keys.sorted()), id: \.self) { key in
@@ -835,26 +825,16 @@ struct EffectsEditorView: View {
                     ParameterSliderRow(
                         name: key,
                         value: value,
-                        effectType: def.resolvedType,
+                        effectType: hookDef.type,
                         spec: specs[key],
                         onChange: { newValue in
-                            // Update the recipe's effect definition (per-hypnogram)
-                            if let hookIdx = hookIndex {
-                                // Update hook parameter in chain
-                                state.activeEffectManager.updateHookParameter(
-                                    for: layer,
-                                    hookIndex: hookIdx,
-                                    key: key,
-                                    value: newValue
-                                )
-                            } else {
-                                // Update top-level effect parameter
-                                state.activeEffectManager.updateEffectParameter(
-                                    for: layer,
-                                    key: key,
-                                    value: newValue
-                                )
-                            }
+                            // Update hook parameter in chain
+                            state.activeEffectManager.updateHookParameter(
+                                for: layer,
+                                hookIndex: hookIndex,
+                                key: key,
+                                value: newValue
+                            )
                         }
                     )
                 }

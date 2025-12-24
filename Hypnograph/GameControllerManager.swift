@@ -220,11 +220,11 @@ final class GameControllerManager {
         switch vm.activeSection {
         case .effectList:
             // Move effect selection up/down
-            let defs = vm.effectDefinitions
+            let chains = vm.effectChains
             let currentIndex = vm.selectedEffectIndex(for: globalEffectName)  // -1 = None
             let newIndex = currentIndex + delta
 
-            if newIndex < -1 || newIndex >= defs.count {
+            if newIndex < -1 || newIndex >= chains.count {
                 return  // Out of bounds
             }
 
@@ -343,7 +343,7 @@ final class GameControllerManager {
                 self.joystickPanelSwitchTriggered = true
             } else if xValue > threshold && !self.joystickPanelSwitchTriggered {
                 // Joystick pushed right - switch to parameters panel (if effect selected)
-                if vm.selectedDefinition(for: self.state?.effectManager.globalEffectName) != nil {
+                if vm.selectedChain(for: self.state?.effectManager.globalEffectName) != nil {
                     vm.activeSection = .parameterList
                 }
                 self.joystickPanelSwitchTriggered = true

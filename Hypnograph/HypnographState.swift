@@ -213,17 +213,17 @@ final class HypnographState: ObservableObject {
             self.recipe.sources[sourceIndex].blendMode = mode
         }
 
-        // Global effect definition setter
-        effectManager.globalEffectDefinitionSetter = { [weak self] definition in
-            self?.recipe.effectDefinition = definition
+        // Global effect chain setter
+        effectManager.globalEffectChainSetter = { [weak self] chain in
+            self?.recipe.effectChain = chain
         }
 
-        // Per-source effect definition setter
-        effectManager.sourceEffectDefinitionSetter = { [weak self] sourceIndex, definition in
+        // Per-source effect chain setter
+        effectManager.sourceEffectChainSetter = { [weak self] sourceIndex, chain in
             guard let self = self,
                   sourceIndex >= 0,
                   sourceIndex < self.recipe.sources.count else { return }
-            self.recipe.sources[sourceIndex].effectDefinition = definition
+            self.recipe.sources[sourceIndex].effectChain = chain
         }
 
         // Subscribe to effect config reloads - reapply active effects with fresh instances
