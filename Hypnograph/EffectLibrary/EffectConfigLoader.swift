@@ -157,7 +157,7 @@ enum EffectConfigLoader {
         config = EffectConfig(version: config.version, effects: effects)
         cachedConfig = config
 
-        // Reload Effect.all to include the new effect
+        // Reload EffectChainLibrary.all to include the new effect
         reloadEffectAll()
 
         scheduleSave(config)
@@ -174,21 +174,21 @@ enum EffectConfigLoader {
         config = EffectConfig(version: config.version, effects: effects)
         cachedConfig = config
 
-        // Reload Effect.all to reflect the deletion
+        // Reload EffectChainLibrary.all to reflect the deletion
         reloadEffectAll()
 
         scheduleSave(config)
     }
 
-    /// Reload Effect.all from cached config
-    /// This directly updates Effect's cache without clearing our in-memory config
+    /// Reload EffectChainLibrary.all from cached config
+    /// This directly updates EffectChainLibrary's cache without clearing our in-memory config
     private static func reloadEffectAll() {
         guard let config = cachedConfig else { return }
         let hooks = instantiateEffects(from: config)
 
-        // Directly update Effect's cached result without going through reload()
+        // Directly update EffectChainLibrary's cached result without going through reload()
         // which would clear our in-memory config
-        Effect.updateCache(with: hooks)
+        EffectChainLibrary.updateCache(with: hooks)
     }
 
     /// Reorder hooks in a chained effect
