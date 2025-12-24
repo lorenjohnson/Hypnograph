@@ -284,9 +284,9 @@ struct EffectsEditorView: View {
         state.currentSourceIndex
     }
 
-    /// Effect name for the current layer
+    /// Effect name for the current layer (from active hooks - edit or live mode)
     private var currentLayerEffectName: String {
-        state.renderHooks.effectName(for: currentLayer)
+        state.activeRenderHooks.effectName(for: currentLayer)
     }
 
     /// Computed selected effect index from current layer's effect (-1 = None)
@@ -316,8 +316,9 @@ struct EffectsEditorView: View {
         viewModel.setPendingSelection(effectIndex: index, for: currentLayer)
 
         // Defer the recipe update to next run loop to allow UI to update first
+        // Use activeRenderHooks so effects go to performance display in live mode
         let layer = currentLayer
-        let hooks = state.renderHooks
+        let hooks = state.activeRenderHooks
         DispatchQueue.main.async {
             if index == -1 {
                 hooks.setEffect(nil, for: layer)

@@ -63,9 +63,42 @@ final class PerformanceDisplay: ObservableObject {
     /// This display's own RenderHookManager - independent of preview
     let renderHooks = RenderHookManager()
 
+    /// The current recipe being displayed (mutable for live effect changes)
+    private var currentRecipe: HypnogramRecipe?
+
     enum PlayerSlot {
         case a, b
         var opposite: PlayerSlot { self == .a ? .b : .a }
+    }
+
+    // MARK: - Init
+
+    init() {
+        setupRenderHooks()
+    }
+
+    private func setupRenderHooks() {
+        // Wire up recipe provider to return the mutable current recipe
+        renderHooks.recipeProvider = { [weak self] in
+            self?.currentRecipe
+        }
+
+        // Wire up effect setter to modify the current recipe's global effects
+        // HypnogramRecipe is a struct, so we need to get a copy, modify it, and reassign
+        renderHooks.effectsSetter = { [weak self] effects in
+            guard let self = self, var recipe = self.currentRecipe else { return }
+            recipe.effects = effects
+            self.currentRecipe = recipe
+        }
+
+        // Wire up source effect setter to modify per-source effects
+        renderHooks.sourceEffectSetter = { [weak self] sourceIndex, effects in
+            guard let self = self,
+                  var recipe = self.currentRecipe,
+                  sourceIndex < recipe.sources.count else { return }
+            recipe.sources[sourceIndex].effects = effects
+            self.currentRecipe = recipe
+        }
     }
     
     // MARK: - Public API
@@ -230,6 +263,7 @@ final class PerformanceDisplay: ObservableObject {
         activePlayer = .a
         currentRecipeDescription = ""
         activeSourceCount = 0
+        currentRecipe = nil
 
         print("🎬 PerformanceDisplay: Stopped and reset")
     }
@@ -283,6 +317,9 @@ final class PerformanceDisplay: ObservableObject {
         self.aspectRatio = aspectRatio
         self.outputResolution = resolution
 
+        // Store the recipe for live effect modifications
+        self.currentRecipe = recipe
+
         let sourceCount = recipe.sources.count
         activeSourceCount = sourceCount
         let modeLabel = mode == .sequence ? "sequence" : "montage"
@@ -291,18 +328,15 @@ final class PerformanceDisplay: ObservableObject {
         print("🎬 PerformanceDisplay: Building \(modeLabel) with \(sourceCount) sources...")
 
         pendingBuildTask = Task {
-            await buildAndTransition(recipe: recipe, content: content, mode: mode)
+            await buildAndTransition(content: content, mode: mode)
         }
     }
 
     // MARK: - Private Methods
 
-    private func buildAndTransition(recipe: HypnogramRecipe, content: PerformanceContentView, mode: DreamMode) async {
+    private func buildAndTransition(content: PerformanceContentView, mode: DreamMode) async {
+        guard let recipe = currentRecipe else { return }
         let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: outputResolution.maxDimension)
-
-        // Configure renderHooks to provide this recipe's effects
-        // This connects the hookManager to the recipe being sent
-        renderHooks.recipeProvider = { recipe }
 
         // Build composition using PerformanceDisplay's own RenderHookManager
         // This makes effects completely independent of the main preview

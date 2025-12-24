@@ -117,6 +117,12 @@ final class HypnographState: ObservableObject {
     // Performance display for clean output to external monitor
     let performanceDisplay = PerformanceDisplay()
 
+    /// Returns the active RenderHookManager based on performance mode
+    /// In live mode, effects go to the performance display; in edit mode, to the local preview
+    var activeRenderHooks: RenderHookManager {
+        isLiveMode ? performanceDisplay.renderHooks : renderHooks
+    }
+
     // Watch timer - generates new hypnograms at intervals when watch mode is enabled
     private var watchTimer: Timer?
 
