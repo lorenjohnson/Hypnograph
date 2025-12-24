@@ -36,25 +36,10 @@
             "offsetAmount" : 61.18244243421053
           },
           "type" : "RGBSplitSimpleHook"
-        },
-        {
-          "name" : "BlackAndWhite",
-          "params" : {
-            "_enabled" : false,
-            "contrast" : 1.015676398026316
-          },
-          "type" : "BlackAndWhiteHook"
         }
       ],
       "name" : "Metal Chained",
       "type" : "ChainedHook"
-    },
-    {
-      "name" : "B&W",
-      "params" : {
-        "contrast" : 1.2003125
-      },
-      "type" : "BlackAndWhiteHook"
     },
     {
       "name" : "RGB Split",
@@ -99,14 +84,6 @@
             "blockSize" : 4
           },
           "type" : "PixelateMetalHook"
-        },
-        {
-          "name" : "BlackAndWhite",
-          "params" : {
-            "_enabled" : false,
-            "contrast" : 1.0081834846368716
-          },
-          "type" : "BlackAndWhiteHook"
         }
       ],
       "name" : "Datamosh: Pixelate",

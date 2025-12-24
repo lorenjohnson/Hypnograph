@@ -66,6 +66,15 @@ final class PerformanceDisplay: ObservableObject {
     /// The current recipe being displayed (mutable for live effect changes)
     private var currentRecipe: HypnogramRecipe?
 
+    /// Current mode (montage or sequence)
+    private var currentMode: DreamMode = .montage
+
+    /// Clip start times for sequence mode seeking
+    private var clipStartTimes: [CMTime] = []
+
+    /// Still images by source index (for sequence mode with still images)
+    private var stillImagesBySourceIndex: [Int: CIImage] = [:]
+
     enum PlayerSlot {
         case a, b
         var opposite: PlayerSlot { self == .a ? .b : .a }
@@ -327,8 +336,32 @@ final class PerformanceDisplay: ObservableObject {
 
         print("🎬 PerformanceDisplay: Building \(modeLabel) with \(sourceCount) sources...")
 
+        // Store the mode for sequence seeking
+        self.currentMode = mode
+
         pendingBuildTask = Task {
             await buildAndTransition(content: content, mode: mode)
+        }
+    }
+
+    // MARK: - Sequence Mode Sync
+
+    /// Seek to a specific source index in sequence mode
+    /// Call this when the main preview navigates to a different source
+    /// - Parameter index: The source index to seek to
+    func seekToSource(index: Int) {
+        // Only works in sequence mode with valid clip start times
+        guard currentMode == .sequence,
+              index >= 0,
+              index < clipStartTimes.count,
+              let player = activeAVPlayer else {
+            return
+        }
+
+        let targetTime = clipStartTimes[index]
+        player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+            // Ensure playback continues after seek
+            player.play()
         }
     }
 
@@ -382,6 +415,10 @@ final class PerformanceDisplay: ObservableObject {
         content: PerformanceContentView
     ) async {
         isTransitioning = true
+
+        // Store clip start times for sequence mode seeking
+        self.clipStartTimes = buildResult.clipStartTimes
+        self.stillImagesBySourceIndex = buildResult.stillImagesBySourceIndex
 
         // Determine which player to use next
         let nextSlot = activePlayer.opposite

@@ -25,6 +25,9 @@ struct SequencePlayerView: NSViewRepresentable {
     let effectsChangeCounter: Int
     let playRate: Float
     let renderHooks: RenderHookManager
+
+    /// Optional callback when source index changes (for syncing Performance Display)
+    var onSourceIndexChanged: ((Int) -> Void)?
     
     class Coordinator: NSObject {
         // Current display mode
@@ -397,16 +400,18 @@ struct SequencePlayerView: NSViewRepresentable {
 
     private func advanceToNextSource(coordinator c: Coordinator) {
         let nextIndex = currentSourceIndex + 1
+        let targetIndex: Int
         if nextIndex < recipe.sources.count {
-            // Advance to next source
-            DispatchQueue.main.async {
-                self.currentSourceIndex = nextIndex
-            }
+            targetIndex = nextIndex
         } else {
             // Loop back to first source
-            DispatchQueue.main.async {
-                self.currentSourceIndex = 0
-            }
+            targetIndex = 0
+        }
+
+        DispatchQueue.main.async {
+            self.currentSourceIndex = targetIndex
+            // Notify callback for Performance Display sync
+            self.onSourceIndexChanged?(targetIndex)
         }
     }
 
