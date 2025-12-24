@@ -47,7 +47,6 @@ enum EffectRegistry {
     /// Each hook declares its own parameterSpecs and init?(params:) - the hook is the source of truth.
     static let hookTypes: [String: any RenderHook.Type] = [
         // Core Effects
-        "BlackAndWhiteHook": BlackAndWhiteHook.self,
         "RGBSplitSimpleHook": RGBSplitSimpleHook.self,
 
         // Temporal Effects

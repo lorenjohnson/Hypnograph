@@ -84,23 +84,26 @@ final class Dream: ObservableObject {
         mode = (mode == .montage) ? .sequence : .montage
     }
 
-    // MARK: - Source Navigation (with flash solo in montage mode)
+    // MARK: - Source Navigation (with flash solo in montage mode, sequence sync)
 
     private var flashSoloTimer: Timer?
 
     func nextSource() {
         state.nextSource()
         triggerFlashSoloIfNeeded()
+        syncPerformanceDisplayIfSequence()
     }
 
     func previousSource() {
         state.previousSource()
         triggerFlashSoloIfNeeded()
+        syncPerformanceDisplayIfSequence()
     }
 
     func selectSource(index: Int) {
         state.selectSource(index)
         triggerFlashSoloIfNeeded()
+        syncPerformanceDisplayIfSequence()
     }
 
     private func triggerFlashSoloIfNeeded() {
@@ -117,6 +120,12 @@ final class Dream: ObservableObject {
         flashSoloTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
             self?.state.renderHooks.setFlashSolo(nil)
         }
+    }
+
+    /// Sync Performance Display to current source when in sequence mode
+    private func syncPerformanceDisplayIfSequence() {
+        guard mode == .sequence else { return }
+        state.performanceDisplay.seekToSource(index: state.currentSourceIndex)
     }
 
     // MARK: - Effects
@@ -401,7 +410,11 @@ final class Dream: ObservableObject {
                     isPaused: state.isPaused,
                     effectsChangeCounter: state.effectsChangeCounter,
                     playRate: 0.8,
-                    renderHooks: state.renderHooks
+                    renderHooks: state.renderHooks,
+                    onSourceIndexChanged: { [weak state] newIndex in
+                        // Sync Performance Display when auto-advancing in sequence mode
+                        state?.performanceDisplay.seekToSource(index: newIndex)
+                    }
                 )
                 .id("dream-sequence-\(state.sources.count)-\(state.aspectRatio.displayString)-\(state.outputResolution.rawValue)")
             )

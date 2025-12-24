@@ -573,7 +573,6 @@ enum EffectConfigLoader {
 
     /// Last-resort fallback if no config files work
     static let hardcodedDefaults: [RenderHook] = [
-        BlackAndWhiteHook(contrast: 1.0),
         RGBSplitSimpleHook(offsetAmount: 15.0, animated: true),
         ChainedHook(name: "Datamosh: Default", hooks: [
             DatamoshMetalHook(params: .default)
