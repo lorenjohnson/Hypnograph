@@ -310,7 +310,7 @@ struct AppCommands: Commands {
 
             Section("Overlays") {
                 Toggle("Info HUD", isOn: $state.isHUDVisible)
-                    .keyboardShortcut("i", modifiers: [.command])
+                    .keyboardShortcut("i", modifiers: [])
 
                 Toggle("Effects Editor", isOn: $state.isEffectsEditorVisible)
                     .keyboardShortcut("e", modifiers: [])
