@@ -592,7 +592,16 @@ struct EffectsEditorView: View {
                 EditableEffectNameHeader(
                     name: def.name ?? "Unnamed",
                     onSave: { newName in
-                        viewModel.updateEffectName(effectIndex: selectedEffectIndex, name: newName)
+                        let currentIndex = selectedEffectIndex
+                        viewModel.updateEffectName(effectIndex: currentIndex, name: newName)
+                        // Re-apply the effect by index to update the recipe with the new name
+                        // This prevents the selection from jumping because the old name no longer matches
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            // After debounce, Effect.all is updated with new name
+                            if currentIndex >= 0 && currentIndex < Effect.all.count {
+                                state.activeRenderHooks.setEffect(Effect.all[currentIndex], for: currentLayer)
+                            }
+                        }
                     }
                 )
 
