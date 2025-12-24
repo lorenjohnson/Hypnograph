@@ -1,5 +1,9 @@
 - Document, analyze, and refactor the effects management code and UI
 
+- I don't think we need the RenderHookManager typealias at all. Doing a global search it is no longer used or needed anywhere. 
+
+- Let's review the issue you came to with updateHookParameter and the solution. Is this the right solution?
+
 - I would like when I save a Hypnogram that the JSON serialization of the Recipe also saves somewhere (named with a date/time stamp I guess). I would expect any current code we have for serializing is pretty out of date with the current recipe format so that needs throught through and caught-up. I would also like a Open option in the file menu for loading back a Hypnogram recipe (a .hypnogram file which will be json with comments)
 
 - I currently have a Favorite feature. I would like when I save or favorite a Hypnogram fro it to go to a list that appears in another window that will display beneath the hud which lists all the favorited hypnograms. This will likely turn into a play list but for now i just want to be abel to click on them indivudally and have them load
