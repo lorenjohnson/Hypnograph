@@ -36,8 +36,8 @@ final class MetalImageView: NSView {
     /// Processing configuration
     private var processingConfig: ProcessingConfig?
 
-    /// The RenderHookManager to use for effects processing
-    private var renderHooks: RenderHookManager?
+    /// The EffectManager to use for effects processing
+    private var renderHooks: EffectManager?
 
     /// Display link for animation (effects that change over time)
     private var displayLink: CVDisplayLink?
@@ -95,7 +95,7 @@ final class MetalImageView: NSView {
         aspectRatio: AspectRatio,
         transform: CGAffineTransform = .identity,
         enableEffects: Bool = true,
-        renderHooks: RenderHookManager
+        renderHooks: EffectManager
     ) {
         self.sourceImage = image
         self.sourceIndex = sourceIndex

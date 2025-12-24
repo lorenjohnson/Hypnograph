@@ -58,7 +58,7 @@ final class ChainedHook: Effect {
         }
     }
 
-    func copy() -> RenderHook {
+    func copy() -> Effect {
         // Copy all child hooks to create fresh instances
         let copiedHooks = hooks.map { $0.copy() }
         return ChainedHook(name: name, hooks: copiedHooks)

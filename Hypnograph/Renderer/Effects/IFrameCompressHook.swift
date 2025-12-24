@@ -119,7 +119,7 @@ final class IFrameCompressHook: Effect {
         framesSinceIframe = iframeInterval  // Force I-frame on resize
     }
 
-    // MARK: - RenderHook Protocol
+    // MARK: - Effect Protocol
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         guard let device = device,
@@ -216,7 +216,7 @@ final class IFrameCompressHook: Effect {
         frameNumber = 0
     }
 
-    func copy() -> RenderHook {
+    func copy() -> Effect {
         IFrameCompressHook(quality: quality, iframeInterval: iframeInterval, stickiness: stickiness,
                           glitch: glitch, diffThreshold: diffThreshold)
     }

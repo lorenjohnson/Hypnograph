@@ -143,7 +143,7 @@ final class LUTHook: Effect {
         print("✓ LUTHook: Loaded \(lutFileName) (\(size)x\(size)x\(size))")
     }
 
-    // MARK: - RenderHook
+    // MARK: - Effect
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         guard lutLoaded, let lutData = lutData else {
@@ -211,7 +211,7 @@ final class LUTHook: Effect {
         return lutOutput
     }
 
-    func copy() -> RenderHook {
+    func copy() -> Effect {
         LUTHook(lutFile: lutFileName, intensity: intensity, name: customName)
     }
 }

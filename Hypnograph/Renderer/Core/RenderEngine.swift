@@ -48,12 +48,12 @@ final class RenderEngine {
     ///   - recipe: The recipe to build
     ///   - strategy: Montage or sequence timeline
     ///   - config: Render configuration
-    ///   - hookManager: The RenderHookManager to use. If nil, uses global hooks.
+    ///   - hookManager: The EffectManager to use. If nil, uses global hooks.
     func makePlayerItem(
         recipe: HypnogramRecipe,
         strategy: CompositionBuilder.TimelineStrategy,
         config: Config,
-        hookManager: RenderHookManager? = nil
+        hookManager: EffectManager? = nil
     ) async -> Result<PlayerItemResult, RenderError> {
 
         // Build composition
@@ -116,7 +116,7 @@ final class RenderEngine {
         // Create isolated copy of recipe with fresh effect state for export
         // This prevents stateful effects (like TextOverlayHook) from sharing state with preview
         let exportRecipe = recipe.copyForExport()
-        let exportManager = RenderHookManager.forExport(recipe: exportRecipe)
+        let exportManager = EffectManager.forExport(recipe: exportRecipe)
 
         // Build composition with the export manager
         let builder = CompositionBuilder()

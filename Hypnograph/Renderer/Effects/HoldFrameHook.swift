@@ -68,7 +68,7 @@ final class HoldFrameHook: Effect {
         self.init(freezeInterval: p.double("freezeInterval"), holdDuration: p.double("holdDuration"), trailBoost: p.double("trailBoost"))
     }
 
-    // MARK: - RenderHook
+    // MARK: - Effect
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         let frameCount = context.frameIndex
@@ -118,7 +118,7 @@ final class HoldFrameHook: Effect {
         print("🔄 HoldFrame: reset() called - state cleared")
     }
 
-    func copy() -> RenderHook {
+    func copy() -> Effect {
         // Return a fresh instance with same configuration but reset state
         return HoldFrameHook(
             freezeInterval: freezeIntervalBase,

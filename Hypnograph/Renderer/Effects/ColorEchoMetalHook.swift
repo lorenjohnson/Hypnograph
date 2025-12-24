@@ -133,7 +133,7 @@ final class ColorEchoMetalHook: Effect {
         return CVMetalTextureGetTexture(tex)
     }
 
-    // MARK: - RenderHook Protocol
+    // MARK: - Effect Protocol
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         guard let device = device,
@@ -218,7 +218,7 @@ final class ColorEchoMetalHook: Effect {
         outputBuffer = nil
     }
 
-    func copy() -> RenderHook {
+    func copy() -> Effect {
         ColorEchoMetalHook(channelOffset: channelOffset, intensity: intensity, name: customName)
     }
 }

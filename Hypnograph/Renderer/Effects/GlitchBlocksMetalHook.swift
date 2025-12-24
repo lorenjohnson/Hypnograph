@@ -133,7 +133,7 @@ final class GlitchBlocksMetalHook: Effect {
         return CVMetalTextureGetTexture(tex)
     }
 
-    // MARK: - RenderHook Protocol
+    // MARK: - Effect Protocol
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         frameCounter &+= 1
@@ -221,7 +221,7 @@ final class GlitchBlocksMetalHook: Effect {
         seedCounter = 0
     }
 
-    func copy() -> RenderHook {
+    func copy() -> Effect {
         GlitchBlocksMetalHook(blockSize: blockSize, glitchAmount: glitchAmount, corruption: corruption)
     }
 }

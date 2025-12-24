@@ -51,8 +51,8 @@ struct PhotoMontage {
     // MARK: - Composite
 
     /// Composite all layers into a single image
-    /// Uses RenderHookManager for blend normalization when available
-    func composite(manager: RenderHookManager?) -> CIImage {
+    /// Uses EffectManager for blend normalization when available
+    func composite(manager: EffectManager?) -> CIImage {
         let totalLayers = layers.count
 
         // Build blend analysis from our layers
@@ -102,7 +102,7 @@ struct PhotoMontage {
     // MARK: - Export
 
     /// Export composited image as PNG
-    func exportPNG(to url: URL, manager: RenderHookManager? = nil) -> Result<URL, Error> {
+    func exportPNG(to url: URL, manager: EffectManager? = nil) -> Result<URL, Error> {
         let ciContext = CIContext()
         let composited = composite(manager: manager)
         
