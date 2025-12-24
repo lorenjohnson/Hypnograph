@@ -50,22 +50,14 @@ struct ContentView: View {
                     .padding(.leading, 12)
             }
 
-            // Info HUD - top left (below LIVE if visible)
-            if state.isInfoVisible {
-                InfoHUD(state: state)
-                    .padding(.top, state.isLiveMode ? 56 : 12)
-                    .padding(.leading, 12)
-            }
-        }
-        // HUD - bottom left
-        .overlay(alignment: .bottomLeading) {
+            // HUD - top left (below LIVE if visible)
             if state.isHUDVisible {
                 HUDView(
                     state: state,
                     dream: dream,
                     divine: divine
                 )
-                .padding(.bottom, 12)
+                .padding(.top, state.isLiveMode ? 56 : 12)
                 .padding(.leading, 12)
             }
         }

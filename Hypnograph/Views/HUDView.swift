@@ -60,6 +60,7 @@ struct HUDItem {
 
 /// A styled HUD overlay.
 /// Renders module-specific HUD items into a semi-transparent box.
+/// Includes source file list at the bottom.
 struct HUDView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var dream: Dream
@@ -67,9 +68,36 @@ struct HUDView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            // Module-specific HUD items
             ForEach(Array(hudItems().enumerated()), id: \.offset) { index, item in
                 item.render()
                     .id(index)
+            }
+
+            // Source file list section
+            Spacer().frame(height: 12)
+
+            Text("Sources (\(formattedDuration))")
+                .font(.subheadline)
+                .foregroundColor(.white)
+
+            if state.sources.isEmpty {
+                Text("No sources")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.7))
+            } else {
+                ForEach(Array(state.sources.enumerated()), id: \.offset) { index, source in
+                    HStack(spacing: 4) {
+                        Text("\(index + 1):")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundColor(index == state.currentSourceIndex ? .cyan : .white.opacity(0.7))
+                        Text(shortenedPath(source))
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundColor(index == state.currentSourceIndex ? .cyan : .white)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                }
             }
         }
         .foregroundColor(.white)
@@ -88,51 +116,17 @@ struct HUDView: View {
             return divine.hudItems().sorted { $0.order < $1.order }
         }
     }
-}
 
-// MARK: - InfoHUD
-
-/// Info HUD showing source list and composition details
-struct InfoHUD: View {
-    @ObservedObject var state: HypnographState
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Sources")
-                .font(.headline)
-                .foregroundColor(.white)
-
-            if state.sources.isEmpty {
-                Text("No sources")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.7))
-            } else {
-                ForEach(Array(state.sources.enumerated()), id: \.offset) { index, source in
-                    Text("\(index + 1): \(sourcePath(source))")
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-            }
-
-            Spacer().frame(height: 8)
-
-            Text("Total: \(formattedDuration)")
-                .font(.caption)
-                .foregroundColor(.white)
-        }
-        .padding(12)
-        .background(
-            Color.black.opacity(0.6)
-                .cornerRadius(10)
-        )
-    }
-
-    private func sourcePath(_ source: HypnogramSource) -> String {
+    /// Shorten path by replacing home directory with ~/
+    private func shortenedPath(_ source: HypnogramSource) -> String {
         switch source.clip.file.source {
         case .url(let url):
-            return url.path
+            let path = url.path
+            let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
+            if path.hasPrefix(homeDir) {
+                return "~" + path.dropFirst(homeDir.count)
+            }
+            return path
         case .photos(let identifier):
             return "photos:\(identifier)"
         }
