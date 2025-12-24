@@ -279,6 +279,12 @@ struct EffectsEditorView: View {
     /// SwiftUI focus state - tracks which field has keyboard focus
     @FocusState private var focusedField: EffectsEditorField?
 
+    /// Track which hooks in the chain are expanded (by hook index)
+    @State private var expandedHooks: Set<Int> = []
+
+    /// Currently dragged hook index for reordering
+    @State private var draggingHookIndex: Int?
+
     /// Current layer being edited (-1 = global, 0+ = source)
     private var currentLayer: Int {
         state.currentSourceIndex
@@ -623,7 +629,7 @@ struct EffectsEditorView: View {
     private func parametersForDefinition(_ def: EffectDefinition, effectIndex: Int, hookIndex: Int?) -> some View {
         if def.isChained, let hooks = def.hooks {
             // Chained effect: show each child with heading and controls
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array(hooks.enumerated()), id: \.offset) { childIndex, childDef in
                     chainedHookSection(
                         childDef: childDef,
@@ -631,6 +637,19 @@ struct EffectsEditorView: View {
                         totalHooks: hooks.count,
                         effectIndex: effectIndex
                     )
+                    .opacity(draggingHookIndex == childIndex ? 0.5 : 1.0)
+                    .onDrag {
+                        draggingHookIndex = childIndex
+                        return NSItemProvider(object: String(childIndex) as NSString)
+                    }
+                    .onDrop(of: [.text], delegate: HookDropDelegate(
+                        currentIndex: childIndex,
+                        draggingIndex: $draggingHookIndex,
+                        effectIndex: effectIndex,
+                        onReorder: { from, to in
+                            viewModel.reorderHooks(effectIndex: effectIndex, fromIndex: from, toIndex: to)
+                        }
+                    ))
                 }
 
                 // Add effect button
@@ -645,36 +664,32 @@ struct EffectsEditorView: View {
     @ViewBuilder
     private func chainedHookSection(childDef: EffectDefinition, childIndex: Int, totalHooks: Int, effectIndex: Int) -> some View {
         let isEnabled = childDef.params?["_enabled"]?.boolValue ?? true
+        let isExpanded = expandedHooks.contains(childIndex)
 
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 0) {
             // Header with controls
             HStack(spacing: 6) {
-                // Reorder buttons (horizontal, larger tap targets)
-                HStack(spacing: 0) {
-                    Image(systemName: "chevron.up")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(childIndex > 0 ? .white : .white.opacity(0.3))
-                        .frame(width: 28, height: 28)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if childIndex > 0 {
-                                viewModel.reorderHooks(effectIndex: effectIndex, fromIndex: childIndex, toIndex: childIndex - 1)
-                            }
-                        }
+                // Drag handle indicator
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.white.opacity(0.4))
+                    .frame(width: 20)
 
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(childIndex < totalHooks - 1 ? .white : .white.opacity(0.3))
-                        .frame(width: 28, height: 28)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if childIndex < totalHooks - 1 {
-                                viewModel.reorderHooks(effectIndex: effectIndex, fromIndex: childIndex, toIndex: childIndex + 1)
+                // Expand/collapse chevron
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white.opacity(0.7))
+                    .frame(width: 16, height: 16)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            if isExpanded {
+                                expandedHooks.remove(childIndex)
+                            } else {
+                                expandedHooks.insert(childIndex)
                             }
                         }
-                }
-                .background(Color.white.opacity(0.1))
-                .cornerRadius(4)
+                    }
 
                 // Effect name - use formatted type name if no custom name
                 Text(childDef.name ?? formatHookType(childDef.type) ?? "Hook \(childIndex + 1)")
@@ -719,10 +734,11 @@ struct EffectsEditorView: View {
             .background(Color.white.opacity(0.15))
             .cornerRadius(6)
 
-            // Parameters (only if enabled)
-            if isEnabled {
+            // Parameters (only if enabled AND expanded)
+            if isEnabled && isExpanded {
                 parameterFields(for: childDef, effectIndex: effectIndex, hookIndex: childIndex)
-                    .padding(.leading, 8)
+                    .padding(.leading, 28)
+                    .padding(.top, 8)
             }
         }
     }
@@ -1260,3 +1276,31 @@ struct EditableEffectNameHeader: View {
     }
 }
 
+// MARK: - Hook Drag and Drop Delegate
+
+/// Delegate for handling drag and drop reordering of hooks in a chain
+struct HookDropDelegate: DropDelegate {
+    let currentIndex: Int
+    @Binding var draggingIndex: Int?
+    let effectIndex: Int
+    let onReorder: (Int, Int) -> Void
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggingIndex = nil
+        return true
+    }
+
+    func dropEntered(info: DropInfo) {
+        guard let fromIndex = draggingIndex, fromIndex != currentIndex else { return }
+        onReorder(fromIndex, currentIndex)
+        draggingIndex = currentIndex
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func dropExited(info: DropInfo) {
+        // No action needed
+    }
+}
