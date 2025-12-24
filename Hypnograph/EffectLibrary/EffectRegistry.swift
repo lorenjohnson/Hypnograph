@@ -63,13 +63,10 @@ enum EffectRegistry {
         "DatamoshMetalHook": DatamoshMetalHook.self,
 
         // Visual Effects
-        "MirrorKaleidoHook": MirrorKaleidoHook.self,
         "EdgeDecayHook": EdgeDecayHook.self,
         "HueWobbleHook": HueWobbleHook.self,
-        "LuminanceRemovalHook": LuminanceRemovalHook.self,
         "PixelSortHook": PixelSortHook.self,
         "PosterizeDecayHook": PosterizeDecayHook.self,
-        "VHSDecayHook": VHSDecayHook.self,
 
         // Metal Effects
         "PixelateMetalHook": PixelateMetalHook.self,
