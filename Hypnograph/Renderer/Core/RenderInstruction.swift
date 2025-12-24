@@ -43,8 +43,8 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
     let stillImages: [CIImage?]
 
     /// The EffectManager to use for effects processing.
-    /// - Preview: passes state.renderHooks (mutable, changes affect playback)
-    /// - Performance Display: passes performanceDisplay.renderHooks (isolated instance)
+    /// - Preview: passes state.effectManager (mutable, changes affect playback)
+    /// - Performance Display: passes performanceDisplay.effectManager (isolated instance)
     /// - Export: passes a freshly created manager from recipe.copyForExport()
     weak var hookManager: EffectManager?
 

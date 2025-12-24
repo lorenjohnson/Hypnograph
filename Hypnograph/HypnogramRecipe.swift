@@ -19,7 +19,7 @@ struct HypnogramRecipe {
 
     /// Effects applied to the final composed image (after all sources are blended).
     /// Currently the UI only supports one effect, but the model supports a chain.
-    var effects: [RenderHook]
+    var effects: [Effect]
 
     /// Editable effect definition - stores parameter values per-hypnogram.
     /// This is the source of truth for the effects editor UI.
@@ -29,7 +29,7 @@ struct HypnogramRecipe {
     init(
         sources: [HypnogramSource],
         targetDuration: CMTime,
-        effects: [RenderHook] = [],
+        effects: [Effect] = [],
         effectDefinition: EffectDefinition? = nil
     ) {
         self.sources = sources

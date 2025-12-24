@@ -60,8 +60,8 @@ final class PerformanceDisplay: ObservableObject {
     /// Render engine for building compositions
     private let renderEngine = RenderEngine()
 
-    /// This display's own RenderHookManager - independent of preview
-    let renderHooks = RenderHookManager()
+    /// This display's own EffectManager - independent of preview
+    let effectManager = EffectManager()
 
     /// The current recipe being displayed (mutable for live effect changes)
     private var currentRecipe: HypnogramRecipe?
@@ -83,18 +83,18 @@ final class PerformanceDisplay: ObservableObject {
     // MARK: - Init
 
     init() {
-        setupRenderHooks()
+        setupEffectManager()
     }
 
-    private func setupRenderHooks() {
+    private func setupEffectManager() {
         // Wire up recipe provider to return the mutable current recipe
-        renderHooks.recipeProvider = { [weak self] in
+        effectManager.recipeProvider = { [weak self] in
             self?.currentRecipe
         }
 
         // Wire up effect setter to modify the current recipe's global effects
         // HypnogramRecipe is a struct, so we need to get a copy, modify it, and reassign
-        renderHooks.effectsSetter = { [weak self] effects in
+        effectManager.effectsSetter = { [weak self] effects in
             guard let self = self, var recipe = self.currentRecipe else {
                 print("🎬 PerformanceDisplay: effectsSetter - no recipe!")
                 return
@@ -106,7 +106,7 @@ final class PerformanceDisplay: ObservableObject {
         }
 
         // Wire up source effect setter to modify per-source effects
-        renderHooks.sourceEffectSetter = { [weak self] sourceIndex, effects in
+        effectManager.sourceEffectSetter = { [weak self] sourceIndex, effects in
             guard let self = self,
                   var recipe = self.currentRecipe,
                   sourceIndex < recipe.sources.count else {
@@ -120,14 +120,14 @@ final class PerformanceDisplay: ObservableObject {
         }
 
         // Wire up global effect definition setter
-        renderHooks.globalEffectDefinitionSetter = { [weak self] definition in
+        effectManager.globalEffectDefinitionSetter = { [weak self] definition in
             guard let self = self, var recipe = self.currentRecipe else { return }
             recipe.effectDefinition = definition
             self.currentRecipe = recipe
         }
 
         // Wire up source effect definition setter
-        renderHooks.sourceEffectDefinitionSetter = { [weak self] sourceIndex, definition in
+        effectManager.sourceEffectDefinitionSetter = { [weak self] sourceIndex, definition in
             guard let self = self,
                   var recipe = self.currentRecipe,
                   sourceIndex < recipe.sources.count else { return }
@@ -397,7 +397,7 @@ final class PerformanceDisplay: ObservableObject {
         guard let recipe = currentRecipe else { return }
         let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: outputResolution.maxDimension)
 
-        // Build composition using PerformanceDisplay's own RenderHookManager
+        // Build composition using PerformanceDisplay's own EffectManager
         // This makes effects completely independent of the main preview
         let strategy: CompositionBuilder.TimelineStrategy
         switch mode {
@@ -416,7 +416,7 @@ final class PerformanceDisplay: ObservableObject {
             recipe: recipe,
             strategy: strategy,
             config: config,
-            hookManager: renderHooks  // Use PerformanceDisplay's own RenderHookManager
+            hookManager: effectManager  // Use PerformanceDisplay's own EffectManager
         )
 
         guard !Task.isCancelled else {

@@ -215,7 +215,7 @@ final class GameControllerManager {
     private func navigateEffectsEditor(delta: Int) {
         guard let vm = effectsViewModel, let state = state else { return }
 
-        let globalEffectName = state.renderHooks.globalEffectName
+        let globalEffectName = state.effectManager.globalEffectName
 
         switch vm.activeSection {
         case .effectList:
@@ -229,9 +229,9 @@ final class GameControllerManager {
             }
 
             if newIndex == -1 {
-                state.renderHooks.setGlobalEffect(nil)
+                state.effectManager.setGlobalEffect(nil)
             } else if newIndex >= 0 && newIndex < EffectChainLibrary.all.count {
-                state.renderHooks.setGlobalEffect(EffectChainLibrary.all[newIndex])
+                state.effectManager.setGlobalEffect(EffectChainLibrary.all[newIndex])
             }
 
         default:
@@ -343,7 +343,7 @@ final class GameControllerManager {
                 self.joystickPanelSwitchTriggered = true
             } else if xValue > threshold && !self.joystickPanelSwitchTriggered {
                 // Joystick pushed right - switch to parameters panel (if effect selected)
-                if vm.selectedDefinition(for: self.state?.renderHooks.globalEffectName) != nil {
+                if vm.selectedDefinition(for: self.state?.effectManager.globalEffectName) != nil {
                     vm.activeSection = .parameterList
                 }
                 self.joystickPanelSwitchTriggered = true

@@ -16,7 +16,7 @@ struct ContentView: View {
 
     private var soloIndicatorText: String? {
         // Only show during flash solo (when navigating sources in montage mode)
-        guard state.renderHooks.flashSoloIndex != nil, state.currentModuleType == .dream, !state.sources.isEmpty else {
+        guard state.effectManager.flashSoloIndex != nil, state.currentModuleType == .dream, !state.sources.isEmpty else {
             return nil
         }
         return "\(state.currentSourceIndex + 1)/\(state.sources.count)"

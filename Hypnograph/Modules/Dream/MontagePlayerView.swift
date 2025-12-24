@@ -14,7 +14,7 @@ struct MontagePlayerView: NSViewRepresentable {
     let isPaused: Bool
     let effectsChangeCounter: Int
     let playRate: Float = 0.8
-    let renderHooks: RenderHookManager
+    let effectManager: EffectManager
 
     class Coordinator {
         var player: AVPlayer?
@@ -85,7 +85,7 @@ struct MontagePlayerView: NSViewRepresentable {
                     recipe: recipe,
                     strategy: strategy,
                     config: config,
-                    hookManager: renderHooks
+                    hookManager: effectManager
                 )
 
                 guard !Task.isCancelled else {
@@ -199,7 +199,7 @@ struct MontagePlayerView: NSViewRepresentable {
     // MARK: - Helpers
 
     private func compositionIdentity(for recipe: HypnogramRecipe) -> String {
-        // Blend modes are dynamic (managed by RenderHookManager), but transforms are baked
+        // Blend modes are dynamic (managed by EffectManager), but transforms are baked
         let pairs: [String] = recipe.sources.enumerated().map { index, source in
             let name = source.clip.file.displayName
             let start = source.clip.startTime.seconds

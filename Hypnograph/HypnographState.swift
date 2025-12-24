@@ -109,7 +109,7 @@ final class HypnographState: ObservableObject {
     @Published var outputResolution: OutputResolution
 
     // Render hooks
-    let renderHooks = RenderHookManager()
+    let effectManager = EffectManager()
 
     // Transition manager for smooth crossfades between hypnograms
     let transitionManager = TransitionManager()
@@ -117,10 +117,10 @@ final class HypnographState: ObservableObject {
     // Performance display for clean output to external monitor
     let performanceDisplay = PerformanceDisplay()
 
-    /// Returns the active RenderHookManager based on performance mode
+    /// Returns the active EffectManager based on performance mode
     /// In live mode, effects go to the performance display; in edit mode, to the local preview
-    var activeRenderHooks: RenderHookManager {
-        isLiveMode ? performanceDisplay.renderHooks : renderHooks
+    var activeEffectManager: EffectManager {
+        isLiveMode ? performanceDisplay.effectManager : effectManager
     }
 
     // Watch timer - generates new hypnograms at intervals when watch mode is enabled
@@ -183,22 +183,22 @@ final class HypnographState: ObservableObject {
         }
 
         // Set up callback to increment counter when effects or blend modes change
-        renderHooks.onEffectChanged = { [weak self] in
+        effectManager.onEffectChanged = { [weak self] in
             self?.effectsChangeCounter += 1
         }
 
         // Recipe provider - just returns the recipe directly
-        renderHooks.recipeProvider = { [weak self] in
+        effectManager.recipeProvider = { [weak self] in
             self?.recipe
         }
 
         // Recipe effects setter
-        renderHooks.effectsSetter = { [weak self] effects in
+        effectManager.effectsSetter = { [weak self] effects in
             self?.recipe.effects = effects
         }
 
         // Per-source effect setter
-        renderHooks.sourceEffectSetter = { [weak self] sourceIndex, effects in
+        effectManager.sourceEffectSetter = { [weak self] sourceIndex, effects in
             guard let self = self,
                   sourceIndex >= 0,
                   sourceIndex < self.recipe.sources.count else { return }
@@ -206,7 +206,7 @@ final class HypnographState: ObservableObject {
         }
 
         // Blend mode setter
-        renderHooks.blendModeSetter = { [weak self] sourceIndex, mode in
+        effectManager.blendModeSetter = { [weak self] sourceIndex, mode in
             guard let self = self,
                   sourceIndex >= 0,
                   sourceIndex < self.recipe.sources.count else { return }
@@ -214,12 +214,12 @@ final class HypnographState: ObservableObject {
         }
 
         // Global effect definition setter
-        renderHooks.globalEffectDefinitionSetter = { [weak self] definition in
+        effectManager.globalEffectDefinitionSetter = { [weak self] definition in
             self?.recipe.effectDefinition = definition
         }
 
         // Per-source effect definition setter
-        renderHooks.sourceEffectDefinitionSetter = { [weak self] sourceIndex, definition in
+        effectManager.sourceEffectDefinitionSetter = { [weak self] sourceIndex, definition in
             guard let self = self,
                   sourceIndex >= 0,
                   sourceIndex < self.recipe.sources.count else { return }
@@ -227,19 +227,19 @@ final class HypnographState: ObservableObject {
         }
 
         // Subscribe to effect config reloads - reapply active effects with fresh instances
-        // Uses activeRenderHooks which automatically routes to the right destination based on mode
+        // Uses activeEffectManager which automatically routes to the right destination based on mode
         EffectChainLibrary.onReload = { [weak self] in
-            self?.activeRenderHooks.reapplyActiveEffects()
+            self?.activeEffectManager.reapplyActiveEffects()
         }
 
         // Subscribe to live effect parameter updates - apply directly without reload
-        // Uses activeRenderHooks which automatically routes to the right destination based on mode
+        // Uses activeEffectManager which automatically routes to the right destination based on mode
         EffectConfigLoader.onEffectUpdated = { [weak self] effectIndex, updatedHook in
             guard let self = self else { return }
             // Update the EffectChainLibrary.all cache so the library stays in sync
             EffectChainLibrary.updateCachedEffect(at: effectIndex, with: updatedHook)
             // Reapply to whichever hooks are currently active (edit or live)
-            self.activeRenderHooks.reapplyActiveEffects()
+            self.activeEffectManager.reapplyActiveEffects()
         }
 
         // Load custom photo selection from disk (must be after all properties initialized)
@@ -253,7 +253,7 @@ final class HypnographState: ObservableObject {
         set { recipe.sources = newValue }
     }
 
-    var effects: [RenderHook] {
+    var effects: [Effect] {
         get { recipe.effects }
         set { recipe.effects = newValue }
     }
@@ -411,7 +411,7 @@ final class HypnographState: ObservableObject {
     /// Preserves the current global effect by default.
     func resetForNextHypnogram(preserveGlobalEffect: Bool = true) {
         // Clear frame buffer to prevent ghost frames from previous montage
-        renderHooks.clearFrameBuffer()
+        effectManager.clearFrameBuffer()
 
         // Preserve global effect before clearing
         let savedEffects = preserveGlobalEffect ? effects : []
@@ -457,8 +457,8 @@ final class HypnographState: ObservableObject {
                 sources[i].effects = []
             }
         }
-        renderHooks.invalidateBlendAnalysis()
-        renderHooks.onEffectChanged?()
+        effectManager.invalidateBlendAnalysis()
+        effectManager.onEffectChanged?()
     }
 
     /// Reset the watch timer when user interacts with the app
@@ -851,7 +851,7 @@ final class HypnographState: ObservableObject {
         aspectRatio = ratio
         settings.aspectRatio = ratio
         saveSettingsToDisk()
-        renderHooks.onEffectChanged?()
+        effectManager.onEffectChanged?()
     }
 
     /// Set the output resolution and save to settings (applies immediately)
@@ -859,7 +859,7 @@ final class HypnographState: ObservableObject {
         outputResolution = resolution
         settings.outputResolution = resolution
         saveSettingsToDisk()
-        renderHooks.onEffectChanged?()
+        effectManager.onEffectChanged?()
     }
 
     /// Save settings to disk (public - call after modifying state.settings)
