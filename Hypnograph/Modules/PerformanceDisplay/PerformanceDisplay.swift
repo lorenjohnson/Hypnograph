@@ -119,19 +119,19 @@ final class PerformanceDisplay: ObservableObject {
             self.currentRecipe = recipe
         }
 
-        // Wire up global effect definition setter
-        effectManager.globalEffectDefinitionSetter = { [weak self] definition in
+        // Wire up global effect chain setter
+        effectManager.globalEffectChainSetter = { [weak self] chain in
             guard let self = self, var recipe = self.currentRecipe else { return }
-            recipe.effectDefinition = definition
+            recipe.effectChain = chain
             self.currentRecipe = recipe
         }
 
-        // Wire up source effect definition setter
-        effectManager.sourceEffectDefinitionSetter = { [weak self] sourceIndex, definition in
+        // Wire up source effect chain setter
+        effectManager.sourceEffectChainSetter = { [weak self] (sourceIndex: Int, chain: EffectChain?) in
             guard let self = self,
                   var recipe = self.currentRecipe,
                   sourceIndex < recipe.sources.count else { return }
-            recipe.sources[sourceIndex].effectDefinition = definition
+            recipe.sources[sourceIndex].effectChain = chain
             self.currentRecipe = recipe
         }
     }

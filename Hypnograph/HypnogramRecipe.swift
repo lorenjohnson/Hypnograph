@@ -17,25 +17,32 @@ struct HypnogramRecipe {
     var sources: [HypnogramSource]
     var targetDuration: CMTime
 
-    /// Effects applied to the final composed image (after all sources are blended).
-    /// Currently the UI only supports one effect, but the model supports a chain.
+    /// Instantiated effects applied to the final composed image (after all sources are blended).
+    /// These are created from `effectChain` and used at render time.
     var effects: [Effect]
 
-    /// Editable effect definition - stores parameter values per-hypnogram.
-    /// This is the source of truth for the effects editor UI.
-    /// When modified, `effects` should be re-instantiated from this definition.
-    var effectDefinition: EffectDefinition?
+    /// The global effect chain definition - source of truth for editing.
+    /// Contains 0-n hooks that are instantiated into `effects` for rendering.
+    var effectChain: EffectChain?
 
     init(
         sources: [HypnogramSource],
         targetDuration: CMTime,
         effects: [Effect] = [],
-        effectDefinition: EffectDefinition? = nil
+        effectChain: EffectChain? = nil
     ) {
         self.sources = sources
         self.targetDuration = targetDuration
         self.effects = effects
-        self.effectDefinition = effectDefinition
+        self.effectChain = effectChain
+    }
+
+    // MARK: - Deprecated compatibility
+
+    /// @deprecated Use effectChain instead
+    var effectDefinition: EffectChain? {
+        get { effectChain }
+        set { effectChain = newValue }
     }
 
     /// Create a deep copy with fresh effect instances for export.
@@ -54,7 +61,8 @@ struct HypnogramRecipe {
         return HypnogramRecipe(
             sources: copiedSources,
             targetDuration: targetDuration,
-            effects: copiedEffects
+            effects: copiedEffects,
+            effectChain: effectChain
         )
     }
 }

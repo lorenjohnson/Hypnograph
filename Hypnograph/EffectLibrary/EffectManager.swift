@@ -72,14 +72,14 @@ final class EffectManager {
     /// Closure to set global effects on the recipe
     var effectsSetter: (([Effect]) -> Void)?
 
-    /// Closure to set global effect definition on the recipe
-    var globalEffectDefinitionSetter: ((EffectDefinition?) -> Void)?
+    /// Closure to set global effect chain on the recipe
+    var globalEffectChainSetter: ((EffectChain?) -> Void)?
 
     /// Closure to set per-source effects on the recipe
     var sourceEffectSetter: ((Int, [Effect]) -> Void)?
 
-    /// Closure to set per-source effect definition on the recipe
-    var sourceEffectDefinitionSetter: ((Int, EffectDefinition?) -> Void)?
+    /// Closure to set per-source effect chain on the recipe
+    var sourceEffectChainSetter: ((Int, EffectChain?) -> Void)?
 
     /// Closure to set blend mode for a source
     var blendModeSetter: ((Int, String) -> Void)?
@@ -178,9 +178,9 @@ final class EffectManager {
         recipeProvider?()?.effects.first?.name ?? "None"
     }
 
-    /// Get the current global effect definition (for editing)
-    var globalEffectDefinition: EffectDefinition? {
-        recipeProvider?()?.effectDefinition
+    /// Get the current global effect chain (for editing)
+    var globalEffectChain: EffectChain? {
+        recipeProvider?()?.effectChain
     }
 
     /// Set global effect from an Effect instance
@@ -193,10 +193,10 @@ final class EffectManager {
         onEffectChanged?()
     }
 
-    /// Set global effect from a definition - stores definition and instantiates effect
-    func setGlobalEffect(from definition: EffectDefinition?) {
-        globalEffectDefinitionSetter?(definition)
-        if let def = definition, let effect = EffectConfigLoader.instantiateEffect(def) {
+    /// Set global effect from an effect chain - stores chain and instantiates effects
+    func setGlobalEffect(from chain: EffectChain?) {
+        globalEffectChainSetter?(chain)
+        if let chain = chain, let effect = EffectConfigLoader.instantiateChain(chain) {
             effectsSetter?([effect])
         } else {
             effectsSetter?([])
@@ -213,32 +213,29 @@ final class EffectManager {
     ///   - key: parameter key
     ///   - value: new parameter value
     func updateHookParameter(for layer: Int, hookIndex: Int, key: String, value: AnyCodableValue) {
-        guard var definition = effectDefinition(for: layer) else { return }
-        guard var hooks = definition.hooks, hookIndex >= 0, hookIndex < hooks.count else { return }
+        guard var chain = effectChain(for: layer) else { return }
+        guard hookIndex >= 0, hookIndex < chain.hooks.count else { return }
 
-        var hook = hooks[hookIndex]
-        var params = hook.params ?? [:]
+        var params = chain.hooks[hookIndex].params ?? [:]
         params[key] = value
-        hook = EffectDefinition(name: hook.name, type: hook.type, params: params, hooks: hook.hooks)
-        hooks[hookIndex] = hook
-        definition = EffectDefinition(name: definition.name, type: definition.type, params: definition.params, hooks: hooks)
+        chain.hooks[hookIndex].params = params
 
-        setEffect(from: definition, for: layer)
+        setEffect(from: chain, for: layer)
     }
 
-    /// Update a top-level effect's parameter in the recipe's effect definition
+    /// Update a chain-level parameter (future: chain params like "strength")
     /// - Parameters:
     ///   - layer: -1 for global, 0+ for source index
     ///   - key: parameter key
     ///   - value: new parameter value
-    func updateEffectParameter(for layer: Int, key: String, value: AnyCodableValue) {
-        guard var definition = effectDefinition(for: layer) else { return }
+    func updateChainParameter(for layer: Int, key: String, value: AnyCodableValue) {
+        guard var chain = effectChain(for: layer) else { return }
 
-        var params = definition.params ?? [:]
+        var params = chain.params ?? [:]
         params[key] = value
-        definition = EffectDefinition(name: definition.name, type: definition.type, params: params, hooks: definition.hooks)
+        chain.params = params
 
-        setEffect(from: definition, for: layer)
+        setEffect(from: chain, for: layer)
     }
 
     /// Add a hook to the recipe's effect chain for a layer
@@ -246,15 +243,13 @@ final class EffectManager {
     ///   - layer: -1 for global, 0+ for source index
     ///   - hookType: the type of hook to add (e.g. "DatamoshMetalHook")
     func addHookToChain(for layer: Int, hookType: String) {
-        guard var definition = effectDefinition(for: layer) else { return }
+        guard var chain = effectChain(for: layer) else { return }
 
-        var hooks = definition.hooks ?? []
         let defaults = EffectRegistry.defaults(for: hookType)
-        let newHook = EffectDefinition(name: nil, type: hookType, params: defaults, hooks: nil)
-        hooks.append(newHook)
-        definition = EffectDefinition(name: definition.name, type: definition.type, params: definition.params, hooks: hooks)
+        let newHook = HookDefinition(type: hookType, params: defaults)
+        chain.hooks.append(newHook)
 
-        setEffect(from: definition, for: layer)
+        setEffect(from: chain, for: layer)
     }
 
     /// Remove a hook from the recipe's effect chain for a layer
@@ -262,25 +257,22 @@ final class EffectManager {
     ///   - layer: -1 for global, 0+ for source index
     ///   - hookIndex: index of the hook to remove
     func removeHookFromChain(for layer: Int, hookIndex: Int) {
-        guard var definition = effectDefinition(for: layer) else { return }
-        guard var hooks = definition.hooks, hookIndex >= 0, hookIndex < hooks.count else { return }
+        guard var chain = effectChain(for: layer) else { return }
+        guard hookIndex >= 0, hookIndex < chain.hooks.count else { return }
 
-        hooks.remove(at: hookIndex)
-        definition = EffectDefinition(name: definition.name, type: definition.type, params: definition.params, hooks: hooks)
+        chain.hooks.remove(at: hookIndex)
 
-        setEffect(from: definition, for: layer)
+        setEffect(from: chain, for: layer)
     }
 
-    /// Update the effect name in the recipe's definition
+    /// Update the chain name in the recipe
     /// - Parameters:
     ///   - layer: -1 for global, 0+ for source index
-    ///   - name: new name for the effect
-    func updateEffectName(for layer: Int, name: String) {
-        guard var definition = effectDefinition(for: layer) else { return }
-
-        definition = EffectDefinition(name: name, type: definition.type, params: definition.params, hooks: definition.hooks)
-
-        setEffect(from: definition, for: layer)
+    ///   - name: new name for the chain
+    func updateChainName(for layer: Int, name: String) {
+        guard var chain = effectChain(for: layer) else { return }
+        chain.name = name
+        setEffect(from: chain, for: layer)
     }
 
     /// Reorder hooks in the recipe's effect chain for a layer
@@ -289,15 +281,14 @@ final class EffectManager {
     ///   - fromIndex: source index
     ///   - toIndex: destination index
     func reorderHooksInChain(for layer: Int, fromIndex: Int, toIndex: Int) {
-        guard var definition = effectDefinition(for: layer) else { return }
-        guard var hooks = definition.hooks else { return }
-        guard fromIndex >= 0, fromIndex < hooks.count, toIndex >= 0, toIndex < hooks.count else { return }
+        guard var chain = effectChain(for: layer) else { return }
+        guard fromIndex >= 0, fromIndex < chain.hooks.count else { return }
+        guard toIndex >= 0, toIndex < chain.hooks.count else { return }
 
-        let hook = hooks.remove(at: fromIndex)
-        hooks.insert(hook, at: toIndex)
-        definition = EffectDefinition(name: definition.name, type: definition.type, params: definition.params, hooks: hooks)
+        let hook = chain.hooks.remove(at: fromIndex)
+        chain.hooks.insert(hook, at: toIndex)
 
-        setEffect(from: definition, for: layer)
+        setEffect(from: chain, for: layer)
     }
 
     /// Reset a hook's parameters to defaults in the recipe
@@ -305,23 +296,20 @@ final class EffectManager {
     ///   - layer: -1 for global, 0+ for source index
     ///   - hookIndex: index of the hook to reset
     func resetHookToDefaults(for layer: Int, hookIndex: Int) {
-        guard var definition = effectDefinition(for: layer) else { return }
-        guard var hooks = definition.hooks, hookIndex >= 0, hookIndex < hooks.count else { return }
+        guard var chain = effectChain(for: layer) else { return }
+        guard hookIndex >= 0, hookIndex < chain.hooks.count else { return }
 
-        var hook = hooks[hookIndex]
-        guard let hookType = hook.resolvedType else { return }
+        let hookType = chain.hooks[hookIndex].type
 
         // Get defaults from registry, preserve _enabled state
         var defaults = EffectRegistry.defaults(for: hookType)
-        if let wasEnabled = hook.params?["_enabled"] {
+        if let wasEnabled = chain.hooks[hookIndex].params?["_enabled"] {
             defaults["_enabled"] = wasEnabled
         }
 
-        hook = EffectDefinition(name: hook.name, type: hook.type, params: defaults, hooks: hook.hooks)
-        hooks[hookIndex] = hook
-        definition = EffectDefinition(name: definition.name, type: definition.type, params: definition.params, hooks: hooks)
+        chain.hooks[hookIndex].params = defaults
 
-        setEffect(from: definition, for: layer)
+        setEffect(from: chain, for: layer)
     }
 
     func cycleGlobalEffect() {
@@ -386,25 +374,25 @@ final class EffectManager {
         onEffectChanged?()
     }
 
-    /// Set source effect from a definition - stores definition and instantiates hook
-    func setSourceEffect(from definition: EffectDefinition?, for sourceIndex: Int) {
-        sourceEffectDefinitionSetter?(sourceIndex, definition)
-        if let def = definition, let hook = EffectConfigLoader.instantiateEffect(def) {
-            sourceEffectSetter?(sourceIndex, [hook])
+    /// Set source effect from a chain - stores chain and instantiates effects
+    func setSourceEffect(from chain: EffectChain?, for sourceIndex: Int) {
+        sourceEffectChainSetter?(sourceIndex, chain)
+        if let chain = chain, let effect = EffectConfigLoader.instantiateChain(chain) {
+            sourceEffectSetter?(sourceIndex, [effect])
         } else {
             sourceEffectSetter?(sourceIndex, [])
         }
         onEffectChanged?()
     }
 
-    /// Get a source's effect definition (for editing)
-    func sourceEffectDefinition(for sourceIndex: Int) -> EffectDefinition? {
+    /// Get a source's effect chain (for editing)
+    func sourceEffectChain(for sourceIndex: Int) -> EffectChain? {
         guard let recipe = recipeProvider?(),
               sourceIndex >= 0,
               sourceIndex < recipe.sources.count else {
             return nil
         }
-        return recipe.sources[sourceIndex].effectDefinition
+        return recipe.sources[sourceIndex].effectChain
     }
 
     func cycleSourceEffect(for sourceIndex: Int) {
@@ -424,12 +412,12 @@ final class EffectManager {
         return sourceEffectName(for: layer)
     }
 
-    /// Get effect definition for a layer (-1 = global, 0+ = source index)
-    func effectDefinition(for layer: Int) -> EffectDefinition? {
+    /// Get effect chain for a layer (-1 = global, 0+ = source index)
+    func effectChain(for layer: Int) -> EffectChain? {
         if layer == -1 {
-            return globalEffectDefinition
+            return globalEffectChain
         }
-        return sourceEffectDefinition(for: layer)
+        return sourceEffectChain(for: layer)
     }
 
     /// Set effect for a layer (-1 = global, 0+ = source index)
@@ -441,13 +429,13 @@ final class EffectManager {
         }
     }
 
-    /// Set effect from a definition for a layer (-1 = global, 0+ = source index)
+    /// Set effect from a chain for a layer (-1 = global, 0+ = source index)
     /// This is the preferred method for selecting effects from the library
-    func setEffect(from definition: EffectDefinition?, for layer: Int) {
+    func setEffect(from chain: EffectChain?, for layer: Int) {
         if layer == -1 {
-            setGlobalEffect(from: definition)
+            setGlobalEffect(from: chain)
         } else {
-            setSourceEffect(from: definition, for: layer)
+            setSourceEffect(from: chain, for: layer)
         }
     }
 
