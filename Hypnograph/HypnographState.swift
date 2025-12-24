@@ -214,13 +214,19 @@ final class HypnographState: ObservableObject {
         }
 
         // Subscribe to effect config reloads - reapply active effects with fresh instances
+        // Uses activeRenderHooks which automatically routes to the right destination based on mode
         Effect.onReload = { [weak self] in
-            self?.renderHooks.reapplyActiveEffects()
+            self?.activeRenderHooks.reapplyActiveEffects()
         }
 
         // Subscribe to live effect parameter updates - apply directly without reload
+        // Uses activeRenderHooks which automatically routes to the right destination based on mode
         EffectConfigLoader.onEffectUpdated = { [weak self] effectIndex, updatedHook in
-            self?.applyLiveEffectUpdate(effectIndex: effectIndex, hook: updatedHook)
+            guard let self = self else { return }
+            // Update the Effect.all cache so the library stays in sync
+            Effect.updateCachedEffect(at: effectIndex, with: updatedHook)
+            // Reapply to whichever hooks are currently active (edit or live)
+            self.activeRenderHooks.reapplyActiveEffects()
         }
 
         // Load custom photo selection from disk (must be after all properties initialized)
@@ -340,34 +346,6 @@ final class HypnographState: ObservableObject {
 
     func deleteCurrentSource() {
         deleteSource(at: currentSourceIndex)
-    }
-
-    // MARK: - Live Effect Updates
-
-    /// Apply a live effect update directly without file reload
-    func applyLiveEffectUpdate(effectIndex: Int, hook: RenderHook) {
-        // Update the Effect.all cache so the library stays in sync
-        Effect.updateCachedEffect(at: effectIndex, with: hook)
-
-        // Get the effect name from the library
-        let allEffects = Effect.all
-        guard effectIndex >= 0 && effectIndex < allEffects.count else { return }
-        let effectName = allEffects[effectIndex].name
-
-        // Check if this effect is the current global effect
-        if let currentEffect = recipe.effects.first, currentEffect.name == effectName {
-            // Replace the global effect with the updated one
-            recipe.effects = [hook]
-            effectsChangeCounter += 1
-        }
-
-        // Check if this effect is applied to any sources
-        for i in 0..<recipe.sources.count {
-            if let sourceEffect = recipe.sources[i].effects.first, sourceEffect.name == effectName {
-                recipe.sources[i].effects = [hook]
-                effectsChangeCounter += 1
-            }
-        }
     }
 
     // MARK: - Priming

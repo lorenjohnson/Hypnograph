@@ -331,11 +331,15 @@ struct EffectsEditorView: View {
         // Use activeRenderHooks so effects go to performance display in live mode
         let layer = currentLayer
         let hooks = state.activeRenderHooks
+        let isLive = state.isLiveMode
+        print("🎨 EffectsEditor: selectEffect(\(index)) for layer \(layer), isLive=\(isLive)")
         DispatchQueue.main.async {
             if index == -1 {
                 hooks.setEffect(nil, for: layer)
             } else if index >= 0 && index < Effect.all.count {
-                hooks.setEffect(Effect.all[index], for: layer)
+                let effect = Effect.all[index]
+                print("🎨 EffectsEditor: Setting effect '\(effect.name)' for layer \(layer)")
+                hooks.setEffect(effect, for: layer)
             }
         }
 
