@@ -1,14 +1,17 @@
-- I need a place to set max number of sources and total clip length
-- I need a place to set the % play speed which currently defaults to 80%
+- Put the HUD on "I" now instead of Cmd-I to match "E" and "P"
 
 - I sometimes (usually) can't update the text fields in the efects editor. Keyboard control stays elsewhere I think. I would like keyboard control to remain on modal when it is open except for E which will hide the effects Modal when not in a text entry box?
 
 - Respond to mic input or Midi Clock or OSC input from Live/etc?
 
-- It would be nice to be able to type things and send them directly to the text overlay live! 
+- I need a place to set max number of sources and total clip length
+- I need a place to set the % play speed which currently defaults to 80%
 
-- Performance Mode has a "Video Mixer" that specifies the transition between hypnograms. Right now it's a simple crossfade but we should make it configurable with 2-3 options. We would add these 2-4 options as push buttons in the header of the Preview panel in the main window.
+- It would be nice to be able to type things and send them directly to the text overlay live! 
 
 - I would like when I save a Hypnogram that the JSON serialization of the Recipe also saves somewhere (named with a date/time stamp I guess). I would expect any current code we have for serializing is pretty out of date with the current recipe format so that needs throught through and caught-up. I would also like a Open option in the file menu for loading back a Hypnogram recipe (a .hypnogram file which will be json with comments)
 
 - Let's add the timeline editor for sources. Pretty much a basic timeline editor with the ablity to specify the Basic effects properties for each layer including Blend Mode.
+
+- Performance Mode has a "Video Mixer" that specifies the transition between hypnograms. Right now it's a simple crossfade but we should make it configurable with 2-3 options. We would add these 2-4 options as push buttons in the header of the Preview panel in the main window.
+
