@@ -455,11 +455,9 @@ struct EffectsEditorView: View {
                 state.settings.effectsListCollapsed = false
                 state.saveSettings()
             }
-            // Set initial focus to effect list
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                focusedField = .effectList
-                viewModel.activeSection = .effectList
-            }
+            // Set initial focus to effect list immediately
+            focusedField = .effectList
+            viewModel.activeSection = .effectList
         }
         .onChange(of: focusedField) { _, newField in
             // Sync active section when focus changes
@@ -473,8 +471,9 @@ struct EffectsEditorView: View {
 
     private func handleUpDown(delta: Int) {
         switch focusedField {
-        case .effectList:
+        case .effectList, .none:
             // Move effect selection up/down with wrap-around
+            // Also handle nil focus (initial state before focus is explicitly set)
             let defs = viewModel.effectDefinitions
             let currentIndex = selectedEffectIndex  // -1 = None, 0+ = effects
             var newIndex = currentIndex + delta
@@ -491,6 +490,12 @@ struct EffectsEditorView: View {
 
             // Select new effect with immediate UI feedback
             selectEffect(at: newIndex)
+
+            // Ensure focus is set to effect list if it wasn't already
+            if focusedField == nil {
+                focusedField = .effectList
+                viewModel.activeSection = .effectList
+            }
 
         default:
             // In parameters or text fields, let native focus handle navigation
