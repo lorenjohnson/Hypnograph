@@ -76,14 +76,6 @@
           "type" : "FrameDifferenceHook"
         },
         {
-          "name" : "MirrorKaleido",
-          "params" : {
-            "_enabled" : false,
-            "intensity" : 0
-          },
-          "type" : "MirrorKaleidoHook"
-        },
-        {
           "name" : "ColorEcho",
           "params" : {
             "_enabled" : false,
