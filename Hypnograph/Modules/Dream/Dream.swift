@@ -194,10 +194,10 @@ final class Dream: ObservableObject {
 
         // Keyboard hints
         items.append(.text("Shortcuts", order: 40, font: .subheadline))
-        items.append(.text("R = Rotate | ⇧N = New clip | M = Blend", order: 41))
+        items.append(.text("R = Rotate | . = New clip | M = Blend", order: 41))
         items.append(.text("E = Effects | 0 = Global | 1-9 = Source", order: 42))
         items.append(.text("←/→ = Navigate | C = Clear | ⌃⇧C = Clear all", order: 43))
-        items.append(.text("N = New | S = Snapshot | ⌘S = Save", order: 44))
+        items.append(.text("N = New | ⇧N = Add source | S = Snapshot", order: 44))
         items.append(.text("` = Toggle Montage/Sequence", order: 45))
         items.append(.text("⇧F/X/D = Favorite/Exclude/Delete", order: 46))
 
@@ -228,7 +228,7 @@ final class Dream: ObservableObject {
         Button("Add Source") { [self] in
             addSource()
         }
-        .keyboardShortcut(".", modifiers: [])
+        .keyboardShortcut("n", modifiers: [.shift])
 
         // Only use arrow shortcuts when effects editor is closed (otherwise they adjust params)
         if !state.isEffectsEditorVisible {
@@ -334,7 +334,7 @@ final class Dream: ObservableObject {
         Button("New Random Clip") { [self] in
             newRandomClip()
         }
-        .keyboardShortcut("n", modifiers: [.shift])
+        .keyboardShortcut(".", modifiers: [])
 
         Divider()
 
