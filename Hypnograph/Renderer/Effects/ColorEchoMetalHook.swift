@@ -55,7 +55,7 @@ final class ColorEchoMetalHook: RenderHook {
 
     // MARK: - Init
 
-    init(channelOffset: Int = 4, intensity: Float = 1.0, name: String? = nil) {
+    init(channelOffset: Int, intensity: Float, name: String? = nil) {
         self.channelOffset = max(1, min(30, channelOffset))
         self.intensity = max(0.5, min(1.0, intensity))
         self.customName = name
@@ -73,9 +73,8 @@ final class ColorEchoMetalHook: RenderHook {
     }
 
     required convenience init?(params: [String: AnyCodableValue]?) {
-        let channelOffset = params?["channelOffset"]?.intValue ?? 4
-        let intensity = params?["intensity"]?.floatValue ?? 1.0
-        self.init(channelOffset: channelOffset, intensity: intensity)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(channelOffset: p.int("channelOffset"), intensity: p.float("intensity"))
     }
 
     private func loadShader() {

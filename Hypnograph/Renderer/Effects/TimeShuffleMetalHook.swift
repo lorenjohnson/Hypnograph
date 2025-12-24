@@ -60,7 +60,7 @@ final class TimeShuffleMetalHook: RenderHook {
 
     // MARK: - Init
 
-    init(numRegions: Int = 4, depth: Int = 60, shuffleRate: Float = 0.05) {
+    init(numRegions: Int, depth: Int, shuffleRate: Float) {
         self.numRegions = max(2, min(8, numRegions))
         self.depth = max(20, min(200, depth))
         self.shuffleRate = max(0, min(0.3, shuffleRate))
@@ -78,10 +78,8 @@ final class TimeShuffleMetalHook: RenderHook {
     }
 
     required convenience init?(params: [String: AnyCodableValue]?) {
-        let numRegions = params?["numRegions"]?.intValue ?? 4
-        let depth = params?["depth"]?.intValue ?? 60
-        let shuffleRate = params?["shuffleRate"]?.floatValue ?? 0.05
-        self.init(numRegions: numRegions, depth: depth, shuffleRate: shuffleRate)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(numRegions: p.int("numRegions"), depth: p.int("depth"), shuffleRate: p.float("shuffleRate"))
     }
 
     private func loadShader() {

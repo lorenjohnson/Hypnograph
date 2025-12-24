@@ -107,10 +107,9 @@ final class TextOverlayHook: RenderHook {
 
     // MARK: - Init
 
-    init(fontSize: Float = 32.0, fontSizeVariation: Float = 0.3, opacity: Float = 0.8,
-         maxTextCount: Int = 1, changeIntervalFrames: Int = 90, durationMultiplier: Float = 1.0,
-         fontName: String = "Menlo", textColor: String = "#FFFFFF", strokeWidth: Float = 2.0,
-         antialiasing: Bool = true, randomSeed: UInt64? = nil) {
+    init(fontSize: Float, fontSizeVariation: Float, opacity: Float, maxTextCount: Int,
+         changeIntervalFrames: Int, durationMultiplier: Float, fontName: String, textColor: String,
+         strokeWidth: Float, antialiasing: Bool, randomSeed: UInt64? = nil) {
         self.fontSize = fontSize
         self.fontSizeVariation = fontSizeVariation
         self.opacity = opacity
@@ -132,21 +131,13 @@ final class TextOverlayHook: RenderHook {
     }
 
     required convenience init?(params: [String: AnyCodableValue]?) {
-        let fontSize = params?["fontSize"]?.floatValue ?? 32.0
-        let fontSizeVariation = params?["fontSizeVariation"]?.floatValue ?? 0.3
-        let opacity = params?["opacity"]?.floatValue ?? 0.8
-        let maxTextCount = params?["maxTextCount"]?.intValue ?? 1
-        let changeIntervalFrames = params?["changeIntervalFrames"]?.intValue ?? 90
-        let durationMultiplier = params?["durationMultiplier"]?.floatValue ?? 1.0
-        let fontName = params?["fontName"]?.stringValue ?? "Menlo"
-        let textColor = params?["textColor"]?.stringValue ?? "#FFFFFF"
-        let strokeWidth = params?["strokeWidth"]?.floatValue ?? 2.0
-        let antialiasing = params?["antialiasing"]?.boolValue ?? true
+        let p = Params(params, specs: Self.parameterSpecs)
         let randomSeed = params?["randomSeed"]?.intValue.map { UInt64($0) }
-        self.init(fontSize: fontSize, fontSizeVariation: fontSizeVariation, opacity: opacity,
-                  maxTextCount: maxTextCount, changeIntervalFrames: changeIntervalFrames,
-                  durationMultiplier: durationMultiplier, fontName: fontName, textColor: textColor,
-                  strokeWidth: strokeWidth, antialiasing: antialiasing, randomSeed: randomSeed)
+        self.init(fontSize: p.float("fontSize"), fontSizeVariation: p.float("fontSizeVariation"),
+                  opacity: p.float("opacity"), maxTextCount: p.int("maxTextCount"),
+                  changeIntervalFrames: p.int("changeIntervalFrames"), durationMultiplier: p.float("durationMultiplier"),
+                  fontName: params?["fontName"]?.stringValue ?? "Menlo", textColor: p.string("textColor"),
+                  strokeWidth: p.float("strokeWidth"), antialiasing: p.bool("antialiasing"), randomSeed: randomSeed)
     }
 
     // MARK: - Text Loading (Lazy, Async)

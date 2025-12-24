@@ -14,15 +14,19 @@ import CoreGraphics
 struct PixelSortHook: RenderHook {
     var name: String { "PixelSort" }
     
+    static var parameterSpecs: [String: ParameterSpec] {
+        ["intensity": .float(default: 0.8, range: 0...1)]
+    }
+
     let intensity: Float
 
-    init(intensity: Float = 0.8) {
+    init(intensity: Float) {
         self.intensity = intensity
     }
 
     init?(params: [String: AnyCodableValue]?) {
-        let intensity = params?["intensity"]?.floatValue ?? 0.8
-        self.init(intensity: intensity)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(intensity: p.float("intensity"))
     }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {

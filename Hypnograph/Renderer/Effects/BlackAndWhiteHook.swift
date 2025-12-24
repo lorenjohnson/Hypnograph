@@ -34,13 +34,13 @@ struct BlackAndWhiteHook: RenderHook {
         }
     }
 
-    init(contrast: Float = 1.0) {
+    init(contrast: Float) {
         self.contrast = contrast
     }
 
     init?(params: [String: AnyCodableValue]?) {
-        let contrast = params?["contrast"]?.floatValue ?? 1.0
-        self.init(contrast: contrast)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(contrast: p.float("contrast"))
     }
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {

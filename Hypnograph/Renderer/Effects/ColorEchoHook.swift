@@ -38,16 +38,15 @@ struct ColorEchoHook: RenderHook {
     /// Intensity of each channel (lower = less white accumulation)
     let intensity: Float
 
-    init(channelOffset: Int = 4, intensity: Float = 0.85, name: String? = nil) {
+    init(channelOffset: Int, intensity: Float, name: String? = nil) {
         self.channelOffset = channelOffset
         self.intensity = max(0.1, min(1.0, intensity))
         self.nameOverride = name
     }
 
     init?(params: [String: AnyCodableValue]?) {
-        let channelOffset = params?["channelOffset"]?.intValue ?? 4
-        let intensity = params?["intensity"]?.floatValue ?? 0.85
-        self.init(channelOffset: channelOffset, intensity: intensity)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(channelOffset: p.int("channelOffset"), intensity: p.float("intensity"))
     }
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {

@@ -648,6 +648,61 @@ extension RenderHook {
     }
 }
 
+// MARK: - Parameter Extraction Helper
+
+/// Helper for extracting parameter values with defaults from parameterSpecs.
+/// Eliminates redundant default value specifications in init?(params:).
+struct Params {
+    private let dict: [String: AnyCodableValue]?
+    private let specs: [String: ParameterSpec]
+
+    init(_ params: [String: AnyCodableValue]?, specs: [String: ParameterSpec]) {
+        self.dict = params
+        self.specs = specs
+    }
+
+    /// Get Float value, falling back to spec default
+    func float(_ key: String) -> Float {
+        if let value = dict?[key]?.floatValue { return value }
+        if case .float(let d, _) = specs[key] { return d }
+        return 0
+    }
+
+    /// Get Double value, falling back to spec default
+    func double(_ key: String) -> Double {
+        if let value = dict?[key]?.doubleValue { return value }
+        if case .double(let d, _) = specs[key] { return d }
+        return 0
+    }
+
+    /// Get Int value, falling back to spec default
+    func int(_ key: String) -> Int {
+        if let value = dict?[key]?.intValue { return value }
+        if case .int(let d, _) = specs[key] { return d }
+        return 0
+    }
+
+    /// Get Bool value, falling back to spec default
+    func bool(_ key: String) -> Bool {
+        if let value = dict?[key]?.boolValue { return value }
+        if case .bool(let d) = specs[key] { return d }
+        return false
+    }
+
+    /// Get String value (for choice params), falling back to spec default
+    func string(_ key: String) -> String {
+        if let value = dict?[key]?.stringValue { return value }
+        if case .choice(let d, _) = specs[key] { return d }
+        if case .color(let d) = specs[key] { return d }
+        return ""
+    }
+
+    /// Get CGFloat value (from double spec), falling back to spec default
+    func cgFloat(_ key: String) -> CGFloat {
+        CGFloat(double(key))
+    }
+}
+
 // MARK: - Named Hook Wrapper
 
 /// Wrapper that overrides the name of any RenderHook

@@ -136,25 +136,25 @@ final class DatamoshMetalHook: RenderHook {
     }
 
     required convenience init?(params: [String: AnyCodableValue]?) {
-        // Build DatamoshParams from individual values
+        let p = Params(params, specs: Self.parameterSpecs)
         let datamoshParams = DatamoshParams(
-            minHistoryOffset: params?["minHistoryOffset"]?.intValue ?? 15,
-            maxHistoryOffset: params?["maxHistoryOffset"]?.intValue ?? 70,
+            minHistoryOffset: p.int("minHistoryOffset"),
+            maxHistoryOffset: p.int("maxHistoryOffset"),
             freezeReference: params?["freezeReference"]?.boolValue ?? false,
             frozenHistoryOffset: params?["frozenHistoryOffset"]?.intValue,
-            blockSize: params?["blockSize"]?.intValue ?? 10,
-            blockMoshProbability: params?["blockMoshProbability"]?.floatValue ?? 0.25,
-            motionSensitivity: params?["motionSensitivity"]?.floatValue ?? 0.85,
-            updateProbability: params?["updateProbability"]?.floatValue ?? 0.0,
-            smearStrength: params?["smearStrength"]?.floatValue ?? 0.45,
-            jitterAmount: params?["jitterAmount"]?.floatValue ?? 0.25,
-            feedbackAmount: params?["feedbackAmount"]?.floatValue ?? 0.4,
-            blockiness: params?["blockiness"]?.floatValue ?? 0.0,
-            burstChance: params?["burstChance"]?.floatValue ?? 0.008,
-            minBurstDuration: params?["minBurstDuration"]?.intValue ?? 60,
-            maxBurstDuration: params?["maxBurstDuration"]?.intValue ?? 240,
-            cleanFrameChance: params?["cleanFrameChance"]?.floatValue ?? 0.0,
-            intensityVariation: params?["intensityVariation"]?.floatValue ?? 0.5,
+            blockSize: p.int("blockSize"),
+            blockMoshProbability: p.float("blockMoshProbability"),
+            motionSensitivity: p.float("motionSensitivity"),
+            updateProbability: p.float("updateProbability"),
+            smearStrength: p.float("smearStrength"),
+            jitterAmount: p.float("jitterAmount"),
+            feedbackAmount: p.float("feedbackAmount"),
+            blockiness: p.float("blockiness"),
+            burstChance: p.float("burstChance"),
+            minBurstDuration: p.int("minBurstDuration"),
+            maxBurstDuration: p.int("maxBurstDuration"),
+            cleanFrameChance: p.float("cleanFrameChance"),
+            intensityVariation: p.float("intensityVariation"),
             randomSeed: UInt32(params?["randomSeed"]?.intValue ?? 0)
         )
         self.init(params: datamoshParams)

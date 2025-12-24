@@ -37,17 +37,15 @@ struct FeedbackLoopHook: RenderHook {
     /// Blend amount of feedback
     let intensity: Float
 
-    init(scale: CGFloat = 0.95, rotation: CGFloat = 0.01, intensity: Float = 0.5) {
+    init(scale: CGFloat, rotation: CGFloat, intensity: Float) {
         self.scale = scale
         self.rotation = rotation
         self.intensity = intensity
     }
 
     init?(params: [String: AnyCodableValue]?) {
-        let scale = params?["scale"]?.doubleValue.map { CGFloat($0) } ?? 0.95
-        let rotation = params?["rotation"]?.doubleValue.map { CGFloat($0) } ?? 0.01
-        let intensity = params?["intensity"]?.floatValue ?? 0.5
-        self.init(scale: scale, rotation: rotation, intensity: intensity)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(scale: p.cgFloat("scale"), rotation: p.cgFloat("rotation"), intensity: p.float("intensity"))
     }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {

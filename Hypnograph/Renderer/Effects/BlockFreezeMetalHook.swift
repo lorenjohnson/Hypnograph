@@ -61,7 +61,7 @@ final class BlockFreezeMetalHook: RenderHook {
 
     // MARK: - Init
 
-    init(blockSize: Int = 24, freezeAmount: Float = 0.4, streakAmount: Float = 0.3) {
+    init(blockSize: Int, freezeAmount: Float, streakAmount: Float) {
         self.blockSize = max(8, min(128, blockSize))
         self.freezeAmount = max(0, min(1, freezeAmount))
         self.streakAmount = max(0, min(1, streakAmount))
@@ -79,10 +79,8 @@ final class BlockFreezeMetalHook: RenderHook {
     }
 
     required convenience init?(params: [String: AnyCodableValue]?) {
-        let blockSize = params?["blockSize"]?.intValue ?? 24
-        let freezeAmount = params?["freezeAmount"]?.floatValue ?? 0.4
-        let streakAmount = params?["streakAmount"]?.floatValue ?? 0.3
-        self.init(blockSize: blockSize, freezeAmount: freezeAmount, streakAmount: streakAmount)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(blockSize: p.int("blockSize"), freezeAmount: p.float("freezeAmount"), streakAmount: p.float("streakAmount"))
     }
 
     private func loadShader() {

@@ -53,7 +53,7 @@ final class GaussianBlurMetalHook: RenderHook {
 
     // MARK: - Init
 
-    init(radius: Float = 10.0, name: String? = nil) {
+    init(radius: Float, name: String? = nil) {
         self.radius = max(0, min(100, radius))
         self.customName = name
         self.device = MTLCreateSystemDefaultDevice()
@@ -69,8 +69,8 @@ final class GaussianBlurMetalHook: RenderHook {
     }
 
     required convenience init?(params: [String: AnyCodableValue]?) {
-        let radius = params?["radius"]?.floatValue ?? 10.0
-        self.init(radius: radius)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(radius: p.float("radius"))
     }
 
     private func loadShader() {

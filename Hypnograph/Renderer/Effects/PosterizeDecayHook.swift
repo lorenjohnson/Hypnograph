@@ -14,22 +14,28 @@ import CoreGraphics
 /// Creates a chunky, animated poster look with temporal variation
 struct PosterizeDecayHook: RenderHook {
     var name: String { "Posterize Decay" }
-    
+
+    static var parameterSpecs: [String: ParameterSpec] {
+        [
+            "levels": .float(default: 6.0, range: 2...32),
+            "decayAmount": .float(default: 0.4, range: 0...1)
+        ]
+    }
+
     /// Number of color levels (lower = more posterized)
     let levels: Float
-    
+
     /// How much previous frame influences colors
     let decayAmount: Float
-    
-    init(levels: Float = 6.0, decayAmount: Float = 0.4) {
+
+    init(levels: Float, decayAmount: Float) {
         self.levels = levels
         self.decayAmount = decayAmount
     }
 
     init?(params: [String: AnyCodableValue]?) {
-        let levels = params?["levels"]?.floatValue ?? 6.0
-        let decayAmount = params?["decayAmount"]?.floatValue ?? 0.4
-        self.init(levels: levels, decayAmount: decayAmount)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(levels: p.float("levels"), decayAmount: p.float("decayAmount"))
     }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
