@@ -36,6 +36,23 @@ struct PerformancePreviewView: View {
 
                 Spacer()
 
+                // Reset button
+                Button(action: {
+                    performanceDisplay.reset()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.counterclockwise")
+                        Text("Reset")
+                    }
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.orange.opacity(0.6))
+                .cornerRadius(4)
+
                 // Toggle external/window button
                 Button(action: {
                     performanceDisplay.toggle()
