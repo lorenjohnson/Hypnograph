@@ -15,6 +15,7 @@ enum EffectsEditorField: Hashable {
     case parameterList        // Parameter sliders area
     case effectName           // Effect name text field
     case parameterText(Int)   // Parameter text field at index
+    case hookCheckbox(Int)    // Hook enable/disable checkbox at index
 }
 
 /// View model for the effects editor
@@ -46,7 +47,7 @@ final class EffectsEditorViewModel: ObservableObject {
     /// Check if arrow key navigation should be active (not in a text field)
     var isNavigationActive: Bool {
         switch activeSection {
-        case .effectList, .parameterList:
+        case .effectList, .parameterList, .hookCheckbox:
             return true
         case .effectName, .parameterText:
             return false
@@ -306,6 +307,11 @@ struct EffectsEditorView: View {
         viewModel.selectedDefinition(for: currentLayerEffectName, layer: currentLayer)
     }
 
+    /// Number of hooks in the current effect chain
+    private var currentHooksCount: Int {
+        selectedDefinition?.hooks?.count ?? 0
+    }
+
     /// Check if currently in a text editing state
     private var isTextEditing: Bool {
         switch focusedField {
@@ -463,6 +469,13 @@ struct EffectsEditorView: View {
             // Sync active section when focus changes
             if let field = newField {
                 viewModel.activeSection = field
+
+                // Expand effect when Tab navigates to its checkbox
+                if case .hookCheckbox(let hookIndex) = field {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        expandedHookIndex = hookIndex
+                    }
+                }
             }
         }
     }
@@ -471,9 +484,8 @@ struct EffectsEditorView: View {
 
     private func handleUpDown(delta: Int) {
         switch focusedField {
-        case .effectList, .none:
+        case .effectList:
             // Move effect selection up/down with wrap-around
-            // Also handle nil focus (initial state before focus is explicitly set)
             let defs = viewModel.effectDefinitions
             let currentIndex = selectedEffectIndex  // -1 = None, 0+ = effects
             var newIndex = currentIndex + delta
@@ -491,14 +503,25 @@ struct EffectsEditorView: View {
             // Select new effect with immediate UI feedback
             selectEffect(at: newIndex)
 
-            // Ensure focus is set to effect list if it wasn't already
-            if focusedField == nil {
-                focusedField = .effectList
-                viewModel.activeSection = .effectList
+        case .parameterList, .none:
+            // Navigate between effects in the chain when list is collapsed or focus not set
+            let hooksCount = currentHooksCount
+            guard hooksCount > 1 else { return }  // No navigation needed for single hook
+
+            var newIndex = expandedHookIndex + delta
+            // Wrap around
+            if newIndex < 0 {
+                newIndex = hooksCount - 1
+            } else if newIndex >= hooksCount {
+                newIndex = 0
+            }
+
+            withAnimation(.easeInOut(duration: 0.15)) {
+                expandedHookIndex = newIndex
             }
 
         default:
-            // In parameters or text fields, let native focus handle navigation
+            // In text fields, let native focus handle navigation
             break
         }
     }
@@ -687,10 +710,13 @@ struct EffectsEditorView: View {
 
                 Spacer()
 
-                // Delete button - not focusable, selecting on interaction
+                // Delete button - not focusable, doesn't expand (hook is being removed)
                 Button(action: {
-                    expandedHookIndex = childIndex
                     viewModel.removeHookFromChain(effectIndex: effectIndex, hookIndex: childIndex)
+                    // If we deleted the expanded hook, expand the first remaining hook
+                    if expandedHookIndex >= totalHooks - 1 {
+                        expandedHookIndex = max(0, totalHooks - 2)
+                    }
                 }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .medium))
@@ -713,7 +739,7 @@ struct EffectsEditorView: View {
                 .focusable(false)
                 .help("Reset to defaults")
 
-                // Enable/disable toggle - focusable, selecting on interaction
+                // Enable/disable toggle - focusable, Tab focus expands the effect
                 Toggle("", isOn: Binding(
                     get: { isEnabled },
                     set: { newValue in
@@ -724,6 +750,7 @@ struct EffectsEditorView: View {
                 .toggleStyle(.checkbox)
                 .labelsHidden()
                 .help(isEnabled ? "Disable effect" : "Enable effect")
+                .focused($focusedField, equals: .hookCheckbox(childIndex))
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
