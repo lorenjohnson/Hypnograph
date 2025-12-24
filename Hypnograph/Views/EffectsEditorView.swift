@@ -348,10 +348,8 @@ struct EffectsEditorView: View {
                 // Add new effect button
                 Button(action: {
                     let newIndex = viewModel.createNewEffect()
-                    // Select the new effect
-                    if newIndex < Effect.all.count {
-                        state.renderHooks.setEffect(Effect.all[newIndex], for: currentLayer)
-                    }
+                    // Select the new effect immediately
+                    selectEffect(at: newIndex)
                 }) {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")

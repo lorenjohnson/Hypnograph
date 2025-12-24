@@ -525,16 +525,13 @@ enum EffectConfigLoader {
 
         // ChainedHook: either explicit type or inferred from presence of hooks array
         if def.isChained {
-            guard let childDefs = def.hooks, !childDefs.isEmpty else {
-                print("⚠️ ChainedHook '\(def.name ?? "unnamed")' has no hooks")
-                return nil
-            }
+            let childDefs = def.hooks ?? []
             // Filter out disabled child hooks
             let enabledChildDefs = childDefs.filter { childDef in
                 childDef.params?["_enabled"]?.boolValue ?? true
             }
             let childHooks = enabledChildDefs.compactMap { instantiateEffect($0) }
-            // Return chain even if empty (all hooks disabled) - keeps effect list indices stable
+            // Return chain even if empty - keeps effect list indices stable
             // An empty ChainedHook acts as a pass-through
             return ChainedHook(name: def.name ?? "Chain", hooks: childHooks)
         }
