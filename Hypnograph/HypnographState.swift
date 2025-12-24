@@ -52,7 +52,6 @@ final class HypnographState: ObservableObject {
     @Published var currentClipTimeOffset: CMTime?
 
     @Published var isHUDVisible: Bool = false
-    @Published var isInfoVisible: Bool = false
     @Published var isEffectsEditorVisible: Bool = false
     @Published var isPerformancePreviewVisible: Bool = false
 

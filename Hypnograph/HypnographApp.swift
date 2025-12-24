@@ -308,20 +308,9 @@ struct AppCommands: Commands {
 
             Divider()
 
-            Section("Sidebar") {
-                Toggle("All", isOn: Binding(
-                    get: { state.isHUDVisible && state.isInfoVisible },
-                    set: { newValue in
-                        state.isHUDVisible = newValue
-                        state.isInfoVisible = newValue
-                    }
-                ))
-
-                Toggle("Main", isOn: $state.isHUDVisible)
-                    .keyboardShortcut("h", modifiers: [])
-
-                Toggle("Info", isOn: $state.isInfoVisible)
-                    .keyboardShortcut("i", modifiers: [])
+            Section("Overlays") {
+                Toggle("Info HUD", isOn: $state.isHUDVisible)
+                    .keyboardShortcut("i", modifiers: [.command])
 
                 Toggle("Effects Editor", isOn: $state.isEffectsEditorVisible)
                     .keyboardShortcut("e", modifiers: [])
