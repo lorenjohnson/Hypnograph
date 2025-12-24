@@ -230,8 +230,8 @@ final class GameControllerManager {
 
             if newIndex == -1 {
                 state.renderHooks.setGlobalEffect(nil)
-            } else if newIndex >= 0 && newIndex < Effect.all.count {
-                state.renderHooks.setGlobalEffect(Effect.all[newIndex])
+            } else if newIndex >= 0 && newIndex < EffectChainLibrary.all.count {
+                state.renderHooks.setGlobalEffect(EffectChainLibrary.all[newIndex])
             }
 
         default:

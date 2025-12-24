@@ -228,7 +228,7 @@ final class HypnographState: ObservableObject {
 
         // Subscribe to effect config reloads - reapply active effects with fresh instances
         // Uses activeRenderHooks which automatically routes to the right destination based on mode
-        Effect.onReload = { [weak self] in
+        EffectChainLibrary.onReload = { [weak self] in
             self?.activeRenderHooks.reapplyActiveEffects()
         }
 
@@ -236,8 +236,8 @@ final class HypnographState: ObservableObject {
         // Uses activeRenderHooks which automatically routes to the right destination based on mode
         EffectConfigLoader.onEffectUpdated = { [weak self] effectIndex, updatedHook in
             guard let self = self else { return }
-            // Update the Effect.all cache so the library stays in sync
-            Effect.updateCachedEffect(at: effectIndex, with: updatedHook)
+            // Update the EffectChainLibrary.all cache so the library stays in sync
+            EffectChainLibrary.updateCachedEffect(at: effectIndex, with: updatedHook)
             // Reapply to whichever hooks are currently active (edit or live)
             self.activeRenderHooks.reapplyActiveEffects()
         }
@@ -451,7 +451,7 @@ final class HypnographState: ObservableObject {
             sources[i].blendMode = blendMode
 
             // ~20% chance of getting a random effect
-            if Double.random(in: 0..<1) < 0.2, let effect = Effect.random() {
+            if Double.random(in: 0..<1) < 0.2, let effect = EffectChainLibrary.random() {
                 sources[i].effects = [effect]
             } else {
                 sources[i].effects = []

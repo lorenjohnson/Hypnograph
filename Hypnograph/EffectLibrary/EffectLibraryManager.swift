@@ -126,10 +126,10 @@ final class EffectLibraryManager: ObservableObject {
     func reloadEffectsFromCurrentLibrary() {
         if currentLibrary.isDefault {
             // Use normal loading (source file in debug, bundled in release)
-            Effect.reload()
+            EffectChainLibrary.reload()
         } else if let url = currentLibrary.url {
             // Load from specific file
-            Effect.reload(from: url)
+            EffectChainLibrary.reload(from: url)
         }
     }
     

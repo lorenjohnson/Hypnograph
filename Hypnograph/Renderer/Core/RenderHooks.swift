@@ -676,10 +676,11 @@ enum ParameterSpec: Equatable {
     }
 }
 
-// MARK: - Render Hook Protocol
+// MARK: - Effect Protocol
 
-/// Hooks: pure functions over (context, image) → image.
-protocol RenderHook {
+/// Effects: pure functions over (context, image) → image.
+/// Apply visual transformations to frames during rendering.
+protocol Effect {
     /// Display name for UI
     var name: String { get }
 
@@ -693,8 +694,8 @@ protocol RenderHook {
     /// - 40-120: Advanced datamosh, block propagation, AI effects
     var requiredLookback: Int { get }
 
-    /// Parameter metadata - defines what parameters this hook accepts,
-    /// their types, ranges, and default values. Hook is the source of truth.
+    /// Parameter metadata - defines what parameters this effect accepts,
+    /// their types, ranges, and default values. Effect is the source of truth.
     static var parameterSpecs: [String: ParameterSpec] { get }
 
     /// Create an instance from a parameters dictionary.
@@ -711,10 +712,10 @@ protocol RenderHook {
     /// Create a fresh copy of this effect with the same configuration but reset state.
     /// Used for export to avoid sharing mutable state with preview.
     /// Stateless effects can return self. Class-based stateful effects MUST return a fresh instance.
-    func copy() -> RenderHook
+    func copy() -> Effect
 }
 
-extension RenderHook {
+extension Effect {
     /// Default: no lookback required (pure per-frame effect)
     var requiredLookback: Int { 0 }
 
@@ -726,15 +727,20 @@ extension RenderHook {
     }
 
     func reset() {
-        // Default: no-op for stateless hooks
+        // Default: no-op for stateless effects
     }
 
-    func copy() -> RenderHook {
+    func copy() -> Effect {
         // Default: return self (for struct-based stateless effects)
         // Class-based stateful effects MUST override this to return a fresh instance
         return self
     }
 }
+
+// MARK: - Compatibility Alias (remove after full migration)
+
+/// Temporary typealias for backward compatibility during migration
+typealias RenderHook = Effect
 
 // MARK: - Parameter Extraction Helper
 
@@ -791,22 +797,22 @@ struct Params {
     }
 }
 
-// MARK: - Named Hook Wrapper
+// MARK: - Named Effect Wrapper
 
-/// Wrapper that overrides the name of any RenderHook
-/// Used by the config loader to apply custom names from JSON without modifying each hook implementation
-struct NamedHook: RenderHook {
-    private let wrapped: RenderHook
+/// Wrapper that overrides the name of any Effect
+/// Used by the config loader to apply custom names from JSON without modifying each effect implementation
+struct NamedEffect: Effect {
+    private let wrapped: Effect
     let name: String
 
     var requiredLookback: Int { wrapped.requiredLookback }
 
-    init(wrapping hook: RenderHook, name: String) {
-        self.wrapped = hook
+    init(wrapping effect: Effect, name: String) {
+        self.wrapped = effect
         self.name = name
     }
 
-    /// NamedHook cannot be created from params - it's only used to wrap existing hooks
+    /// NamedEffect cannot be created from params - it's only used to wrap existing effects
     init?(params: [String: AnyCodableValue]?) {
         return nil
     }
@@ -819,25 +825,28 @@ struct NamedHook: RenderHook {
         wrapped.reset()
     }
 
-    func copy() -> RenderHook {
-        NamedHook(wrapping: wrapped.copy(), name: name)
+    func copy() -> Effect {
+        NamedEffect(wrapping: wrapped.copy(), name: name)
     }
 }
 
-// MARK: - Available Effects
+/// Compatibility alias for NamedHook -> NamedEffect
+typealias NamedHook = NamedEffect
 
-/// Namespace for available render effects
-/// Effects are loaded from JSON config with fallback to bundled defaults
-enum Effect {
-    /// Cached loaded effects and source info
+// MARK: - Effect Chain Library
+
+/// Namespace for available effect chains
+/// Effect chains are loaded from JSON config with fallback to bundled defaults
+enum EffectChainLibrary {
+    /// Cached loaded effect chains and source info
     private static var cachedResult: EffectConfigLoader.LoadResult?
 
-    /// Callback triggered after effects are reloaded - allows managers to re-apply active effects
+    /// Callback triggered after effect chains are reloaded - allows managers to re-apply active effects
     static var onReload: (() -> Void)?
 
-    /// All available effects (None is implicit, represented by nil)
+    /// All available effect chains (None is implicit, represented by nil)
     /// Loaded from: user config → bundled default → hardcoded fallback
-    static var all: [RenderHook] {
+    static var all: [Effect] {
         if let cached = cachedResult {
             return cached.effects
         }
@@ -847,11 +856,11 @@ enum Effect {
         // Log source and notify on errors
         switch result.source {
         case .user:
-            print("✓ Effects loaded from user config (\(result.effects.count) effects)")
+            print("✓ Effect chains loaded from user config (\(result.effects.count) chains)")
         case .bundled:
-            print("✓ Effects loaded from bundled defaults (\(result.effects.count) effects)")
+            print("✓ Effect chains loaded from bundled defaults (\(result.effects.count) chains)")
         case .hardcoded:
-            print("⚠️ Effects using hardcoded fallback")
+            print("⚠️ Effect chains using hardcoded fallback")
             if result.error != nil {
                 AppNotifications.show("⚠️ Effects config error - using defaults", flash: true, duration: 4.0)
             }
@@ -860,24 +869,24 @@ enum Effect {
         return result.effects
     }
 
-    /// Update a single effect in the cache (used for live parameter updates)
-    static func updateCachedEffect(at index: Int, with hook: RenderHook) {
+    /// Update a single effect chain in the cache (used for live parameter updates)
+    static func updateCachedEffect(at index: Int, with effect: Effect) {
         guard var result = cachedResult, index >= 0, index < result.effects.count else { return }
         var effects = result.effects
-        effects[index] = hook
+        effects[index] = effect
         cachedResult = EffectConfigLoader.LoadResult(effects: effects, source: result.source, error: result.error)
     }
 
-    /// Replace the entire effects cache with new hooks
-    /// Used by EffectConfigLoader when effects are added/deleted in-memory
-    static func updateCache(with hooks: [RenderHook]) {
+    /// Replace the entire effect chains cache with new effects
+    /// Used by EffectConfigLoader when effect chains are added/deleted in-memory
+    static func updateCache(with effects: [Effect]) {
         let source = cachedResult?.source ?? .user
-        cachedResult = EffectConfigLoader.LoadResult(effects: hooks, source: source, error: nil)
+        cachedResult = EffectConfigLoader.LoadResult(effects: effects, source: source, error: nil)
         // Notify listeners to re-apply active effects
         onReload?()
     }
 
-    /// Reload effects from config (call when config file changes)
+    /// Reload effect chains from config (call when config file changes)
     /// - Parameter silent: If true, don't show notification (used for live parameter updates)
     @discardableResult
     static func reload(silent: Bool = false) -> EffectConfigLoader.LoadResult {
@@ -891,55 +900,58 @@ enum Effect {
         if !silent {
             switch result.source {
             case .user:
-                print("✓ Effects reloaded from user config (\(result.effects.count) effects)")
-                AppNotifications.show("Effects reloaded (\(result.effects.count))", flash: true, duration: 2.0)
+                print("✓ Effect chains reloaded from user config (\(result.effects.count) chains)")
+                AppNotifications.show("Effect chains reloaded (\(result.effects.count))", flash: true, duration: 2.0)
             case .bundled:
-                print("✓ Effects reloaded from bundled defaults")
-                AppNotifications.show("Effects reloaded from defaults", flash: true, duration: 2.0)
+                print("✓ Effect chains reloaded from bundled defaults")
+                AppNotifications.show("Effect chains reloaded from defaults", flash: true, duration: 2.0)
             case .hardcoded:
-                print("⚠️ Effects reload failed, using hardcoded fallback")
+                print("⚠️ Effect chains reload failed, using hardcoded fallback")
                 AppNotifications.show("⚠️ Effects config error - using defaults", flash: true, duration: 4.0)
             }
         }
 
-        // Notify listeners to re-apply active effects with new config
+        // Notify listeners to re-apply active effect chains with new config
         onReload?()
 
         return result
     }
 
-    /// Reload effects from a specific URL (for library switching)
+    /// Reload effect chains from a specific URL (for library switching)
     @discardableResult
     static func reload(from url: URL) -> EffectConfigLoader.LoadResult {
         do {
             let effects = try EffectConfigLoader.loadFromURL(url)
             let result = EffectConfigLoader.LoadResult(effects: effects, source: .user, error: nil)
             cachedResult = result
-            print("✓ Effects loaded from library: \(url.lastPathComponent) (\(effects.count) effects)")
+            print("✓ Effect chains loaded from library: \(url.lastPathComponent) (\(effects.count) chains)")
 
-            // Notify listeners to re-apply active effects
+            // Notify listeners to re-apply active effect chains
             onReload?()
 
             return result
         } catch {
-            print("⚠️ Failed to load effects from \(url.path): \(error)")
+            print("⚠️ Failed to load effect chains from \(url.path): \(error)")
             // Fall back to normal reload
             return reload()
         }
     }
 
-    /// Returns a random effect
-    static func random() -> RenderHook? {
+    /// Returns a random effect chain
+    static func random() -> Effect? {
         all.randomElement()
     }
 }
 
-// MARK: - Render Hook Manager
+/// Compatibility: Use EffectChainLibrary instead of Effect for the static library accessors
+/// The Effect protocol is now the primary use of "Effect" name
+
+// MARK: - Effect Manager
 
 /// Manager that both preview + export can share.
 /// Reads effects and blend modes from the recipe (single source of truth).
 /// Provides mutation methods that write back to the recipe via closures.
-final class RenderHookManager {
+final class EffectManager {
     /// Shared frame buffer that persists across frames
     /// 120 frames at 30fps = 4 seconds of history for advanced datamosh/AI effects
     let frameBuffer = FrameBuffer(maxFrames: 120)
@@ -962,8 +974,8 @@ final class RenderHookManager {
 
     /// Create a manager for export with a frozen recipe
     /// Uses same code paths as preview but with isolated state
-    static func forExport(recipe: HypnogramRecipe) -> RenderHookManager {
-        let manager = RenderHookManager()
+    static func forExport(recipe: HypnogramRecipe) -> EffectManager {
+        let manager = EffectManager()
         manager.recipeProvider = { recipe }
         // No setters needed - export is read-only
         // flashSoloIndex stays nil - export renders all layers
@@ -1059,10 +1071,10 @@ final class RenderHookManager {
     var recipeProvider: (() -> HypnogramRecipe?)?
 
     /// Closure to update recipe effects
-    var effectsSetter: (([RenderHook]) -> Void)?
+    var effectsSetter: (([Effect]) -> Void)?
 
     /// Closure to update a source's effect at a given index
-    var sourceEffectSetter: ((Int, [RenderHook]) -> Void)?
+    var sourceEffectSetter: ((Int, [Effect]) -> Void)?
 
     /// Closure to update a source's blend mode at a given index
     var blendModeSetter: ((Int, String) -> Void)?
@@ -1080,7 +1092,7 @@ final class RenderHookManager {
         recipeProvider?()?.effects.first?.name ?? "None"
     }
 
-    func setGlobalEffect(_ effect: RenderHook?) {
+    func setGlobalEffect(_ effect: Effect?) {
         if let effect = effect {
             effectsSetter?([effect])
         } else {
@@ -1227,10 +1239,10 @@ final class RenderHookManager {
 
         // Find current index (-1 means None)
         let currentName = globalEffectName
-        let currentIndex = Effect.all.firstIndex { $0.name == currentName } ?? -1
+        let currentIndex = EffectChainLibrary.all.firstIndex { $0.name == currentName } ?? -1
         // Cycle: -1 -> 0 -> 1 -> ... -> count-1 -> -1
-        let nextIndex = (currentIndex + 2) % (Effect.all.count + 1) - 1
-        setGlobalEffect(nextIndex >= 0 ? Effect.all[nextIndex] : nil)
+        let nextIndex = (currentIndex + 2) % (EffectChainLibrary.all.count + 1) - 1
+        setGlobalEffect(nextIndex >= 0 ? EffectChainLibrary.all[nextIndex] : nil)
     }
 
     /// Re-apply active effects using fresh instances from the reloaded config.
@@ -1241,7 +1253,7 @@ final class RenderHookManager {
         // Re-apply global effect by name
         if let currentEffect = recipe.effects.first {
             let currentName = currentEffect.name
-            if let freshEffect = Effect.all.first(where: { $0.name == currentName }) {
+            if let freshEffect = EffectChainLibrary.all.first(where: { $0.name == currentName }) {
                 // Found matching effect - replace with fresh copy
                 effectsSetter?([freshEffect.copy()])
                 print("🔄 Reapplied global effect: \(currentName)")
@@ -1252,7 +1264,7 @@ final class RenderHookManager {
         for (index, source) in recipe.sources.enumerated() {
             if let currentEffect = source.effects.first {
                 let currentName = currentEffect.name
-                if let freshEffect = Effect.all.first(where: { $0.name == currentName }) {
+                if let freshEffect = EffectChainLibrary.all.first(where: { $0.name == currentName }) {
                     sourceEffectSetter?(index, [freshEffect.copy()])
                     print("🔄 Reapplied source \(index) effect: \(currentName)")
                 }
@@ -1273,7 +1285,7 @@ final class RenderHookManager {
         return recipe.sources[sourceIndex].effects.first?.name ?? "None"
     }
 
-    func setSourceEffect(_ effect: RenderHook?, for sourceIndex: Int) {
+    func setSourceEffect(_ effect: Effect?, for sourceIndex: Int) {
         if let effect = effect {
             sourceEffectSetter?(sourceIndex, [effect])
         } else {
@@ -1305,9 +1317,9 @@ final class RenderHookManager {
 
     func cycleSourceEffect(for sourceIndex: Int) {
         let currentName = sourceEffectName(for: sourceIndex)
-        let currentIndex = Effect.all.firstIndex { $0.name == currentName } ?? -1
-        let nextIndex = (currentIndex + 2) % (Effect.all.count + 1) - 1
-        setSourceEffect(nextIndex >= 0 ? Effect.all[nextIndex] : nil, for: sourceIndex)
+        let currentIndex = EffectChainLibrary.all.firstIndex { $0.name == currentName } ?? -1
+        let nextIndex = (currentIndex + 2) % (EffectChainLibrary.all.count + 1) - 1
+        setSourceEffect(nextIndex >= 0 ? EffectChainLibrary.all[nextIndex] : nil, for: sourceIndex)
     }
 
     // MARK: - Unified Layer API (layer -1 = global, 0+ = source)
@@ -1329,7 +1341,7 @@ final class RenderHookManager {
     }
 
     /// Set effect for a layer (-1 = global, 0+ = source index)
-    func setEffect(_ effect: RenderHook?, for layer: Int) {
+    func setEffect(_ effect: Effect?, for layer: Int) {
         if layer == -1 {
             setGlobalEffect(effect)
         } else {
@@ -1355,10 +1367,10 @@ final class RenderHookManager {
         resetFrameIndex()
 
         let currentName = effectName(for: layer)
-        let currentIndex = Effect.all.firstIndex { $0.name == currentName } ?? -1
+        let currentIndex = EffectChainLibrary.all.firstIndex { $0.name == currentName } ?? -1
 
         // Cycle through effects: -1 (None) -> 0 -> 1 -> ... -> count-1 -> -1
-        let effectCount = Effect.all.count
+        let effectCount = EffectChainLibrary.all.count
         let totalStates = effectCount + 1  // +1 for "None"
 
         // Convert to 0-based index where 0 = None, 1+ = effects
@@ -1366,7 +1378,7 @@ final class RenderHookManager {
         let next0Based = (current0Based + direction + totalStates) % totalStates
         let nextIndex = next0Based - 1  // Back to -1 based
 
-        setEffect(nextIndex >= 0 ? Effect.all[nextIndex] : nil, for: layer)
+        setEffect(nextIndex >= 0 ? EffectChainLibrary.all[nextIndex] : nil, for: layer)
     }
 
     /// Clear effect for a specific layer (-1 = global, 0+ = source index)
@@ -1427,11 +1439,11 @@ final class RenderHookManager {
     }
 
     func clearFrameBuffer() {
-        print("🔄 RenderHookManager: clearFrameBuffer() - clearing \(frameBuffer.frameCount) frames")
+        print("🔄 EffectManager: clearFrameBuffer() - clearing \(frameBuffer.frameCount) frames")
         frameBuffer.clear()
         resetFrameIndex()
 
-        // Reset all effects that have internal state (HoldFrameHook, DatamoshMetalHook, etc.)
+        // Reset all effects that have internal state (HoldFrameEffect, DatamoshEffect, etc.)
         // Important: Do this BEFORE the recipe clears effects, because effects may be preserved
         if let recipe = recipeProvider?() {
             for effect in recipe.effects {
@@ -1520,3 +1532,6 @@ final class RenderHookManager {
         return sourceIndex == soloIndex
     }
 }
+
+/// Compatibility alias for RenderHookManager -> EffectManager
+typealias RenderHookManager = EffectManager
