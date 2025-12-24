@@ -95,7 +95,12 @@ final class PerformanceDisplay: ObservableObject {
         // Wire up effect setter to modify the current recipe's global effects
         // HypnogramRecipe is a struct, so we need to get a copy, modify it, and reassign
         renderHooks.effectsSetter = { [weak self] effects in
-            guard let self = self, var recipe = self.currentRecipe else { return }
+            guard let self = self, var recipe = self.currentRecipe else {
+                print("🎬 PerformanceDisplay: effectsSetter - no recipe!")
+                return
+            }
+            let effectNames = effects.map { $0.name }.joined(separator: ", ")
+            print("🎬 PerformanceDisplay: effectsSetter - setting global effects: [\(effectNames)]")
             recipe.effects = effects
             self.currentRecipe = recipe
         }
@@ -104,7 +109,12 @@ final class PerformanceDisplay: ObservableObject {
         renderHooks.sourceEffectSetter = { [weak self] sourceIndex, effects in
             guard let self = self,
                   var recipe = self.currentRecipe,
-                  sourceIndex < recipe.sources.count else { return }
+                  sourceIndex < recipe.sources.count else {
+                print("🎬 PerformanceDisplay: sourceEffectSetter - no recipe or source out of range!")
+                return
+            }
+            let effectNames = effects.map { $0.name }.joined(separator: ", ")
+            print("🎬 PerformanceDisplay: sourceEffectSetter - setting source[\(sourceIndex)] effects: [\(effectNames)]")
             recipe.sources[sourceIndex].effects = effects
             self.currentRecipe = recipe
         }
