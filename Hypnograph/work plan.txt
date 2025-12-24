@@ -3,12 +3,9 @@
 
 - I sometimes (usually) can't update the text fields in the efects editor. Keyboard control stays elsewhere I think. I would like keyboard control to remain on modal when it is open except for E which will hide the effects Modal when not in a text entry box?
 
-- I would like of Effect chains to collapse in the left column with a good UI pattern, not sure which. But they don't need to be being shown most of the time when I am otherwise building an effects chain or modifying params. What ideas do you have? A collapsable panel? What is standard/ish swiftui way to handle this? 
-
 - Respond to mic input or Midi Clock or OSC input from Live/etc?
 
 - It would be nice to be able to type things and send them directly to the text overlay live! 
-
 
 - Performance Mode has a "Video Mixer" that specifies the transition between hypnograms. Right now it's a simple crossfade but we should make it configurable with 2-3 options. We would add these 2-4 options as push buttons in the header of the Preview panel in the main window.
 

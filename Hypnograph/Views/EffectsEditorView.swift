@@ -279,6 +279,9 @@ struct EffectsEditorView: View {
     /// SwiftUI focus state - tracks which field has keyboard focus
     @FocusState private var focusedField: EffectsEditorField?
 
+    /// Whether the effects list is collapsed (shows only current selection)
+    @State private var isEffectsListCollapsed: Bool = false
+
     /// Current layer being edited (-1 = global, 0+ = source)
     private var currentLayer: Int {
         state.currentSourceIndex
@@ -457,41 +460,78 @@ struct EffectsEditorView: View {
         let currentlySelected = selectedEffectIndex
 
         return VStack(alignment: .leading, spacing: 8) {
-            Text("Effects")
-                .font(.headline)
+            // Header with collapse toggle
+            HStack {
+                Text("Effects")
+                    .font(.headline)
+                Spacer()
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isEffectsListCollapsed.toggle()
+                    }
+                }) {
+                    Image(systemName: isEffectsListCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+                .buttonStyle(.plain)
+            }
 
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 4) {
-                    // None option (always first)
-                    effectNoneRow(isSelected: currentlySelected == -1)
-
-                    ForEach(Array(viewModel.effectDefinitions.enumerated()), id: \.offset) { index, def in
-                        effectRowCached(index: index, definition: def, isSelected: index == currentlySelected)
+            if isEffectsListCollapsed {
+                // Collapsed: show only current selection
+                HStack {
+                    Text(selectedDefinition?.name ?? "None")
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundColor(selectedDefinition != nil ? .white : .white.opacity(0.7))
+                        .italic(selectedDefinition == nil)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.cyan.opacity(0.3))
+                .cornerRadius(4)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isEffectsListCollapsed = false
                     }
                 }
-            }
+            } else {
+                // Expanded: full effect list
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 4) {
+                        // None option (always first)
+                        effectNoneRow(isSelected: currentlySelected == -1)
 
-            // Add Effect button at bottom
-            Button(action: {
-                let newIndex = viewModel.createNewEffect()
-                // Select the new effect
-                if newIndex < Effect.all.count {
-                    state.renderHooks.setEffect(Effect.all[newIndex], for: currentLayer)
+                        ForEach(Array(viewModel.effectDefinitions.enumerated()), id: \.offset) { index, def in
+                            effectRowCached(index: index, definition: def, isSelected: index == currentlySelected)
+                        }
+                    }
                 }
-            }) {
-                HStack {
-                    Image(systemName: "plus.circle.fill")
-                    Text("Add Effect")
+
+                // Add Effect button at bottom
+                Button(action: {
+                    let newIndex = viewModel.createNewEffect()
+                    // Select the new effect
+                    if newIndex < Effect.all.count {
+                        state.renderHooks.setEffect(Effect.all[newIndex], for: currentLayer)
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "plus.circle.fill")
+                        Text("Add Effect")
+                    }
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundColor(.cyan)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.cyan.opacity(0.15))
+                    .cornerRadius(6)
                 }
-                .font(.system(.caption, design: .monospaced))
-                .foregroundColor(.cyan)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .frame(maxWidth: .infinity)
-                .background(Color.cyan.opacity(0.15))
-                .cornerRadius(6)
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(.trailing, 12)
     }
