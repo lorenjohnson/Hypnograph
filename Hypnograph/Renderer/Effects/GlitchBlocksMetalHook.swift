@@ -62,7 +62,7 @@ final class GlitchBlocksMetalHook: RenderHook {
 
     // MARK: - Init
 
-    init(blockSize: Int = 32, glitchAmount: Float = 0.3, corruption: Float = 0.5) {
+    init(blockSize: Int, glitchAmount: Float, corruption: Float) {
         self.blockSize = max(8, min(128, blockSize))
         self.glitchAmount = max(0, min(1, glitchAmount))
         self.corruption = max(0, min(1, corruption))
@@ -80,10 +80,8 @@ final class GlitchBlocksMetalHook: RenderHook {
     }
 
     required convenience init?(params: [String: AnyCodableValue]?) {
-        let blockSize = params?["blockSize"]?.intValue ?? 32
-        let glitchAmount = params?["glitchAmount"]?.floatValue ?? 0.3
-        let corruption = params?["corruption"]?.floatValue ?? 0.5
-        self.init(blockSize: blockSize, glitchAmount: glitchAmount, corruption: corruption)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(blockSize: p.int("blockSize"), glitchAmount: p.float("glitchAmount"), corruption: p.float("corruption"))
     }
 
     private func loadShader() {

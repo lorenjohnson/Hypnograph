@@ -57,21 +57,15 @@ final class HoldFrameHook: RenderHook {
 
     // MARK: - Init
 
-    init(
-        freezeInterval: Double = 8.0,
-        holdDuration: Double = 4.0,
-        trailBoost: Double = 1.5
-    ) {
+    init(freezeInterval: Double, holdDuration: Double, trailBoost: Double) {
         self.freezeIntervalBase = freezeInterval
         self.holdDurationBase = holdDuration
         self.trailBoost = trailBoost
     }
 
     required convenience init?(params: [String: AnyCodableValue]?) {
-        let freezeInterval = params?["freezeInterval"]?.doubleValue ?? 8.0
-        let holdDuration = params?["holdDuration"]?.doubleValue ?? 4.0
-        let trailBoost = params?["trailBoost"]?.doubleValue ?? 1.5
-        self.init(freezeInterval: freezeInterval, holdDuration: holdDuration, trailBoost: trailBoost)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(freezeInterval: p.double("freezeInterval"), holdDuration: p.double("holdDuration"), trailBoost: p.double("trailBoost"))
     }
 
     // MARK: - RenderHook

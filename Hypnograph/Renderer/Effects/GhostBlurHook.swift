@@ -40,17 +40,15 @@ struct GhostBlurHook: RenderHook {
     /// Base blur amount (multiplied by frame age)
     let blurAmount: CGFloat
 
-    init(intensity: Float = 0.5, trailLength: Int = 6, blurAmount: CGFloat = 8.0) {
+    init(intensity: Float, trailLength: Int, blurAmount: CGFloat) {
         self.intensity = intensity
         self.trailLength = trailLength
         self.blurAmount = blurAmount
     }
 
     init?(params: [String: AnyCodableValue]?) {
-        let intensity = params?["intensity"]?.floatValue ?? 0.5
-        let trailLength = params?["trailLength"]?.intValue ?? 6
-        let blurAmount = params?["blurAmount"]?.doubleValue.map { CGFloat($0) } ?? 8.0
-        self.init(intensity: intensity, trailLength: trailLength, blurAmount: blurAmount)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(intensity: p.float("intensity"), trailLength: p.int("trailLength"), blurAmount: p.cgFloat("blurAmount"))
     }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {

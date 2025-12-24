@@ -28,15 +28,14 @@ struct RGBSplitSimpleHook: RenderHook {
     let offsetAmount: Float
     let animated: Bool
 
-    init(offsetAmount: Float = 10.0, animated: Bool = true) {
+    init(offsetAmount: Float, animated: Bool) {
         self.offsetAmount = offsetAmount
         self.animated = animated
     }
 
     init?(params: [String: AnyCodableValue]?) {
-        let offsetAmount = params?["offsetAmount"]?.floatValue ?? 10.0
-        let animated = params?["animated"]?.boolValue ?? true
-        self.init(offsetAmount: offsetAmount, animated: animated)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(offsetAmount: p.float("offsetAmount"), animated: p.bool("animated"))
     }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {

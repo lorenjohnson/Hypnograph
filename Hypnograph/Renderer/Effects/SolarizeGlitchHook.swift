@@ -14,22 +14,28 @@ import CoreGraphics
 /// Threshold oscillates creating shifting inversions
 struct SolarizeGlitchHook: RenderHook {
     var name: String { "Solarize Glitch" }
-    
+
+    static var parameterSpecs: [String: ParameterSpec] {
+        [
+            "intensity": .float(default: 0.7, range: 0...1),
+            "speed": .double(default: 0.3, range: 0.01...2.0)
+        ]
+    }
+
     /// Base intensity of the effect
     let intensity: Float
-    
+
     /// How fast the threshold oscillates
     let speed: Double
-    
-    init(intensity: Float = 0.7, speed: Double = 0.3) {
+
+    init(intensity: Float, speed: Double) {
         self.intensity = intensity
         self.speed = speed
     }
 
     init?(params: [String: AnyCodableValue]?) {
-        let intensity = params?["intensity"]?.floatValue ?? 0.7
-        let speed = params?["speed"]?.doubleValue ?? 0.3
-        self.init(intensity: intensity, speed: speed)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(intensity: p.float("intensity"), speed: p.double("speed"))
     }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {

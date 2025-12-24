@@ -63,8 +63,7 @@ final class IFrameCompressHook: RenderHook {
 
     // MARK: - Init
 
-    init(quality: Float = 0.5, iframeInterval: Int = 300, stickiness: Float = 0.92,
-         glitch: Float = 0.0, diffThreshold: Float = 0.3) {
+    init(quality: Float, iframeInterval: Int, stickiness: Float, glitch: Float, diffThreshold: Float) {
         self.quality = max(0.01, min(1.0, quality))
         self.iframeInterval = max(30, min(1000, iframeInterval))
         self.stickiness = max(0.5, min(0.999, stickiness))
@@ -84,13 +83,9 @@ final class IFrameCompressHook: RenderHook {
     }
 
     required convenience init?(params: [String: AnyCodableValue]?) {
-        let quality = params?["quality"]?.floatValue ?? 0.5
-        let iframeInterval = params?["iframeInterval"]?.intValue ?? 300
-        let stickiness = params?["stickiness"]?.floatValue ?? 0.92
-        let glitch = params?["glitch"]?.floatValue ?? 0.0
-        let diffThreshold = params?["diffThreshold"]?.floatValue ?? 0.3
-        self.init(quality: quality, iframeInterval: iframeInterval, stickiness: stickiness,
-                  glitch: glitch, diffThreshold: diffThreshold)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(quality: p.float("quality"), iframeInterval: p.int("iframeInterval"),
+                  stickiness: p.float("stickiness"), glitch: p.float("glitch"), diffThreshold: p.float("diffThreshold"))
     }
 
     private func loadShader() {

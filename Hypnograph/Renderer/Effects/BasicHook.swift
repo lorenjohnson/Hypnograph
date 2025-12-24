@@ -93,9 +93,8 @@ final class BasicHook: RenderHook {
 
     // MARK: - Init
 
-    init(opacity: Float = 1.0, contrast: Float = 0.0, brightness: Float = 0.0,
-         saturation: Float = 0.0, hueShift: Float = 0.0, colorSpace: BasicColorSpace = .rgb,
-         invert: Bool = false, name: String? = nil) {
+    init(opacity: Float, contrast: Float, brightness: Float, saturation: Float,
+         hueShift: Float, colorSpace: BasicColorSpace, invert: Bool, name: String? = nil) {
         self.opacity = max(0, min(1, opacity))
         self.contrast = max(-1, min(1, contrast))
         self.brightness = max(-1, min(1, brightness))
@@ -118,17 +117,11 @@ final class BasicHook: RenderHook {
     }
 
     required convenience init?(params: [String: AnyCodableValue]?) {
-        let opacity = params?["opacity"]?.floatValue ?? 1.0
-        let contrast = params?["contrast"]?.floatValue ?? 0.0
-        let brightness = params?["brightness"]?.floatValue ?? 0.0
-        let saturation = params?["saturation"]?.floatValue ?? 0.0
-        let hueShift = params?["hueShift"]?.floatValue ?? 0.0
-        let colorSpaceStr = params?["colorSpace"]?.stringValue ?? "rgb"
-        let colorSpace = BasicColorSpace(rawValue: colorSpaceStr) ?? .rgb
-        let invert = params?["invert"]?.boolValue ?? false
-        self.init(opacity: opacity, contrast: contrast, brightness: brightness,
-                  saturation: saturation, hueShift: hueShift, colorSpace: colorSpace,
-                  invert: invert)
+        let p = Params(params, specs: Self.parameterSpecs)
+        let colorSpace = BasicColorSpace(rawValue: p.string("colorSpace")) ?? .rgb
+        self.init(opacity: p.float("opacity"), contrast: p.float("contrast"),
+                  brightness: p.float("brightness"), saturation: p.float("saturation"),
+                  hueShift: p.float("hueShift"), colorSpace: colorSpace, invert: p.bool("invert"))
     }
 
     private func loadShader() {

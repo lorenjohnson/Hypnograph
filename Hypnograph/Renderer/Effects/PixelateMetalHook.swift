@@ -48,7 +48,7 @@ final class PixelateMetalHook: RenderHook {
 
     // MARK: - Init
 
-    init(blockSize: Int = 8, name: String? = nil) {
+    init(blockSize: Int, name: String? = nil) {
         self.blockSize = max(1, blockSize)
         self.customName = name
         self.device = MTLCreateSystemDefaultDevice()
@@ -65,8 +65,8 @@ final class PixelateMetalHook: RenderHook {
     }
 
     required convenience init?(params: [String: AnyCodableValue]?) {
-        let blockSize = params?["blockSize"]?.intValue ?? 8
-        self.init(blockSize: blockSize)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(blockSize: p.int("blockSize"))
     }
     
     private func loadShader() {

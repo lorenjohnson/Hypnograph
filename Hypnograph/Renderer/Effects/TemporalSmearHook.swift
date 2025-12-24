@@ -24,15 +24,21 @@ struct TemporalSmearHook: RenderHook {
     /// How far back to sample for motion
     let lookback: Int
 
-    init(intensity: Float = 0.6, lookback: Int = 4) {
+    static var parameterSpecs: [String: ParameterSpec] {
+        [
+            "intensity": .float(default: 0.6, range: 0...1),
+            "lookback": .int(default: 4, range: 1...60)
+        ]
+    }
+
+    init(intensity: Float, lookback: Int) {
         self.intensity = intensity
         self.lookback = lookback
     }
 
     init?(params: [String: AnyCodableValue]?) {
-        let intensity = params?["intensity"]?.floatValue ?? 0.6
-        let lookback = params?["lookback"]?.intValue ?? 4
-        self.init(intensity: intensity, lookback: lookback)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(intensity: p.float("intensity"), lookback: p.int("lookback"))
     }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {

@@ -47,7 +47,7 @@ final class CompressionMetalHook: RenderHook {
 
     // MARK: - Init
 
-    init(quality: Float = 0.05, passes: Int = 3, format: Int = 0, colorLevels: Int = 4) {
+    init(quality: Float, passes: Int, format: Int, colorLevels: Int) {
         self.quality = max(0.001, min(1.0, quality))
         self.passes = max(1, min(20, passes))
         self.format = CompressionFormat(rawValue: format) ?? .jpeg
@@ -55,11 +55,8 @@ final class CompressionMetalHook: RenderHook {
     }
 
     convenience init?(params: [String: AnyCodableValue]?) {
-        let quality = params?["quality"]?.floatValue ?? 0.05
-        let passes = params?["passes"]?.intValue ?? 3
-        let format = params?["format"]?.intValue ?? 0
-        let colorLevels = params?["colorLevels"]?.intValue ?? 4
-        self.init(quality: quality, passes: passes, format: format, colorLevels: colorLevels)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(quality: p.float("quality"), passes: p.int("passes"), format: p.int("format"), colorLevels: p.int("colorLevels"))
     }
 
     // MARK: - RenderHook Protocol

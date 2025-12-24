@@ -18,13 +18,17 @@ struct EdgeDecayHook: RenderHook {
     /// How much edge to blend in (0.0 = subtle, 1.0 = heavy)
     let intensity: Float
     
-    init(intensity: Float = 0.6) {
+    static var parameterSpecs: [String: ParameterSpec] {
+        ["intensity": .float(default: 0.6, range: 0...1)]
+    }
+
+    init(intensity: Float) {
         self.intensity = intensity
     }
 
     init?(params: [String: AnyCodableValue]?) {
-        let intensity = params?["intensity"]?.floatValue ?? 0.6
-        self.init(intensity: intensity)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(intensity: p.float("intensity"))
     }
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {

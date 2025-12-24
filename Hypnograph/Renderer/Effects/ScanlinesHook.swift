@@ -13,21 +13,27 @@ import CoreGraphics
 struct ScanlinesHook: RenderHook {
     var name: String { "Scanlines" }
 
+    static var parameterSpecs: [String: ParameterSpec] {
+        [
+            "lineWidth": .float(default: 2.0, range: 0.5...10),
+            "intensity": .float(default: 0.3, range: 0...1)
+        ]
+    }
+
     /// Width of each scanline in pixels
     let lineWidth: Float
 
     /// How much to darken alternate lines (0.0 = no effect, 1.0 = black)
     let intensity: Float
 
-    init(lineWidth: Float = 2.0, intensity: Float = 0.3) {
+    init(lineWidth: Float, intensity: Float) {
         self.lineWidth = lineWidth
         self.intensity = intensity
     }
 
     init?(params: [String: AnyCodableValue]?) {
-        let lineWidth = params?["lineWidth"]?.floatValue ?? 2.0
-        let intensity = params?["intensity"]?.floatValue ?? 0.3
-        self.init(lineWidth: lineWidth, intensity: intensity)
+        let p = Params(params, specs: Self.parameterSpecs)
+        self.init(lineWidth: p.float("lineWidth"), intensity: p.float("intensity"))
     }
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
