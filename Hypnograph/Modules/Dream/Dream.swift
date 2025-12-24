@@ -139,12 +139,25 @@ final class Dream: ObservableObject {
     func cycleEffect(direction: Int = 1) {
         state.noteUserInteraction()
         activeRenderHooks.cycleEffect(for: state.currentSourceIndex, direction: direction)
+
+        // Show flash message when effects panel is not open
+        if !state.isEffectsEditorVisible {
+            let effectName = activeRenderHooks.effectName(for: state.currentSourceIndex)
+            let layerLabel = state.currentSourceIndex == -1 ? "Global" : "Source \(state.currentSourceIndex + 1)"
+            AppNotifications.show("\(layerLabel): \(effectName)", flash: true, duration: 1.5)
+        }
     }
 
     /// Clear effect for current layer only
     func clearCurrentLayerEffect() {
         state.noteUserInteraction()
         activeRenderHooks.clearEffect(for: state.currentSourceIndex)
+
+        // Show flash message when effects panel is not open
+        if !state.isEffectsEditorVisible {
+            let layerLabel = state.currentSourceIndex == -1 ? "Global" : "Source \(state.currentSourceIndex + 1)"
+            AppNotifications.show("\(layerLabel): None", flash: true, duration: 1.5)
+        }
     }
 
     // MARK: - HUD
