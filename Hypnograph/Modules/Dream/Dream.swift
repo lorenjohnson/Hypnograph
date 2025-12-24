@@ -195,9 +195,9 @@ final class Dream: ObservableObject {
         // Keyboard hints
         items.append(.text("Shortcuts", order: 40, font: .subheadline))
         items.append(.text("R = Rotate | ⇧N = New clip | M = Blend", order: 41))
-        items.append(.text("⌘E/⌘⇧E = Effect | 0 = Global | 1-9 = Source", order: 42))
-        items.append(.text("←/→ = Navigate | ⇧C = Clear | ⌃⇧C = Clear all", order: 43))
-        items.append(.text("⌘N = New | ⌘S = Save | S = Snapshot", order: 44))
+        items.append(.text("E = Effects | 0 = Global | 1-9 = Source", order: 42))
+        items.append(.text("←/→ = Navigate | C = Clear | ⌃⇧C = Clear all", order: 43))
+        items.append(.text("N = New | S = Snapshot | ⌘S = Save", order: 44))
         items.append(.text("` = Toggle Montage/Sequence", order: 45))
         items.append(.text("⇧F/X/D = Favorite/Exclude/Delete", order: 46))
 
@@ -268,7 +268,7 @@ final class Dream: ObservableObject {
         Button("Clear Current Layer Effect") { [self] in
             clearCurrentLayerEffect()
         }
-        .keyboardShortcut("c", modifiers: [.shift])
+        .keyboardShortcut("c", modifiers: [])
 
         Button("Clear All Effects") { [self] in
             clearAllEffects()
@@ -280,7 +280,7 @@ final class Dream: ObservableObject {
         Button("New Hypnogram") { [self] in
             new()
         }
-        .keyboardShortcut("n", modifiers: [.command])
+        .keyboardShortcut("n", modifiers: [])
 
         Divider()
 
