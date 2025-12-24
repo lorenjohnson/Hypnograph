@@ -56,9 +56,6 @@ final class HypnographState: ObservableObject {
     @Published var isEffectsEditorVisible: Bool = false
     @Published var isPerformancePreviewVisible: Bool = false
 
-    /// Whether a text field is currently focused (blocks single-key shortcuts)
-    @Published var isTextFieldFocused: Bool = false
-
     /// Performance mode: Edit (local preview) vs Live (mirror performance display)
     enum PerformanceMode {
         case edit  // Normal editing - preview shows local composition

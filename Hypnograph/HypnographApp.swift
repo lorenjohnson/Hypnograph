@@ -196,6 +196,9 @@ struct AppCommands: Commands {
     private weak var appDelegate: HypnographAppDelegate?
     private let cycleModuleHandler: () -> Void
 
+    /// Whether a text field is currently focused (from FocusedValues)
+    @FocusedValue(\.isTyping) private var isTyping
+
     init(
         state: HypnographState,
         dream: Dream,
@@ -227,7 +230,7 @@ struct AppCommands: Commands {
                 state.togglePause()
             }
             .keyboardShortcut(.space, modifiers: [])
-            .disabled(state.isTextFieldFocused)
+            .disabled(isTyping == true)
 
             Button("Restart Session (Reload Settings)") {
                 switch state.currentModuleType {
@@ -274,7 +277,7 @@ struct AppCommands: Commands {
                 dream.saveSnapshot()
             }
             .keyboardShortcut("s", modifiers: [])
-            .disabled(state.isTextFieldFocused)
+            .disabled(isTyping == true)
         }
 
         CommandGroup(after: .sidebar) {
@@ -298,7 +301,7 @@ struct AppCommands: Commands {
                 cycleModuleHandler()
             }
             .keyboardShortcut("~", modifiers: [])
-            .disabled(state.isTextFieldFocused)
+            .disabled(isTyping == true)
 
             Divider()
 
@@ -307,18 +310,18 @@ struct AppCommands: Commands {
                 set: { _ in state.toggleWatchMode() }
             ))
             .keyboardShortcut("w", modifiers: [])
-            .disabled(state.isTextFieldFocused)
+            .disabled(isTyping == true)
 
             Divider()
 
             Section("Overlays") {
                 Toggle("Info HUD", isOn: $state.isHUDVisible)
                     .keyboardShortcut("i", modifiers: [])
-                    .disabled(state.isTextFieldFocused)
+                    .disabled(isTyping == true)
 
                 Toggle("Effects Editor", isOn: $state.isEffectsEditorVisible)
                     .keyboardShortcut("e", modifiers: [])
-                    .disabled(state.isTextFieldFocused)
+                    .disabled(isTyping == true)
             }
 
             Divider()
@@ -326,7 +329,7 @@ struct AppCommands: Commands {
             Section("Performance Display") {
                 Toggle("Performance Preview", isOn: $state.isPerformancePreviewVisible)
                     .keyboardShortcut("p", modifiers: [])
-                    .disabled(state.isTextFieldFocused)
+                    .disabled(isTyping == true)
 
                 Toggle("Live Mode", isOn: Binding(
                     get: { state.isLiveMode },
