@@ -279,8 +279,8 @@ struct EffectsEditorView: View {
     /// SwiftUI focus state - tracks which field has keyboard focus
     @FocusState private var focusedField: EffectsEditorField?
 
-    /// Track which hooks in the chain are expanded (by hook index)
-    @State private var expandedHooks: Set<Int> = []
+    /// Track which hook in the chain is expanded (only one at a time, first by default)
+    @State private var expandedHookIndex: Int = 0
 
     /// Currently dragged hook index for reordering
     @State private var draggingHookIndex: Int?
@@ -669,32 +669,16 @@ struct EffectsEditorView: View {
     @ViewBuilder
     private func chainedHookSection(childDef: EffectDefinition, childIndex: Int, totalHooks: Int, effectIndex: Int) -> some View {
         let isEnabled = childDef.params?["_enabled"]?.boolValue ?? true
-        let isExpanded = expandedHooks.contains(childIndex)
+        let isExpanded = expandedHookIndex == childIndex
 
         VStack(alignment: .leading, spacing: 0) {
-            // Header with controls
+            // Header with controls - clicking header expands this hook
             HStack(spacing: 6) {
                 // Drag handle indicator
                 Image(systemName: "line.3.horizontal")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.white.opacity(0.4))
                     .frame(width: 20)
-
-                // Expand/collapse chevron
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.white.opacity(0.7))
-                    .frame(width: 16, height: 16)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            if isExpanded {
-                                expandedHooks.remove(childIndex)
-                            } else {
-                                expandedHooks.insert(childIndex)
-                            }
-                        }
-                    }
 
                 // Effect name - use formatted type name if no custom name
                 Text(childDef.name ?? formatHookType(childDef.type) ?? "Hook \(childIndex + 1)")
@@ -736,8 +720,14 @@ struct EffectsEditorView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
-            .background(Color.white.opacity(0.15))
+            .background(isExpanded ? Color.white.opacity(0.2) : Color.white.opacity(0.1))
             .cornerRadius(6)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    expandedHookIndex = childIndex
+                }
+            }
 
             // Parameters (only if enabled AND expanded)
             if isEnabled && isExpanded {
