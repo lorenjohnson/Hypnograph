@@ -425,6 +425,11 @@ struct EffectsEditorView: View {
         }
         // Left/right arrow and Tab/Shift-Tab handled natively by SwiftUI focus system
         .onAppear {
+            // Auto-expand list when no effect is selected (None)
+            if selectedEffectIndex == -1 && state.settings.effectsListCollapsed {
+                state.settings.effectsListCollapsed = false
+                state.saveSettings()
+            }
             // Set initial focus to effect list
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 focusedField = .effectList
