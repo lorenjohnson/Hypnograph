@@ -24,7 +24,7 @@ struct GlitchBlocksParamsGPU {
 }
 
 /// Destructive block glitch effect
-final class GlitchBlocksMetalHook: RenderHook {
+final class GlitchBlocksMetalHook: Effect {
 
     // MARK: - Parameter Specs
 

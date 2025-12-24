@@ -12,7 +12,7 @@ import CoreGraphics
 
 /// Temporal smear - directional motion blur based on frame differences
 /// Creates painterly streaks in the direction of motion
-struct TemporalSmearHook: RenderHook {
+struct TemporalSmearHook: Effect {
     var name: String { "Temporal Smear" }
 
     /// Needs lookback frames of history

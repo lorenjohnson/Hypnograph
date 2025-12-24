@@ -12,7 +12,7 @@ import CoreGraphics
 
 /// Frame difference effect - highlights motion by showing inter-frame differences
 /// Great for creating ghostly motion trails on dark backgrounds
-struct FrameDifferenceHook: RenderHook {
+struct FrameDifferenceHook: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 

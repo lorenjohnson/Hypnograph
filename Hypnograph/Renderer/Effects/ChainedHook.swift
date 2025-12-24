@@ -12,7 +12,7 @@ import CoreGraphics
 
 /// Chains multiple RenderHooks together - output of each becomes input of next
 /// Use this to create compound effects like "Hold Frame + Color Echo"
-final class ChainedHook: RenderHook {
+final class ChainedHook: Effect {
     /// Display name for the chain
     let name: String
 

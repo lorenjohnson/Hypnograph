@@ -12,7 +12,7 @@ import CoreGraphics
 
 /// Edge decay - finds edges and blends them with temporal decay
 /// Creates a sketchy, hand-drawn look that dissolves over time
-struct EdgeDecayHook: RenderHook {
+struct EdgeDecayHook: Effect {
     var name: String { "Edge Decay" }
     
     /// How much edge to blend in (0.0 = subtle, 1.0 = heavy)

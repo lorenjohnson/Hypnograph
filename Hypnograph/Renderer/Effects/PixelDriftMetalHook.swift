@@ -23,7 +23,7 @@ struct PixelDriftParamsGPU {
 }
 
 /// Pixel drift effect - motion causes smearing trails
-final class PixelDriftMetalHook: RenderHook {
+final class PixelDriftMetalHook: Effect {
 
     // MARK: - Parameter Specs
 

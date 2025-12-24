@@ -21,7 +21,7 @@ struct ColorEchoParamsGPU {
 
 /// Color echo effect using Metal compute shader.
 /// Red from current frame, green from N frames ago, blue from 2N frames ago.
-final class ColorEchoMetalHook: RenderHook {
+final class ColorEchoMetalHook: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 

@@ -13,7 +13,7 @@ import CoreGraphics
 /// Color echo - each color channel comes from a different point in time
 /// Red from now, green from N frames ago, blue from 2N frames ago
 /// Uses additive blend with intensity control to prevent white blowout
-struct ColorEchoHook: RenderHook {
+struct ColorEchoHook: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 

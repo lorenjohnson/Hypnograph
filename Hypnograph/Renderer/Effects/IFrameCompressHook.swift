@@ -25,7 +25,7 @@ struct IFrameParamsGPU {
 
 /// I-frame temporal compression with content-adaptive resets
 /// Pixels reset when difference exceeds threshold, otherwise accumulate damage
-final class IFrameCompressHook: RenderHook {
+final class IFrameCompressHook: Effect {
 
     // MARK: - Parameter Specs
 

@@ -12,7 +12,7 @@ import CoreGraphics
 
 /// Posterize decay - reduces colors and blends with time
 /// Creates a chunky, animated poster look with temporal variation
-struct PosterizeDecayHook: RenderHook {
+struct PosterizeDecayHook: Effect {
     var name: String { "Posterize Decay" }
 
     static var parameterSpecs: [String: ParameterSpec] {
