@@ -79,6 +79,9 @@ enum EffectRegistry {
         "CompressionMetalHook": CompressionMetalHook.self,
         "IFrameCompressHook": IFrameCompressHook.self,
 
+        // Color Effects
+        "LUTHook": LUTHook.self,
+
         // Overlay Effects
         "TextOverlayHook": TextOverlayHook.self
     ]

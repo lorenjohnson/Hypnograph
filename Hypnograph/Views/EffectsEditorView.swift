@@ -841,6 +841,9 @@ struct ParameterSliderRow: View {
                     } else if let options = spec?.choiceOptions {
                         // Check if this is a choice parameter
                         choicePicker(currentValue: s, options: options)
+                    } else if spec?.isFile == true {
+                        // File picker parameter
+                        filePicker(currentValue: s, spec: spec!)
                     } else {
                         TextField("", text: Binding(
                             get: { s },
@@ -1005,6 +1008,66 @@ struct ParameterSliderRow: View {
         ))
         .labelsHidden()
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// File picker for file-based parameters (e.g., LUT files)
+    @ViewBuilder
+    private func filePicker(currentValue: String, spec: ParameterSpec) -> some View {
+        let files = spec.availableFiles
+
+        if files.isEmpty {
+            // No files found - show placeholder with directory info
+            HStack {
+                Text("No files found")
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.5))
+                if let info = spec.filePickerInfo {
+                    Button(action: {
+                        NSWorkspace.shared.open(info.directory)
+                    }) {
+                        Image(systemName: "folder")
+                            .font(.system(size: 10))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Open \(info.directory.lastPathComponent) folder")
+
+                    Button(action: {
+                        ParameterSpec.clearFileListCache()
+                    }) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 10))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Refresh file list")
+                }
+            }
+        } else {
+            HStack(spacing: 4) {
+                Picker("", selection: Binding(
+                    get: { currentValue },
+                    set: { onChange(.string($0)) }
+                )) {
+                    Text("Select file...").tag("")
+                    ForEach(files, id: \.key) { file in
+                        Text(file.label).tag(file.key)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Refresh button to rescan for new files
+                Button(action: {
+                    ParameterSpec.clearFileListCache()
+                }) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 9))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                .buttonStyle(.plain)
+                .help("Refresh file list")
+            }
+        }
     }
 
     /// Safe slider step - returns nil if step would be invalid

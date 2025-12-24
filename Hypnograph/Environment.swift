@@ -71,6 +71,16 @@ enum Environment {
         appSupportDirectory.appendingPathComponent("favorites.json")
     }
 
+    /// ~/Library/Application Support/Hypnograph/luts/
+    static var lutsDirectory: URL {
+        let url = appSupportDirectory.appendingPathComponent("luts", isDirectory: true)
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: url.path) {
+            try? fm.createDirectory(at: url, withIntermediateDirectories: true, attributes: nil)
+        }
+        return url
+    }
+
     /// If no settings exists in Application Support, copy the bundled default JSON there.
     static func ensureDefaultSettingsFileExists() {
         let fm = FileManager.default
