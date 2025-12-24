@@ -132,7 +132,7 @@ final class BlockFreezeMetalHook: Effect {
         return CVMetalTextureGetTexture(tex)
     }
 
-    // MARK: - RenderHook Protocol
+    // MARK: - Effect Protocol
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         frameCounter &+= 1
@@ -224,7 +224,7 @@ final class BlockFreezeMetalHook: Effect {
         seedChangeCounter = 0
     }
 
-    func copy() -> RenderHook {
+    func copy() -> Effect {
         BlockFreezeMetalHook(blockSize: blockSize, freezeAmount: freezeAmount, streakAmount: streakAmount)
     }
 }

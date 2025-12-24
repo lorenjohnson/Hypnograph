@@ -66,7 +66,7 @@ final class FrameProcessor {
         _ image: CIImage,
         sourceIndex: Int,
         config: ProcessingConfig,
-        manager: RenderHookManager? = nil
+        manager: EffectManager? = nil
     ) -> CIImage {
         var img = image
 
@@ -105,7 +105,7 @@ final class FrameProcessor {
     func compositeMultipleLayers(
         _ layers: [LayerInput],
         config: ProcessingConfig,
-        manager: RenderHookManager? = nil
+        manager: EffectManager? = nil
     ) -> CIImage? {
         guard !layers.isEmpty else { return nil }
 

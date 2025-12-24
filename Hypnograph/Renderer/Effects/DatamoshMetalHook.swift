@@ -178,7 +178,7 @@ final class DatamoshMetalHook: Effect {
         }
     }
 
-    // MARK: - RenderHook Protocol
+    // MARK: - Effect Protocol
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         frameCounter &+= 1
@@ -318,7 +318,7 @@ final class DatamoshMetalHook: Effect {
         framesUntilNewBlockiness = 0
     }
 
-    func copy() -> RenderHook {
+    func copy() -> Effect {
         // Return a fresh instance with same params but reset state
         return DatamoshMetalHook(params: params)
     }

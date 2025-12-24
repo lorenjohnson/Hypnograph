@@ -142,7 +142,7 @@ final class BasicHook: Effect {
         }
     }
     
-    // MARK: - RenderHook Protocol
+    // MARK: - Effect Protocol
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         guard let device = device,
@@ -222,7 +222,7 @@ final class BasicHook: Effect {
         return outputImage
     }
 
-    func copy() -> RenderHook {
+    func copy() -> Effect {
         BasicHook(opacity: opacity, contrast: contrast, brightness: brightness,
                   saturation: saturation, hueShift: hueShift, colorSpace: colorSpace,
                   invert: invert, name: customName)

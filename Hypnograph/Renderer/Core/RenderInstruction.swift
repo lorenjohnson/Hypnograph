@@ -42,11 +42,11 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
     /// Still images for layers that are images (indexed by layer, nil for video layers)
     let stillImages: [CIImage?]
 
-    /// The RenderHookManager to use for effects processing.
+    /// The EffectManager to use for effects processing.
     /// - Preview: passes state.renderHooks (mutable, changes affect playback)
     /// - Performance Display: passes performanceDisplay.renderHooks (isolated instance)
     /// - Export: passes a freshly created manager from recipe.copyForExport()
-    weak var hookManager: RenderHookManager?
+    weak var hookManager: EffectManager?
 
     // MARK: - Initialization
 
@@ -58,7 +58,7 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
         sourceIndices: [Int],
         enableEffects: Bool = false,
         stillImages: [CIImage?] = [],
-        hookManager: RenderHookManager? = nil
+        hookManager: EffectManager? = nil
     ) {
         self.timeRange = timeRange
         self.layerTrackIDs = layerTrackIDs

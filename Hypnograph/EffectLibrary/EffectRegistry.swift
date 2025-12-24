@@ -3,7 +3,7 @@
 //  Hypnograph
 //
 //  Registry that maps effect type names to their metatypes.
-//  Enables JSON config to instantiate RenderHook objects by name using init?(params:).
+//  Enables JSON config to instantiate Effect objects by name using init?(params:).
 //
 
 import Foundation

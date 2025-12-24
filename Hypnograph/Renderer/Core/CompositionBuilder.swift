@@ -41,7 +41,7 @@ final class CompositionBuilder {
     ///   - outputSize: Output dimensions
     ///   - frameRate: Frame rate (default 30)
     ///   - enableEffects: Whether to apply effects
-    ///   - hookManager: The RenderHookManager to use for this composition.
+    ///   - hookManager: The EffectManager to use for this composition.
     ///                  Pass nil only for legacy callers; all new code should provide a manager.
     func build(
         recipe: HypnogramRecipe,
@@ -49,7 +49,7 @@ final class CompositionBuilder {
         outputSize: CGSize,
         frameRate: Int = 30,
         enableEffects: Bool = true,
-        hookManager: RenderHookManager? = nil
+        hookManager: EffectManager? = nil
     ) async -> Result<BuildResult, RenderError> {
 
         // Validate
@@ -91,7 +91,7 @@ final class CompositionBuilder {
         outputSize: CGSize,
         frameRate: Int,
         enableEffects: Bool,
-        hookManager: RenderHookManager?
+        hookManager: EffectManager?
     ) async -> Result<BuildResult, RenderError> {
 
         // Load all sources
@@ -272,7 +272,7 @@ final class CompositionBuilder {
         outputSize: CGSize,
         frameRate: Int,
         enableEffects: Bool,
-        hookManager: RenderHookManager?
+        hookManager: EffectManager?
     ) async -> Result<BuildResult, RenderError> {
 
         // Load all sources (track original index for correct seeking)

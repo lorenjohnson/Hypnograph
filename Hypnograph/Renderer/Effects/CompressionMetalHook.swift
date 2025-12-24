@@ -59,7 +59,7 @@ final class CompressionMetalHook: Effect {
         self.init(quality: p.float("quality"), passes: p.int("passes"), format: p.int("format"), colorLevels: p.int("colorLevels"))
     }
 
-    // MARK: - RenderHook Protocol
+    // MARK: - Effect Protocol
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         let extent = image.extent
@@ -129,7 +129,7 @@ final class CompressionMetalHook: Effect {
         // Nothing to reset
     }
 
-    func copy() -> RenderHook {
+    func copy() -> Effect {
         CompressionMetalHook(quality: quality, passes: passes,
                              format: format.rawValue, colorLevels: colorLevels)
     }

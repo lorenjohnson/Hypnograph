@@ -531,7 +531,7 @@ final class TextOverlayHook: Effect {
         }
     }
 
-    // MARK: - RenderHook
+    // MARK: - Effect
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         // Trigger lazy loading on first use
@@ -743,7 +743,7 @@ final class TextOverlayHook: Effect {
         isLoading = false
     }
 
-    func copy() -> RenderHook {
+    func copy() -> Effect {
         // Pass the same seed so the copy produces identical random sequences
         TextOverlayHook(fontSize: fontSize, fontSizeVariation: fontSizeVariation, opacity: opacity,
                         maxTextCount: maxTextCount, changeIntervalFrames: changeIntervalFrames,

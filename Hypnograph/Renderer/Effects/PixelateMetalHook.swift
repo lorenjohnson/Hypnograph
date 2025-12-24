@@ -87,7 +87,7 @@ final class PixelateMetalHook: Effect {
         }
     }
     
-    // MARK: - RenderHook Protocol
+    // MARK: - Effect Protocol
     
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         guard let device = device,
@@ -161,7 +161,7 @@ final class PixelateMetalHook: Effect {
         return outputImage
     }
     
-    func copy() -> RenderHook {
+    func copy() -> Effect {
         PixelateMetalHook(blockSize: blockSize, name: customName)
     }
 }

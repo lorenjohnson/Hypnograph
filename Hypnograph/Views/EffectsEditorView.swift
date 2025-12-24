@@ -716,7 +716,7 @@ struct EffectsEditorView: View {
                     .frame(width: 20)
 
                 // Effect name - use formatted type name if no custom name
-                Text(childDef.name ?? formatHookType(childDef.type) ?? "Hook \(childIndex + 1)")
+                Text(childDef.name ?? formatHookType(childDef.type) ?? "Effect \(childIndex + 1)")
                     .font(.system(.body, design: .monospaced).bold())
                     .foregroundColor(isEnabled ? .white : .white.opacity(0.5))
 

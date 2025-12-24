@@ -129,7 +129,7 @@ final class GaussianBlurMetalHook: Effect {
         return CVMetalTextureGetTexture(tex)
     }
 
-    // MARK: - RenderHook Protocol
+    // MARK: - Effect Protocol
 
     func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
         guard let device = device,
@@ -219,7 +219,7 @@ final class GaussianBlurMetalHook: Effect {
         outputBuffer = nil
     }
 
-    func copy() -> RenderHook {
+    func copy() -> Effect {
         GaussianBlurMetalHook(radius: radius, name: customName)
     }
 }
