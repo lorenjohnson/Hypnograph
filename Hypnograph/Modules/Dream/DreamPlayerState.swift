@@ -117,6 +117,19 @@ final class DreamPlayerState: ObservableObject {
         }
     }
 
+    // MARK: - Recipe Management
+
+    /// Replace the entire recipe (used when loading from file)
+    func setRecipe(_ newRecipe: HypnogramRecipe) {
+        recipe = newRecipe
+        targetDuration = newRecipe.targetDuration
+    }
+
+    /// Notify that recipe has changed (triggers re-render)
+    func notifyRecipeChanged() {
+        effectsChangeCounter += 1
+    }
+
     // MARK: - Convenience Accessors
 
     var sources: [HypnogramSource] {

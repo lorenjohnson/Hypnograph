@@ -278,6 +278,18 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("s", modifiers: [])
             .disabled(isTyping == true)
+
+            Divider()
+
+            Button("Open Hypnogram…") {
+                dream.openRecipe()
+            }
+            .keyboardShortcut("o", modifiers: [.command])
+
+            Button("Save Recipe…") {
+                dream.saveRecipe()
+            }
+            .keyboardShortcut("s", modifiers: [.command, .option])
         }
 
         CommandGroup(after: .sidebar) {
@@ -328,6 +340,10 @@ struct AppCommands: Commands {
                 ))
                 .keyboardShortcut("e", modifiers: [])
                 .disabled(isTyping == true)
+
+                Toggle("Hypnogram List", isOn: $state.isHypnogramListVisible)
+                    .keyboardShortcut("h", modifiers: [])
+                    .disabled(isTyping == true || state.currentModuleType != .dream)
             }
 
             Divider()

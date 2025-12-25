@@ -1,15 +1,16 @@
-- Rename current TextOverlayEffect to TextSourceEffect
-
-- Make a new TextOverlayEffect which allows me to type things and send them directly to the text overlay live! This text overlap allows me to select an exact font size and position on screen (by alignment: center, top, bottom, left, right, center, top-left, top-right, bottom-left, bottom-right)
-
 - I would like when I save a Hypnogram that the JSON serialization of the Recipe also saves somewhere (named with a date/time stamp I guess). I would expect any current code we have for serializing is pretty out of date with the current recipe format so that needs throught through and caught-up. I would also like a Open option in the file menu for loading back a Hypnogram recipe (a .hypnogram file which will be json with comments)
-
 - I currently have a Favorite feature. I would like when I save or favorite a Hypnogram fro it to go to a list that appears in another window that will display beneath the hud which lists all the favorited hypnograms. This will likely turn into a play list but for now i just want to be abel to click on them indivudally and have them load
+- I would like to have a history of the past X hynograms, but not yet sure how I'd hope to navigate back to them. maybe a history modal.
 
-- Respond to mic input or Midi Clock or OSC input from Live/etc?
-
+---
 
 - Bug: Text entry for editing Effect Chain name etc is not working in Effect modal again
+- Rename current TextOverlayEffect to TextSourceEffect
+- Make a new TextOverlayEffect which allows me to type things and send them directly to the text overlay live! This text overlap allows me to select an exact font size and position on screen (by alignment: center, top, bottom, left, right, center, top-left, top-right, bottom-left, bottom-right)
+
+---
+
+- Respond to mic input or Midi Clock or OSC input from Live/etc?
 
 ----
 

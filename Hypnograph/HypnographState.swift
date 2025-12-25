@@ -46,6 +46,9 @@ final class HypnographState: ObservableObject {
     /// Performance preview panel visibility (sidebar panel)
     @Published var isPerformancePreviewVisible: Bool = false
 
+    /// Hypnogram favorites/history panel visibility
+    @Published var isHypnogramListVisible: Bool = false
+
     /// Shared effects editor view model for controller/keyboard navigation
     let effectsEditorViewModel = EffectsEditorViewModel()
 
