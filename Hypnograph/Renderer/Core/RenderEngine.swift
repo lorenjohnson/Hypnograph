@@ -114,7 +114,7 @@ final class RenderEngine {
         print("🎬 RenderEngine.export: Starting export to \(outputURL.lastPathComponent)...")
 
         // Create isolated copy of recipe with fresh effect state for export
-        // This prevents stateful effects (like TextOverlayEffect) from sharing state with preview
+        // This prevents stateful effects (like TextSourceEffect) from sharing state with preview
         let exportRecipe = recipe.copyForExport()
         let exportManager = EffectManager.forExport(recipe: exportRecipe)
 

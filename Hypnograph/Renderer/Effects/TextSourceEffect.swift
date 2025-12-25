@@ -1,5 +1,5 @@
 //
-//  TextOverlayEffect.swift
+//  TextSourceEffect.swift
 //  Hypnograph
 //
 //  Overlays random text from files in Application Support/Hypnograph/text/
@@ -47,7 +47,7 @@ struct TextSnippet {
 }
 
 /// Overlays text loaded from text files onto frames
-final class TextOverlayEffect: Effect {
+final class TextSourceEffect: Effect {
 
     // MARK: - Parameter Specs
 
@@ -745,7 +745,7 @@ final class TextOverlayEffect: Effect {
 
     func copy() -> Effect {
         // Pass the same seed so the copy produces identical random sequences
-        TextOverlayEffect(fontSize: fontSize, fontSizeVariation: fontSizeVariation, opacity: opacity,
+        TextSourceEffect(fontSize: fontSize, fontSizeVariation: fontSizeVariation, opacity: opacity,
                         maxTextCount: maxTextCount, changeIntervalFrames: changeIntervalFrames,
                         durationMultiplier: durationMultiplier, fontName: fontName,
                         textColor: textColor, strokeWidth: strokeWidth,
