@@ -6,6 +6,7 @@
 //  Coordinates between the recipe (source of truth) and the rendering pipeline.
 //
 
+import AVFoundation
 import CoreGraphics
 import CoreMedia
 import CoreImage
@@ -476,6 +477,56 @@ final class EffectManager {
                 source.effectChain.reset()
             }
         }
+    }
+
+    // MARK: - Frame Buffer Preloading
+
+    /// Preload frame buffer for a video asset.
+    /// Returns whether playback should wait for preroll (based on effectBufferMode).
+    /// - Parameters:
+    ///   - asset: The video asset to preload from
+    ///   - startTime: Start time for preroll
+    /// - Returns: true if playback should wait, false to start immediately
+    @MainActor
+    func preloadFrameBuffer(from asset: AVAsset, startTime: CMTime = .zero) async -> Bool {
+        let result = await FrameBufferPreloader.preload(
+            asset: asset,
+            frameBuffer: frameBuffer,
+            effectManager: self,
+            readiness: readiness,
+            startTime: startTime
+        )
+
+        // Wait for preroll only if mode requires it and preload is happening
+        if case .success = result, effectBufferMode == .waitForBuffer {
+            return true // Caller should wait for readiness
+        }
+        return false
+    }
+
+    /// Preload frame buffer for a still image.
+    /// Returns whether playback should wait (based on effectBufferMode).
+    /// - Parameter image: The still image to prefill with
+    /// - Returns: true if playback should wait, false to start immediately
+    @MainActor
+    func preloadFrameBuffer(from image: CIImage) -> Bool {
+        let result = FrameBufferPreloader.preload(
+            image: image,
+            frameBuffer: frameBuffer,
+            effectManager: self,
+            readiness: readiness
+        )
+
+        if case .success = result, effectBufferMode == .waitForBuffer {
+            return true
+        }
+        return false
+    }
+
+    /// Whether the frame buffer is ready for playback
+    @MainActor
+    var isFrameBufferReady: Bool {
+        readiness.state.isReady
     }
 
     // MARK: - Blend Modes (reads from recipe sources)

@@ -144,3 +144,30 @@ EffectChains are **copied** when assigned to recipes to ensure:
 - This ensures pressing "E" to cycle effects sets the **global** effect
 - Global effects persist across new hypnograms via `resetForNextHypnogram(preserveGlobalEffect: true)`
 - Press "0" to explicitly select global layer, "1-9" for source layers
+
+### Frame Buffer Preloading
+
+Temporal effects (Datamosh, GhostBlur, HoldFrame) require a filled frame buffer before they work correctly.
+
+**Components:**
+- `FrameBuffer` - Ring buffer storing recent frames (120 frames = ~4 seconds at 30fps)
+- `FrameBufferPreloader` - Static utility for prerolling frames from video/image sources
+- `RendererReadiness` - Observable state: `.ready`, `.prefilling(progress)`, `.failed(reason)`
+- `EffectBufferMode` - Player setting for preroll behavior
+
+**Flow:**
+1. When a source loads, `EffectManager.preloadFrameBuffer(from:)` is called
+2. If `usesFrameBuffer` is false (no temporal effects), returns immediately
+3. Otherwise, `FrameBufferPreloader` fills the buffer with initial frames
+4. `RendererReadiness` tracks progress for potential UI feedback
+
+**Player Settings:**
+- `effectBufferMode: EffectBufferMode` on `DreamPlayerState`
+- **Play With Effect** (default) - Start playback immediately, effect builds up naturally
+- **Wait for Effect Buffer** - Delay playback until buffer is filled (better initial effect quality)
+
+**EffectManager owns preload:**
+- `preloadFrameBuffer(from: AVAsset)` - async preroll for video
+- `preloadFrameBuffer(from: CIImage)` - sync prefill for still images
+- `isFrameBufferReady` - check readiness state
+- Players call these instead of accessing FrameBufferPreloader directly
