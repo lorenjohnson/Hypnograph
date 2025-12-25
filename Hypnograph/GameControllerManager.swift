@@ -229,9 +229,9 @@ final class GameControllerManager {
             }
 
             if newIndex == -1 {
-                state.effectManager.setGlobalEffect(nil)
+                state.effectManager.setGlobalEffect(from: nil)
             } else if newIndex >= 0 && newIndex < EffectChainLibrary.all.count {
-                state.effectManager.setGlobalEffect(EffectChainLibrary.all[newIndex])
+                state.effectManager.setGlobalEffect(from: EffectChainLibrary.all[newIndex])
             }
 
         default:

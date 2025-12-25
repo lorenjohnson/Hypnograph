@@ -142,7 +142,7 @@ struct HypnogramSource {
     var blendMode: String?
 
     /// The effect chain definition for this source - source of truth for editing.
-    /// Contains 0-n hooks that are instantiated into `effects` for rendering.
+    /// Contains 0-n effect definitions that are instantiated into `effects` for rendering.
     var effectChain: EffectChain?
 
     init(

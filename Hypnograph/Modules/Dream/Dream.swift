@@ -698,8 +698,7 @@ final class Dream: ObservableObject {
     /// Clear all effects AND reset blend modes to Screen (default)
     func clearAllEffects() {
         state.noteUserInteraction()
-        let noEffect: Effect? = nil
-        activeEffectManager.setGlobalEffect(noEffect)
+        activeEffectManager.setGlobalEffect(from: nil)
 
         // Get source count from appropriate context
         let sourceCount = state.isLiveMode
@@ -707,7 +706,7 @@ final class Dream: ObservableObject {
             : state.activeSourceCount
 
         for i in 0..<sourceCount {
-            activeEffectManager.setSourceEffect(noEffect, for: i)
+            activeEffectManager.setSourceEffect(from: nil, for: i)
             // Reset blend mode on source (keep first one as SourceOver) - only in Edit mode
             if !state.isLiveMode && i > 0 && i < state.sources.count {
                 state.sources[i].blendMode = BlendMode.defaultMontage

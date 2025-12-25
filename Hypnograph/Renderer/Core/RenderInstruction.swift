@@ -36,7 +36,7 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
     /// Map each layer to a source index in the recipe (for effects)
     let sourceIndices: [Int]
 
-    /// Whether to apply render hooks
+    /// Whether to apply effects
     let enableEffects: Bool
 
     /// Still images for layers that are images (indexed by layer, nil for video layers)
@@ -46,7 +46,7 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
     /// - Preview: passes state.effectManager (mutable, changes affect playback)
     /// - Performance Display: passes performanceDisplay.effectManager (isolated instance)
     /// - Export: passes a freshly created manager from recipe.copyForExport()
-    weak var hookManager: EffectManager?
+    weak var effectManager: EffectManager?
 
     // MARK: - Initialization
 
@@ -58,7 +58,7 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
         sourceIndices: [Int],
         enableEffects: Bool = false,
         stillImages: [CIImage?] = [],
-        hookManager: EffectManager? = nil
+        effectManager: EffectManager? = nil
     ) {
         self.timeRange = timeRange
         self.layerTrackIDs = layerTrackIDs
@@ -67,7 +67,7 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
         self.sourceIndices = sourceIndices
         self.enableEffects = enableEffects
         self.stillImages = stillImages
-        self.hookManager = hookManager
+        self.effectManager = effectManager
 
         // Required track IDs for AVFoundation
         // Must wrap CMPersistentTrackID as NSNumber

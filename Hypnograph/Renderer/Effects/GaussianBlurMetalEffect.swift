@@ -1,10 +1,9 @@
 //
-//  GlitchBlocksMetalHook.swift
+//  GaussianBlurMetalEffect.swift
 //  Hypnograph
 //
-//  Destructive block glitch effect.
-//  Blocks randomly freeze, shift, corrupt colors, or streak.
-//  More aggressive than BlockFreeze, simpler than Datamosh.
+//  Gaussian blur effect via Metal compute shader.
+//  Uses separable two-pass convolution for efficiency.
 //
 
 import Foundation
@@ -12,61 +11,51 @@ import CoreImage
 import CoreVideo
 import Metal
 
-/// GPU parameters - must match GlitchBlocksShader.metal
-struct GlitchBlocksParamsGPU {
+/// GPU parameters struct - must match layout in GaussianBlurShader.metal
+struct GaussianBlurParamsGPU {
+    var radius: Float
     var textureWidth: Int32
     var textureHeight: Int32
-    var blockSize: Int32
-    var glitchAmount: Float
-    var corruption: Float
-    var randomSeed: UInt32
-    var frameSeed: UInt32
+    var isVerticalPass: Int32
 }
 
-/// Destructive block glitch effect
-final class GlitchBlocksMetalHook: Effect {
+/// Gaussian blur effect using Metal compute shader.
+/// Performs separable two-pass blur (horizontal then vertical) for efficiency.
+final class GaussianBlurMetalEffect: Effect {
 
-    // MARK: - Parameter Specs
+    // MARK: - Parameter Specs (source of truth)
 
     static var parameterSpecs: [String: ParameterSpec] {
         [
-            "blockSize": .int(default: 32, range: 8...128),
-            "glitchAmount": .float(default: 0.3, range: 0...1),
-            "corruption": .float(default: 0.5, range: 0...1)
+            "radius": .float(default: 10.0, range: 0...100)
         ]
     }
 
     // MARK: - Properties
 
-    var name: String { "Glitch Blocks" }
-    var requiredLookback: Int { 20 }
+    var name: String { customName ?? "GaussianBlur" }
+    private let customName: String?
 
-    var blockSize: Int
-    var glitchAmount: Float
-    var corruption: Float
+    var radius: Float {
+        didSet { radius = max(0, min(100, radius)) }
+    }
 
-    // Metal state
+    // Metal resources
     private let device: MTLDevice?
     private let commandQueue: MTLCommandQueue?
     private var pipelineState: MTLComputePipelineState?
     private var textureCache: CVMetalTextureCache?
 
-    // Buffers
+    // Reusable buffers
     private var inputBuffer: CVPixelBuffer?
+    private var tempBuffer: CVPixelBuffer?
     private var outputBuffer: CVPixelBuffer?
-    private var frameCounter: UInt32 = 0
-
-    // Stable seed changes slowly
-    private var stableSeed: UInt32 = 0
-    private var seedCounter: Int = 0
 
     // MARK: - Init
 
-    init(blockSize: Int, glitchAmount: Float, corruption: Float) {
-        self.blockSize = max(8, min(128, blockSize))
-        self.glitchAmount = max(0, min(1, glitchAmount))
-        self.corruption = max(0, min(1, corruption))
-
+    init(radius: Float, name: String? = nil) {
+        self.radius = max(0, min(100, radius))
+        self.customName = name
         self.device = MTLCreateSystemDefaultDevice()
         self.commandQueue = device?.makeCommandQueue()
 
@@ -81,21 +70,24 @@ final class GlitchBlocksMetalHook: Effect {
 
     required convenience init?(params: [String: AnyCodableValue]?) {
         let p = Params(params, specs: Self.parameterSpecs)
-        self.init(blockSize: p.int("blockSize"), glitchAmount: p.float("glitchAmount"), corruption: p.float("corruption"))
+        self.init(radius: p.float("radius"))
     }
 
     private func loadShader() {
-        guard let device = device else { return }
+        guard let device = device else {
+            print("⚠️ GaussianBlurMetalEffect: No Metal device")
+            return
+        }
 
         do {
             let library = try device.makeDefaultLibrary(bundle: Bundle.main)
-            guard let function = library.makeFunction(name: "glitchBlocksKernel") else {
-                print("⚠️ GlitchBlocksMetalHook: Kernel not found")
+            guard let function = library.makeFunction(name: "gaussianBlurKernel") else {
+                print("⚠️ GaussianBlurMetalEffect: Kernel function not found")
                 return
             }
             pipelineState = try device.makeComputePipelineState(function: function)
         } catch {
-            print("⚠️ GlitchBlocksMetalHook: Pipeline error: \(error)")
+            print("⚠️ GaussianBlurMetalEffect: Failed to create pipeline: \(error)")
         }
     }
 
@@ -116,11 +108,14 @@ final class GlitchBlocksMetalHook: Effect {
         CVPixelBufferCreate(kCFAllocatorDefault, width, height,
                            kCVPixelFormatType_32BGRA, attrs as CFDictionary, &inputBuffer)
         CVPixelBufferCreate(kCFAllocatorDefault, width, height,
+                           kCVPixelFormatType_32BGRA, attrs as CFDictionary, &tempBuffer)
+        CVPixelBufferCreate(kCFAllocatorDefault, width, height,
                            kCVPixelFormatType_32BGRA, attrs as CFDictionary, &outputBuffer)
     }
 
     private func textureFromBuffer(_ buffer: CVPixelBuffer) -> MTLTexture? {
         guard let cache = textureCache else { return nil }
+
         let width = CVPixelBufferGetWidth(buffer)
         let height = CVPixelBufferGetHeight(buffer)
 
@@ -129,24 +124,14 @@ final class GlitchBlocksMetalHook: Effect {
             kCFAllocatorDefault, cache, buffer, nil,
             .bgra8Unorm, width, height, 0, &cvTexture
         )
+
         guard status == kCVReturnSuccess, let tex = cvTexture else { return nil }
         return CVMetalTextureGetTexture(tex)
     }
 
     // MARK: - Effect Protocol
 
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
-        frameCounter &+= 1
-
-        // Update stable seed every ~20 frames (pattern changes slowly)
-        seedCounter += 1
-        if seedCounter >= 20 {
-            seedCounter = 0
-            stableSeed = UInt32.random(in: 0..<UInt32.max)
-        }
-
-        guard context.frameBuffer.frameCount >= 5 else { return image }
-
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         guard let device = device,
               let commandQueue = commandQueue,
               let pipeline = pipelineState else {
@@ -156,45 +141,29 @@ final class GlitchBlocksMetalHook: Effect {
         let extent = image.extent
         let width = Int(extent.width)
         let height = Int(extent.height)
+
         guard width > 0, height > 0 else { return image }
 
-        // Get history from ~8 frames ago
-        let historyOffset = min(8, context.frameBuffer.frameCount - 1)
-        guard let historyTexture = context.frameBuffer.texture(atHistoryOffset: historyOffset) else {
+        // Ensure buffers
+        ensureBuffers(width: width, height: height)
+        guard let inBuf = inputBuffer, let tmpBuf = tempBuffer, let outBuf = outputBuffer else {
             return image
         }
 
-        ensureBuffers(width: width, height: height)
-        guard let inBuf = inputBuffer, let outBuf = outputBuffer else { return image }
-
+        // Render CIImage to input buffer
         SharedRenderer.ciContext.render(image, to: inBuf, bounds: extent,
                                         colorSpace: CGColorSpaceCreateDeviceRGB())
 
-        guard let currentTexture = textureFromBuffer(inBuf),
-              let outputTexture = textureFromBuffer(outBuf) else {
+        // Get textures
+        guard let texture1 = textureFromBuffer(inBuf),
+              let texture2 = textureFromBuffer(tmpBuf),
+              let texture3 = textureFromBuffer(outBuf) else {
             return image
         }
 
-        var gpuParams = GlitchBlocksParamsGPU(
-            textureWidth: Int32(width),
-            textureHeight: Int32(height),
-            blockSize: Int32(blockSize),
-            glitchAmount: glitchAmount,
-            corruption: corruption,
-            randomSeed: stableSeed,
-            frameSeed: frameCounter
-        )
-
-        guard let commandBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeComputeCommandEncoder() else {
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else {
             return image
         }
-
-        encoder.setComputePipelineState(pipeline)
-        encoder.setTexture(currentTexture, index: 0)
-        encoder.setTexture(historyTexture, index: 1)
-        encoder.setTexture(outputTexture, index: 2)
-        encoder.setBytes(&gpuParams, length: MemoryLayout<GlitchBlocksParamsGPU>.stride, index: 0)
 
         let threadWidth = pipeline.threadExecutionWidth
         let threadHeight = pipeline.maxTotalThreadsPerThreadgroup / threadWidth
@@ -205,24 +174,53 @@ final class GlitchBlocksMetalHook: Effect {
             depth: 1
         )
 
-        encoder.dispatchThreadgroups(threadgroups, threadsPerThreadgroup: threadsPerGroup)
-        encoder.endEncoding()
+        // Pass 1: Horizontal blur (texture1 -> texture2)
+        if let encoder = commandBuffer.makeComputeCommandEncoder() {
+            var params = GaussianBlurParamsGPU(
+                radius: radius,
+                textureWidth: Int32(width),
+                textureHeight: Int32(height),
+                isVerticalPass: 0
+            )
+            encoder.setComputePipelineState(pipeline)
+            encoder.setTexture(texture1, index: 0)
+            encoder.setTexture(texture2, index: 1)
+            encoder.setBytes(&params, length: MemoryLayout<GaussianBlurParamsGPU>.stride, index: 0)
+            encoder.dispatchThreadgroups(threadgroups, threadsPerThreadgroup: threadsPerGroup)
+            encoder.endEncoding()
+        }
+
+        // Pass 2: Vertical blur (texture2 -> texture3)
+        if let encoder = commandBuffer.makeComputeCommandEncoder() {
+            var params = GaussianBlurParamsGPU(
+                radius: radius,
+                textureWidth: Int32(width),
+                textureHeight: Int32(height),
+                isVerticalPass: 1
+            )
+            encoder.setComputePipelineState(pipeline)
+            encoder.setTexture(texture2, index: 0)
+            encoder.setTexture(texture3, index: 1)
+            encoder.setBytes(&params, length: MemoryLayout<GaussianBlurParamsGPU>.stride, index: 0)
+            encoder.dispatchThreadgroups(threadgroups, threadsPerThreadgroup: threadsPerGroup)
+            encoder.endEncoding()
+        }
+
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
 
+        // Convert output buffer back to CIImage (no orientation flip needed)
         return CIImage(cvPixelBuffer: outBuf)
     }
 
     func reset() {
         inputBuffer = nil
+        tempBuffer = nil
         outputBuffer = nil
-        frameCounter = 0
-        stableSeed = 0
-        seedCounter = 0
     }
 
     func copy() -> Effect {
-        GlitchBlocksMetalHook(blockSize: blockSize, glitchAmount: glitchAmount, corruption: corruption)
+        GaussianBlurMetalEffect(radius: radius, name: customName)
     }
 }
 

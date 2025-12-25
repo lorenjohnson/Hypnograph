@@ -1,5 +1,5 @@
 //
-//  HoldFrameHook.swift
+//  HoldFrameEffect.swift
 //  Hypnograph
 //
 //  Pseudo-datamosh effect: freezes a frame and accumulates ghostly motion trails
@@ -12,7 +12,7 @@ import CoreGraphics
 
 /// Pseudo-datamosh effect - freezes a frame and shows ghostly motion trails
 /// Combines the best of FrameDifference (visible motion) with temporal accumulation
-final class HoldFrameHook: Effect {
+final class HoldFrameEffect: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 
@@ -70,7 +70,7 @@ final class HoldFrameHook: Effect {
 
     // MARK: - Effect
 
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         let frameCount = context.frameIndex
         let outputRect = CGRect(origin: .zero, size: context.outputSize)
 
@@ -120,7 +120,7 @@ final class HoldFrameHook: Effect {
 
     func copy() -> Effect {
         // Return a fresh instance with same configuration but reset state
-        return HoldFrameHook(
+        return HoldFrameEffect(
             freezeInterval: freezeIntervalBase,
             holdDuration: holdDurationBase,
             trailBoost: trailBoost

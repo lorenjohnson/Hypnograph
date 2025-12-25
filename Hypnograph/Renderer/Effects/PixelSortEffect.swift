@@ -1,5 +1,5 @@
 //
-//  PixelSortHook.swift
+//  PixelSortEffect.swift
 //  Hypnograph
 //
 //  Pixel sorting glitch effect - sorts pixels by brightness creating streaky artifacts
@@ -11,7 +11,7 @@ import CoreGraphics
 
 /// Pixel sorting effect - creates horizontal/vertical streaks by sorting pixels
 /// Simulates the aesthetic of Kim Asendorf's pixel sorting algorithm
-struct PixelSortHook: Effect {
+struct PixelSortEffect: Effect {
     var name: String { "PixelSort" }
     
     static var parameterSpecs: [String: ParameterSpec] {
@@ -29,7 +29,7 @@ struct PixelSortHook: Effect {
         self.init(intensity: p.float("intensity"))
     }
     
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         let t = CMTimeGetSeconds(context.time)
         
         // Oscillate between horizontal and vertical sorting

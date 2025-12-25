@@ -1,5 +1,5 @@
 //
-//  TimeShuffleMetalHook.swift
+//  TimeShuffleMetalEffect.swift
 //  Hypnograph
 //
 //  Time shuffle - swaps chunks of frames out of order.
@@ -24,7 +24,7 @@ struct TimeShuffleParamsGPU {
 }
 
 /// Time shuffle - regions show different chunks of frame history
-final class TimeShuffleMetalHook: Effect {
+final class TimeShuffleMetalEffect: Effect {
 
     // MARK: - Parameter Specs
 
@@ -88,12 +88,12 @@ final class TimeShuffleMetalHook: Effect {
         do {
             let library = try device.makeDefaultLibrary(bundle: Bundle.main)
             guard let function = library.makeFunction(name: "timeShuffleKernel") else {
-                print("⚠️ TimeShuffleMetalHook: Kernel not found")
+                print("⚠️ TimeShuffleMetalEffect: Kernel not found")
                 return
             }
             pipelineState = try device.makeComputePipelineState(function: function)
         } catch {
-            print("⚠️ TimeShuffleMetalHook: Pipeline error: \(error)")
+            print("⚠️ TimeShuffleMetalEffect: Pipeline error: \(error)")
         }
     }
 
@@ -126,7 +126,7 @@ final class TimeShuffleMetalHook: Effect {
 
     // MARK: - Effect Protocol
 
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         frameCounter += 1
 
         // Randomly reshuffle based on shuffleRate - this changes the pattern
@@ -239,7 +239,7 @@ final class TimeShuffleMetalHook: Effect {
     }
 
     func copy() -> Effect {
-        TimeShuffleMetalHook(numRegions: numRegions, depth: depth, shuffleRate: shuffleRate)
+        TimeShuffleMetalEffect(numRegions: numRegions, depth: depth, shuffleRate: shuffleRate)
     }
 }
 

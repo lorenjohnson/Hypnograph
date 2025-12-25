@@ -1,5 +1,5 @@
 //
-//  TemporalSmearHook.swift
+//  TemporalSmearEffect.swift
 //  Hypnograph
 //
 //  Smears pixels over time based on motion direction
@@ -12,7 +12,7 @@ import CoreGraphics
 
 /// Temporal smear - directional motion blur based on frame differences
 /// Creates painterly streaks in the direction of motion
-struct TemporalSmearHook: Effect {
+struct TemporalSmearEffect: Effect {
     var name: String { "Temporal Smear" }
 
     /// Needs lookback frames of history
@@ -41,7 +41,7 @@ struct TemporalSmearHook: Effect {
         self.init(intensity: p.float("intensity"), lookback: p.int("lookback"))
     }
     
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         // Work with whatever frames are available (preroll fills buffer from frame 1)
         let maxOffset = min(lookback, context.frameBuffer.frameCount - 1)
         guard maxOffset >= 2 else { return image }

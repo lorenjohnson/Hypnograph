@@ -409,14 +409,14 @@ final class PerformanceDisplay: ObservableObject {
         let config = RenderEngine.Config(
             outputSize: outputSize,
             frameRate: 30,
-            enableGlobalHooks: true
+            enableGlobalEffects: true
         )
 
         let result = await renderEngine.makePlayerItem(
             recipe: recipe,
             strategy: strategy,
             config: config,
-            hookManager: effectManager  // Use PerformanceDisplay's own EffectManager
+            effectManager: effectManager  // Use PerformanceDisplay's own EffectManager
         )
 
         guard !Task.isCancelled else {

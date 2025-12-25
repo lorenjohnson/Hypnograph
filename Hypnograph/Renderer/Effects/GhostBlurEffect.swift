@@ -1,5 +1,5 @@
 //
-//  GhostBlurHook.swift
+//  GhostBlurEffect.swift
 //  Hypnograph
 //
 //  Gaussian blur ghost trails using frame buffer
@@ -12,7 +12,7 @@ import CoreGraphics
 
 /// Ghost blur effect - blurred trails from previous frames
 /// Each older frame is more blurred, creating smooth ethereal motion
-struct GhostBlurHook: Effect {
+struct GhostBlurEffect: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 
@@ -51,7 +51,7 @@ struct GhostBlurHook: Effect {
         self.init(intensity: p.float("intensity"), trailLength: p.int("trailLength"), blurAmount: p.cgFloat("blurAmount"))
     }
     
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         // Work with whatever frames are available (preroll fills buffer from frame 1)
         // Gracefully degrade if buffer isn't full yet
         let availableFrames = min(trailLength, context.frameBuffer.frameCount - 1)

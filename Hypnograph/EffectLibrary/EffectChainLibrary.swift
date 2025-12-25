@@ -3,8 +3,7 @@
 //  Hypnograph
 //
 //  Library of available effect chains loaded from configuration.
-//  Provides access to all effects and their definitions.
-//  Extracted from RenderHooks.swift as part of effects architecture refactor.
+//  Provides access to all effect chain definitions.
 //
 
 import Foundation
@@ -20,19 +19,19 @@ enum EffectChainLibrary {
 
     /// All available effect chains (None is implicit, represented by nil)
     /// Loaded from: user config → bundled default → hardcoded fallback
-    static var all: [Effect] {
+    static var all: [EffectChain] {
         if let cached = cachedResult {
-            return cached.effects
+            return cached.chains
         }
-        let result = EffectConfigLoader.loadEffects()
+        let result = EffectConfigLoader.loadChains()
         cachedResult = result
 
         // Log source and notify on errors
         switch result.source {
         case .user:
-            print("✓ Effect chains loaded from user config (\(result.effects.count) chains)")
+            print("✓ Effect chains loaded from user config (\(result.chains.count) chains)")
         case .bundled:
-            print("✓ Effect chains loaded from bundled defaults (\(result.effects.count) chains)")
+            print("✓ Effect chains loaded from bundled defaults (\(result.chains.count) chains)")
         case .hardcoded:
             print("⚠️ Effect chains using hardcoded fallback")
             if result.error != nil {
@@ -40,22 +39,22 @@ enum EffectChainLibrary {
             }
         }
 
-        return result.effects
+        return result.chains
     }
 
     /// Update a single effect chain in the cache (used for live parameter updates)
-    static func updateCachedEffect(at index: Int, with effect: Effect) {
-        guard var result = cachedResult, index >= 0, index < result.effects.count else { return }
-        var effects = result.effects
-        effects[index] = effect
-        cachedResult = EffectConfigLoader.LoadResult(effects: effects, source: result.source, error: result.error)
+    static func updateCachedChain(at index: Int, with chain: EffectChain) {
+        guard var result = cachedResult, index >= 0, index < result.chains.count else { return }
+        var chains = result.chains
+        chains[index] = chain
+        cachedResult = EffectConfigLoader.LoadResult(chains: chains, source: result.source, error: result.error)
     }
 
-    /// Replace the entire effect chains cache with new effects
+    /// Replace the entire effect chains cache
     /// Used by EffectConfigLoader when effect chains are added/deleted in-memory
-    static func updateCache(with effects: [Effect]) {
+    static func updateCache(with chains: [EffectChain]) {
         let source = cachedResult?.source ?? .user
-        cachedResult = EffectConfigLoader.LoadResult(effects: effects, source: source, error: nil)
+        cachedResult = EffectConfigLoader.LoadResult(chains: chains, source: source, error: nil)
         // Notify listeners to re-apply active effects
         onReload?()
     }
@@ -67,15 +66,15 @@ enum EffectChainLibrary {
         // Clear loader cache first so we get fresh data
         EffectConfigLoader.clearCache()
 
-        let result = EffectConfigLoader.loadEffects()
+        let result = EffectConfigLoader.loadChains()
         cachedResult = result
 
         // Notify user of reload result (unless silent)
         if !silent {
             switch result.source {
             case .user:
-                print("✓ Effect chains reloaded from user config (\(result.effects.count) chains)")
-                AppNotifications.show("Effect chains reloaded (\(result.effects.count))", flash: true, duration: 2.0)
+                print("✓ Effect chains reloaded from user config (\(result.chains.count) chains)")
+                AppNotifications.show("Effect chains reloaded (\(result.chains.count))", flash: true, duration: 2.0)
             case .bundled:
                 print("✓ Effect chains reloaded from bundled defaults")
                 AppNotifications.show("Effect chains reloaded from defaults", flash: true, duration: 2.0)
@@ -95,10 +94,10 @@ enum EffectChainLibrary {
     @discardableResult
     static func reload(from url: URL) -> EffectConfigLoader.LoadResult {
         do {
-            let effects = try EffectConfigLoader.loadFromURL(url)
-            let result = EffectConfigLoader.LoadResult(effects: effects, source: .user, error: nil)
+            let chains = try EffectConfigLoader.loadFromURL(url)
+            let result = EffectConfigLoader.LoadResult(chains: chains, source: .user, error: nil)
             cachedResult = result
-            print("✓ Effect chains loaded from library: \(url.lastPathComponent) (\(effects.count) chains)")
+            print("✓ Effect chains loaded from library: \(url.lastPathComponent) (\(chains.count) chains)")
 
             // Notify listeners to re-apply active effect chains
             onReload?()
@@ -112,13 +111,8 @@ enum EffectChainLibrary {
     }
 
     /// Returns a random effect chain
-    static func random() -> Effect? {
+    static func random() -> EffectChain? {
         all.randomElement()
     }
 }
-
-// MARK: - Compatibility Alias
-
-/// Compatibility alias for HookChainLibrary -> EffectChainLibrary
-typealias HookChainLibrary = EffectChainLibrary
 

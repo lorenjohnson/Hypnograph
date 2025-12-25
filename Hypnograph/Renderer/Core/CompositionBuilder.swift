@@ -41,7 +41,7 @@ final class CompositionBuilder {
     ///   - outputSize: Output dimensions
     ///   - frameRate: Frame rate (default 30)
     ///   - enableEffects: Whether to apply effects
-    ///   - hookManager: The EffectManager to use for this composition.
+    ///   - effectManager: The EffectManager to use for this composition.
     ///                  Pass nil only for legacy callers; all new code should provide a manager.
     func build(
         recipe: HypnogramRecipe,
@@ -49,7 +49,7 @@ final class CompositionBuilder {
         outputSize: CGSize,
         frameRate: Int = 30,
         enableEffects: Bool = true,
-        hookManager: EffectManager? = nil
+        effectManager: EffectManager? = nil
     ) async -> Result<BuildResult, RenderError> {
 
         // Validate
@@ -70,7 +70,7 @@ final class CompositionBuilder {
                 outputSize: outputSize,
                 frameRate: frameRate,
                 enableEffects: enableEffects,
-                hookManager: hookManager
+                effectManager: effectManager
             )
         case .sequence:
             return await buildSequence(
@@ -78,7 +78,7 @@ final class CompositionBuilder {
                 outputSize: outputSize,
                 frameRate: frameRate,
                 enableEffects: enableEffects,
-                hookManager: hookManager
+                effectManager: effectManager
             )
         }
     }
@@ -91,7 +91,7 @@ final class CompositionBuilder {
         outputSize: CGSize,
         frameRate: Int,
         enableEffects: Bool,
-        hookManager: EffectManager?
+        effectManager: EffectManager?
     ) async -> Result<BuildResult, RenderError> {
 
         // Load all sources
@@ -220,7 +220,7 @@ final class CompositionBuilder {
             composition.insertEmptyTimeRange(CMTimeRange(start: .zero, duration: targetDuration))
         }
 
-        // Create instruction with hook manager for effect processing
+        // Create instruction with effect manager for effect processing
         let instruction = RenderInstruction(
             timeRange: CMTimeRange(start: .zero, duration: targetDuration),
             layerTrackIDs: trackIDs,
@@ -229,7 +229,7 @@ final class CompositionBuilder {
             sourceIndices: sourceIndices,
             enableEffects: enableEffects,
             stillImages: stillImages,
-            hookManager: hookManager
+            effectManager: effectManager
         )
 
         // Create video composition
@@ -272,7 +272,7 @@ final class CompositionBuilder {
         outputSize: CGSize,
         frameRate: Int,
         enableEffects: Bool,
-        hookManager: EffectManager?
+        effectManager: EffectManager?
     ) async -> Result<BuildResult, RenderError> {
 
         // Load all sources (track original index for correct seeking)
@@ -345,7 +345,7 @@ final class CompositionBuilder {
                     sourceIndices: [originalIndex],
                     enableEffects: enableEffects,
                     stillImages: [loaded.ciImage],
-                    hookManager: hookManager
+                    effectManager: effectManager
                 )
                 instructions.append(instruction)
             } else {
@@ -381,7 +381,7 @@ final class CompositionBuilder {
                     sourceIndices: [originalIndex],
                     enableEffects: enableEffects,
                     stillImages: [nil],
-                    hookManager: hookManager
+                    effectManager: effectManager
                 )
                 instructions.append(instruction)
             }

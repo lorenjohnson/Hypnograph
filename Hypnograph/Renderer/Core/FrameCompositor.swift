@@ -87,9 +87,9 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
             height: CVPixelBufferGetHeight(outputBuffer)
         )
 
-        // Use the hook manager from the instruction
+        // Use the effect manager from the instruction
         // All paths (preview, performance display, export) now pass their manager through
-        let manager = instruction.hookManager
+        let manager = instruction.effectManager
         let frameIndex = manager?.nextFrameIndex() ?? 0
 
         // Composite all layers
@@ -141,7 +141,7 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
                             frameBuffer: manager.frameBuffer
                         )
                         for effect in effects {
-                            img = effect.willRenderFrame(&sourceContext, image: img)
+                            img = effect.apply(to: img, context: &sourceContext)
                         }
                     }
                 }
@@ -197,7 +197,7 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
                     frameBuffer: manager.frameBuffer
                 )
                 for effect in recipe.effects {
-                    finalImage = effect.willRenderFrame(&context, image: finalImage)
+                    finalImage = effect.apply(to: finalImage, context: &context)
                 }
             }
         }

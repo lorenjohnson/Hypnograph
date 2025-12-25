@@ -1,5 +1,5 @@
 //
-//  TextOverlayHook.swift
+//  TextOverlayEffect.swift
 //  Hypnograph
 //
 //  Overlays random text from files in Application Support/Hypnograph/text/
@@ -47,7 +47,7 @@ struct TextSnippet {
 }
 
 /// Overlays text loaded from text files onto frames
-final class TextOverlayHook: Effect {
+final class TextOverlayEffect: Effect {
 
     // MARK: - Parameter Specs
 
@@ -533,7 +533,7 @@ final class TextOverlayHook: Effect {
 
     // MARK: - Effect
 
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         // Trigger lazy loading on first use
         ensureTextLoaded()
 
@@ -745,7 +745,7 @@ final class TextOverlayHook: Effect {
 
     func copy() -> Effect {
         // Pass the same seed so the copy produces identical random sequences
-        TextOverlayHook(fontSize: fontSize, fontSizeVariation: fontSizeVariation, opacity: opacity,
+        TextOverlayEffect(fontSize: fontSize, fontSizeVariation: fontSizeVariation, opacity: opacity,
                         maxTextCount: maxTextCount, changeIntervalFrames: changeIntervalFrames,
                         durationMultiplier: durationMultiplier, fontName: fontName,
                         textColor: textColor, strokeWidth: strokeWidth,

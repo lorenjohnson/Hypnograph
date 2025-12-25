@@ -1,5 +1,5 @@
 //
-//  DatamoshMetalHook.swift
+//  DatamoshMetalEffect.swift
 //  Hypnograph
 //
 //  Metal compute shader-based datamosh effect.
@@ -14,7 +14,7 @@ import CoreVideo
 
 /// Metal-based datamosh effect with block sampling from frame history.
 /// Uses a compute shader to achieve codec-like drift and smear effects.
-final class DatamoshMetalHook: Effect {
+final class DatamoshMetalEffect: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 
@@ -162,25 +162,25 @@ final class DatamoshMetalHook: Effect {
 
     private func loadShader() {
         guard let device = device else {
-            print("⚠️ DatamoshMetalHook: No Metal device")
+            print("⚠️ DatamoshMetalEffect: No Metal device")
             return
         }
 
         do {
             let library = try device.makeDefaultLibrary(bundle: Bundle.main)
             guard let function = library.makeFunction(name: "datamoshKernel") else {
-                print("⚠️ DatamoshMetalHook: Kernel function not found")
+                print("⚠️ DatamoshMetalEffect: Kernel function not found")
                 return
             }
             pipelineState = try device.makeComputePipelineState(function: function)
         } catch {
-            print("⚠️ DatamoshMetalHook: Failed to create pipeline: \(error)")
+            print("⚠️ DatamoshMetalEffect: Failed to create pipeline: \(error)")
         }
     }
 
     // MARK: - Effect Protocol
 
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         frameCounter &+= 1
 
         // Update smooth intensity modulation
@@ -290,7 +290,7 @@ final class DatamoshMetalHook: Effect {
     }
 
     func reset() {
-        print("🔄 DatamoshMetalHook: reset() called - clearing all state")
+        print("🔄 DatamoshMetalEffect: reset() called - clearing all state")
         frameCounter = 0
         previousOutputBuffer = nil
         previousOutputTexture = nil
@@ -320,7 +320,7 @@ final class DatamoshMetalHook: Effect {
 
     func copy() -> Effect {
         // Return a fresh instance with same params but reset state
-        return DatamoshMetalHook(params: params)
+        return DatamoshMetalEffect(params: params)
     }
 
     // MARK: - Smooth Temporal Modulation

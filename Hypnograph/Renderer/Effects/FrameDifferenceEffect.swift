@@ -1,5 +1,5 @@
 //
-//  FrameDifferenceHook.swift
+//  FrameDifferenceEffect.swift
 //  Hypnograph
 //
 //  Shows only the difference between frames - reveals motion as bright areas
@@ -12,7 +12,7 @@ import CoreGraphics
 
 /// Frame difference effect - highlights motion by showing inter-frame differences
 /// Great for creating ghostly motion trails on dark backgrounds
-struct FrameDifferenceHook: Effect {
+struct FrameDifferenceEffect: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 
@@ -51,7 +51,7 @@ struct FrameDifferenceHook: Effect {
         self.init(sensitivity: p.float("sensitivity"), intensity: p.float("intensity"), originalBlend: p.float("originalBlend"))
     }
 
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         guard let prevFrame = context.frameBuffer.previousFrame(offset: 1) else {
             return image
         }

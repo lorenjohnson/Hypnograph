@@ -1,5 +1,5 @@
 //
-//  BlockFreezeMetalHook.swift
+//  BlockFreezeMetalEffect.swift
 //  Hypnograph
 //
 //  Simple block-based freeze effect.
@@ -23,7 +23,7 @@ struct BlockFreezeParamsGPU {
 }
 
 /// Simple block freeze effect - blocks randomly freeze in place
-final class BlockFreezeMetalHook: Effect {
+final class BlockFreezeMetalEffect: Effect {
 
     // MARK: - Parameter Specs
 
@@ -89,12 +89,12 @@ final class BlockFreezeMetalHook: Effect {
         do {
             let library = try device.makeDefaultLibrary(bundle: Bundle.main)
             guard let function = library.makeFunction(name: "blockFreezeKernel") else {
-                print("⚠️ BlockFreezeMetalHook: Kernel not found")
+                print("⚠️ BlockFreezeMetalEffect: Kernel not found")
                 return
             }
             pipelineState = try device.makeComputePipelineState(function: function)
         } catch {
-            print("⚠️ BlockFreezeMetalHook: Pipeline error: \(error)")
+            print("⚠️ BlockFreezeMetalEffect: Pipeline error: \(error)")
         }
     }
 
@@ -134,7 +134,7 @@ final class BlockFreezeMetalHook: Effect {
 
     // MARK: - Effect Protocol
 
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         frameCounter &+= 1
 
         // Update seed slowly (every ~15 frames) for stable freeze pattern
@@ -225,7 +225,7 @@ final class BlockFreezeMetalHook: Effect {
     }
 
     func copy() -> Effect {
-        BlockFreezeMetalHook(blockSize: blockSize, freezeAmount: freezeAmount, streakAmount: streakAmount)
+        BlockFreezeMetalEffect(blockSize: blockSize, freezeAmount: freezeAmount, streakAmount: streakAmount)
     }
 }
 

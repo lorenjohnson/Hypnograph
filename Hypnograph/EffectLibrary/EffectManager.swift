@@ -4,7 +4,6 @@
 //
 //  Manages effect state, frame buffer, and effect application.
 //  Coordinates between the recipe (source of truth) and the rendering pipeline.
-//  Extracted from RenderHooks.swift as part of effects architecture refactor.
 //
 
 import CoreGraphics
@@ -173,9 +172,9 @@ final class EffectManager {
 
     // MARK: - Global Effects (reads from recipe)
 
-    /// Get the current global effect name
+    /// Get the current global effect chain name (for UI matching)
     var globalEffectName: String {
-        recipeProvider?()?.effects.first?.name ?? "None"
+        recipeProvider?()?.effectChain?.name ?? "None"
     }
 
     /// Get the current global effect chain (for editing)
@@ -196,29 +195,29 @@ final class EffectManager {
     /// Set global effect from an effect chain - stores chain and instantiates effects
     func setGlobalEffect(from chain: EffectChain?) {
         globalEffectChainSetter?(chain)
-        if let chain = chain, let effect = EffectConfigLoader.instantiateChain(chain) {
-            effectsSetter?([effect])
+        if let chain = chain {
+            effectsSetter?(EffectConfigLoader.instantiateChain(chain))
         } else {
             effectsSetter?([])
         }
         onEffectChanged?()
     }
 
-    // MARK: - Hook Chain Management
+    // MARK: - Effect Chain Management
 
-    /// Update a hook's parameter in the recipe's effect chain
+    /// Update an effect's parameter in the recipe's effect chain
     /// - Parameters:
     ///   - layer: -1 for global, 0+ for source index
-    ///   - hookIndex: index of the hook in the chain
+    ///   - effectDefIndex: index of the effect in the chain
     ///   - key: parameter key
     ///   - value: new parameter value
-    func updateHookParameter(for layer: Int, hookIndex: Int, key: String, value: AnyCodableValue) {
+    func updateEffectParameter(for layer: Int, effectDefIndex: Int, key: String, value: AnyCodableValue) {
         guard var chain = effectChain(for: layer) else { return }
-        guard hookIndex >= 0, hookIndex < chain.hooks.count else { return }
+        guard effectDefIndex >= 0, effectDefIndex < chain.effects.count else { return }
 
-        var params = chain.hooks[hookIndex].params ?? [:]
+        var params = chain.effects[effectDefIndex].params ?? [:]
         params[key] = value
-        chain.hooks[hookIndex].params = params
+        chain.effects[effectDefIndex].params = params
 
         setEffect(from: chain, for: layer)
     }
@@ -238,29 +237,29 @@ final class EffectManager {
         setEffect(from: chain, for: layer)
     }
 
-    /// Add a hook to the recipe's effect chain for a layer
+    /// Add an effect to the recipe's effect chain for a layer
     /// - Parameters:
     ///   - layer: -1 for global, 0+ for source index
-    ///   - hookType: the type of hook to add (e.g. "DatamoshMetalHook")
-    func addHookToChain(for layer: Int, hookType: String) {
+    ///   - effectType: the type of effect to add (e.g. "DatamoshMetalEffect")
+    func addEffectToChain(for layer: Int, effectType: String) {
         guard var chain = effectChain(for: layer) else { return }
 
-        let defaults = EffectRegistry.defaults(for: hookType)
-        let newHook = HookDefinition(type: hookType, params: defaults)
-        chain.hooks.append(newHook)
+        let defaults = EffectRegistry.defaults(for: effectType)
+        let newEffect = EffectDefinition(type: effectType, params: defaults)
+        chain.effects.append(newEffect)
 
         setEffect(from: chain, for: layer)
     }
 
-    /// Remove a hook from the recipe's effect chain for a layer
+    /// Remove an effect from the recipe's effect chain for a layer
     /// - Parameters:
     ///   - layer: -1 for global, 0+ for source index
-    ///   - hookIndex: index of the hook to remove
-    func removeHookFromChain(for layer: Int, hookIndex: Int) {
+    ///   - effectDefIndex: index of the effect to remove
+    func removeEffectFromChain(for layer: Int, effectDefIndex: Int) {
         guard var chain = effectChain(for: layer) else { return }
-        guard hookIndex >= 0, hookIndex < chain.hooks.count else { return }
+        guard effectDefIndex >= 0, effectDefIndex < chain.effects.count else { return }
 
-        chain.hooks.remove(at: hookIndex)
+        chain.effects.remove(at: effectDefIndex)
 
         setEffect(from: chain, for: layer)
     }
@@ -275,54 +274,41 @@ final class EffectManager {
         setEffect(from: chain, for: layer)
     }
 
-    /// Reorder hooks in the recipe's effect chain for a layer
+    /// Reorder effects in the recipe's effect chain for a layer
     /// - Parameters:
     ///   - layer: -1 for global, 0+ for source index
     ///   - fromIndex: source index
     ///   - toIndex: destination index
-    func reorderHooksInChain(for layer: Int, fromIndex: Int, toIndex: Int) {
+    func reorderEffectsInChain(for layer: Int, fromIndex: Int, toIndex: Int) {
         guard var chain = effectChain(for: layer) else { return }
-        guard fromIndex >= 0, fromIndex < chain.hooks.count else { return }
-        guard toIndex >= 0, toIndex < chain.hooks.count else { return }
+        guard fromIndex >= 0, fromIndex < chain.effects.count else { return }
+        guard toIndex >= 0, toIndex < chain.effects.count else { return }
 
-        let hook = chain.hooks.remove(at: fromIndex)
-        chain.hooks.insert(hook, at: toIndex)
+        let effect = chain.effects.remove(at: fromIndex)
+        chain.effects.insert(effect, at: toIndex)
 
         setEffect(from: chain, for: layer)
     }
 
-    /// Reset a hook's parameters to defaults in the recipe
+    /// Reset an effect's parameters to defaults in the recipe
     /// - Parameters:
     ///   - layer: -1 for global, 0+ for source index
-    ///   - hookIndex: index of the hook to reset
-    func resetHookToDefaults(for layer: Int, hookIndex: Int) {
+    ///   - effectDefIndex: index of the effect to reset
+    func resetEffectToDefaults(for layer: Int, effectDefIndex: Int) {
         guard var chain = effectChain(for: layer) else { return }
-        guard hookIndex >= 0, hookIndex < chain.hooks.count else { return }
+        guard effectDefIndex >= 0, effectDefIndex < chain.effects.count else { return }
 
-        let hookType = chain.hooks[hookIndex].type
+        let effectType = chain.effects[effectDefIndex].type
 
         // Get defaults from registry, preserve _enabled state
-        var defaults = EffectRegistry.defaults(for: hookType)
-        if let wasEnabled = chain.hooks[hookIndex].params?["_enabled"] {
+        var defaults = EffectRegistry.defaults(for: effectType)
+        if let wasEnabled = chain.effects[effectDefIndex].params?["_enabled"] {
             defaults["_enabled"] = wasEnabled
         }
 
-        chain.hooks[hookIndex].params = defaults
+        chain.effects[effectDefIndex].params = defaults
 
         setEffect(from: chain, for: layer)
-    }
-
-    func cycleGlobalEffect() {
-        // Clear frame buffer and reset frame counter so new effect starts fresh
-        frameBuffer.clear()
-        resetFrameIndex()
-
-        // Find current index (-1 means None)
-        let currentName = globalEffectName
-        let currentIndex = EffectChainLibrary.all.firstIndex { $0.name == currentName } ?? -1
-        // Cycle: -1 -> 0 -> 1 -> ... -> count-1 -> -1
-        let nextIndex = (currentIndex + 2) % (EffectChainLibrary.all.count + 1) - 1
-        setGlobalEffect(nextIndex >= 0 ? EffectChainLibrary.all[nextIndex] : nil)
     }
 
     /// Re-apply active effects using fresh instances from the reloaded config.
@@ -330,22 +316,22 @@ final class EffectManager {
     func reapplyActiveEffects() {
         guard let recipe = recipeProvider?() else { return }
 
-        // Re-apply global effect by name
-        if let currentEffect = recipe.effects.first {
-            let currentName = currentEffect.name
-            if let freshEffect = EffectChainLibrary.all.first(where: { $0.name == currentName }) {
-                // Found matching effect - replace with fresh copy
-                effectsSetter?([freshEffect.copy()])
+        // Re-apply global effect by name from stored chain
+        if let currentChain = recipe.effectChain {
+            let currentName = currentChain.name
+            if let freshChain = EffectChainLibrary.all.first(where: { $0.name == currentName }) {
+                // Found matching chain - instantiate and apply fresh copy
+                effectsSetter?(EffectConfigLoader.instantiateChain(freshChain))
                 print("🔄 Reapplied global effect: \(currentName)")
             }
         }
 
-        // Re-apply per-source effects by name
+        // Re-apply per-source effects by name from stored chains
         for (index, source) in recipe.sources.enumerated() {
-            if let currentEffect = source.effects.first {
-                let currentName = currentEffect.name
-                if let freshEffect = EffectChainLibrary.all.first(where: { $0.name == currentName }) {
-                    sourceEffectSetter?(index, [freshEffect.copy()])
+            if let currentChain = source.effectChain {
+                let currentName = currentChain.name
+                if let freshChain = EffectChainLibrary.all.first(where: { $0.name == currentName }) {
+                    sourceEffectSetter?(index, EffectConfigLoader.instantiateChain(freshChain))
                     print("🔄 Reapplied source \(index) effect: \(currentName)")
                 }
             }
@@ -356,13 +342,14 @@ final class EffectManager {
 
     // MARK: - Per-Source Effects (reads from recipe sources)
 
+    /// Get the source effect chain name (for UI matching)
     func sourceEffectName(for sourceIndex: Int) -> String {
         guard let recipe = recipeProvider?(),
               sourceIndex >= 0,
               sourceIndex < recipe.sources.count else {
             return "None"
         }
-        return recipe.sources[sourceIndex].effects.first?.name ?? "None"
+        return recipe.sources[sourceIndex].effectChain?.name ?? "None"
     }
 
     func setSourceEffect(_ effect: Effect?, for sourceIndex: Int) {
@@ -377,8 +364,8 @@ final class EffectManager {
     /// Set source effect from a chain - stores chain and instantiates effects
     func setSourceEffect(from chain: EffectChain?, for sourceIndex: Int) {
         sourceEffectChainSetter?(sourceIndex, chain)
-        if let chain = chain, let effect = EffectConfigLoader.instantiateChain(chain) {
-            sourceEffectSetter?(sourceIndex, [effect])
+        if let chain = chain {
+            sourceEffectSetter?(sourceIndex, EffectConfigLoader.instantiateChain(chain))
         } else {
             sourceEffectSetter?(sourceIndex, [])
         }
@@ -393,13 +380,6 @@ final class EffectManager {
             return nil
         }
         return recipe.sources[sourceIndex].effectChain
-    }
-
-    func cycleSourceEffect(for sourceIndex: Int) {
-        let currentName = sourceEffectName(for: sourceIndex)
-        let currentIndex = EffectChainLibrary.all.firstIndex { $0.name == currentName } ?? -1
-        let nextIndex = (currentIndex + 2) % (EffectChainLibrary.all.count + 1) - 1
-        setSourceEffect(nextIndex >= 0 ? EffectChainLibrary.all[nextIndex] : nil, for: sourceIndex)
     }
 
     // MARK: - Unified Layer API (layer -1 = global, 0+ = source)
@@ -458,7 +438,7 @@ final class EffectManager {
         let next0Based = (current0Based + direction + totalStates) % totalStates
         let nextIndex = next0Based - 1  // Back to -1 based
 
-        setEffect(nextIndex >= 0 ? EffectChainLibrary.all[nextIndex] : nil, for: layer)
+        setEffect(from: nextIndex >= 0 ? EffectChainLibrary.all[nextIndex] : nil, for: layer)
     }
 
     /// Clear effect for a specific layer (-1 = global, 0+ = source index)
@@ -488,7 +468,7 @@ final class EffectManager {
         // Apply all effects in chain (currently UI only sets one)
         var result = image
         for effect in recipe.effects {
-            result = effect.willRenderFrame(&context, image: result)
+            result = effect.apply(to: result, context: &context)
         }
 
         // Update frame buffer with processed result so temporal effects see prior effects
@@ -508,12 +488,12 @@ final class EffectManager {
         let effects = recipe.sources[sourceIndex].effects
         guard !effects.isEmpty else { return image }
 
-        // Mark which source is being processed so hooks can branch if they want.
+        // Mark which source is being processed so effects can branch if they want.
         context.sourceIndex = sourceIndex
 
         var result = image
         for effect in effects {
-            result = effect.willRenderFrame(&context, image: result)
+            result = effect.apply(to: result, context: &context)
         }
         return result
     }
@@ -612,6 +592,3 @@ final class EffectManager {
         return sourceIndex == soloIndex
     }
 }
-
-/// Compatibility alias for RenderHookManager -> EffectManager
-typealias RenderHookManager = EffectManager

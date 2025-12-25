@@ -1,5 +1,5 @@
 //
-//  ColorEchoHook.swift
+//  ColorEchoEffect.swift
 //  Hypnograph
 //
 //  Echoes color channels from different points in time
@@ -13,7 +13,7 @@ import CoreGraphics
 /// Color echo - each color channel comes from a different point in time
 /// Red from now, green from N frames ago, blue from 2N frames ago
 /// Uses additive blend with intensity control to prevent white blowout
-struct ColorEchoHook: Effect {
+struct ColorEchoEffect: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 
@@ -49,7 +49,7 @@ struct ColorEchoHook: Effect {
         self.init(channelOffset: p.int("channelOffset"), intensity: p.float("intensity"))
     }
 
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         // Work with whatever frames are available (preroll fills buffer from frame 1)
         let maxOffset = max(0, context.frameBuffer.frameCount - 1)
         guard maxOffset >= 1 else { return image }  // Need at least 1 frame of history
