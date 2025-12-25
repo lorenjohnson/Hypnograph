@@ -39,7 +39,7 @@ final class CompositionBuilder {
     ///   - recipe: The recipe to build
     ///   - strategy: Montage or sequence timeline
     ///   - outputSize: Output dimensions
-    ///   - frameRate: Frame rate (default 30)
+    ///   - frameRate: Output frame rate
     ///   - enableEffects: Whether to apply effects
     ///   - effectManager: The EffectManager to use for this composition.
     ///                  Pass nil only for legacy callers; all new code should provide a manager.

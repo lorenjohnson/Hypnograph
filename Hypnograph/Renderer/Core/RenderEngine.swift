@@ -15,11 +15,21 @@ import CoreImage
 final class RenderEngine {
     
     // MARK: - Configuration
-    
+
     struct Config {
         let outputSize: CGSize
         let frameRate: Int
         let enableGlobalEffects: Bool  // false for export
+
+        init(
+            outputSize: CGSize,
+            frameRate: Int,
+            enableGlobalEffects: Bool
+        ) {
+            self.outputSize = outputSize
+            self.frameRate = frameRate
+            self.enableGlobalEffects = enableGlobalEffects
+        }
 
         static let preview = Config(
             outputSize: CGSize(width: 1920, height: 1080),

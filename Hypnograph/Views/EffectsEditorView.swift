@@ -791,9 +791,8 @@ struct EffectsEditorView: View {
         Menu {
             ForEach(viewModel.availableEffectTypes, id: \.type) { effect in
                 Button(effect.displayName) {
-                    // Update library (for persistence)
-                    viewModel.addEffectToChain(effectIndex: selectedEffectIndex, effectType: effect.type)
-                    // Update recipe (for immediate UI refresh)
+                    // Only update the recipe - the active chain that's being rendered
+                    // Library updates are separate (save to library is explicit action)
                     dream.activeEffectManager.addEffectToChain(for: currentLayer, effectType: effect.type)
                 }
             }

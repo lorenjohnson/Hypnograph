@@ -21,8 +21,6 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
 
     private let renderQueue = DispatchQueue(label: "com.hypnograph.framecompositor", qos: .userInteractive)
 
-
-
     // MARK: - Initialization
 
     override init() {
@@ -47,7 +45,7 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
     }
 
     func renderContextChanged(_ newRenderContext: AVVideoCompositionRenderContext) {
-        // Nothing to do - we're stateless
+        // Context changed - could reset state here if needed
     }
 
     // MARK: - Frame Rendering
@@ -207,4 +205,3 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
         request.finish(withComposedVideoFrame: outputBuffer)
     }
 }
-
