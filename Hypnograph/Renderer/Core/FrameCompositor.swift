@@ -21,6 +21,17 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
 
     private let renderQueue = DispatchQueue(label: "com.hypnograph.framecompositor", qos: .userInteractive)
 
+    // MARK: - Slow-Mo State
+
+    /// Previous frame per track for interpolation (trackID -> buffer, sourceIndex)
+    private var prevFrameInfo: [CMPersistentTrackID: (buffer: CVPixelBuffer, sourceIndex: Int)] = [:]
+
+    /// Output frame counter for slow-mo cache lookup
+    private var outputFrameCounter: Int = 0
+
+    /// Cross-fade fallback interpolator
+    private let crossFadeInterpolator = CrossFadeInterpolator()
+
     // MARK: - Initialization
 
     override init() {
@@ -45,7 +56,13 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
     }
 
     func renderContextChanged(_ newRenderContext: AVVideoCompositionRenderContext) {
-        // Context changed - could reset state here if needed
+        // Reset slow-mo state on context change (seek, resize, etc.)
+        prevFrameInfo.removeAll()
+        outputFrameCounter = 0
+
+        if #available(macOS 15.4, *) {
+            sharedSlowMoPipeline.reset()
+        }
     }
 
     // MARK: - Frame Rendering
@@ -112,7 +129,20 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
                     print("⚠️ FrameCompositor: No source frame for track \(trackID) at \(request.compositionTime.seconds)s")
                     continue
                 }
-                layerImage = CIImage(cvPixelBuffer: sourceBuffer)
+
+                // Apply slow-mo interpolation if needed
+                let playRate = manager?.recipeProvider?()?.playRate ?? 1.0
+
+                if playRate < 1.0 {
+                    layerImage = processSlowMo(
+                        sourceBuffer: sourceBuffer,
+                        trackID: trackID,
+                        playRate: playRate,
+                        compositionTime: request.compositionTime
+                    )
+                } else {
+                    layerImage = CIImage(cvPixelBuffer: sourceBuffer)
+                }
             }
 
             guard var img = layerImage else {
@@ -203,5 +233,62 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
 
         // Finish request
         request.finish(withComposedVideoFrame: outputBuffer)
+
+        // Increment output frame counter for slow-mo
+        outputFrameCounter += 1
+    }
+
+    // MARK: - Slow-Mo Processing
+
+    /// Process a frame with slow-mo interpolation.
+    /// Uses lookahead pipeline for VTFrameProcessor, falls back to CrossFade.
+    private func processSlowMo(
+        sourceBuffer: CVPixelBuffer,
+        trackID: CMPersistentTrackID,
+        playRate: Float,
+        compositionTime: CMTime
+    ) -> CIImage {
+        // Calculate source frame index from composition time
+        // At playRate 0.25, composition runs 4x longer than source
+        let sourceTime = compositionTime.seconds * Double(playRate)
+        let sourceFPS = 30.0  // Assume 30fps source
+        let currentSourceIndex = Int(sourceTime * sourceFPS)
+
+        // Get previous frame info for this track
+        let prev = prevFrameInfo[trackID]
+        let prevSourceIndex = prev?.sourceIndex ?? max(0, currentSourceIndex - 1)
+        let prevBuffer = prev?.buffer ?? sourceBuffer
+
+        // Update stored frame info
+        prevFrameInfo[trackID] = (buffer: sourceBuffer, sourceIndex: currentSourceIndex)
+
+        // Calculate blend factor for interpolation
+        let sourcePosition = sourceTime * sourceFPS
+        let blendFactor = Float(sourcePosition - floor(sourcePosition))
+
+        // Try to get pre-computed frame from pipeline
+        if #available(macOS 15.4, *) {
+            // Submit frames for lookahead processing
+            sharedSlowMoPipeline.submitSourceFrames(
+                prevBuffer: prevBuffer,
+                currentBuffer: sourceBuffer,
+                prevSourceIndex: prevSourceIndex,
+                currentSourceIndex: currentSourceIndex,
+                currentOutputIndex: outputFrameCounter,
+                playRate: playRate
+            )
+
+            // Check if we have a pre-computed frame ready
+            if let interpolated = sharedSlowMoPipeline.getFrame(outputFrameIndex: outputFrameCounter) {
+                // Evict old frames to limit memory
+                sharedSlowMoPipeline.evictOldFrames(beforeIndex: outputFrameCounter - 10)
+                return CIImage(cvPixelBuffer: interpolated)
+            }
+        }
+
+        // Fallback to CrossFade
+        let frame1 = CIImage(cvPixelBuffer: prevBuffer)
+        let frame2 = CIImage(cvPixelBuffer: sourceBuffer)
+        return crossFadeInterpolator.interpolate(frame1: frame1, frame2: frame2, blendFactor: blendFactor)
     }
 }
