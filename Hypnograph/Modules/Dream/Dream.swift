@@ -392,6 +392,11 @@ final class Dream: ObservableObject {
         }
         .keyboardShortcut("s", modifiers: [.command, .shift])
 
+        Button("Favorite Hypnogram") { [self] in
+            favoriteCurrentHypnogram()
+        }
+        .keyboardShortcut("f", modifiers: [.command])
+
         Divider()
 
         // Aspect Ratio
@@ -780,6 +785,79 @@ final class Dream: ObservableObject {
                 self.newRandomSequence()
             }
         }
+    }
+
+    /// Save recipe to .hypnogram file (with file picker)
+    func saveRecipe() {
+        guard !activePlayer.recipe.sources.isEmpty else {
+            print("Dream: no sources to save recipe")
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.init(filenameExtension: RecipeStore.fileExtension)!]
+        panel.nameFieldStringValue = "hypnogram-\(formattedTimestamp()).\(RecipeStore.fileExtension)"
+        panel.directoryURL = RecipeStore.recipesDirectory
+
+        panel.begin { [self] response in
+            guard response == .OK, let url = panel.url else { return }
+
+            if RecipeStore.save(activePlayer.recipe, to: url) != nil {
+                AppNotifications.show("Recipe saved", flash: true)
+            }
+        }
+    }
+
+    /// Open a .hypnogram recipe file
+    func openRecipe() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.init(filenameExtension: RecipeStore.fileExtension)!]
+        panel.directoryURL = RecipeStore.recipesDirectory
+        panel.allowsMultipleSelection = false
+
+        panel.begin { [self] response in
+            guard response == .OK, let url = panel.url else { return }
+
+            guard let recipe = RecipeStore.load(from: url) else {
+                AppNotifications.show("Failed to load recipe", flash: true)
+                return
+            }
+
+            loadRecipe(recipe)
+            AppNotifications.show("Recipe loaded", flash: true)
+        }
+    }
+
+    /// Load a recipe into the current player
+    func loadRecipe(_ recipe: HypnogramRecipe) {
+        activePlayer.setRecipe(recipe)
+        activePlayer.currentSourceIndex = recipe.sources.isEmpty ? -1 : 0
+
+        // Clear frame buffer for clean slate
+        activePlayer.effectManager.clearFrameBuffer()
+
+        // Notify player to reload
+        activePlayer.notifyRecipeChanged()
+    }
+
+    /// Favorite the current hypnogram (save to store as favorite)
+    func favoriteCurrentHypnogram() {
+        guard !activePlayer.recipe.sources.isEmpty else {
+            print("Dream: no sources to favorite")
+            return
+        }
+
+        if let entry = HypnogramStore.shared.add(
+            recipe: activePlayer.recipe,
+            isFavorite: true
+        ) {
+            AppNotifications.show("Added to favorites: \(entry.name)", flash: true)
+        }
+    }
+
+    private func formattedTimestamp() -> String {
+        ISO8601DateFormatter().string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
     }
 
     // MARK: - Montage blend modes

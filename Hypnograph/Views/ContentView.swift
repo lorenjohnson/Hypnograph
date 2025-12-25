@@ -52,16 +52,34 @@ struct ContentView: View {
                     .padding(.leading, 12)
             }
 
-            // HUD - top left (below LIVE if visible)
-            if dream.activePlayer.isHUDVisible {
-                HUDView(
-                    state: state,
-                    dream: dream,
-                    divine: divine
-                )
-                .padding(.top, dream.isLiveMode ? 56 : 12)
-                .padding(.leading, 12)
+            // HUD and Hypnogram List - top left (below LIVE if visible)
+            VStack(alignment: .leading, spacing: 8) {
+                if dream.activePlayer.isHUDVisible {
+                    HUDView(
+                        state: state,
+                        dream: dream,
+                        divine: divine
+                    )
+                }
+
+                if state.isHypnogramListVisible && state.currentModuleType == .dream {
+                    HypnogramListView(
+                        store: HypnogramStore.shared,
+                        onLoad: { entry in
+                            guard let recipe = HypnogramStore.shared.loadRecipe(from: entry) else {
+                                AppNotifications.show("Failed to load recipe", flash: true)
+                                return
+                            }
+                            dream.loadRecipe(recipe)
+                            AppNotifications.show("Loaded: \(entry.name)", flash: true)
+                        }
+                    )
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+                }
             }
+            .padding(.top, dream.isLiveMode ? 56 : 12)
+            .padding(.leading, 12)
+            .animation(.easeInOut(duration: 0.2), value: state.isHypnogramListVisible)
         }
         .overlay(alignment: .bottomLeading) {
             // Player Settings - bottom left, Dream module only
