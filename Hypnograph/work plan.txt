@@ -1,6 +1,6 @@
-- why do we have clearGlobalEffect and clearSourceEffect for ... we could just clearSourceEffect(for: -1) for global, right?
+- Rename current TextOverlayEffect to TextSourceEffect
 
-- Lets's address the Frame Buffer refactor stuff here (moving the prefill out of Sequence view). We will employ the Rended playable "ready / prefilling" state stuff here and have an option for each player as to whether it starts rendering before the frame buffer is full or only after it is full and the effect is applied (which means possibly 2 seconds into playing). This player option should be called something like "Play With Effect" vs "Wait for Effect Buffer". This effect buffer wait shouldn't happen if the effect chain doesn't have any effects that use a frame buffer. 
+- Make a new TextOverlayEffect which allows me to type things and send them directly to the text overlay live! This text overlap allows me to select an exact font size and position on screen (by alignment: center, top, bottom, left, right, center, top-left, top-right, bottom-left, bottom-right)
 
 - I would like when I save a Hypnogram that the JSON serialization of the Recipe also saves somewhere (named with a date/time stamp I guess). I would expect any current code we have for serializing is pretty out of date with the current recipe format so that needs throught through and caught-up. I would also like a Open option in the file menu for loading back a Hypnogram recipe (a .hypnogram file which will be json with comments)
 
@@ -8,9 +8,10 @@
 
 - Respond to mic input or Midi Clock or OSC input from Live/etc?
 
-- It would be nice to be able to type things and send them directly to the text overlay live! 
 
-- I would like when I save a Hypnogram that the JSON serialization of the Recipe also saves somewhere (named with a date/time stamp I guess). I would expect any current code we have for serializing is pretty out of date with the current recipe format so that needs throught through and caught-up. I would also like a Open option in the file menu for loading back a Hypnogram recipe (a .hypnogram file which will be json with comments)
+- Bug: Text entry for editing Effect Chain name etc is not working in Effect modal again
+
+----
 
 - Let's add the timeline editor for sources. Pretty much a basic timeline editor with the ablity to specify the Basic effects properties for each layer including Blend Mode.
 
