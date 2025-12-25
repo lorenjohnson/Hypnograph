@@ -943,18 +943,21 @@ struct ParameterSliderRow: View {
                         // File picker parameter
                         filePicker(currentValue: s, spec: spec!)
                     } else {
-                        TextField("", text: Binding(
-                            get: { s },
-                            set: { onChange(.string($0)) }
-                        ))
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 11, design: .monospaced))
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 2)
-                        .background(isTextFieldFocused ? Color.white : Color.white.opacity(0.1))
-                        .foregroundColor(isTextFieldFocused ? .black : .white)
-                        .cornerRadius(3)
-                        .focused($isTextFieldFocused)
+                        // Use textValue @State to buffer input and prevent focus loss
+                        // textValue is initialized from s in onAppear/onChange
+                        TextField("", text: $textValue)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 11, design: .monospaced))
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(isTextFieldFocused ? Color.white : Color.white.opacity(0.1))
+                            .foregroundColor(isTextFieldFocused ? .black : .white)
+                            .cornerRadius(3)
+                            .focused($isTextFieldFocused)
+                            .onChange(of: textValue) { _, newValue in
+                                // Update the model when text changes
+                                onChange(.string(newValue))
+                            }
                     }
                 }
             }
@@ -989,6 +992,11 @@ struct ParameterSliderRow: View {
             lastExternalValue = Double(i)
             sliderValue = Double(i)
             textValue = "\(i)"
+        case .string(let s):
+            // Only initialize if not currently focused (preserve typing)
+            if !isTextFieldFocused {
+                textValue = s
+            }
         default:
             break
         }
