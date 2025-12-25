@@ -16,8 +16,6 @@ enum ParameterSpec: Equatable {
     case float(default: Float, range: ClosedRange<Float>)
     case int(default: Int, range: ClosedRange<Int>)
     case bool(default: Bool)
-    /// String parameter: stores as string, displays as text field
-    case string(default: String)
     /// Choice parameter: stores as string, displays as dropdown
     /// - default: the default choice key
     /// - options: ordered list of (key, displayLabel) pairs
@@ -36,7 +34,6 @@ enum ParameterSpec: Equatable {
         case .float(let f, _): return .double(Double(f))
         case .int(let i, _): return .int(i)
         case .bool(let b): return .bool(b)
-        case .string(let s): return .string(s)
         case .choice(let d, _): return .string(d)
         case .color(let hex): return .string(hex)
         case .file: return .string("")  // Default to empty (will show placeholder in UI)
@@ -49,7 +46,7 @@ enum ParameterSpec: Equatable {
         case .double(_, let range): return (range.lowerBound, range.upperBound)
         case .float(_, let range): return (Double(range.lowerBound), Double(range.upperBound))
         case .int(_, let range): return (Double(range.lowerBound), Double(range.upperBound))
-        case .bool, .string, .choice, .color, .file: return nil
+        case .bool, .choice, .color, .file: return nil
         }
     }
 
@@ -167,8 +164,6 @@ enum ParameterSpec: Equatable {
             return i1 == i2 && r1 == r2
         case (.bool(let b1), .bool(let b2)):
             return b1 == b2
-        case (.string(let s1), .string(let s2)):
-            return s1 == s2
         case (.choice(let d1, let o1), .choice(let d2, let o2)):
             return d1 == d2 && o1.map(\.key) == o2.map(\.key) && o1.map(\.label) == o2.map(\.label)
         case (.color(let c1), .color(let c2)):
