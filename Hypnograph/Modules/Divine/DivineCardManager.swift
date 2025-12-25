@@ -85,6 +85,23 @@ final class DivineCardManager: ObservableObject {
         }
     }
 
+    /// Get the currently selected card
+    var selectedCard: DivineCard? {
+        guard currentIndex >= 0, currentIndex < cards.count else { return nil }
+        return cards[currentIndex]
+    }
+
+    /// Replace current card with a new random one
+    func replaceCurrentCard() {
+        guard currentIndex >= 0, currentIndex < cards.count else { return }
+        let oldCard = cards[currentIndex]
+        let offset = oldCard.offset
+        playerManager.clearPlayer(for: oldCard.id)
+        guard let newCard = makeCard(offset: offset) else { return }
+        cards[currentIndex] = newCard
+        loadCardImage(at: currentIndex)
+    }
+
     // MARK: - Source navigation
 
     func nextSource() {

@@ -17,52 +17,40 @@ struct HypnogramRecipe {
     var sources: [HypnogramSource]
     var targetDuration: CMTime
 
-    /// Instantiated effects applied to the final composed image (after all sources are blended).
-    /// These are created from `effectChain` and used at render time.
-    var effects: [Effect]
+    /// Playback rate (1.0 = normal speed, 0.5 = half speed, 2.0 = double speed)
+    var playRate: Float
 
-    /// The global effect chain definition - source of truth for editing.
-    /// Contains 0-n effect definitions that are instantiated into `effects` for rendering.
-    var effectChain: EffectChain?
+    /// The global effect chain - contains effect definitions and handles instantiation/application.
+    /// This is the single source of truth for effects. Use effectChain.apply() to apply effects.
+    var effectChain: EffectChain
 
     init(
         sources: [HypnogramSource],
         targetDuration: CMTime,
-        effects: [Effect] = [],
+        playRate: Float = 0.8,
         effectChain: EffectChain? = nil
     ) {
         self.sources = sources
         self.targetDuration = targetDuration
-        self.effects = effects
-        self.effectChain = effectChain
-    }
-
-    // MARK: - Deprecated compatibility
-
-    /// @deprecated Use effectChain instead
-    var effectDefinition: EffectChain? {
-        get { effectChain }
-        set { effectChain = newValue }
+        self.playRate = playRate
+        self.effectChain = effectChain ?? EffectChain()
     }
 
     /// Create a deep copy with fresh effect instances for export.
     /// This prevents export from sharing mutable state with preview.
     func copyForExport() -> HypnogramRecipe {
-        // Copy global effects
-        let copiedEffects = effects.map { $0.copy() }
-
-        // Copy per-source effects
+        // Copy per-source effect chains
         let copiedSources = sources.map { source in
             var copy = source
-            copy.effects = source.effects.map { $0.copy() }
+            copy.effectChain = source.effectChain.copy()
             return copy
         }
 
         return HypnogramRecipe(
             sources: copiedSources,
             targetDuration: targetDuration,
-            effects: copiedEffects,
-            effectChain: effectChain
+            playRate: playRate,
+            effectChain: effectChain.copy()
         )
     }
 }

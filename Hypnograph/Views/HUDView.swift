@@ -81,19 +81,19 @@ struct HUDView: View {
                 .font(.subheadline)
                 .foregroundColor(.white)
 
-            if state.sources.isEmpty {
+            if dream.activePlayer.sources.isEmpty {
                 Text("No sources")
                     .font(.caption)
                     .foregroundColor(.white.opacity(0.7))
             } else {
-                ForEach(Array(state.sources.enumerated()), id: \.offset) { index, source in
+                ForEach(Array(dream.activePlayer.sources.enumerated()), id: \.offset) { index, source in
                     HStack(spacing: 4) {
                         Text("\(index + 1):")
                             .font(.system(.caption, design: .monospaced))
-                            .foregroundColor(index == state.currentSourceIndex ? .cyan : .white.opacity(0.7))
+                            .foregroundColor(index == dream.activePlayer.currentSourceIndex ? .cyan : .white.opacity(0.7))
                         Text(shortenedPath(source))
                             .font(.system(.caption, design: .monospaced))
-                            .foregroundColor(index == state.currentSourceIndex ? .cyan : .white)
+                            .foregroundColor(index == dream.activePlayer.currentSourceIndex ? .cyan : .white)
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
@@ -133,7 +133,7 @@ struct HUDView: View {
     }
 
     private var formattedDuration: String {
-        let totalSeconds = state.recipe.targetDuration.seconds
+        let totalSeconds = dream.activePlayer.recipe.targetDuration.seconds
         if totalSeconds < 60 {
             return String(format: "%.1fs", totalSeconds)
         } else {

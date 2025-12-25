@@ -8,20 +8,45 @@
 //
 
 import Foundation
+import CoreImage
 
 // MARK: - Core Types
 
 /// An effect chain containing 0-n effects applied in sequence.
 /// This is the top-level effect container stored on recipes (global or per-source).
-struct EffectChain: Codable, Equatable {
+///
+/// The chain holds effect definitions (serializable blueprints) and lazily instantiates
+/// runtime Effect objects when apply() is called. Instantiated effects are cached for
+/// performance and reset when the chain definition changes.
+final class EffectChain: Codable, Equatable {
     /// Display name for the chain
     var name: String?
 
     /// The effects to apply in sequence (0-n)
-    var effects: [EffectDefinition]
+    var effects: [EffectDefinition] {
+        didSet {
+            // Clear cached instances when definitions change
+            _instantiatedEffects = nil
+        }
+    }
 
     /// Future: chain-level parameters (e.g., overall strength/mix)
     var params: [String: AnyCodableValue]?
+
+    // MARK: - Cached Runtime Effects
+
+    /// Cached instantiated effects (lazily created from definitions)
+    private var _instantiatedEffects: [Effect]?
+
+    /// Get or create instantiated effects from definitions
+    var instantiatedEffects: [Effect] {
+        if let cached = _instantiatedEffects {
+            return cached
+        }
+        let instances = EffectConfigLoader.instantiateChain(self)
+        _instantiatedEffects = instances
+        return instances
+    }
 
     /// Create an empty chain
     init() {
@@ -43,6 +68,58 @@ struct EffectChain: Codable, Equatable {
     /// Whether this chain has any enabled effects
     var hasEnabledEffects: Bool {
         effects.contains { $0.isEnabled }
+    }
+
+    /// Maximum lookback required by any effect in this chain.
+    /// Used to determine if/how much preroll is needed.
+    var maxRequiredLookback: Int {
+        instantiatedEffects.map { $0.requiredLookback }.max() ?? 0
+    }
+
+    /// Whether any effect in this chain uses the frame buffer (has temporal dependencies).
+    /// Used to determine if preroll is needed before playback.
+    var usesFrameBuffer: Bool {
+        maxRequiredLookback > 0
+    }
+
+    // MARK: - Apply
+
+    /// Apply all effects in this chain to an image
+    /// - Parameters:
+    ///   - image: The input image
+    ///   - context: The render context (frame index, time, etc.)
+    /// - Returns: The processed image after all effects are applied
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
+        guard hasEnabledEffects else { return image }
+
+        var result = image
+        for effect in instantiatedEffects {
+            result = effect.apply(to: result, context: &context)
+        }
+        return result
+    }
+
+    /// Reset all instantiated effects (call when switching compositions)
+    func reset() {
+        _instantiatedEffects?.forEach { $0.reset() }
+    }
+
+    /// Clear cached effects and force re-instantiation
+    func invalidateCache() {
+        _instantiatedEffects = nil
+    }
+
+    /// Create a deep copy with fresh effect instances
+    func copy() -> EffectChain {
+        let newChain = EffectChain(name: name, effects: effects, params: params)
+        // Don't copy cached effects - let them be freshly instantiated
+        return newChain
+    }
+
+    // MARK: - Equatable
+
+    static func == (lhs: EffectChain, rhs: EffectChain) -> Bool {
+        lhs.name == rhs.name && lhs.effects == rhs.effects && lhs.params == rhs.params
     }
 }
 
@@ -104,12 +181,14 @@ extension EffectChain {
         case params
     }
 
-    init(from decoder: Decoder) throws {
+    convenience init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        name = try container.decodeIfPresent(String.self, forKey: .name)
-        params = try container.decodeIfPresent([String: AnyCodableValue].self, forKey: .params)
-        effects = try container.decodeIfPresent([EffectDefinition].self, forKey: .effects) ?? []
+        let name = try container.decodeIfPresent(String.self, forKey: .name)
+        let params = try container.decodeIfPresent([String: AnyCodableValue].self, forKey: .params)
+        let effects = try container.decodeIfPresent([EffectDefinition].self, forKey: .effects) ?? []
+
+        self.init(name: name, effects: effects, params: params)
     }
 
     func encode(to encoder: Encoder) throws {

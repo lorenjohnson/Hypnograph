@@ -41,87 +41,19 @@ final class HypnographState: ObservableObject {
         }
     }
 
-    // MARK: - Recipe (single source of truth)
+    // MARK: - Global UI State
 
-    /// The current hypnogram recipe - single source of truth for sources, effects, etc.
-    @Published var recipe: HypnogramRecipe
-
-    /// Current selection index (auto-updated during sequence playback)
-    @Published var currentSourceIndex: Int = 0
-
-    /// Optional playhead offset for scrubbing, applies only on explicit user action.
-    @Published var currentClipTimeOffset: CMTime?
-
-    @Published var isHUDVisible: Bool = false
-    @Published var isEffectsEditorVisible: Bool = false
+    /// Performance preview panel visibility (sidebar panel)
     @Published var isPerformancePreviewVisible: Bool = false
-
-    /// Performance mode: Edit (local preview) vs Live (mirror performance display)
-    enum PerformanceMode {
-        case edit  // Normal editing - preview shows local composition
-        case live  // Live mode - preview mirrors performance display, effects go live
-    }
-
-    @Published var performanceMode: PerformanceMode = .edit
-
-    /// Whether we're in live performance mode
-    var isLiveMode: Bool { performanceMode == .live }
-
-    /// Toggle between edit and live performance modes
-    func togglePerformanceMode() {
-        performanceMode = (performanceMode == .edit) ? .live : .edit
-        print("🎬 Performance Mode: \(performanceMode == .live ? "LIVE" : "Edit")")
-    }
 
     /// Shared effects editor view model for controller/keyboard navigation
     let effectsEditorViewModel = EffectsEditorViewModel()
 
-    /// Whether the global layer is selected (currentSourceIndex == -1)
-    var isOnGlobalLayer: Bool {
-        currentSourceIndex == -1
-    }
-
-    /// Display string for the current editing layer
-    /// Layer 0 = Global, Layer 1-N = Source 1-N
-    var editingLayerDisplay: String {
-        if currentSourceIndex == -1 {
-            return "Global"
-        }
-        return "Source \(currentSourceIndex + 1) of \(sources.count)"
-    }
-
-    /// Select the global layer (for effects editing)
-    func selectGlobalLayer() {
-        noteUserInteraction()
-        currentSourceIndex = -1
-    }
-
-    /// Pause/play state for video playback (Dream mode)
-    @Published var isPaused: Bool = false
-
-    /// Incremented whenever effects change - used to trigger re-render when paused
-    @Published var effectsChangeCounter: Int = 0
-
-    /// Current aspect ratio for composition
+    /// Current aspect ratio for composition (global default)
     @Published var aspectRatio: AspectRatio
 
-    /// Current output resolution (720p, 1080p, 4K)
+    /// Current output resolution (global default)
     @Published var outputResolution: OutputResolution
-
-    // Effect management
-    let effectManager = EffectManager()
-
-    // Transition manager for smooth crossfades between hypnograms
-    let transitionManager = TransitionManager()
-
-    // Performance display for clean output to external monitor
-    let performanceDisplay = PerformanceDisplay()
-
-    /// Returns the active EffectManager based on performance mode
-    /// In live mode, effects go to the performance display; in edit mode, to the local preview
-    var activeEffectManager: EffectManager {
-        isLiveMode ? performanceDisplay.effectManager : effectManager
-    }
 
     // Watch timer - generates new hypnograms at intervals when watch mode is enabled
     private var watchTimer: Timer?
@@ -164,303 +96,28 @@ final class HypnographState: ObservableObject {
             allowedMediaTypes: settings.sourceMediaTypes
         )
 
-        self.recipe = HypnogramRecipe(
-            sources: [],
-            targetDuration: settings.outputDuration
-        )
-        self.currentSourceIndex = 0
-        self.currentClipTimeOffset = nil
-
         // Initialize aspect ratio and resolution from settings
         self.aspectRatio = settings.aspectRatio
         self.outputResolution = settings.outputResolution
 
-        // Always start with a full random hypnogram
-        newRandomHypnogram()
-
+        // Start watch timer if enabled (modules will set onWatchTimerFired callback)
         if settings.watch {
             scheduleWatchTimer()
         }
 
-        // Set up callback to increment counter when effects or blend modes change
-        effectManager.onEffectChanged = { [weak self] in
-            self?.effectsChangeCounter += 1
-        }
-
-        // Recipe provider - just returns the recipe directly
-        effectManager.recipeProvider = { [weak self] in
-            self?.recipe
-        }
-
-        // Recipe effects setter
-        effectManager.effectsSetter = { [weak self] effects in
-            self?.recipe.effects = effects
-        }
-
-        // Per-source effect setter
-        effectManager.sourceEffectSetter = { [weak self] sourceIndex, effects in
-            guard let self = self,
-                  sourceIndex >= 0,
-                  sourceIndex < self.recipe.sources.count else { return }
-            self.recipe.sources[sourceIndex].effects = effects
-        }
-
-        // Blend mode setter
-        effectManager.blendModeSetter = { [weak self] sourceIndex, mode in
-            guard let self = self,
-                  sourceIndex >= 0,
-                  sourceIndex < self.recipe.sources.count else { return }
-            self.recipe.sources[sourceIndex].blendMode = mode
-        }
-
-        // Global effect chain setter
-        effectManager.globalEffectChainSetter = { [weak self] chain in
-            self?.recipe.effectChain = chain
-        }
-
-        // Per-source effect chain setter
-        effectManager.sourceEffectChainSetter = { [weak self] sourceIndex, chain in
-            guard let self = self,
-                  sourceIndex >= 0,
-                  sourceIndex < self.recipe.sources.count else { return }
-            self.recipe.sources[sourceIndex].effectChain = chain
-        }
-
-        // Subscribe to effect config reloads - reapply active effects with fresh instances
-        // Uses activeEffectManager which automatically routes to the right destination based on mode
-        EffectChainLibrary.onReload = { [weak self] in
-            self?.activeEffectManager.reapplyActiveEffects()
-        }
-
-        // Subscribe to live effect chain updates - apply directly without reload
-        // Uses activeEffectManager which automatically routes to the right destination based on mode
-        EffectConfigLoader.onEffectChainUpdated = { [weak self] effectIndex, updatedChain in
-            guard let self = self else { return }
-            // Update the EffectChainLibrary.all cache so the library stays in sync
-            EffectChainLibrary.updateCachedChain(at: effectIndex, with: updatedChain)
-            // Reapply to whichever effects are currently active (edit or live)
-            self.activeEffectManager.reapplyActiveEffects()
-        }
-
-        // Load custom photo selection from disk (must be after all properties initialized)
+        // Load custom photo selection from disk
         loadCustomSelectionFromDisk()
     }
 
-    // MARK: - Convenience accessors (delegate to recipe)
-
-    var sources: [HypnogramSource] {
-        get { recipe.sources }
-        set { recipe.sources = newValue }
-    }
-
-    var effects: [Effect] {
-        get { recipe.effects }
-        set { recipe.effects = newValue }
-    }
-
-    var activeSourceCount: Int { sources.count }
-
-    var currentSource: HypnogramSource? {
-        guard currentSourceIndex >= 0, currentSourceIndex < sources.count else { return nil }
-        return sources[currentSourceIndex]
-    }
-
-    var currentClip: VideoClip? {
-        currentSource?.clip
-    }
-
-    // MARK: - High-level API (for modes)
-
-    /// Add a new source with a random clip.
-    @discardableResult
-    func addSource(length: Double? = nil, blendMode: String? = nil) -> HypnogramSource? {
-        noteUserInteraction()
-        guard let clip = library.randomClip(clipLength: length ?? settings.outputDuration.seconds)
-        else { return nil }
-
-        let newSource = HypnogramSource(clip: clip, blendMode: blendMode)
-
-        sources.append(newSource)
-        currentSourceIndex = sources.count - 1
-        return newSource
-    }
-
-    /// Replace the clip for an existing source.
-    @discardableResult
-    func replaceClip(at index: Int, length: Double? = nil) -> VideoClip? {
-        noteUserInteraction()
-        guard index >= 0, index < sources.count else { return nil }
-        let duration = length ?? settings.outputDuration.seconds
-
-        guard let newClip = library.randomClip(clipLength: duration) else { return nil }
-
-        var src = sources[index]
-        src.clip = newClip
-        sources[index] = src
-        return newClip
-    }
-
-    func replaceClipForCurrentSource() {
-        replaceClip(at: currentSourceIndex)
-    }
-
-    /// Adjust only the start time of the clip for a source.
-    func adjustStartTime(at index: Int, to newStart: CMTime) {
-        guard index >= 0, index < sources.count else { return }
-        var src = sources[index]
-        let clip = src.clip
-
-        let fileDuration = clip.file.duration
-        let start = min(newStart.seconds, fileDuration.seconds)
-        let remaining = max(0.0, fileDuration.seconds - start)
-        guard remaining > 0 else { return }
-
-        let newDuration = min(clip.duration.seconds, remaining)
-
-        src.clip = VideoClip(
-            file: clip.file,
-            startTime: CMTime(seconds: start, preferredTimescale: clip.startTime.timescale),
-            duration: CMTime(seconds: newDuration, preferredTimescale: clip.duration.timescale)
-        )
-        sources[index] = src
-    }
-
-    func selectSource(_ index: Int) {
-        noteUserInteraction()
-        guard !sources.isEmpty else { return }
-        let clamped = max(0, min(index, sources.count - 1))
-        currentSourceIndex = clamped
-    }
-
-    func nextSource() {
-        noteUserInteraction()
-        guard !sources.isEmpty else { return }
-        let next = min(sources.count - 1, currentSourceIndex + 1)
-        currentSourceIndex = next
-    }
-
-    func previousSource() {
-        noteUserInteraction()
-        guard !sources.isEmpty else { return }
-        let prev = max(0, currentSourceIndex - 1)
-        currentSourceIndex = prev
-    }
-
-    func deleteSource(at index: Int) {
-        noteUserInteraction()
-        guard index >= 0, index < sources.count else { return }
-        sources.remove(at: index)
-        currentSourceIndex = min(currentSourceIndex, max(0, sources.count - 1))
-
-        if sources.isEmpty {
-            _ = addSource()
-        }
-    }
-
-    func deleteCurrentSource() {
-        deleteSource(at: currentSourceIndex)
-    }
-
-    // MARK: - Priming
-
-    func toggleHUD() {
-        isHUDVisible.toggle()
-    }
-
-    func toggleEffectsEditor() {
-        isEffectsEditorVisible.toggle()
-    }
+    // MARK: - UI Toggles
 
     func togglePerformancePreview() {
         isPerformancePreviewVisible.toggle()
     }
 
-    func togglePause() {
-        isPaused.toggle()
-    }
-
     func toggleWatchMode() {
         settings.watch.toggle()
         scheduleWatchTimer()
-    }
-
-    func excludeCurrentSource() {
-        noteUserInteraction()
-        guard let clip = currentClip else { return }
-        library.exclude(file: clip.file)
-        replaceClipForCurrentSource()
-    }
-
-    func markCurrentSourceForDeletion() {
-        noteUserInteraction()
-        guard let clip = currentClip else { return }
-        library.markForDeletion(file: clip.file)
-        replaceClipForCurrentSource()
-        AppNotifications.shared.show("Marked for deletion", flash: true)
-    }
-
-    func toggleCurrentSourceFavorite() {
-        noteUserInteraction()
-        guard let clip = currentClip else { return }
-        let isFavorited = FavoriteStore.shared.toggle(clip.file.source)
-        let message = isFavorited ? "Added to favorites" : "Removed from favorites"
-        AppNotifications.shared.show(message, flash: true)
-    }
-
-    /// Simple reset used by modes that want a clean slate.
-    /// Preserves the current global effect by default.
-    func resetForNextHypnogram(preserveGlobalEffect: Bool = true) {
-        // Clear frame buffer to prevent ghost frames from previous montage
-        effectManager.clearFrameBuffer()
-
-        // Preserve global effect before clearing
-        let savedEffects = preserveGlobalEffect ? effects : []
-
-        sources.removeAll()
-        effects.removeAll()
-        currentSourceIndex = 0
-        currentClipTimeOffset = nil
-
-        // Restore global effect if preserving
-        if preserveGlobalEffect {
-            effects = savedEffects
-        }
-    }
-
-    func newRandomHypnogram() {
-        resetForNextHypnogram(preserveGlobalEffect: true)
-        let total = max(1, settings.maxSourcesForNew)
-        let minCount = min(2, total)
-        let count = Int.random(in: minCount...total)
-        for i in 0..<max(1, count) {
-            // First source uses SourceOver, rest get random blend modes
-            let blendMode = (i == 0) ? BlendMode.sourceOver : BlendMode.random()
-            addSource(blendMode: blendMode)
-        }
-        // Default to global layer for effects editing
-        selectGlobalLayer()
-    }
-
-    /// Randomize blend modes and effects for all sources in current hypnogram
-    func randomizeBlendModes() {
-        noteUserInteraction()
-
-        for i in 0..<sources.count {
-            // First source stays SourceOver, rest get random blend modes
-            let blendMode = (i == 0) ? BlendMode.sourceOver : BlendMode.random()
-            sources[i].blendMode = blendMode
-
-            // ~20% chance of getting a random effect chain
-            if Double.random(in: 0..<1) < 0.2, let chain = EffectChainLibrary.random() {
-                sources[i].effectChain = chain
-                sources[i].effects = EffectConfigLoader.instantiateChain(chain)
-            } else {
-                sources[i].effectChain = nil
-                sources[i].effects = []
-            }
-        }
-        effectManager.invalidateBlendAnalysis()
-        effectManager.onEffectChanged?()
     }
 
     /// Reset the watch timer when user interacts with the app
@@ -481,12 +138,8 @@ final class HypnographState: ObservableObject {
             repeats: false
         ) { [weak self] _ in
             guard let self else { return }
-            // Call mode-specific new() if available, otherwise fall back to newRandomHypnogram()
-            if let callback = self.onWatchTimerFired {
-                callback()
-            } else {
-                self.newRandomHypnogram()
-            }
+            // Call mode-specific new() - modules set this callback
+            self.onWatchTimerFired?()
             self.scheduleWatchTimer()
         }
     }
@@ -591,16 +244,11 @@ final class HypnographState: ObservableObject {
             savePerModuleLibrariesToSettings()
         }
 
-        sources.removeAll()
-        currentSourceIndex = 0
-        currentClipTimeOffset = nil
-
-        _ = addSource()
-
+        // Trigger the module to regenerate content with new library
         watchTimer?.invalidate()
         watchTimer = nil
+        onWatchTimerFired?()
         if settings.watch {
-            newRandomHypnogram()
             scheduleWatchTimer()
         }
     }
@@ -835,10 +483,11 @@ final class HypnographState: ObservableObject {
                 await applyActiveLibrariesUnified(activeLibraryKeys, saveToModule: false)
             }
 
+            // Trigger the module to regenerate content
             watchTimer?.invalidate()
             watchTimer = nil
+            onWatchTimerFired?()
             if newSettings.watch {
-                newRandomHypnogram()
                 scheduleWatchTimer()
             }
         } catch {
@@ -853,7 +502,6 @@ final class HypnographState: ObservableObject {
         aspectRatio = ratio
         settings.aspectRatio = ratio
         saveSettingsToDisk()
-        effectManager.onEffectChanged?()
     }
 
     /// Set the output resolution and save to settings (applies immediately)
@@ -861,7 +509,6 @@ final class HypnographState: ObservableObject {
         outputResolution = resolution
         settings.outputResolution = resolution
         saveSettingsToDisk()
-        effectManager.onEffectChanged?()
     }
 
     /// Save settings to disk (public - call after modifying state.settings)

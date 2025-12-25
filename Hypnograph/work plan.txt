@@ -1,7 +1,4 @@
-- We need a player settings area which should be in its own new "Montage / Sequence Player" modal window which either takes over or replaces the HUD. The initial settings we need to integrate:
-  - Max Number of Sources (for new random hypnograms) 
-  - Length in time for the current playing/rendering Hypnogram
-  - Frame Rate / Play Speed (I guess in FPS for now, but maybe better a % of normal speed)
+- why do we have clearGlobalEffect and clearSourceEffect for ... we could just clearSourceEffect(for: -1) for global, right?
 
 - Lets's address the Frame Buffer refactor stuff here (moving the prefill out of Sequence view). We will employ the Rended playable "ready / prefilling" state stuff here and have an option for each player as to whether it starts rendering before the frame buffer is full or only after it is full and the effect is applied (which means possibly 2 seconds into playing). This player option should be called something like "Play With Effect" vs "Wait for Effect Buffer". This effect buffer wait shouldn't happen if the effect chain doesn't have any effects that use a frame buffer. 
 
@@ -18,3 +15,5 @@
 - Let's add the timeline editor for sources. Pretty much a basic timeline editor with the ablity to specify the Basic effects properties for each layer including Blend Mode.
 
 - Performance Mode has a "Video Mixer" that specifies the transition between hypnograms. Right now it's a simple crossfade but we should make it configurable with 2-3 options. We would add these 2-4 options as push buttons in the header of the Preview panel in the main window.
+
+- Move Divine into its own product, and focus it on ios usage possibly? It just looks at a single Apple Photos directory or file directory for simplicity

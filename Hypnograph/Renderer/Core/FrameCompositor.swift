@@ -132,18 +132,13 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
             if instruction.enableEffects, let manager = manager {
                 let recipe = manager.recipeProvider?()
                 if let recipe = recipe, sourceIndex < recipe.sources.count {
-                    let effects = recipe.sources[sourceIndex].effects
-                    if !effects.isEmpty {
-                        var sourceContext = RenderContext(
-                            frameIndex: frameIndex,
-                            time: request.compositionTime,
-                            outputSize: outputSize,
-                            frameBuffer: manager.frameBuffer
-                        )
-                        for effect in effects {
-                            img = effect.apply(to: img, context: &sourceContext)
-                        }
-                    }
+                    var sourceContext = RenderContext(
+                        frameIndex: frameIndex,
+                        time: request.compositionTime,
+                        outputSize: outputSize,
+                        frameBuffer: manager.frameBuffer
+                    )
+                    img = recipe.sources[sourceIndex].effectChain.apply(to: img, context: &sourceContext)
                 }
             }
 
@@ -189,16 +184,14 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
         // Apply global effects from recipe
         if instruction.enableEffects, let manager = manager {
             let recipe = manager.recipeProvider?()
-            if let recipe = recipe, !recipe.effects.isEmpty {
+            if let recipe = recipe {
                 var context = RenderContext(
                     frameIndex: frameIndex,
                     time: request.compositionTime,
                     outputSize: outputSize,
                     frameBuffer: manager.frameBuffer
                 )
-                for effect in recipe.effects {
-                    finalImage = effect.apply(to: finalImage, context: &context)
-                }
+                finalImage = recipe.effectChain.apply(to: finalImage, context: &context)
             }
         }
 

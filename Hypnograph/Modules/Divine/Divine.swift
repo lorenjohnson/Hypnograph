@@ -36,13 +36,6 @@ final class Divine: ObservableObject {
     // MARK: - Display
 
     func makeDisplayView() -> AnyView {
-        // In Live mode, mirror the Performance Display player instead of local preview
-        if state.isLiveMode {
-            return AnyView(
-                LiveModePlayerView(performanceDisplay: state.performanceDisplay)
-            )
-        }
-
         // Ensure at least one card exists (deferred from init to use correct per-mode library)
         if cardManager.cards.isEmpty {
             cardManager.addCardAtOffsetAtCenter()
@@ -168,12 +161,12 @@ final class Divine: ObservableObject {
         .keyboardShortcut(.delete, modifiers: [])
 
         Button("Add to Exclude List") { [self] in
-            state.excludeCurrentSource()
+            excludeCurrentCardSource()
         }
         .keyboardShortcut("x", modifiers: [.shift])
 
         Button("Toggle Favorite") { [self] in
-            state.toggleCurrentSourceFavorite()
+            toggleCurrentCardFavorite()
         }
         .keyboardShortcut("f", modifiers: [.shift])
     }
@@ -190,11 +183,11 @@ final class Divine: ObservableObject {
     }
 
     func toggleHUD() {
-        state.toggleHUD()
+        // Divine doesn't currently have HUD support
     }
 
     func togglePause() {
-        state.togglePause()
+        // Divine doesn't have video playback - pause is a no-op
     }
 
     func reloadSettings() {
@@ -227,6 +220,22 @@ final class Divine: ObservableObject {
 
     func newRandomCard() {
         cardManager.addCardAtOffsetAtCenter()
+    }
+
+    func excludeCurrentCardSource() {
+        state.noteUserInteraction()
+        guard let card = cardManager.selectedCard else { return }
+        state.library.exclude(file: card.clip.file)
+        // Replace with new random card
+        cardManager.replaceCurrentCard()
+    }
+
+    func toggleCurrentCardFavorite() {
+        state.noteUserInteraction()
+        guard let card = cardManager.selectedCard else { return }
+        let isFavorited = FavoriteStore.shared.toggle(card.clip.file.source)
+        let message = isFavorited ? "Added to favorites" : "Removed from favorites"
+        AppNotifications.shared.show(message, flash: true)
     }
 
     func redeal() {

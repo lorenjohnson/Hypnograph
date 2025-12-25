@@ -137,33 +137,21 @@ struct HypnogramSource {
     var clip: VideoClip
     /// User-applied transforms (rotation, scale, translation). Applied after metadata orientation correction.
     var transforms: [CGAffineTransform]
-    /// Instantiated effects for this source (created from effectChain)
-    var effects: [Effect]
     var blendMode: String?
 
-    /// The effect chain definition for this source - source of truth for editing.
-    /// Contains 0-n effect definitions that are instantiated into `effects` for rendering.
-    var effectChain: EffectChain?
+    /// The effect chain for this source - contains definitions and handles instantiation/application.
+    /// Use effectChain.apply() to apply effects. Always non-nil (can be empty chain).
+    var effectChain: EffectChain
 
     init(
         clip: VideoClip,
         transforms: [CGAffineTransform] = [],
-        effects: [Effect] = [],
         blendMode: String? = nil,
         effectChain: EffectChain? = nil
     ) {
         self.clip = clip
         self.transforms = transforms
-        self.effects = effects
         self.blendMode = blendMode
-        self.effectChain = effectChain
-    }
-
-    // MARK: - Deprecated compatibility
-
-    /// @deprecated Use effectChain instead
-    var effectDefinition: EffectChain? {
-        get { effectChain }
-        set { effectChain = newValue }
+        self.effectChain = effectChain ?? EffectChain()
     }
 }

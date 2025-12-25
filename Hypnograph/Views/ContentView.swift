@@ -16,10 +16,12 @@ struct ContentView: View {
 
     private var soloIndicatorText: String? {
         // Only show during flash solo (when navigating sources in montage mode)
-        guard state.effectManager.flashSoloIndex != nil, state.currentModuleType == .dream, !state.sources.isEmpty else {
+        guard dream.activePlayer.effectManager.flashSoloIndex != nil,
+              state.currentModuleType == .dream,
+              !dream.activePlayer.sources.isEmpty else {
             return nil
         }
-        return "\(state.currentSourceIndex + 1)/\(state.sources.count)"
+        return "\(dream.activePlayer.currentSourceIndex + 1)/\(dream.activePlayer.sources.count)"
     }
 
     var body: some View {
@@ -39,7 +41,7 @@ struct ContentView: View {
             }
 
             // LIVE indicator - top left, only in Live mode
-            if state.isLiveMode {
+            if dream.isLiveMode {
                 Text("LIVE")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.red)
@@ -51,14 +53,29 @@ struct ContentView: View {
             }
 
             // HUD - top left (below LIVE if visible)
-            if state.isHUDVisible {
+            if dream.activePlayer.isHUDVisible {
                 HUDView(
                     state: state,
                     dream: dream,
                     divine: divine
                 )
-                .padding(.top, state.isLiveMode ? 56 : 12)
+                .padding(.top, dream.isLiveMode ? 56 : 12)
                 .padding(.leading, 12)
+            }
+        }
+        .overlay(alignment: .bottomLeading) {
+            // Player Settings - bottom left, Dream module only
+            if state.currentModuleType == .dream && dream.activePlayer.isPlayerSettingsVisible {
+                PlayerSettingsView(
+                    player: dream.activePlayer,
+                    onClose: {
+                        dream.activePlayer.isPlayerSettingsVisible = false
+                    }
+                )
+                .padding(.leading, 12)
+                .padding(.bottom, 12)
+                .transition(.move(edge: .leading).combined(with: .opacity))
+                .animation(.easeInOut(duration: 0.2), value: dream.activePlayer.isPlayerSettingsVisible)
             }
         }
         .overlay(alignment: .topTrailing) {
@@ -72,8 +89,8 @@ struct ContentView: View {
         .overlay(alignment: .topTrailing) {
             // Right-side panels: Effects editor (top-aligned) and Performance preview (bottom)
             VStack(spacing: 0) {
-                if state.isEffectsEditorVisible {
-                    EffectsEditorView(viewModel: effectsEditorViewModel, state: state)
+                if dream.activePlayer.isEffectsEditorVisible {
+                    EffectsEditorView(viewModel: effectsEditorViewModel, state: state, dream: dream)
                         .padding(.bottom, state.isPerformancePreviewVisible ? 12 : 0)
                         .transition(.move(edge: .trailing))
                 }
@@ -82,7 +99,7 @@ struct ContentView: View {
 
                 if state.isPerformancePreviewVisible {
                     PerformancePreviewView(
-                        performanceDisplay: state.performanceDisplay,
+                        performanceDisplay: dream.performanceDisplay,
                         onClose: {
                             state.isPerformancePreviewVisible = false
                         }
@@ -93,7 +110,7 @@ struct ContentView: View {
             .padding(.top, 12)
             .padding(.trailing, 12)
             .padding(.bottom, 12)
-            .animation(.easeInOut(duration: 0.2), value: state.isEffectsEditorVisible)
+            .animation(.easeInOut(duration: 0.2), value: dream.activePlayer.isEffectsEditorVisible)
             .animation(.easeInOut(duration: 0.2), value: state.isPerformancePreviewVisible)
         }
         .appNotifications()

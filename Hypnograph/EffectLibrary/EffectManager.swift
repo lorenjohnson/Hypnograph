@@ -21,6 +21,14 @@ final class EffectManager {
     /// 120 frames at 30fps = 4 seconds of history for advanced datamosh/AI effects
     let frameBuffer = FrameBuffer(maxFrames: 120)
 
+    /// Renderer readiness state for frame buffer prefilling
+    /// Players observe this to know when temporal effects are ready
+    @MainActor
+    let readiness = RendererReadiness()
+
+    /// Effect buffer mode - determines whether playback waits for preroll
+    var effectBufferMode: EffectBufferMode = .playWithEffect
+
     /// Global frame counter - increments each frame, persists across video loops
     /// Used by temporal effects that need consistent timing
     private(set) var globalFrameIndex: Int = 0
@@ -51,13 +59,18 @@ final class EffectManager {
     var maxRequiredLookback: Int {
         guard let recipe = recipeProvider?() else { return 0 }
 
-        // Check global effects
-        let globalMax = recipe.effects.map { $0.requiredLookback }.max() ?? 0
+        // Check global effect chain
+        let globalMax = recipe.effectChain.maxRequiredLookback
 
-        // Check per-source effects
-        let sourceMax = recipe.sources.flatMap { $0.effects }.map { $0.requiredLookback }.max() ?? 0
+        // Check per-source effect chains
+        let sourceMax = recipe.sources.map { $0.effectChain.maxRequiredLookback }.max() ?? 0
 
         return max(globalMax, sourceMax)
+    }
+
+    /// Whether any effect in the recipe uses the frame buffer (has temporal dependencies)
+    var usesFrameBuffer: Bool {
+        maxRequiredLookback > 0
     }
 
     // Compatibility alias for frameIndex
@@ -68,17 +81,11 @@ final class EffectManager {
     /// Closure to get the current recipe (injected by RecipeManager)
     var recipeProvider: (() -> HypnogramRecipe?)?
 
-    /// Closure to set global effects on the recipe
-    var effectsSetter: (([Effect]) -> Void)?
-
     /// Closure to set global effect chain on the recipe
-    var globalEffectChainSetter: ((EffectChain?) -> Void)?
-
-    /// Closure to set per-source effects on the recipe
-    var sourceEffectSetter: ((Int, [Effect]) -> Void)?
+    var globalEffectChainSetter: ((EffectChain) -> Void)?
 
     /// Closure to set per-source effect chain on the recipe
-    var sourceEffectChainSetter: ((Int, EffectChain?) -> Void)?
+    var sourceEffectChainSetter: ((Int, EffectChain) -> Void)?
 
     /// Closure to set blend mode for a source
     var blendModeSetter: ((Int, String) -> Void)?
@@ -174,32 +181,18 @@ final class EffectManager {
 
     /// Get the current global effect chain name (for UI matching)
     var globalEffectName: String {
-        recipeProvider?()?.effectChain?.name ?? "None"
+        recipeProvider?()?.effectChain.name ?? "None"
     }
 
     /// Get the current global effect chain (for editing)
-    var globalEffectChain: EffectChain? {
-        recipeProvider?()?.effectChain
+    var globalEffectChain: EffectChain {
+        recipeProvider?()?.effectChain ?? EffectChain()
     }
 
-    /// Set global effect from an Effect instance
-    func setGlobalEffect(_ effect: Effect?) {
-        if let effect = effect {
-            effectsSetter?([effect])
-        } else {
-            effectsSetter?([])
-        }
-        onEffectChanged?()
-    }
-
-    /// Set global effect from an effect chain - stores chain and instantiates effects
-    func setGlobalEffect(from chain: EffectChain?) {
-        globalEffectChainSetter?(chain)
-        if let chain = chain {
-            effectsSetter?(EffectConfigLoader.instantiateChain(chain))
-        } else {
-            effectsSetter?([])
-        }
+    /// Set global effect from an effect chain - the chain handles instantiation internally
+    /// Copies the chain so the recipe has its own instance (not shared with library)
+    func setGlobalEffect(from chain: EffectChain) {
+        globalEffectChainSetter?(chain.copy())
         onEffectChanged?()
     }
 
@@ -317,23 +310,19 @@ final class EffectManager {
         guard let recipe = recipeProvider?() else { return }
 
         // Re-apply global effect by name from stored chain
-        if let currentChain = recipe.effectChain {
-            let currentName = currentChain.name
-            if let freshChain = EffectChainLibrary.all.first(where: { $0.name == currentName }) {
-                // Found matching chain - instantiate and apply fresh copy
-                effectsSetter?(EffectConfigLoader.instantiateChain(freshChain))
-                print("🔄 Reapplied global effect: \(currentName)")
-            }
+        let currentName = recipe.effectChain.name
+        if let freshChain = EffectChainLibrary.all.first(where: { $0.name == currentName }) {
+            // Replace with fresh chain - it will re-instantiate effects on next apply()
+            globalEffectChainSetter?(freshChain.copy())
+            print("🔄 Reapplied global effect: \(currentName ?? "unnamed")")
         }
 
         // Re-apply per-source effects by name from stored chains
         for (index, source) in recipe.sources.enumerated() {
-            if let currentChain = source.effectChain {
-                let currentName = currentChain.name
-                if let freshChain = EffectChainLibrary.all.first(where: { $0.name == currentName }) {
-                    sourceEffectSetter?(index, EffectConfigLoader.instantiateChain(freshChain))
-                    print("🔄 Reapplied source \(index) effect: \(currentName)")
-                }
+            let currentSourceName = source.effectChain.name
+            if let freshChain = EffectChainLibrary.all.first(where: { $0.name == currentSourceName }) {
+                sourceEffectChainSetter?(index, freshChain.copy())
+                print("🔄 Reapplied source \(index) effect: \(currentSourceName ?? "unnamed")")
             }
         }
 
@@ -349,25 +338,22 @@ final class EffectManager {
               sourceIndex < recipe.sources.count else {
             return "None"
         }
-        return recipe.sources[sourceIndex].effectChain?.name ?? "None"
+        return recipe.sources[sourceIndex].effectChain.name ?? "None"
     }
 
-    func setSourceEffect(_ effect: Effect?, for sourceIndex: Int) {
-        if let effect = effect {
-            sourceEffectSetter?(sourceIndex, [effect])
-        } else {
-            sourceEffectSetter?(sourceIndex, [])
-        }
+    /// Set source effect from a chain - the chain handles instantiation internally
+    /// Copies the chain so the source has its own instance (not shared with library)
+    func setSourceEffect(from chain: EffectChain, for sourceIndex: Int) {
+        sourceEffectChainSetter?(sourceIndex, chain.copy())
         onEffectChanged?()
     }
 
-    /// Set source effect from a chain - stores chain and instantiates effects
-    func setSourceEffect(from chain: EffectChain?, for sourceIndex: Int) {
-        sourceEffectChainSetter?(sourceIndex, chain)
-        if let chain = chain {
-            sourceEffectSetter?(sourceIndex, EffectConfigLoader.instantiateChain(chain))
+    /// Clear effect for a layer (-1 = global, 0+ = source index)
+    func clearEffect(for layer: Int) {
+        if layer == -1 {
+            globalEffectChainSetter?(EffectChain())
         } else {
-            sourceEffectSetter?(sourceIndex, [])
+            sourceEffectChainSetter?(layer, EffectChain())
         }
         onEffectChanged?()
     }
@@ -400,22 +386,13 @@ final class EffectManager {
         return sourceEffectChain(for: layer)
     }
 
-    /// Set effect for a layer (-1 = global, 0+ = source index)
-    func setEffect(_ effect: Effect?, for layer: Int) {
-        if layer == -1 {
-            setGlobalEffect(effect)
-        } else {
-            setSourceEffect(effect, for: layer)
-        }
-    }
-
     /// Set effect from a chain for a layer (-1 = global, 0+ = source index)
     /// This is the preferred method for selecting effects from the library
     func setEffect(from chain: EffectChain?, for layer: Int) {
         if layer == -1 {
-            setGlobalEffect(from: chain)
+            setGlobalEffect(from: chain ?? EffectChain())
         } else {
-            setSourceEffect(from: chain, for: layer)
+            setSourceEffect(from: chain ?? EffectChain(), for: layer)
         }
     }
 
@@ -441,11 +418,6 @@ final class EffectManager {
         setEffect(from: nextIndex >= 0 ? EffectChainLibrary.all[nextIndex] : nil, for: layer)
     }
 
-    /// Clear effect for a specific layer (-1 = global, 0+ = source index)
-    func clearEffect(for layer: Int) {
-        setEffect(nil, for: layer)
-    }
-
     // MARK: - Application
 
     /// Apply recipe effects to the final composed image
@@ -459,17 +431,14 @@ final class EffectManager {
             return image
         }
 
-        guard let recipe = recipeProvider?(), !recipe.effects.isEmpty else {
+        guard let recipe = recipeProvider?(), recipe.effectChain.hasEnabledEffects else {
             // Even if no effect, still update buffer for future use
             frameBuffer.addFrame(image, at: context.time)
             return image
         }
 
-        // Apply all effects in chain (currently UI only sets one)
-        var result = image
-        for effect in recipe.effects {
-            result = effect.apply(to: result, context: &context)
-        }
+        // Apply all effects in the chain
+        var result = recipe.effectChain.apply(to: image, context: &context)
 
         // Update frame buffer with processed result so temporal effects see prior effects
         frameBuffer.addFrame(result, at: context.time)
@@ -485,17 +454,13 @@ final class EffectManager {
             return image
         }
 
-        let effects = recipe.sources[sourceIndex].effects
-        guard !effects.isEmpty else { return image }
+        let effectChain = recipe.sources[sourceIndex].effectChain
+        guard effectChain.hasEnabledEffects else { return image }
 
         // Mark which source is being processed so effects can branch if they want.
         context.sourceIndex = sourceIndex
 
-        var result = image
-        for effect in effects {
-            result = effect.apply(to: result, context: &context)
-        }
-        return result
+        return effectChain.apply(to: image, context: &context)
     }
 
     func clearFrameBuffer() {
@@ -506,13 +471,9 @@ final class EffectManager {
         // Reset all effects that have internal state (HoldFrameEffect, DatamoshEffect, etc.)
         // Important: Do this BEFORE the recipe clears effects, because effects may be preserved
         if let recipe = recipeProvider?() {
-            for effect in recipe.effects {
-                effect.reset()
-            }
+            recipe.effectChain.reset()
             for source in recipe.sources {
-                for effect in source.effects {
-                    effect.reset()
-                }
+                source.effectChain.reset()
             }
         }
     }
