@@ -151,23 +151,24 @@ Temporal effects (Datamosh, GhostBlur, HoldFrame) require a filled frame buffer 
 
 **Components:**
 - `FrameBuffer` - Ring buffer storing recent frames (120 frames = ~4 seconds at 30fps)
-- `FrameBufferPreloader` - Static utility for prerolling frames from video/image sources
-- `RendererReadiness` - Observable state: `.ready`, `.prefilling(progress)`, `.failed(reason)`
-- `EffectBufferMode` - Player setting for preroll behavior
+- `FrameBufferPreloader` - Utility for prerolling frames from video/image sources
+- `RendererConfig.prerollEnabled` - Global constant to enable/disable preroll
 
 **Flow:**
 1. When a source loads, `EffectManager.preloadFrameBuffer(from:)` is called
-2. If `usesFrameBuffer` is false (no temporal effects), returns immediately
-3. Otherwise, `FrameBufferPreloader` fills the buffer with initial frames
-4. `RendererReadiness` tracks progress for potential UI feedback
+2. If `RendererConfig.prerollEnabled` is false, skip preroll entirely
+3. If `usesFrameBuffer` is false (no temporal effects), skip preroll
+4. Otherwise, `FrameBufferPreloader` extracts frames BEFORE playback start time
+5. Playback begins with buffer already filled - effects work immediately
 
-**Player Settings:**
-- `effectBufferMode: EffectBufferMode` on `DreamPlayerState`
-- **Play With Effect** (default) - Start playback immediately, effect builds up naturally
-- **Wait for Effect Buffer** - Delay playback until buffer is filled (better initial effect quality)
+**Smart Preroll:**
+- Effects advertise their lookback needs via `requiredLookback: Int`
+- `EffectManager.maxRequiredLookback` finds the max across all active effects
+- Only that many frames are prerolled (not the full 120-frame buffer)
+- Effects with `requiredLookback = 0` (BasicEffect, TextOverlay, etc.) don't trigger preroll
 
-**EffectManager owns preload:**
-- `preloadFrameBuffer(from: AVAsset)` - async preroll for video
-- `preloadFrameBuffer(from: CIImage)` - sync prefill for still images
-- `isFrameBufferReady` - check readiness state
-- Players call these instead of accessing FrameBufferPreloader directly
+**Trade-off:**
+- Preroll extracts frames from the video before the start point
+- For a 30-frame lookback at 30fps, this is effectively 1 second of "history"
+- Most users won't notice, but clips may start slightly into the content
+- Set `RendererConfig.prerollEnabled = false` to always start at beginning (effects build up naturally)

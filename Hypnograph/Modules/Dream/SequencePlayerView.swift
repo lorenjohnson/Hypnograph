@@ -197,8 +197,8 @@ struct SequencePlayerView: NSViewRepresentable {
                 return
             }
 
-            // Pre-fill frame buffer for temporal effects (handled by EffectManager)
-            _ = self.effectManager.preloadFrameBuffer(from: ciImage)
+            // Pre-fill frame buffer for temporal effects
+            self.effectManager.preloadFrameBuffer(from: ciImage)
 
             // Compose user transforms array into single transform
             let userTransform = source.transforms.reduce(CGAffineTransform.identity) { $0.concatenating($1) }
@@ -275,8 +275,8 @@ struct SequencePlayerView: NSViewRepresentable {
 
             guard !Task.isCancelled else { return }
 
-            // Pre-roll frame buffer for temporal effects (handled by EffectManager)
-            _ = await self.effectManager.preloadFrameBuffer(from: asset, startTime: .zero)
+            // Pre-roll frame buffer for temporal effects
+            await self.effectManager.preloadFrameBuffer(from: asset, startTime: .zero)
 
             guard !Task.isCancelled else { return }
 
