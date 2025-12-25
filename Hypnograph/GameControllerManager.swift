@@ -100,7 +100,7 @@ final class GameControllerManager {
 
     /// Check if the effects editor is currently visible
     private var isEffectsEditorVisible: Bool {
-        state?.isEffectsEditorVisible ?? false
+        dream?.activePlayer.isEffectsEditorVisible ?? false
     }
 
     /// Get the effects editor view model
@@ -213,9 +213,9 @@ final class GameControllerManager {
     /// Navigate up/down in the effects editor (effect list only)
     /// Parameter navigation is handled by native SwiftUI focus
     private func navigateEffectsEditor(delta: Int) {
-        guard let vm = effectsViewModel, let state = state else { return }
+        guard let vm = effectsViewModel, let dream = dream else { return }
 
-        let globalEffectName = state.effectManager.globalEffectName
+        let globalEffectName = dream.activeEffectManager.globalEffectName
 
         switch vm.activeSection {
         case .effectList:
@@ -229,9 +229,9 @@ final class GameControllerManager {
             }
 
             if newIndex == -1 {
-                state.effectManager.setGlobalEffect(from: nil)
+                dream.activeEffectManager.clearEffect(for: -1)
             } else if newIndex >= 0 && newIndex < EffectChainLibrary.all.count {
-                state.effectManager.setGlobalEffect(from: EffectChainLibrary.all[newIndex])
+                dream.activeEffectManager.setGlobalEffect(from: EffectChainLibrary.all[newIndex])
             }
 
         default:
@@ -270,14 +270,14 @@ final class GameControllerManager {
         // Start/Menu Button - Pause/Play (P)
         gamepad.buttonMenu.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed else { return }
-            self?.state?.togglePause()
+            self?.dream?.togglePause()
         }
 
         // Back/Options Button - Toggle HUD (H) (if available)
         if let optionsButton = gamepad.buttonOptions {
             optionsButton.pressedChangedHandler = { [weak self] _, _, pressed in
                 guard pressed else { return }
-                self?.state?.toggleHUD()
+                self?.dream?.toggleHUD()
             }
         }
 
@@ -301,21 +301,21 @@ final class GameControllerManager {
     // MARK: - Performance Display
 
     private func sendToPerformanceDisplay() {
-        guard let state = state else { return }
+        guard let dream = dream else { return }
 
         // Only works when performance display is visible
-        guard state.performanceDisplay.isVisible else {
+        guard dream.performanceDisplay.isVisible else {
             print("🎮 Performance Display not visible, ignoring send")
             return
         }
 
+        guard let state = state else { return }
         switch state.currentModuleType {
         case .dream:
-            guard let dream = dream else { return }
-            state.performanceDisplay.send(
+            dream.performanceDisplay.send(
                 recipe: dream.currentRecipe,
-                aspectRatio: state.aspectRatio,
-                resolution: state.outputResolution,
+                aspectRatio: dream.activePlayer.aspectRatio,
+                resolution: dream.activePlayer.outputResolution,
                 mode: dream.mode
             )
             print("🎮 Sent to Performance Display")
@@ -343,7 +343,7 @@ final class GameControllerManager {
                 self.joystickPanelSwitchTriggered = true
             } else if xValue > threshold && !self.joystickPanelSwitchTriggered {
                 // Joystick pushed right - switch to parameters panel (if effect selected)
-                if vm.selectedChain(for: self.state?.effectManager.globalEffectName) != nil {
+                if vm.selectedChain(for: self.dream?.activeEffectManager.globalEffectName) != nil {
                     vm.activeSection = .parameterList
                 }
                 self.joystickPanelSwitchTriggered = true

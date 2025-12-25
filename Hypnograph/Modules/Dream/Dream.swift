@@ -28,26 +28,82 @@ final class Dream: ObservableObject {
     private let maxSequenceSources: Int = 20
     private let initialSequenceSourceCount: Int = 5
 
+    // MARK: - Player States (independent decks)
+
+    /// Montage player - blends all sources together
+    let montagePlayer: DreamPlayerState
+
+    /// Sequence player - plays sources back-to-back
+    let sequencePlayer: DreamPlayerState
+
+    /// Performance display - external monitor output (moved from HypnographState)
+    let performanceDisplay: PerformanceDisplay
+
+    /// Subscriptions to forward player state changes to Dream's objectWillChange
+    private var playerSubscriptions: Set<AnyCancellable> = []
+
+    /// The active player based on current mode
+    var activePlayer: DreamPlayerState {
+        mode == .montage ? montagePlayer : sequencePlayer
+    }
+
+    /// Performance mode: Edit (local preview) vs Live (mirror performance display)
+    enum PerformanceMode {
+        case edit
+        case live
+    }
+
+    @Published var performanceMode: PerformanceMode = .edit
+
+    var isLiveMode: Bool { performanceMode == .live }
+
+    /// Returns the active EffectManager based on performance mode
+    /// In live mode, effects go to the performance display; in edit mode, to the active player
+    var activeEffectManager: EffectManager {
+        isLiveMode ? performanceDisplay.effectManager : activePlayer.effectManager
+    }
+
+    func togglePerformanceMode() {
+        performanceMode = (performanceMode == .edit) ? .live : .edit
+        print("🎬 Performance Mode: \(performanceMode == .live ? "LIVE" : "Edit")")
+    }
+
     // MARK: - Init
 
     init(state: HypnographState, renderQueue: RenderQueue) {
         self.state = state
         self.renderQueue = renderQueue
 
+        // Create independent player states
+        self.montagePlayer = DreamPlayerState(settings: state.settings)
+        self.sequencePlayer = DreamPlayerState(settings: state.settings)
+        self.performanceDisplay = PerformanceDisplay()
+
+        // Forward player state changes to Dream's objectWillChange for SwiftUI reactivity
+        montagePlayer.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &playerSubscriptions)
+        sequencePlayer.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &playerSubscriptions)
+
         // Set up watch timer callback to respect current mode
         state.onWatchTimerFired = { [weak self] in
             self?.new()
         }
+
+        // Generate initial content for montage player
+        generateNewHypnogram(for: montagePlayer)
     }
 
     /// Create a renderer on-demand with current settings (aspect ratio + resolution)
     private func makeRenderer(for mode: DreamMode) -> HypnogramRenderer {
         let outputSize = renderSize(
-            aspectRatio: state.aspectRatio,
-            maxDimension: state.outputResolution.maxDimension
+            aspectRatio: activePlayer.aspectRatio,
+            maxDimension: activePlayer.outputResolution.maxDimension
         )
         let strategy: CompositionBuilder.TimelineStrategy = (mode == .montage)
-            ? .montage(targetDuration: state.settings.outputDuration)
+            ? .montage(targetDuration: activePlayer.targetDuration)
             : .sequence
         return HypnogramRenderer(
             outputURL: state.settings.outputURL,
@@ -58,14 +114,48 @@ final class Dream: ObservableObject {
 
     // MARK: - Shared helpers
 
-    private var sourceCount: Int { state.activeSourceCount }
+    private var sourceCount: Int { activePlayer.activeSourceCount }
 
     private var currentDisplayIndex: Int {
-        sourceCount > 0 ? state.currentSourceIndex + 1 : 0
+        sourceCount > 0 ? activePlayer.currentSourceIndex + 1 : 0
     }
 
     private func sequenceTotalDuration() -> CMTime {
-        state.sources.map { $0.clip.duration }.reduce(.zero, +)
+        activePlayer.sources.map { $0.clip.duration }.reduce(.zero, +)
+    }
+
+    // MARK: - Hypnogram Generation
+
+    /// Generate a new random hypnogram for the given player
+    private func generateNewHypnogram(for player: DreamPlayerState) {
+        player.resetForNextHypnogram(preserveGlobalEffect: true)
+
+        let total = max(1, player.maxSourcesForNew)
+        let minCount = min(2, total)
+        let count = Int.random(in: minCount...total)
+
+        for i in 0..<max(1, count) {
+            guard let clip = state.library.randomClip(clipLength: player.targetDuration.seconds) else {
+                continue
+            }
+            let blendMode = (i == 0) ? BlendMode.sourceOver : BlendMode.random()
+            let source = HypnogramSource(clip: clip, blendMode: blendMode)
+            player.sources.append(source)
+        }
+
+        player.effectManager.invalidateBlendAnalysis()
+        player.effectManager.onEffectChanged?()
+    }
+
+    /// Add a source to the given player
+    private func addSourceToPlayer(_ player: DreamPlayerState, length: Double? = nil) {
+        // Use default clip length if not provided
+        let clipLength = length ?? player.targetDuration.seconds
+        guard let clip = state.library.randomClip(clipLength: clipLength) else { return }
+        let blendMode = player.sources.isEmpty ? BlendMode.sourceOver : BlendMode.random()
+        let source = HypnogramSource(clip: clip, blendMode: blendMode)
+        player.sources.append(source)
+        player.currentSourceIndex = player.sources.count - 1
     }
 
     private func preferredClipLength() -> Double? {
@@ -89,19 +179,19 @@ final class Dream: ObservableObject {
     private var flashSoloTimer: Timer?
 
     func nextSource() {
-        state.nextSource()
+        activePlayer.nextSource()
         triggerFlashSoloIfNeeded()
         syncPerformanceDisplayIfSequence()
     }
 
     func previousSource() {
-        state.previousSource()
+        activePlayer.previousSource()
         triggerFlashSoloIfNeeded()
         syncPerformanceDisplayIfSequence()
     }
 
     func selectSource(index: Int) {
-        state.selectSource(index)
+        activePlayer.selectSource(index)
         triggerFlashSoloIfNeeded()
         syncPerformanceDisplayIfSequence()
     }
@@ -114,36 +204,31 @@ final class Dream: ObservableObject {
         flashSoloTimer?.invalidate()
 
         // Set flash solo to current source
-        state.effectManager.setFlashSolo(state.currentSourceIndex)
+        activePlayer.effectManager.setFlashSolo(activePlayer.currentSourceIndex)
 
         // Clear after delay
         flashSoloTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
-            self?.state.effectManager.setFlashSolo(nil)
+            self?.activePlayer.effectManager.setFlashSolo(nil)
         }
     }
 
     /// Sync Performance Display to current source when in sequence mode
     private func syncPerformanceDisplayIfSequence() {
         guard mode == .sequence else { return }
-        state.performanceDisplay.seekToSource(index: state.currentSourceIndex)
+        performanceDisplay.seekToSource(index: activePlayer.currentSourceIndex)
     }
 
     // MARK: - Effects
 
-    /// Get the appropriate effectManager based on current mode (Edit vs Live)
-    private var activeEffectManager: EffectManager {
-        state.isLiveMode ? state.performanceDisplay.effectManager : state.effectManager
-    }
-
     /// Cycle effect for current layer (global when -1, source when 0+)
     func cycleEffect(direction: Int = 1) {
         state.noteUserInteraction()
-        activeEffectManager.cycleEffect(for: state.currentSourceIndex, direction: direction)
+        activeEffectManager.cycleEffect(for: activePlayer.currentSourceIndex, direction: direction)
 
         // Show flash message when effects panel is not open
-        if !state.isEffectsEditorVisible {
-            let effectName = activeEffectManager.effectName(for: state.currentSourceIndex)
-            let layerLabel = state.currentSourceIndex == -1 ? "Global" : "Source \(state.currentSourceIndex + 1)"
+        if !activePlayer.isEffectsEditorVisible {
+            let effectName = activeEffectManager.effectName(for: activePlayer.currentSourceIndex)
+            let layerLabel = activePlayer.currentSourceIndex == -1 ? "Global" : "Source \(activePlayer.currentSourceIndex + 1)"
             AppNotifications.show("\(layerLabel): \(effectName)", flash: true, duration: 1.5)
         }
     }
@@ -151,11 +236,11 @@ final class Dream: ObservableObject {
     /// Clear effect for current layer only
     func clearCurrentLayerEffect() {
         state.noteUserInteraction()
-        activeEffectManager.clearEffect(for: state.currentSourceIndex)
+        activeEffectManager.clearEffect(for: activePlayer.currentSourceIndex)
 
         // Show flash message when effects panel is not open
-        if !state.isEffectsEditorVisible {
-            let layerLabel = state.currentSourceIndex == -1 ? "Global" : "Source \(state.currentSourceIndex + 1)"
+        if !activePlayer.isEffectsEditorVisible {
+            let layerLabel = activePlayer.currentSourceIndex == -1 ? "Global" : "Source \(activePlayer.currentSourceIndex + 1)"
             AppNotifications.show("\(layerLabel): None", flash: true, duration: 1.5)
         }
     }
@@ -180,24 +265,24 @@ final class Dream: ObservableObject {
         items.append(.padding(8, order: 21))
 
         // Layer info (Global or Source X of Y)
-        items.append(.text(state.editingLayerDisplay, order: 22))
-        items.append(.text("Effect (E): \(activeEffectManager.effectName(for: state.currentSourceIndex))", order: 23))
+        items.append(.text(activePlayer.editingLayerDisplay, order: 22))
+        items.append(.text("Effect (E): \(activeEffectManager.effectName(for: activePlayer.currentSourceIndex))", order: 23))
 
         // Source-specific info (only when on a source layer, not global)
-        if !state.isOnGlobalLayer {
+        if !activePlayer.isOnGlobalLayer {
             switch mode {
             case .montage:
                 items.append(.text("Blend mode (M): \(currentBlendModeDisplayName())", order: 26))
             case .sequence:
                 let totalSecs = sequenceTotalDuration().seconds
                 items.append(.text(String(format: "Duration: %.1fs", totalSecs), order: 26))
-                if let clip = state.currentClip {
+                if let clip = activePlayer.currentClip {
                     items.append(.text("Clip: \(String(format: "%.1fs", clip.duration.seconds))", order: 27))
                 }
             }
 
             // Favorite status
-            if let source = state.currentSource?.clip.file.source,
+            if let source = activePlayer.currentSource?.clip.file.source,
                FavoriteStore.shared.isFavorited(source) {
                 items.append(.text("★ Favorite", order: 29))
             }
@@ -244,7 +329,7 @@ final class Dream: ObservableObject {
         .keyboardShortcut("n", modifiers: [.shift])
 
         // Only use arrow shortcuts when effects editor is closed (otherwise they adjust params)
-        if !state.isEffectsEditorVisible {
+        if !activePlayer.isEffectsEditorVisible {
             Button("> Next Source") { [self] in
                 nextSource()
             }
@@ -272,7 +357,7 @@ final class Dream: ObservableObject {
         }
 
         Button("Select Global Layer") { [self] in
-            state.selectGlobalLayer()
+            activePlayer.selectGlobalLayer()
         }
         .keyboardShortcut("0", modifiers: [])
 
@@ -313,8 +398,8 @@ final class Dream: ObservableObject {
         Section("Aspect Ratio") {
             ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
                 Toggle(ratio.menuLabel, isOn: Binding(
-                    get: { [self] in state.aspectRatio == ratio },
-                    set: { [self] in if $0 { state.setAspectRatio(ratio) } }
+                    get: { [self] in activePlayer.aspectRatio == ratio },
+                    set: { [self] in if $0 { setAspectRatio(ratio) } }
                 ))
             }
         }
@@ -323,11 +408,27 @@ final class Dream: ObservableObject {
         Section("Output Resolution") {
             ForEach(OutputResolution.allCases, id: \.self) { resolution in
                 Toggle(resolution.displayName, isOn: Binding(
-                    get: { [self] in state.outputResolution == resolution },
-                    set: { [self] in if $0 { state.setOutputResolution(resolution) } }
+                    get: { [self] in activePlayer.outputResolution == resolution },
+                    set: { [self] in if $0 { setOutputResolution(resolution) } }
                 ))
             }
         }
+    }
+
+    // MARK: - Settings helpers
+
+    func setAspectRatio(_ ratio: AspectRatio) {
+        activePlayer.aspectRatio = ratio
+        // Also update in settings for persistence
+        state.settings.aspectRatio = ratio
+        state.saveSettings()
+    }
+
+    func setOutputResolution(_ resolution: OutputResolution) {
+        activePlayer.outputResolution = resolution
+        // Also update in settings for persistence
+        state.settings.outputResolution = resolution
+        state.saveSettings()
     }
 
     @ViewBuilder
@@ -357,17 +458,17 @@ final class Dream: ObservableObject {
         .keyboardShortcut(.delete, modifiers: [])
 
         Button("Add to Exclude List") { [self] in
-            state.excludeCurrentSource()
+            excludeCurrentSource()
         }
         .keyboardShortcut("x", modifiers: [.shift])
 
         Button("Mark for Deletion") { [self] in
-            state.markCurrentSourceForDeletion()
+            markCurrentSourceForDeletion()
         }
         .keyboardShortcut("d", modifiers: [.shift])
 
         Button("Toggle Favorite") { [self] in
-            state.toggleCurrentSourceFavorite()
+            toggleCurrentSourceFavorite()
         }
         .keyboardShortcut("f", modifiers: [.shift])
     }
@@ -376,60 +477,60 @@ final class Dream: ObservableObject {
 
     func makeDisplayView() -> AnyView {
         // In Live mode, mirror the Performance Display player instead of local preview
-        if state.isLiveMode {
+        if isLiveMode {
             return AnyView(
-                LiveModePlayerView(performanceDisplay: state.performanceDisplay)
+                LiveModePlayerView(performanceDisplay: performanceDisplay)
             )
         }
 
-        if mode == .sequence, state.sources.isEmpty {
+        if mode == .sequence, activePlayer.sources.isEmpty {
             newRandomSequence()
         }
 
         let recipe = makeDisplayRecipe()
+        let player = activePlayer
 
         switch mode {
         case .montage:
             return AnyView(
                 MontagePlayerView(
                     recipe: recipe,
-                    aspectRatio: state.aspectRatio,
-                    displayResolution: state.outputResolution,
+                    aspectRatio: player.aspectRatio,
+                    displayResolution: player.outputResolution,
                     currentSourceIndex: Binding(
-                        get: { [state] in state.currentSourceIndex },
-                        set: { [state] in state.currentSourceIndex = $0 }
+                        get: { player.currentSourceIndex },
+                        set: { player.currentSourceIndex = $0 }
                     ),
                     currentSourceTime: Binding(
-                        get: { [state] in state.currentClipTimeOffset },
-                        set: { [state] in state.currentClipTimeOffset = $0 }
+                        get: { player.currentClipTimeOffset },
+                        set: { player.currentClipTimeOffset = $0 }
                     ),
-                    isPaused: state.isPaused,
-                    effectsChangeCounter: state.effectsChangeCounter,
-                    effectManager: state.effectManager
+                    isPaused: player.isPaused,
+                    effectsChangeCounter: player.effectsChangeCounter,
+                    effectManager: player.effectManager
                 )
-                .id("dream-montage-\(state.aspectRatio.displayString)-\(state.outputResolution.rawValue)")
+                .id("dream-montage-\(player.aspectRatio.displayString)-\(player.outputResolution.rawValue)-\(player.targetDuration.seconds)-\(recipe.playRate)")
             )
 
         case .sequence:
             return AnyView(
                 SequencePlayerView(
                     recipe: recipe,
-                    aspectRatio: state.aspectRatio,
-                    displayResolution: state.outputResolution,
+                    aspectRatio: player.aspectRatio,
+                    displayResolution: player.outputResolution,
                     currentSourceIndex: Binding(
-                        get: { [state] in state.currentSourceIndex },
-                        set: { [state] in state.currentSourceIndex = $0 }
+                        get: { player.currentSourceIndex },
+                        set: { player.currentSourceIndex = $0 }
                     ),
-                    isPaused: state.isPaused,
-                    effectsChangeCounter: state.effectsChangeCounter,
-                    playRate: 0.8,
-                    effectManager: state.effectManager,
-                    onSourceIndexChanged: { [weak state] newIndex in
+                    isPaused: player.isPaused,
+                    effectsChangeCounter: player.effectsChangeCounter,
+                    effectManager: player.effectManager,
+                    onSourceIndexChanged: { [weak self] newIndex in
                         // Sync Performance Display when auto-advancing in sequence mode
-                        state?.performanceDisplay.seekToSource(index: newIndex)
+                        self?.performanceDisplay.seekToSource(index: newIndex)
                     }
                 )
-                .id("dream-sequence-\(state.sources.count)-\(state.aspectRatio.displayString)-\(state.outputResolution.rawValue)")
+                .id("dream-sequence-\(player.sources.count)-\(player.aspectRatio.displayString)-\(player.outputResolution.rawValue)-\(recipe.playRate)")
             )
         }
     }
@@ -440,14 +541,14 @@ final class Dream: ObservableObject {
     }
 
     private func makeDisplayRecipe() -> HypnogramRecipe {
-        // Use the recipe directly, just adjust target duration based on mode
-        var recipe = state.recipe
+        // Use the recipe from activePlayer, adjust target duration based on mode
+        var recipe = activePlayer.recipe
         switch mode {
         case .montage:
-            recipe.targetDuration = state.settings.outputDuration
+            recipe.targetDuration = activePlayer.targetDuration
         case .sequence:
             let total = sequenceTotalDuration()
-            recipe.targetDuration = total.seconds > 0 ? total : state.settings.outputDuration
+            recipe.targetDuration = total.seconds > 0 ? total : activePlayer.targetDuration
         }
         return recipe
     }
@@ -456,13 +557,13 @@ final class Dream: ObservableObject {
 
     func new() {
         // In Live mode, generate directly for performance display without changing edit state
-        if state.isLiveMode {
+        if isLiveMode {
             newForPerformanceDisplay()
             return
         }
 
         // Clear frame buffer to prevent memory bloat from stored CIImages
-        state.effectManager.clearFrameBuffer()
+        activePlayer.effectManager.clearFrameBuffer()
 
         // Clear image cache if it's getting large to prevent memory bloat
         let cacheSize = StillImageCache.cacheSize()
@@ -472,7 +573,7 @@ final class Dream: ObservableObject {
 
         switch mode {
         case .montage:
-            state.newRandomHypnogram()
+            generateNewHypnogram(for: montagePlayer)
         case .sequence:
             newRandomSequence()
         }
@@ -482,29 +583,30 @@ final class Dream: ObservableObject {
     /// Does NOT modify the edit state
     private func newForPerformanceDisplay() {
         // Clear performance display's frame buffer
-        state.performanceDisplay.effectManager.clearFrameBuffer()
+        performanceDisplay.effectManager.clearFrameBuffer()
 
         // Generate a standalone recipe
         let recipe = generateRandomRecipe()
 
         // Send directly to performance display
-        state.performanceDisplay.send(
+        performanceDisplay.send(
             recipe: recipe,
-            aspectRatio: state.aspectRatio,
-            resolution: state.outputResolution,
+            aspectRatio: activePlayer.aspectRatio,
+            resolution: activePlayer.outputResolution,
             mode: mode
         )
     }
 
-    /// Generate a random recipe without modifying state
+    /// Generate a random recipe without modifying state (for performance display)
+    /// Preserves the current effect chain from the active player
     private func generateRandomRecipe() -> HypnogramRecipe {
         var sources: [HypnogramSource] = []
-        let total = max(1, state.settings.maxSourcesForNew)
+        let total = max(1, activePlayer.maxSourcesForNew)
         let minCount = min(2, total)
         let count = Int.random(in: minCount...total)
 
         for i in 0..<max(1, count) {
-            guard let clip = state.library.randomClip(clipLength: state.settings.outputDuration.seconds) else {
+            guard let clip = state.library.randomClip(clipLength: activePlayer.targetDuration.seconds) else {
                 continue
             }
             // First source uses SourceOver, rest get random blend modes
@@ -513,33 +615,41 @@ final class Dream: ObservableObject {
             sources.append(source)
         }
 
+        // Copy effect chain from active player so new recipes inherit current effects
+        let effectChain = activePlayer.recipe.effectChain.copy()
+
         return HypnogramRecipe(
             sources: sources,
-            targetDuration: state.settings.outputDuration,
-            effects: []  // Performance display can have its own effects
+            targetDuration: activePlayer.targetDuration,
+            effectChain: effectChain
         )
     }
 
     /// Send current hypnogram to performance display
     func sendToPerformanceDisplay() {
-        state.performanceDisplay.send(
-            recipe: state.recipe,
-            aspectRatio: state.aspectRatio,
-            resolution: state.outputResolution,
+        performanceDisplay.send(
+            recipe: activePlayer.recipe,
+            aspectRatio: activePlayer.aspectRatio,
+            resolution: activePlayer.outputResolution,
             mode: mode
         )
     }
 
     func toggleHUD() {
-        state.toggleHUD()
+        activePlayer.toggleHUD()
     }
 
     func togglePause() {
-        state.togglePause()
+        activePlayer.togglePause()
     }
 
     func reloadSettings() {
         state.reloadSettings(from: Environment.defaultSettingsURL)
+        // Also update player states with new settings
+        montagePlayer.targetDuration = state.settings.outputDuration
+        montagePlayer.maxSourcesForNew = state.settings.maxSourcesForNew
+        sequencePlayer.targetDuration = state.settings.outputDuration
+        sequencePlayer.maxSourcesForNew = state.settings.maxSourcesForNew
         if mode == .sequence {
             newRandomSequence()
         }
@@ -548,21 +658,37 @@ final class Dream: ObservableObject {
     // Override addSource to use appropriate length for sequence mode
     func addSource() {
         let length = preferredClipLength()
-        _ = state.addSource(length: length)
+        addSourceToPlayer(activePlayer, length: length)
     }
 
     func newRandomClip() {
-        state.replaceClipForCurrentSource()
+        replaceClipForCurrentSource()
     }
 
     func deleteCurrentSource() {
-        state.deleteCurrentSource()
+        let idx = activePlayer.currentSourceIndex
+        guard idx >= 0, idx < activePlayer.sources.count else { return }
+        activePlayer.sources.remove(at: idx)
+        // Adjust currentSourceIndex
+        if activePlayer.sources.isEmpty {
+            activePlayer.currentSourceIndex = 0
+        } else if idx >= activePlayer.sources.count {
+            activePlayer.currentSourceIndex = activePlayer.sources.count - 1
+        }
+    }
+
+    /// Replace the clip for current source with a new random one
+    private func replaceClipForCurrentSource() {
+        let idx = activePlayer.currentSourceIndex
+        guard idx >= 0, idx < activePlayer.sources.count else { return }
+        guard let clip = state.library.randomClip(clipLength: activePlayer.targetDuration.seconds) else { return }
+        activePlayer.sources[idx].clip = clip
     }
 
     /// Save a snapshot of the current frame from the frame buffer
     func saveSnapshot() {
         // Grab the current frame from the frame buffer (which stores the fully composited frame)
-        guard let currentFrame = state.effectManager.frameBuffer.currentFrame else {
+        guard let currentFrame = activePlayer.effectManager.frameBuffer.currentFrame else {
             print("DreamMode: no current frame available for snapshot")
             return
         }
@@ -619,19 +745,19 @@ final class Dream: ObservableObject {
     }
 
     func save() {
-        guard !state.recipe.sources.isEmpty else {
+        guard !activePlayer.recipe.sources.isEmpty else {
             print("Dream[\(mode.rawValue)]: no sources to save.")
             return
         }
 
         // Deep copy recipe with fresh effect instances to avoid sharing state with preview
-        var renderRecipe = state.recipe.copyForExport()
+        var renderRecipe = activePlayer.recipe.copyForExport()
         switch mode {
         case .montage:
-            renderRecipe.targetDuration = state.settings.outputDuration
+            renderRecipe.targetDuration = activePlayer.targetDuration
         case .sequence:
             let total = sequenceTotalDuration()
-            renderRecipe.targetDuration = total.seconds > 0 ? total : state.settings.outputDuration
+            renderRecipe.targetDuration = total.seconds > 0 ? total : activePlayer.targetDuration
         }
 
         // Create renderer with current settings (aspect ratio + resolution)
@@ -649,8 +775,7 @@ final class Dream: ObservableObject {
 
             switch self.mode {
             case .montage:
-                self.state.resetForNextHypnogram()
-                self.state.newRandomHypnogram()  // Always generate new hypnogram after save
+                self.generateNewHypnogram(for: self.montagePlayer)
             case .sequence:
                 self.newRandomSequence()
             }
@@ -660,12 +785,12 @@ final class Dream: ObservableObject {
     // MARK: - Montage blend modes
 
     private func blendModeForSourceIndex(_ idx: Int) -> String {
-        guard idx >= 0, idx < state.sources.count else { return BlendMode.sourceOver }
-        return state.sources[idx].blendMode ?? (idx == 0 ? BlendMode.sourceOver : BlendMode.defaultMontage)
+        guard idx >= 0, idx < activePlayer.sources.count else { return BlendMode.sourceOver }
+        return activePlayer.sources[idx].blendMode ?? (idx == 0 ? BlendMode.sourceOver : BlendMode.defaultMontage)
     }
 
     private func currentBlendModeDisplayName() -> String {
-        blendModeForSourceIndex(state.currentSourceIndex)
+        blendModeForSourceIndex(activePlayer.currentSourceIndex)
             .replacingOccurrences(of: "CI", with: "")
             .replacingOccurrences(of: "BlendMode", with: "")
     }
@@ -673,11 +798,11 @@ final class Dream: ObservableObject {
     func cycleBlendMode(at index: Int? = nil) {
         state.noteUserInteraction()
 
-        let idx = index ?? state.currentSourceIndex
-        guard idx > 0, idx < state.sources.count else { return } // bottom layer stays SourceOver
+        let idx = index ?? activePlayer.currentSourceIndex
+        guard idx > 0, idx < activePlayer.sources.count else { return } // bottom layer stays SourceOver
 
         // Cycle blend mode - this writes directly to sources via the setter closure
-        state.effectManager.cycleBlendMode(for: idx)
+        activePlayer.effectManager.cycleBlendMode(for: idx)
     }
 
     // MARK: - Transform
@@ -685,12 +810,12 @@ final class Dream: ObservableObject {
     /// Rotate the current source by 90 degrees clockwise
     func rotateCurrentSource() {
         state.noteUserInteraction()
-        let idx = state.currentSourceIndex
-        guard idx >= 0, idx < state.sources.count else { return }
+        let idx = activePlayer.currentSourceIndex
+        guard idx >= 0, idx < activePlayer.sources.count else { return }
 
         // Append a 90-degree clockwise rotation to the transforms array
         let rotation90 = CGAffineTransform(rotationAngle: .pi / 2)
-        state.sources[idx].transforms.append(rotation90)
+        activePlayer.sources[idx].transforms.append(rotation90)
     }
 
     // MARK: - Effects
@@ -698,18 +823,18 @@ final class Dream: ObservableObject {
     /// Clear all effects AND reset blend modes to Screen (default)
     func clearAllEffects() {
         state.noteUserInteraction()
-        activeEffectManager.setGlobalEffect(from: nil)
+        activeEffectManager.clearEffect(for: -1)  // Global
 
         // Get source count from appropriate context
-        let sourceCount = state.isLiveMode
-            ? state.performanceDisplay.activeSourceCount
-            : state.activeSourceCount
+        let sourceCount = isLiveMode
+            ? performanceDisplay.activeSourceCount
+            : activePlayer.activeSourceCount
 
         for i in 0..<sourceCount {
-            activeEffectManager.setSourceEffect(from: nil, for: i)
+            activeEffectManager.clearEffect(for: i)
             // Reset blend mode on source (keep first one as SourceOver) - only in Edit mode
-            if !state.isLiveMode && i > 0 && i < state.sources.count {
-                state.sources[i].blendMode = BlendMode.defaultMontage
+            if !isLiveMode && i > 0 && i < activePlayer.sources.count {
+                activePlayer.sources[i].blendMode = BlendMode.defaultMontage
             }
         }
     }
@@ -717,14 +842,46 @@ final class Dream: ObservableObject {
     // MARK: - Sequence helpers
 
     private func newRandomSequence() {
-        state.resetForNextHypnogram()
+        sequencePlayer.resetForNextHypnogram(preserveGlobalEffect: true)
         let desiredCount = min(initialSequenceSourceCount, maxSequenceSources)
         for _ in 0..<desiredCount {
             let length = Double.random(in: 2.0...15.0)
-            state.addSource(length: length)
+            addSourceToPlayer(sequencePlayer, length: length)
         }
-        state.currentSourceIndex = 0
-        print("DreamMode[sequence]: generated sequence with \(state.sources.count) sources, total duration: \(sequenceTotalDuration().seconds)s")
+        sequencePlayer.currentSourceIndex = 0
+        print("DreamMode[sequence]: generated sequence with \(sequencePlayer.sources.count) sources, total duration: \(sequenceTotalDuration().seconds)s")
+    }
+
+    // MARK: - Source Management Helpers
+
+    /// Exclude current source from library
+    func excludeCurrentSource() {
+        let idx = activePlayer.currentSourceIndex
+        guard idx >= 0, idx < activePlayer.sources.count else { return }
+        let file = activePlayer.sources[idx].clip.file
+        state.library.exclude(file: file)
+        replaceClipForCurrentSource()
+        AppNotifications.show("Added to exclusion list", flash: true)
+    }
+
+    /// Mark current source for deletion
+    func markCurrentSourceForDeletion() {
+        let idx = activePlayer.currentSourceIndex
+        guard idx >= 0, idx < activePlayer.sources.count else { return }
+        let file = activePlayer.sources[idx].clip.file
+        state.library.markForDeletion(file: file)
+        replaceClipForCurrentSource()
+        AppNotifications.show("Marked for deletion", flash: true)
+    }
+
+    /// Toggle favorite status for current source
+    func toggleCurrentSourceFavorite() {
+        let idx = activePlayer.currentSourceIndex
+        guard idx >= 0, idx < activePlayer.sources.count else { return }
+        let mediaSource = activePlayer.sources[idx].clip.file.source
+        FavoriteStore.shared.toggle(mediaSource)
+        let isFav = FavoriteStore.shared.isFavorited(mediaSource)
+        AppNotifications.show(isFav ? "★ Added to favorites" : "Removed from favorites", flash: true)
     }
 }
 

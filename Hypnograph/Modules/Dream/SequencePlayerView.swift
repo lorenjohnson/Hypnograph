@@ -23,7 +23,6 @@ struct SequencePlayerView: NSViewRepresentable {
     @Binding var currentSourceIndex: Int
     let isPaused: Bool
     let effectsChangeCounter: Int
-    let playRate: Float
     let effectManager: EffectManager
 
     /// Optional callback when source index changes (for syncing Performance Display)
@@ -198,10 +197,13 @@ struct SequencePlayerView: NSViewRepresentable {
                 return
             }
 
-            // Pre-fill frame buffer with the still image for effects to have full history from frame 1
-            let frameBuffer = self.effectManager.frameBuffer
-            let count = frameBuffer.prefill(with: ciImage)
-            print("🖼️ SequencePlayer: Prefilled \(count) frames for still image, buffer has \(frameBuffer.frameCount) frames")
+            // Pre-fill frame buffer for temporal effects
+            _ = FrameBufferPreloader.preload(
+                image: ciImage,
+                frameBuffer: self.effectManager.frameBuffer,
+                effectManager: self.effectManager,
+                readiness: self.effectManager.readiness
+            )
 
             // Compose user transforms array into single transform
             let userTransform = source.transforms.reduce(CGAffineTransform.identity) { $0.concatenating($1) }
@@ -278,11 +280,14 @@ struct SequencePlayerView: NSViewRepresentable {
 
             guard !Task.isCancelled else { return }
 
-            // Pre-roll frame buffer for effects to have full history from frame 1
-            let frameBuffer = self.effectManager.frameBuffer
-            print("🎬 SequencePlayer: Starting preroll for video...")
-            let count = await frameBuffer.preroll(from: asset, startTime: CMTime.zero)
-            print("🎬 SequencePlayer: Preroll complete, \(count) frames loaded, buffer now has \(frameBuffer.frameCount) frames")
+            // Pre-roll frame buffer for temporal effects
+            _ = await FrameBufferPreloader.preload(
+                asset: asset,
+                frameBuffer: self.effectManager.frameBuffer,
+                effectManager: self.effectManager,
+                readiness: self.effectManager.readiness,
+                startTime: CMTime.zero
+            )
 
             guard !Task.isCancelled else { return }
 
@@ -373,7 +378,7 @@ struct SequencePlayerView: NSViewRepresentable {
                 if self.isPaused {
                     player.pause()
                 } else {
-                    player.playImmediately(atRate: self.playRate)
+                    player.playImmediately(atRate: self.recipe.playRate)
                 }
             }
         }
@@ -423,7 +428,7 @@ struct SequencePlayerView: NSViewRepresentable {
             if isPaused {
                 player.pause()
             } else {
-                player.playImmediately(atRate: playRate)
+                player.playImmediately(atRate: recipe.playRate)
             }
 
         case .stillImage(let metalView):

@@ -271,6 +271,7 @@ final class EffectsEditorViewModel: ObservableObject {
 struct EffectsEditorView: View {
     @ObservedObject var viewModel: EffectsEditorViewModel
     @ObservedObject var state: HypnographState
+    @ObservedObject var dream: Dream
 
     /// SwiftUI focus state - tracks which field has keyboard focus
     @FocusState private var focusedField: EffectsEditorField?
@@ -283,12 +284,12 @@ struct EffectsEditorView: View {
 
     /// Current layer being edited (-1 = global, 0+ = source)
     private var currentLayer: Int {
-        state.currentSourceIndex
+        dream.activePlayer.currentSourceIndex
     }
 
     /// Effect name for the current layer (from active effects - edit or live mode)
     private var currentLayerEffectName: String {
-        state.activeEffectManager.effectName(for: currentLayer)
+        dream.activeEffectManager.effectName(for: currentLayer)
     }
 
     /// Computed selected effect index from current layer's effect (-1 = None)
@@ -300,7 +301,7 @@ struct EffectsEditorView: View {
     /// Computed selected chain from current layer's effect
     /// Reads from the recipe's stored chain (per-hypnogram), not the library
     private var selectedDefinition: EffectChain? {
-        state.activeEffectManager.effectChain(for: currentLayer)
+        dream.activeEffectManager.effectChain(for: currentLayer)
     }
 
     /// Number of effects in the current effect chain
@@ -333,8 +334,8 @@ struct EffectsEditorView: View {
         // Defer the recipe update to next run loop to allow UI to update first
         // Use activeEffectManager so effects go to performance display in live mode
         let layer = currentLayer
-        let effectManager = state.activeEffectManager
-        let isLive = state.isLiveMode
+        let effectManager = dream.activeEffectManager
+        let isLive = dream.isLiveMode
         print("🎨 EffectsEditor: selectEffect(\(index)) for layer \(layer), isLive=\(isLive)")
         DispatchQueue.main.async {
             // Set effect from chain - this copies the chain into the recipe
@@ -358,10 +359,10 @@ struct EffectsEditorView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Header showing which layer is being edited
             HStack {
-                Text(state.editingLayerDisplay)
+                Text(dream.activePlayer.editingLayerDisplay)
                     .font(.system(.title3, design: .monospaced))
                     .fontWeight(.bold)
-                    .foregroundColor(state.isOnGlobalLayer ? .cyan : .orange)
+                    .foregroundColor(dream.activePlayer.isOnGlobalLayer ? .cyan : .orange)
 
                 Spacer()
 
@@ -406,7 +407,7 @@ struct EffectsEditorView: View {
 
                 // Close button
                 Button(action: {
-                    state.isEffectsEditorVisible = false
+                    dream.activePlayer.isEffectsEditorVisible = false
                 }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .bold))
@@ -637,7 +638,7 @@ struct EffectsEditorView: View {
                         // Update library (for persistence)
                         viewModel.updateEffectName(effectIndex: selectedEffectIndex, name: newName)
                         // Update recipe immediately (for UI refresh - no debounce needed)
-                        state.activeEffectManager.updateChainName(for: currentLayer, name: newName)
+                        dream.activeEffectManager.updateChainName(for: currentLayer, name: newName)
                     }
                 )
 
@@ -681,7 +682,7 @@ struct EffectsEditorView: View {
                         // Update library (for persistence)
                         viewModel.reorderEffects(effectIndex: selectedEffectIndex, fromIndex: from, toIndex: to)
                         // Update recipe (for immediate UI refresh)
-                        state.activeEffectManager.reorderEffectsInChain(for: layer, fromIndex: from, toIndex: to)
+                        dream.activeEffectManager.reorderEffectsInChain(for: layer, fromIndex: from, toIndex: to)
                     }
                 ))
             }
@@ -717,7 +718,7 @@ struct EffectsEditorView: View {
                     // Update library (for persistence)
                     viewModel.removeEffectFromChain(effectIndex: selectedEffectIndex, effectDefIndex: childIndex)
                     // Update recipe (for immediate UI refresh)
-                    state.activeEffectManager.removeEffectFromChain(for: layer, effectDefIndex: childIndex)
+                    dream.activeEffectManager.removeEffectFromChain(for: layer, effectDefIndex: childIndex)
                     // If we deleted the expanded effect, expand the first remaining effect
                     if expandedEffectIndex >= totalEffects - 1 {
                         expandedEffectIndex = max(0, totalEffects - 2)
@@ -736,7 +737,7 @@ struct EffectsEditorView: View {
                     // Update library (for persistence)
                     viewModel.resetEffectToDefaults(effectIndex: selectedEffectIndex, effectDefIndex: childIndex)
                     // Update recipe (for immediate UI refresh)
-                    state.activeEffectManager.resetEffectToDefaults(for: layer, effectDefIndex: childIndex)
+                    dream.activeEffectManager.resetEffectToDefaults(for: layer, effectDefIndex: childIndex)
                 }) {
                     Image(systemName: "arrow.uturn.backward")
                         .font(.system(size: 10, weight: .medium))
@@ -751,7 +752,7 @@ struct EffectsEditorView: View {
                     set: { newValue in
                         expandedEffectIndex = childIndex
                         // Update enabled state via recipe parameter update
-                        state.activeEffectManager.updateEffectParameter(
+                        dream.activeEffectManager.updateEffectParameter(
                             for: layer,
                             effectDefIndex: childIndex,
                             key: "_enabled",
@@ -793,7 +794,7 @@ struct EffectsEditorView: View {
                     // Update library (for persistence)
                     viewModel.addEffectToChain(effectIndex: selectedEffectIndex, effectType: effect.type)
                     // Update recipe (for immediate UI refresh)
-                    state.activeEffectManager.addEffectToChain(for: currentLayer, effectType: effect.type)
+                    dream.activeEffectManager.addEffectToChain(for: currentLayer, effectType: effect.type)
                 }
             }
         } label: {
@@ -829,7 +830,7 @@ struct EffectsEditorView: View {
                         spec: specs[key],
                         onChange: { newValue in
                             // Update effect parameter in chain
-                            state.activeEffectManager.updateEffectParameter(
+                            dream.activeEffectManager.updateEffectParameter(
                                 for: layer,
                                 effectDefIndex: effectDefIndex,
                                 key: key,

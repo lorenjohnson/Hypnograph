@@ -37,9 +37,12 @@ HypnogramRecipe → CompositionBuilder → AVComposition + RenderInstruction
 - `copy() -> Effect` - Clone for isolated rendering
 
 **EffectChain** (`EffectConfigSchema.swift`):
-- Named container for 0-n EffectDefinitions
-- Stored on recipes (global or per-source)
+- `final class` container for 0-n EffectDefinitions
+- Stored on recipes (global `effectChain` or per-source `effectChain`)
+- **Owns instantiated effects**: caches `[Effect]` lazily via `instantiatedEffects` property
+- **Single source of truth**: definitions drive instantiation, no separate `effects: [Effect]` array
 - JSON-serializable for library storage
+- `copy() -> EffectChain` creates deep copy with fresh effect instances
 
 **EffectDefinition** (`EffectConfigSchema.swift`):
 - Single effect specification: type name + parameters
@@ -58,29 +61,35 @@ HypnogramRecipe → CompositionBuilder → AVComposition + RenderInstruction
 **EffectManager** (`EffectManager.swift`):
 - Runtime manager for effects during rendering
 - Holds frame buffer for temporal effects
-- Provides `applyGlobal()` and `applyToSource()` methods
+- **Recipe-connected via closures**:
+  - `recipeProvider: () -> HypnogramRecipe?` - reads recipe
+  - `globalEffectChainSetter: (EffectChain) -> Void` - writes global chain
+  - `sourceEffectChainSetter: (Int, EffectChain) -> Void` - writes per-source chain
+- **Key methods**:
+  - `setGlobalEffect(from: EffectChain)` / `setSourceEffect(from:for:)` - set effect (copies chain)
+  - `clearEffect(for layer: Int)` - clear effect (-1 = global, 0+ = source index)
+  - `applyGlobal(to:image:)` / `applyToSource(sourceIndex:to:image:)` - apply effects during render
 - Manages effect cycling, randomization, flash solo
 
 ### Data Flow
 
 1. **Config Loading**: `effects.json` → `EffectChainLibrary.all` (cached EffectChain array)
-2. **Recipe Creation**: User selects chain → `HypnogramRecipe.effectChain` + instantiated `effects: [Effect]`
-3. **Rendering**: `FrameCompositor` reads `recipe.effects` and applies each effect in sequence
+2. **Effect Selection**: User selects chain → `effectManager.setGlobalEffect(from: chain)` → copies chain to `recipe.effectChain`
+3. **Rendering**: `EffectManager.applyGlobal()` calls `recipe.effectChain.apply(to:context:)` which uses cached instantiated effects
+4. **Effect Persistence**: When creating new hypnogram, `resetForNextHypnogram(preserveGlobalEffect: true)` saves and restores `recipe.effectChain.copy()`
 
 ### Recipe Structure
 
 ```swift
 HypnogramRecipe {
-    sources: [HypnogramSource]  // Each source has its own effectChain + effects
-    effects: [Effect]            // Global instantiated effects (post-blend)
-    effectChain: EffectChain?    // Global chain definition (source of truth)
+    sources: [HypnogramSource]  // Each source has its own effectChain
+    effectChain: EffectChain    // Global chain (owns instantiated effects)
 }
 
 HypnogramSource {
     clip: VideoClip
-    effects: [Effect]            // Per-source instantiated effects (pre-blend)
-    effectChain: EffectChain?    // Per-source chain definition
-    blendMode: String?
+    effectChain: EffectChain    // Per-source chain (owns instantiated effects)
+    blendMode: BlendMode
 }
 ```
 
@@ -117,6 +126,21 @@ HypnogramSource {
 
 ### Preview vs Export
 
-- **Preview**: Uses `HypnographState.effectManager` (shared, mutable)
+- **Preview**: Uses `DreamPlayerState.effectManager` (player-specific, shared during session)
 - **Export**: Creates isolated `EffectManager.forExport(recipe:)` with `recipe.copyForExport()`
 - This prevents stateful effects from sharing state between preview and export
+
+### Effect Chain Ownership
+
+EffectChains are **copied** when assigned to recipes to ensure:
+- Library chains remain immutable templates
+- Parameter edits on active effects don't pollute library
+- Each hypnogram gets its own independent effect state
+- New hypnograms can preserve the previous effect selection
+
+### Layer Selection
+
+- `DreamPlayerState.currentSourceIndex` defaults to **-1 (global layer)**
+- This ensures pressing "E" to cycle effects sets the **global** effect
+- Global effects persist across new hypnograms via `resetForNextHypnogram(preserveGlobalEffect: true)`
+- Press "0" to explicitly select global layer, "1-9" for source layers

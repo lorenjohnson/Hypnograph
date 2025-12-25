@@ -226,8 +226,8 @@ struct AppCommands: Commands {
 
         // Items in the Hypnograph app menu (leftmost)
         CommandGroup(after: .appSettings) {
-            Button(state.isPaused ? "Play" : "Pause") {
-                state.togglePause()
+            Button(dream.activePlayer.isPaused ? "Play" : "Pause") {
+                dream.activePlayer.isPaused.toggle()
             }
             .keyboardShortcut(.space, modifiers: [])
             .disabled(isTyping == true)
@@ -315,33 +315,51 @@ struct AppCommands: Commands {
             Divider()
 
             Section("Overlays") {
-                Toggle("Info HUD", isOn: $state.isHUDVisible)
-                    .keyboardShortcut("i", modifiers: [])
-                    .disabled(isTyping == true)
+                Toggle("Info HUD", isOn: Binding(
+                    get: { dream.activePlayer.isHUDVisible },
+                    set: { dream.activePlayer.isHUDVisible = $0 }
+                ))
+                .keyboardShortcut("i", modifiers: [])
+                .disabled(isTyping == true)
 
-                Toggle("Effects Editor", isOn: $state.isEffectsEditorVisible)
-                    .keyboardShortcut("e", modifiers: [])
-                    .disabled(isTyping == true)
+                Toggle("Effects Editor", isOn: Binding(
+                    get: { dream.activePlayer.isEffectsEditorVisible },
+                    set: { dream.activePlayer.isEffectsEditorVisible = $0 }
+                ))
+                .keyboardShortcut("e", modifiers: [])
+                .disabled(isTyping == true)
+            }
+
+            Divider()
+
+            // Player Settings - only for Dream module
+            Section("Player") {
+                Toggle("Player Settings", isOn: Binding(
+                    get: { dream.activePlayer.isPlayerSettingsVisible },
+                    set: { dream.activePlayer.isPlayerSettingsVisible = $0 }
+                ))
+                .keyboardShortcut("p", modifiers: [])
+                .disabled(isTyping == true || state.currentModuleType != .dream)
             }
 
             Divider()
 
             Section("Performance Display") {
                 Toggle("Performance Preview", isOn: $state.isPerformancePreviewVisible)
-                    .keyboardShortcut("p", modifiers: [])
+                    .keyboardShortcut("l", modifiers: [])
                     .disabled(isTyping == true)
 
                 Toggle("Live Mode", isOn: Binding(
-                    get: { state.isLiveMode },
-                    set: { _ in state.togglePerformanceMode() }
+                    get: { dream.isLiveMode },
+                    set: { _ in dream.togglePerformanceMode() }
                 ))
-                .keyboardShortcut("p", modifiers: [.command])
+                .keyboardShortcut("l", modifiers: [.command])
 
                 Toggle("External Monitor", isOn: Binding(
-                    get: { state.performanceDisplay.isVisible },
-                    set: { _ in state.performanceDisplay.toggle() }
+                    get: { dream.performanceDisplay.isVisible },
+                    set: { _ in dream.performanceDisplay.toggle() }
                 ))
-                .keyboardShortcut("p", modifiers: [.command, .shift])
+                .keyboardShortcut("l", modifiers: [.command, .shift])
 
                 Button("Send to Performance Display") {
                     // Get recipe from current module and send to performance display
@@ -356,10 +374,10 @@ struct AppCommands: Commands {
                 .keyboardShortcut(.return, modifiers: [.command])
 
                 Button("Reset Performance Display") {
-                    state.performanceDisplay.reset()
+                    dream.performanceDisplay.reset()
                 }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
-                .disabled(!state.performanceDisplay.isVisible)
+                .disabled(!dream.performanceDisplay.isVisible)
             }
         }
 

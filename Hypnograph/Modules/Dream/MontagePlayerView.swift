@@ -13,7 +13,6 @@ struct MontagePlayerView: NSViewRepresentable {
     @Binding var currentSourceTime: CMTime?
     let isPaused: Bool
     let effectsChangeCounter: Int
-    let playRate: Float = 0.8
     let effectManager: EffectManager
 
     class Coordinator {
@@ -29,6 +28,7 @@ struct MontagePlayerView: NSViewRepresentable {
         var lastEffectsCounter: Int?
         var currentPlayerItem: AVPlayerItem?
         var currentVideoComposition: AVVideoComposition?
+        var playRate: Float = 0.8
     }
 
     func makeCoordinator() -> Coordinator {
@@ -45,6 +45,9 @@ struct MontagePlayerView: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSView, context: Context) {
         let c = context.coordinator
+
+        // Always update playRate so closures use current value
+        c.playRate = recipe.playRate
 
         guard !recipe.sources.isEmpty else {
             // Just pause, don't tear down - sources might be added back immediately
@@ -151,7 +154,7 @@ struct MontagePlayerView: NSViewRepresentable {
                                 c.statusObserver?.invalidate()
                                 c.statusObserver = nil
                                 if c.lastPauseState != true {
-                                    player.playImmediately(atRate: 0.8)
+                                    player.playImmediately(atRate: c.playRate)
                                 }
                             }
                         }
@@ -176,7 +179,7 @@ struct MontagePlayerView: NSViewRepresentable {
                 if isPaused {
                     c.player?.pause()
                 } else {
-                    c.player?.playImmediately(atRate: playRate)
+                    c.player?.playImmediately(atRate: recipe.playRate)
                 }
                 c.lastPauseState = isPaused
             }
@@ -253,7 +256,7 @@ struct MontagePlayerView: NSViewRepresentable {
             p.seek(to: .zero)
             // Only play if not paused
             if c.lastPauseState != true {
-                p.playImmediately(atRate: 0.8)
+                p.playImmediately(atRate: c.playRate)
             }
         }
     }

@@ -92,45 +92,20 @@ final class PerformanceDisplay: ObservableObject {
             self?.currentRecipe
         }
 
-        // Wire up effect setter to modify the current recipe's global effects
-        // HypnogramRecipe is a struct, so we need to get a copy, modify it, and reassign
-        effectManager.effectsSetter = { [weak self] effects in
-            guard let self = self, var recipe = self.currentRecipe else {
-                print("🎬 PerformanceDisplay: effectsSetter - no recipe!")
-                return
-            }
-            let effectNames = effects.map { $0.name }.joined(separator: ", ")
-            print("🎬 PerformanceDisplay: effectsSetter - setting global effects: [\(effectNames)]")
-            recipe.effects = effects
-            self.currentRecipe = recipe
-        }
-
-        // Wire up source effect setter to modify per-source effects
-        effectManager.sourceEffectSetter = { [weak self] sourceIndex, effects in
-            guard let self = self,
-                  var recipe = self.currentRecipe,
-                  sourceIndex < recipe.sources.count else {
-                print("🎬 PerformanceDisplay: sourceEffectSetter - no recipe or source out of range!")
-                return
-            }
-            let effectNames = effects.map { $0.name }.joined(separator: ", ")
-            print("🎬 PerformanceDisplay: sourceEffectSetter - setting source[\(sourceIndex)] effects: [\(effectNames)]")
-            recipe.sources[sourceIndex].effects = effects
-            self.currentRecipe = recipe
-        }
-
         // Wire up global effect chain setter
         effectManager.globalEffectChainSetter = { [weak self] chain in
             guard let self = self, var recipe = self.currentRecipe else { return }
+            print("🎬 PerformanceDisplay: globalEffectChainSetter - setting chain: \(chain.name ?? "unnamed")")
             recipe.effectChain = chain
             self.currentRecipe = recipe
         }
 
         // Wire up source effect chain setter
-        effectManager.sourceEffectChainSetter = { [weak self] (sourceIndex: Int, chain: EffectChain?) in
+        effectManager.sourceEffectChainSetter = { [weak self] (sourceIndex: Int, chain: EffectChain) in
             guard let self = self,
                   var recipe = self.currentRecipe,
                   sourceIndex < recipe.sources.count else { return }
+            print("🎬 PerformanceDisplay: sourceEffectChainSetter - setting source[\(sourceIndex)] chain: \(chain.name ?? "unnamed")")
             recipe.sources[sourceIndex].effectChain = chain
             self.currentRecipe = recipe
         }
@@ -385,9 +360,10 @@ final class PerformanceDisplay: ObservableObject {
         }
 
         let targetTime = clipStartTimes[index]
+        let rate = currentRecipe?.playRate ?? 0.8
         player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
-            // Ensure playback continues after seek
-            player.play()
+            // Ensure playback continues after seek at recipe's play rate
+            player.playImmediately(atRate: rate)
         }
     }
 
@@ -464,9 +440,9 @@ final class PerformanceDisplay: ObservableObject {
         // Configure looping
         setupLooping(for: player, item: buildResult.playerItem)
 
-        // Start playback on new player (hidden)
+        // Start playback on new player (hidden) at recipe's play rate
         nextPlayerView.alphaValue = 0
-        player.play()
+        player.playImmediately(atRate: currentRecipe?.playRate ?? 0.8)
 
         // Give it a moment to start rendering
         try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
@@ -503,6 +479,9 @@ final class PerformanceDisplay: ObservableObject {
             object: item
         )
 
+        // Capture playRate from current recipe
+        let playRate = currentRecipe?.playRate ?? 0.8
+
         // Add loop observer
         NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
@@ -510,7 +489,7 @@ final class PerformanceDisplay: ObservableObject {
             queue: .main
         ) { [weak player] _ in
             player?.seek(to: .zero)
-            player?.play()
+            player?.playImmediately(atRate: playRate)
         }
     }
 }
