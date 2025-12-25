@@ -43,10 +43,13 @@ struct HypnogramListView: View {
             // Tab picker
             Picker("", selection: $selectedTab) {
                 ForEach(HypnogramListTab.allCases, id: \.self) { tab in
-                    Text(tab.rawValue).tag(tab)
+                    Text(tab.rawValue)
+                        .foregroundColor(.white)
+                        .tag(tab)
                 }
             }
             .pickerStyle(.segmented)
+            .colorScheme(.dark)
             .padding(.horizontal, 12)
 
             // List content
