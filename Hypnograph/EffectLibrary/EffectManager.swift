@@ -22,14 +22,6 @@ final class EffectManager {
     /// 120 frames at 30fps = 4 seconds of history for advanced datamosh/AI effects
     let frameBuffer = FrameBuffer(maxFrames: 120)
 
-    /// Renderer readiness state for frame buffer prefilling
-    /// Players observe this to know when temporal effects are ready
-    @MainActor
-    let readiness = RendererReadiness()
-
-    /// Effect buffer mode - determines whether playback waits for preroll
-    var effectBufferMode: EffectBufferMode = .playWithEffect
-
     /// Global frame counter - increments each frame, persists across video loops
     /// Used by temporal effects that need consistent timing
     private(set) var globalFrameIndex: Int = 0
@@ -481,52 +473,27 @@ final class EffectManager {
 
     // MARK: - Frame Buffer Preloading
 
-    /// Preload frame buffer for a video asset.
-    /// Returns whether playback should wait for preroll (based on effectBufferMode).
+    /// Preload frame buffer for a video asset (if temporal effects need it)
     /// - Parameters:
     ///   - asset: The video asset to preload from
     ///   - startTime: Start time for preroll
-    /// - Returns: true if playback should wait, false to start immediately
-    @MainActor
-    func preloadFrameBuffer(from asset: AVAsset, startTime: CMTime = .zero) async -> Bool {
-        let result = await FrameBufferPreloader.preload(
+    func preloadFrameBuffer(from asset: AVAsset, startTime: CMTime = .zero) async {
+        _ = await FrameBufferPreloader.preload(
             asset: asset,
             frameBuffer: frameBuffer,
             effectManager: self,
-            readiness: readiness,
             startTime: startTime
         )
-
-        // Wait for preroll only if mode requires it and preload is happening
-        if case .success = result, effectBufferMode == .waitForBuffer {
-            return true // Caller should wait for readiness
-        }
-        return false
     }
 
-    /// Preload frame buffer for a still image.
-    /// Returns whether playback should wait (based on effectBufferMode).
+    /// Preload frame buffer for a still image (if temporal effects need it)
     /// - Parameter image: The still image to prefill with
-    /// - Returns: true if playback should wait, false to start immediately
-    @MainActor
-    func preloadFrameBuffer(from image: CIImage) -> Bool {
-        let result = FrameBufferPreloader.preload(
+    func preloadFrameBuffer(from image: CIImage) {
+        _ = FrameBufferPreloader.preload(
             image: image,
             frameBuffer: frameBuffer,
-            effectManager: self,
-            readiness: readiness
+            effectManager: self
         )
-
-        if case .success = result, effectBufferMode == .waitForBuffer {
-            return true
-        }
-        return false
-    }
-
-    /// Whether the frame buffer is ready for playback
-    @MainActor
-    var isFrameBufferReady: Bool {
-        readiness.state.isReady
     }
 
     // MARK: - Blend Modes (reads from recipe sources)
