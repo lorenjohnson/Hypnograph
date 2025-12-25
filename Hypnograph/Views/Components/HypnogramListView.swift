@@ -55,7 +55,7 @@ struct HypnogramListView: View {
                 .padding(.vertical, 8)
             }
         }
-        .frame(width: 280, height: 200)
+        .frame(width: 360, height: 320)
         .background(Color.black.opacity(0.85))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
@@ -68,16 +68,10 @@ struct HypnogramRowView: View {
     let onToggleFavorite: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            // Thumbnail placeholder (future: actual thumbnail)
-            RoundedRectangle(cornerRadius: 4)
-                .fill(Color.white.opacity(0.1))
-                .frame(width: 40, height: 40)
-                .overlay(
-                    Image(systemName: "photo.stack")
-                        .foregroundColor(.white.opacity(0.3))
-                        .font(.system(size: 16))
-                )
+        HStack(spacing: 10) {
+            // Thumbnail
+            ThumbnailView(image: entry.thumbnailImage)
+                .frame(width: 56, height: 56)
 
             // Name and date
             VStack(alignment: .leading, spacing: 2) {
@@ -97,18 +91,43 @@ struct HypnogramRowView: View {
             Button(action: onToggleFavorite) {
                 Image(systemName: entry.isFavorite ? "star.fill" : "star")
                     .foregroundColor(entry.isFavorite ? .yellow : .white.opacity(0.5))
-                    .font(.system(size: 14))
+                    .font(.system(size: 16))
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .background(Color.white.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
         .contentShape(Rectangle())
         .onTapGesture {
             onLoad(entry)
         }
+    }
+}
+
+/// Thumbnail view that displays an NSImage or placeholder
+struct ThumbnailView: View {
+    let image: NSImage?
+
+    var body: some View {
+        Group {
+            if let image = image {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .clipped()
+            } else {
+                // Placeholder
+                Color.white.opacity(0.1)
+                    .overlay(
+                        Image(systemName: "photo.stack")
+                            .foregroundColor(.white.opacity(0.3))
+                            .font(.system(size: 20))
+                    )
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 
