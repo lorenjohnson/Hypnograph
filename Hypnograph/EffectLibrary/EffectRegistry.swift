@@ -81,8 +81,8 @@ enum EffectRegistry {
         // Color Effects
         "LUTEffect": LUTEffect.self,
 
-        // Overlay Effects
-        "TextOverlayEffect": TextOverlayEffect.self
+        // Source Effects
+        "TextSourceEffect": TextSourceEffect.self
     ]
 
     /// Create an Effect from a type name and parameters using init?(params:)
