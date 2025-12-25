@@ -21,7 +21,7 @@ final class HypnographState: ObservableObject {
     // MARK: - Core configuration
 
     /// App settings - publicly settable for UI state changes, call saveSettings() to persist
-    var settings: Settings
+    @Published var settings: Settings
 
     // Per-module library state
     private var perModuleLibraryKeys: [ModuleType: Set<String>] = [:]
@@ -108,7 +108,7 @@ final class HypnographState: ObservableObject {
     /// Current output resolution (720p, 1080p, 4K)
     @Published var outputResolution: OutputResolution
 
-    // Render hooks
+    // Effect management
     let effectManager = EffectManager()
 
     // Transition manager for smooth crossfades between hypnograms
@@ -232,13 +232,13 @@ final class HypnographState: ObservableObject {
             self?.activeEffectManager.reapplyActiveEffects()
         }
 
-        // Subscribe to live effect parameter updates - apply directly without reload
+        // Subscribe to live effect chain updates - apply directly without reload
         // Uses activeEffectManager which automatically routes to the right destination based on mode
-        EffectConfigLoader.onEffectUpdated = { [weak self] effectIndex, updatedHook in
+        EffectConfigLoader.onEffectChainUpdated = { [weak self] effectIndex, updatedChain in
             guard let self = self else { return }
             // Update the EffectChainLibrary.all cache so the library stays in sync
-            EffectChainLibrary.updateCachedEffect(at: effectIndex, with: updatedHook)
-            // Reapply to whichever hooks are currently active (edit or live)
+            EffectChainLibrary.updateCachedChain(at: effectIndex, with: updatedChain)
+            // Reapply to whichever effects are currently active (edit or live)
             self.activeEffectManager.reapplyActiveEffects()
         }
 
@@ -450,10 +450,12 @@ final class HypnographState: ObservableObject {
             let blendMode = (i == 0) ? BlendMode.sourceOver : BlendMode.random()
             sources[i].blendMode = blendMode
 
-            // ~20% chance of getting a random effect
-            if Double.random(in: 0..<1) < 0.2, let effect = EffectChainLibrary.random() {
-                sources[i].effects = [effect]
+            // ~20% chance of getting a random effect chain
+            if Double.random(in: 0..<1) < 0.2, let chain = EffectChainLibrary.random() {
+                sources[i].effectChain = chain
+                sources[i].effects = EffectConfigLoader.instantiateChain(chain)
             } else {
+                sources[i].effectChain = nil
                 sources[i].effects = []
             }
         }

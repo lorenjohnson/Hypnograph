@@ -1,5 +1,5 @@
 //
-//  BasicHook.swift
+//  BasicEffect.swift
 //  Hypnograph
 //
 //  Basic image adjustments via Metal compute shader.
@@ -10,7 +10,7 @@ import Foundation
 import CoreImage
 import Metal
 
-/// Color space options for BasicHook
+/// Color space options for BasicEffect
 enum BasicColorSpace: String, CaseIterable {
     case rgb = "rgb"
     case yuv = "yuv"
@@ -52,7 +52,7 @@ struct BasicParamsGPU {
 
 /// Basic image adjustments effect.
 /// Provides opacity, contrast, brightness, and saturation controls.
-final class BasicHook: Effect {
+final class BasicEffect: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 
@@ -126,25 +126,25 @@ final class BasicHook: Effect {
 
     private func loadShader() {
         guard let device = device else {
-            print("⚠️ BasicHook: No Metal device")
+            print("⚠️ BasicEffect: No Metal device")
             return
         }
 
         do {
             let library = try device.makeDefaultLibrary(bundle: Bundle.main)
             guard let function = library.makeFunction(name: "basicKernel") else {
-                print("⚠️ BasicHook: Kernel function not found")
+                print("⚠️ BasicEffect: Kernel function not found")
                 return
             }
             pipelineState = try device.makeComputePipelineState(function: function)
         } catch {
-            print("⚠️ BasicHook: Failed to create pipeline: \(error)")
+            print("⚠️ BasicEffect: Failed to create pipeline: \(error)")
         }
     }
     
     // MARK: - Effect Protocol
 
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         guard let device = device,
               let commandQueue = commandQueue,
               let pipeline = pipelineState else {
@@ -223,7 +223,7 @@ final class BasicHook: Effect {
     }
 
     func copy() -> Effect {
-        BasicHook(opacity: opacity, contrast: contrast, brightness: brightness,
+        BasicEffect(opacity: opacity, contrast: contrast, brightness: brightness,
                   saturation: saturation, hueShift: hueShift, colorSpace: colorSpace,
                   invert: invert, name: customName)
     }

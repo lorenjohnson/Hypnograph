@@ -35,7 +35,7 @@ protocol Effect {
     init?(params: [String: AnyCodableValue]?)
 
     /// Apply effect to the current frame
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage
 
     /// Reset internal state (call when switching montages/effects)
     func reset()
@@ -53,7 +53,7 @@ extension Effect {
     /// Default: no parameters
     static var parameterSpecs: [String: ParameterSpec] { [:] }
 
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         image
     }
 
@@ -67,11 +67,6 @@ extension Effect {
         return self
     }
 }
-
-// MARK: - Compatibility Alias (remove after full migration)
-
-/// Temporary typealias for backward compatibility during migration
-typealias RenderHook = Effect
 
 // MARK: - Parameter Extraction Helper
 
@@ -128,39 +123,4 @@ struct Params {
     }
 }
 
-// MARK: - Named Effect Wrapper
-
-/// Wrapper that overrides the name of any Effect
-/// Used by the config loader to apply custom names from JSON without modifying each effect implementation
-struct NamedEffect: Effect {
-    private let wrapped: Effect
-    let name: String
-
-    var requiredLookback: Int { wrapped.requiredLookback }
-
-    init(wrapping effect: Effect, name: String) {
-        self.wrapped = effect
-        self.name = name
-    }
-
-    /// NamedEffect cannot be created from params - it's only used to wrap existing effects
-    init?(params: [String: AnyCodableValue]?) {
-        return nil
-    }
-
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
-        wrapped.willRenderFrame(&context, image: image)
-    }
-
-    func reset() {
-        wrapped.reset()
-    }
-
-    func copy() -> Effect {
-        NamedEffect(wrapping: wrapped.copy(), name: name)
-    }
-}
-
-/// Compatibility alias for NamedHook -> NamedEffect
-typealias NamedHook = NamedEffect
 

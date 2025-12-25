@@ -10,7 +10,7 @@
 import Foundation
 
 /// Metadata for a single effect parameter - defines type, range, and default value.
-/// Each hook declares its parameters using this, making the hook the source of truth.
+/// Each effect declares its parameters using this, making the effect the source of truth.
 enum ParameterSpec: Equatable {
     case double(default: Double, range: ClosedRange<Double>)
     case float(default: Float, range: ClosedRange<Float>)

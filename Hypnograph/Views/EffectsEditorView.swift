@@ -15,7 +15,7 @@ enum EffectsEditorField: Hashable {
     case parameterList        // Parameter sliders area
     case effectName           // Effect name text field
     case parameterText(Int)   // Parameter text field at index
-    case hookCheckbox(Int)    // Hook enable/disable checkbox at index
+    case effectCheckbox(Int)  // Effect enable/disable checkbox at index
 }
 
 /// View model for the effects editor
@@ -47,7 +47,7 @@ final class EffectsEditorViewModel: ObservableObject {
     /// Check if arrow key navigation should be active (not in a text field)
     var isNavigationActive: Bool {
         switch activeSection {
-        case .effectList, .parameterList, .hookCheckbox:
+        case .effectList, .parameterList, .effectCheckbox:
             return true
         case .effectName, .parameterText:
             return false
@@ -100,11 +100,11 @@ final class EffectsEditorViewModel: ObservableObject {
         return effectChains[index]
     }
 
-    /// Merge hook's parameterSpecs with JSON params.
-    /// Hook specs define what params exist (source of truth).
+    /// Merge effect's parameterSpecs with JSON params.
+    /// Effect specs define what params exist (source of truth).
     /// JSON values override defaults. Unknown JSON params are ignored.
-    static func mergedParametersForHook(_ hookDef: HookDefinition) -> [String: AnyCodableValue] {
-        let effectType = hookDef.type
+    static func mergedParametersForEffect(_ effectDef: EffectDefinition) -> [String: AnyCodableValue] {
+        let effectType = effectDef.type
         let specs = EffectRegistry.parameterSpecs(for: effectType)
         var result: [String: AnyCodableValue] = [:]
 
@@ -114,7 +114,7 @@ final class EffectsEditorViewModel: ObservableObject {
         }
 
         // Overlay JSON values (only for params that exist in specs)
-        if let jsonParams = hookDef.params {
+        if let jsonParams = effectDef.params {
             for (name, value) in jsonParams {
                 // Skip internal params and params not in specs
                 if name.hasPrefix("_") { continue }
@@ -127,17 +127,17 @@ final class EffectsEditorViewModel: ObservableObject {
         return result
     }
 
-    /// Update a parameter value for an effect (or child hook in a chain)
-    func updateParameter(effectIndex: Int, hookIndex: Int?, paramName: String, value: AnyCodableValue) {
+    /// Update a parameter value for an effect (or child effect in a chain)
+    func updateParameter(effectIndex: Int, effectDefIndex: Int?, paramName: String, value: AnyCodableValue) {
         // Update local state for responsive UI
         updateLocalChain(at: effectIndex) { chain in
-            if let hookIndex = hookIndex {
-                // Update parameter in a hook
-                guard hookIndex >= 0 && hookIndex < chain.hooks.count else { return chain }
+            if let defIndex = effectDefIndex {
+                // Update parameter in a child effect
+                guard defIndex >= 0 && defIndex < chain.effects.count else { return chain }
                 var updatedChain = chain
-                var params = updatedChain.hooks[hookIndex].params ?? [:]
+                var params = updatedChain.effects[defIndex].params ?? [:]
                 params[paramName] = value
-                updatedChain.hooks[hookIndex].params = params
+                updatedChain.effects[defIndex].params = params
                 return updatedChain
             } else {
                 // Update parameter on the chain itself (future: chain-level params)
@@ -151,79 +151,79 @@ final class EffectsEditorViewModel: ObservableObject {
         // Persist to config
         EffectConfigLoader.updateParameter(
             effectIndex: effectIndex,
-            hookIndex: hookIndex,
+            effectDefIndex: effectDefIndex,
             paramName: paramName,
             value: value
         )
     }
 
-    /// Add a hook to the currently selected chained effect
-    func addHookToChain(effectIndex: Int, hookType: String) {
+    /// Add an effect to the currently selected effect chain
+    func addEffectToChain(effectIndex: Int, effectType: String) {
         // Update local state for responsive UI
         updateLocalChain(at: effectIndex) { chain in
             var updatedChain = chain
-            let defaults = EffectRegistry.defaults(for: hookType)
-            let newHook = HookDefinition(type: hookType, params: defaults)
-            updatedChain.hooks.append(newHook)
+            let defaults = EffectRegistry.defaults(for: effectType)
+            let newEffect = EffectDefinition(type: effectType, params: defaults)
+            updatedChain.effects.append(newEffect)
             return updatedChain
         }
         // Update config (instantiation is debounced in EffectConfigLoader)
-        EffectConfigLoader.addHookToChain(effectIndex: effectIndex, hookType: hookType)
+        EffectConfigLoader.addEffectToChain(effectIndex: effectIndex, effectType: effectType)
     }
 
-    /// Remove a hook from the currently selected chained effect
-    func removeHookFromChain(effectIndex: Int, hookIndex: Int) {
+    /// Remove an effect from the currently selected effect chain
+    func removeEffectFromChain(effectIndex: Int, effectDefIndex: Int) {
         updateLocalChain(at: effectIndex) { chain in
             var updatedChain = chain
-            guard hookIndex >= 0 && hookIndex < updatedChain.hooks.count else { return chain }
-            updatedChain.hooks.remove(at: hookIndex)
+            guard effectDefIndex >= 0 && effectDefIndex < updatedChain.effects.count else { return chain }
+            updatedChain.effects.remove(at: effectDefIndex)
             return updatedChain
         }
-        EffectConfigLoader.removeHookFromChain(effectIndex: effectIndex, hookIndex: hookIndex)
+        EffectConfigLoader.removeEffectFromChain(effectIndex: effectIndex, effectDefIndex: effectDefIndex)
     }
 
-    /// Reorder hooks in the currently selected chained effect
-    func reorderHooks(effectIndex: Int, fromIndex: Int, toIndex: Int) {
+    /// Reorder effects in the currently selected effect chain
+    func reorderEffects(effectIndex: Int, fromIndex: Int, toIndex: Int) {
         updateLocalChain(at: effectIndex) { chain in
             var updatedChain = chain
-            guard fromIndex >= 0 && fromIndex < updatedChain.hooks.count else { return chain }
-            guard toIndex >= 0 && toIndex < updatedChain.hooks.count else { return chain }
-            let hook = updatedChain.hooks.remove(at: fromIndex)
-            updatedChain.hooks.insert(hook, at: toIndex)
+            guard fromIndex >= 0 && fromIndex < updatedChain.effects.count else { return chain }
+            guard toIndex >= 0 && toIndex < updatedChain.effects.count else { return chain }
+            let effect = updatedChain.effects.remove(at: fromIndex)
+            updatedChain.effects.insert(effect, at: toIndex)
             return updatedChain
         }
-        EffectConfigLoader.reorderHooksInChain(effectIndex: effectIndex, fromIndex: fromIndex, toIndex: toIndex)
+        EffectConfigLoader.reorderEffectsInChain(effectIndex: effectIndex, fromIndex: fromIndex, toIndex: toIndex)
     }
 
-    /// Toggle hook enabled state
-    func setHookEnabled(effectIndex: Int, hookIndex: Int, enabled: Bool) {
+    /// Toggle effect enabled state
+    func setEffectEnabled(effectIndex: Int, effectDefIndex: Int, enabled: Bool) {
         updateLocalChain(at: effectIndex) { chain in
             var updatedChain = chain
-            guard hookIndex >= 0 && hookIndex < updatedChain.hooks.count else { return chain }
-            var params = updatedChain.hooks[hookIndex].params ?? [:]
+            guard effectDefIndex >= 0 && effectDefIndex < updatedChain.effects.count else { return chain }
+            var params = updatedChain.effects[effectDefIndex].params ?? [:]
             params["_enabled"] = .bool(enabled)
-            updatedChain.hooks[hookIndex].params = params
+            updatedChain.effects[effectDefIndex].params = params
             return updatedChain
         }
-        EffectConfigLoader.setHookEnabled(effectIndex: effectIndex, hookIndex: hookIndex, enabled: enabled)
+        EffectConfigLoader.setEffectEnabled(effectIndex: effectIndex, effectDefIndex: effectDefIndex, enabled: enabled)
     }
 
-    /// Reset a hook's parameters to their default values
-    func resetHookToDefaults(effectIndex: Int, hookIndex: Int) {
+    /// Reset an effect's parameters to their default values
+    func resetEffectToDefaults(effectIndex: Int, effectDefIndex: Int) {
         updateLocalChain(at: effectIndex) { chain in
             var updatedChain = chain
-            guard hookIndex >= 0 && hookIndex < updatedChain.hooks.count else { return chain }
-            let hookType = updatedChain.hooks[hookIndex].type
+            guard effectDefIndex >= 0 && effectDefIndex < updatedChain.effects.count else { return chain }
+            let effectType = updatedChain.effects[effectDefIndex].type
 
             // Get defaults from EffectRegistry, preserve _enabled state
-            var defaults = EffectRegistry.defaults(for: hookType)
-            if let wasEnabled = updatedChain.hooks[hookIndex].params?["_enabled"] {
+            var defaults = EffectRegistry.defaults(for: effectType)
+            if let wasEnabled = updatedChain.effects[effectDefIndex].params?["_enabled"] {
                 defaults["_enabled"] = wasEnabled
             }
-            updatedChain.hooks[hookIndex].params = defaults
+            updatedChain.effects[effectDefIndex].params = defaults
             return updatedChain
         }
-        EffectConfigLoader.resetHookToDefaults(effectIndex: effectIndex, hookIndex: hookIndex)
+        EffectConfigLoader.resetEffectToDefaults(effectIndex: effectIndex, effectDefIndex: effectDefIndex)
     }
 
     /// Update the name of the selected effect chain
@@ -241,7 +241,7 @@ final class EffectsEditorViewModel: ObservableObject {
         EffectRegistry.availableEffectTypes
     }
 
-    /// Create a new effect chain (with Basic as default hook)
+    /// Create a new effect chain (with Basic as default effect)
     /// Returns the index of the new chain
     @discardableResult
     func createNewEffect() -> Int {
@@ -275,18 +275,18 @@ struct EffectsEditorView: View {
     /// SwiftUI focus state - tracks which field has keyboard focus
     @FocusState private var focusedField: EffectsEditorField?
 
-    /// Track which hook in the chain is expanded (only one at a time, first by default)
-    @State private var expandedHookIndex: Int = 0
+    /// Track which effect in the chain is expanded (only one at a time, first by default)
+    @State private var expandedEffectIndex: Int = 0
 
-    /// Currently dragged hook index for reordering
-    @State private var draggingHookIndex: Int?
+    /// Currently dragged effect index for reordering
+    @State private var draggingEffectIndex: Int?
 
     /// Current layer being edited (-1 = global, 0+ = source)
     private var currentLayer: Int {
         state.currentSourceIndex
     }
 
-    /// Effect name for the current layer (from active hooks - edit or live mode)
+    /// Effect name for the current layer (from active effects - edit or live mode)
     private var currentLayerEffectName: String {
         state.activeEffectManager.effectName(for: currentLayer)
     }
@@ -303,9 +303,9 @@ struct EffectsEditorView: View {
         state.activeEffectManager.effectChain(for: currentLayer)
     }
 
-    /// Number of hooks in the current effect chain
-    private var currentHooksCount: Int {
-        selectedDefinition?.hooks.count ?? 0
+    /// Number of effects in the current effect chain
+    private var currentEffectsCount: Int {
+        selectedDefinition?.effects.count ?? 0
     }
 
     /// Check if currently in a text editing state
@@ -319,7 +319,7 @@ struct EffectsEditorView: View {
     }
 
     /// Select an effect with immediate UI feedback
-    /// Copies the library chain into the recipe and instantiates the hook
+    /// Copies the library chain into the recipe and instantiates the effect
     private func selectEffect(at index: Int) {
         // Update UI immediately via pending selection
         viewModel.setPendingSelection(effectIndex: index, for: currentLayer)
@@ -333,13 +333,13 @@ struct EffectsEditorView: View {
         // Defer the recipe update to next run loop to allow UI to update first
         // Use activeEffectManager so effects go to performance display in live mode
         let layer = currentLayer
-        let hooks = state.activeEffectManager
+        let effectManager = state.activeEffectManager
         let isLive = state.isLiveMode
         print("🎨 EffectsEditor: selectEffect(\(index)) for layer \(layer), isLive=\(isLive)")
         DispatchQueue.main.async {
             // Set effect from chain - this copies the chain into the recipe
-            // and instantiates the hook from it
-            hooks.setEffect(from: chain, for: layer)
+            // and instantiates the effect from it
+            effectManager.setEffect(from: chain, for: layer)
             if let c = chain {
                 print("🎨 EffectsEditor: Set effect '\(c.name ?? "unnamed")' for layer \(layer)")
             } else {
@@ -479,9 +479,9 @@ struct EffectsEditorView: View {
                 viewModel.activeSection = field
 
                 // Expand effect when Tab navigates to its checkbox
-                if case .hookCheckbox(let hookIndex) = field {
+                if case .effectCheckbox(let effectDefIndex) = field {
                     withAnimation(.easeInOut(duration: 0.15)) {
-                        expandedHookIndex = hookIndex
+                        expandedEffectIndex = effectDefIndex
                     }
                 }
             }
@@ -515,19 +515,19 @@ struct EffectsEditorView: View {
 
         case .parameterList, .none:
             // Navigate between effects in the chain when list is collapsed or focus not set
-            let hooksCount = currentHooksCount
-            guard hooksCount > 1 else { return }  // No navigation needed for single hook
+            let effectsCount = currentEffectsCount
+            guard effectsCount > 1 else { return }  // No navigation needed for single effect
 
-            var newIndex = expandedHookIndex + delta
+            var newIndex = expandedEffectIndex + delta
             // Wrap around
             if newIndex < 0 {
-                newIndex = hooksCount - 1
-            } else if newIndex >= hooksCount {
+                newIndex = effectsCount - 1
+            } else if newIndex >= effectsCount {
                 newIndex = 0
             }
 
             withAnimation(.easeInOut(duration: 0.15)) {
-                expandedHookIndex = newIndex
+                expandedEffectIndex = newIndex
             }
 
         default:
@@ -536,8 +536,8 @@ struct EffectsEditorView: View {
         }
     }
 
-    /// Format hook type for display: "FrameDifferenceHook" -> "Frame Difference"
-    private func formatHookType(_ type: String?) -> String? {
+    /// Format effect type for display: "FrameDifferenceEffect" -> "Frame Difference"
+    private func formatEffectType(_ type: String?) -> String? {
         guard let type = type else { return nil }
         return EffectRegistry.formatEffectTypeName(type)
     }
@@ -659,29 +659,29 @@ struct EffectsEditorView: View {
 
     @ViewBuilder
     private func parametersForChain(_ chain: EffectChain, layer: Int) -> some View {
-        // Effect chain: show each hook with heading and controls
+        // Effect chain: show each effect with heading and controls
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(chain.hooks.enumerated()), id: \.offset) { childIndex, hookDef in
-                chainedHookSection(
-                    hookDef: hookDef,
+            ForEach(Array(chain.effects.enumerated()), id: \.offset) { childIndex, effectDef in
+                chainedEffectSection(
+                    effectDef: effectDef,
                     childIndex: childIndex,
-                    totalHooks: chain.hooks.count,
+                    totalEffects: chain.effects.count,
                     layer: layer
                 )
-                .opacity(draggingHookIndex == childIndex ? 0.5 : 1.0)
+                .opacity(draggingEffectIndex == childIndex ? 0.5 : 1.0)
                 .onDrag {
-                    draggingHookIndex = childIndex
+                    draggingEffectIndex = childIndex
                     return NSItemProvider(object: String(childIndex) as NSString)
                 }
-                .onDrop(of: [.text], delegate: HookDropDelegate(
+                .onDrop(of: [.text], delegate: EffectDropDelegate(
                     currentIndex: childIndex,
-                    draggingIndex: $draggingHookIndex,
+                    draggingIndex: $draggingEffectIndex,
                     effectIndex: selectedEffectIndex,
                     onReorder: { from, to in
                         // Update library (for persistence)
-                        viewModel.reorderHooks(effectIndex: selectedEffectIndex, fromIndex: from, toIndex: to)
+                        viewModel.reorderEffects(effectIndex: selectedEffectIndex, fromIndex: from, toIndex: to)
                         // Update recipe (for immediate UI refresh)
-                        state.activeEffectManager.reorderHooksInChain(for: layer, fromIndex: from, toIndex: to)
+                        state.activeEffectManager.reorderEffectsInChain(for: layer, fromIndex: from, toIndex: to)
                     }
                 ))
             }
@@ -692,12 +692,12 @@ struct EffectsEditorView: View {
     }
 
     @ViewBuilder
-    private func chainedHookSection(hookDef: HookDefinition, childIndex: Int, totalHooks: Int, layer: Int) -> some View {
-        let isEnabled = hookDef.params?["_enabled"]?.boolValue ?? true
-        let isExpanded = expandedHookIndex == childIndex
+    private func chainedEffectSection(effectDef: EffectDefinition, childIndex: Int, totalEffects: Int, layer: Int) -> some View {
+        let isEnabled = effectDef.params?["_enabled"]?.boolValue ?? true
+        let isExpanded = expandedEffectIndex == childIndex
 
         VStack(alignment: .leading, spacing: 0) {
-            // Header with controls - any interaction selects this hook
+            // Header with controls - any interaction selects this effect
             HStack(spacing: 6) {
                 // Drag handle indicator
                 Image(systemName: "line.3.horizontal")
@@ -706,7 +706,7 @@ struct EffectsEditorView: View {
                     .frame(width: 20)
 
                 // Effect name - use formatted type name
-                Text(formatHookType(hookDef.type) ?? "Effect \(childIndex + 1)")
+                Text(formatEffectType(effectDef.type) ?? "Effect \(childIndex + 1)")
                     .font(.system(.body, design: .monospaced).bold())
                     .foregroundColor(isEnabled ? .white : .white.opacity(0.5))
 
@@ -715,12 +715,12 @@ struct EffectsEditorView: View {
                 // Delete button
                 Button(action: {
                     // Update library (for persistence)
-                    viewModel.removeHookFromChain(effectIndex: selectedEffectIndex, hookIndex: childIndex)
+                    viewModel.removeEffectFromChain(effectIndex: selectedEffectIndex, effectDefIndex: childIndex)
                     // Update recipe (for immediate UI refresh)
-                    state.activeEffectManager.removeHookFromChain(for: layer, hookIndex: childIndex)
-                    // If we deleted the expanded hook, expand the first remaining hook
-                    if expandedHookIndex >= totalHooks - 1 {
-                        expandedHookIndex = max(0, totalHooks - 2)
+                    state.activeEffectManager.removeEffectFromChain(for: layer, effectDefIndex: childIndex)
+                    // If we deleted the expanded effect, expand the first remaining effect
+                    if expandedEffectIndex >= totalEffects - 1 {
+                        expandedEffectIndex = max(0, totalEffects - 2)
                     }
                 }) {
                     Image(systemName: "xmark")
@@ -732,11 +732,11 @@ struct EffectsEditorView: View {
 
                 // Reset to defaults button
                 Button(action: {
-                    expandedHookIndex = childIndex
+                    expandedEffectIndex = childIndex
                     // Update library (for persistence)
-                    viewModel.resetHookToDefaults(effectIndex: selectedEffectIndex, hookIndex: childIndex)
+                    viewModel.resetEffectToDefaults(effectIndex: selectedEffectIndex, effectDefIndex: childIndex)
                     // Update recipe (for immediate UI refresh)
-                    state.activeEffectManager.resetHookToDefaults(for: layer, hookIndex: childIndex)
+                    state.activeEffectManager.resetEffectToDefaults(for: layer, effectDefIndex: childIndex)
                 }) {
                     Image(systemName: "arrow.uturn.backward")
                         .font(.system(size: 10, weight: .medium))
@@ -749,11 +749,11 @@ struct EffectsEditorView: View {
                 Toggle("", isOn: Binding(
                     get: { isEnabled },
                     set: { newValue in
-                        expandedHookIndex = childIndex
+                        expandedEffectIndex = childIndex
                         // Update enabled state via recipe parameter update
-                        state.activeEffectManager.updateHookParameter(
+                        state.activeEffectManager.updateEffectParameter(
                             for: layer,
-                            hookIndex: childIndex,
+                            effectDefIndex: childIndex,
                             key: "_enabled",
                             value: .bool(newValue)
                         )
@@ -762,7 +762,7 @@ struct EffectsEditorView: View {
                 .toggleStyle(.checkbox)
                 .labelsHidden()
                 .help(isEnabled ? "Disable effect" : "Enable effect")
-                .focused($focusedField, equals: .hookCheckbox(childIndex))
+                .focused($focusedField, equals: .effectCheckbox(childIndex))
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
@@ -771,13 +771,13 @@ struct EffectsEditorView: View {
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation(.easeInOut(duration: 0.15)) {
-                    expandedHookIndex = childIndex
+                    expandedEffectIndex = childIndex
                 }
             }
 
             // Parameters (show when expanded, even if disabled - allows pre-configuration)
             if isExpanded {
-                parameterFieldsForHook(hookDef, layer: layer, hookIndex: childIndex)
+                parameterFieldsForEffect(effectDef, layer: layer, effectDefIndex: childIndex)
                     .padding(.leading, 28)
                     .padding(.top, 8)
                     .opacity(isEnabled ? 1.0 : 0.5)
@@ -791,9 +791,9 @@ struct EffectsEditorView: View {
             ForEach(viewModel.availableEffectTypes, id: \.type) { effect in
                 Button(effect.displayName) {
                     // Update library (for persistence)
-                    viewModel.addHookToChain(effectIndex: selectedEffectIndex, hookType: effect.type)
+                    viewModel.addEffectToChain(effectIndex: selectedEffectIndex, effectType: effect.type)
                     // Update recipe (for immediate UI refresh)
-                    state.activeEffectManager.addHookToChain(for: currentLayer, hookType: effect.type)
+                    state.activeEffectManager.addEffectToChain(for: currentLayer, effectType: effect.type)
                 }
             }
         } label: {
@@ -814,10 +814,10 @@ struct EffectsEditorView: View {
     }
 
     @ViewBuilder
-    private func parameterFieldsForHook(_ hookDef: HookDefinition, layer: Int, hookIndex: Int) -> some View {
-        // Use hook's parameterSpecs as source of truth, merged with JSON values
-        let mergedParams = EffectsEditorViewModel.mergedParametersForHook(hookDef)
-        let specs = EffectRegistry.parameterSpecs(for: hookDef.type)
+    private func parameterFieldsForEffect(_ effectDef: EffectDefinition, layer: Int, effectDefIndex: Int) -> some View {
+        // Use effect's parameterSpecs as source of truth, merged with JSON values
+        let mergedParams = EffectsEditorViewModel.mergedParametersForEffect(effectDef)
+        let specs = EffectRegistry.parameterSpecs(for: effectDef.type)
 
         if !mergedParams.isEmpty {
             ForEach(Array(mergedParams.keys.sorted()), id: \.self) { key in
@@ -825,13 +825,13 @@ struct EffectsEditorView: View {
                     ParameterSliderRow(
                         name: key,
                         value: value,
-                        effectType: hookDef.type,
+                        effectType: effectDef.type,
                         spec: specs[key],
                         onChange: { newValue in
-                            // Update hook parameter in chain
-                            state.activeEffectManager.updateHookParameter(
+                            // Update effect parameter in chain
+                            state.activeEffectManager.updateEffectParameter(
                                 for: layer,
-                                hookIndex: hookIndex,
+                                effectDefIndex: effectDefIndex,
                                 key: key,
                                 value: newValue
                             )
@@ -1326,10 +1326,10 @@ struct EditableEffectNameHeader: View {
     }
 }
 
-// MARK: - Hook Drag and Drop Delegate
+// MARK: - Effect Drag and Drop Delegate
 
-/// Delegate for handling drag and drop reordering of hooks in a chain
-struct HookDropDelegate: DropDelegate {
+/// Delegate for handling drag and drop reordering of effects in a chain
+struct EffectDropDelegate: DropDelegate {
     let currentIndex: Int
     @Binding var draggingIndex: Int?
     let effectIndex: Int

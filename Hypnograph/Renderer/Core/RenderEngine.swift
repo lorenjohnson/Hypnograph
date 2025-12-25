@@ -19,12 +19,12 @@ final class RenderEngine {
     struct Config {
         let outputSize: CGSize
         let frameRate: Int
-        let enableGlobalHooks: Bool  // false for export
-        
+        let enableGlobalEffects: Bool  // false for export
+
         static let preview = Config(
             outputSize: CGSize(width: 1920, height: 1080),
             frameRate: 30,
-            enableGlobalHooks: true
+            enableGlobalEffects: true
         )
     }
     
@@ -48,12 +48,12 @@ final class RenderEngine {
     ///   - recipe: The recipe to build
     ///   - strategy: Montage or sequence timeline
     ///   - config: Render configuration
-    ///   - hookManager: The EffectManager to use. If nil, uses global hooks.
+    ///   - effectManager: The EffectManager to use. If nil, uses global effects.
     func makePlayerItem(
         recipe: HypnogramRecipe,
         strategy: CompositionBuilder.TimelineStrategy,
         config: Config,
-        hookManager: EffectManager? = nil
+        effectManager: EffectManager? = nil
     ) async -> Result<PlayerItemResult, RenderError> {
 
         // Build composition
@@ -62,7 +62,7 @@ final class RenderEngine {
             strategy: strategy,
             outputSize: config.outputSize,
             frameRate: config.frameRate,
-            hookManager: hookManager
+            effectManager: effectManager
         )
 
         guard case .success(let build) = buildResult else {
@@ -114,7 +114,7 @@ final class RenderEngine {
         print("🎬 RenderEngine.export: Starting export to \(outputURL.lastPathComponent)...")
 
         // Create isolated copy of recipe with fresh effect state for export
-        // This prevents stateful effects (like TextOverlayHook) from sharing state with preview
+        // This prevents stateful effects (like TextOverlayEffect) from sharing state with preview
         let exportRecipe = recipe.copyForExport()
         let exportManager = EffectManager.forExport(recipe: exportRecipe)
 
@@ -125,8 +125,8 @@ final class RenderEngine {
             strategy: strategy,
             outputSize: config.outputSize,
             frameRate: config.frameRate,
-            enableEffects: config.enableGlobalHooks,
-            hookManager: exportManager
+            enableEffects: config.enableGlobalEffects,
+            effectManager: exportManager
         )
 
         guard case .success(let build) = buildResult else {

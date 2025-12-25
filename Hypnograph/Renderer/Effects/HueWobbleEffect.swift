@@ -1,5 +1,5 @@
 //
-//  HueWobbleHook.swift
+//  HueWobbleEffect.swift
 //  Hypnograph
 //
 //  Created by Loren Johnson on 20.11.25.
@@ -9,7 +9,7 @@ import CoreImage
 import CoreMedia
 
 /// Wobbles the hue over time with a sinusoidal oscillation.
-struct HueWobbleHook: Effect {
+struct HueWobbleEffect: Effect {
     var name: String { "Hue Wobble" }
 
     init() {}
@@ -18,7 +18,7 @@ struct HueWobbleHook: Effect {
         self.init()
     }
 
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         let t = CMTimeGetSeconds(context.time)
         let phase = Float(sin(t * 0.5))          // slow-ish oscillation
         let angle = phase * .pi                  // radians

@@ -60,7 +60,7 @@ final class HypnogramRenderer {
         let config = RenderEngine.Config(
             outputSize: outputSize,
             frameRate: 30,
-            enableGlobalHooks: true  // enable effects for export (baked into output)
+            enableGlobalEffects: true  // enable effects for export (baked into output)
         )
         
         // Export using RenderEngine

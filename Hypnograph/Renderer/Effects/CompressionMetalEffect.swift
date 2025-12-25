@@ -1,5 +1,5 @@
 //
-//  CompressionMetalHook.swift
+//  CompressionMetalEffect.swift
 //  Hypnograph
 //
 //  Real compression artifacts.
@@ -20,7 +20,7 @@ enum CompressionFormat: Int {
 }
 
 /// Real compression effect with multiple format options
-final class CompressionMetalHook: Effect {
+final class CompressionMetalEffect: Effect {
 
     // MARK: - Parameter Specs
 
@@ -61,7 +61,7 @@ final class CompressionMetalHook: Effect {
 
     // MARK: - Effect Protocol
 
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         let extent = image.extent
         guard extent.width > 0, extent.height > 0 else { return image }
 
@@ -130,7 +130,7 @@ final class CompressionMetalHook: Effect {
     }
 
     func copy() -> Effect {
-        CompressionMetalHook(quality: quality, passes: passes,
+        CompressionMetalEffect(quality: quality, passes: passes,
                              format: format.rawValue, colorLevels: colorLevels)
     }
 }

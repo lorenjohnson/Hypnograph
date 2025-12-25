@@ -1,5 +1,5 @@
 //
-//  IFrameCompressHook.swift
+//  IFrameCompressEffect.swift
 //  Hypnograph
 //
 //  I-frame style temporal compression via Metal GPU.
@@ -25,7 +25,7 @@ struct IFrameParamsGPU {
 
 /// I-frame temporal compression with content-adaptive resets
 /// Pixels reset when difference exceeds threshold, otherwise accumulate damage
-final class IFrameCompressHook: Effect {
+final class IFrameCompressEffect: Effect {
 
     // MARK: - Parameter Specs
 
@@ -94,12 +94,12 @@ final class IFrameCompressHook: Effect {
         do {
             let library = try device.makeDefaultLibrary(bundle: Bundle.main)
             guard let function = library.makeFunction(name: "iframeAccumulateKernel") else {
-                print("⚠️ IFrameCompressHook: Kernel not found")
+                print("⚠️ IFrameCompressEffect: Kernel not found")
                 return
             }
             pipelineState = try device.makeComputePipelineState(function: function)
         } catch {
-            print("⚠️ IFrameCompressHook: Pipeline error: \(error)")
+            print("⚠️ IFrameCompressEffect: Pipeline error: \(error)")
         }
     }
 
@@ -121,7 +121,7 @@ final class IFrameCompressHook: Effect {
 
     // MARK: - Effect Protocol
 
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         guard let device = device,
               let commandQueue = commandQueue,
               let pipeline = pipelineState else {
@@ -217,7 +217,7 @@ final class IFrameCompressHook: Effect {
     }
 
     func copy() -> Effect {
-        IFrameCompressHook(quality: quality, iframeInterval: iframeInterval, stickiness: stickiness,
+        IFrameCompressEffect(quality: quality, iframeInterval: iframeInterval, stickiness: stickiness,
                           glitch: glitch, diffThreshold: diffThreshold)
     }
 }

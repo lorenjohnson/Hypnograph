@@ -1,9 +1,9 @@
 //
-//  PixelateMetalHook.swift
+//  PixelateMetalEffect.swift
 //  Hypnograph
 //
 //  Simple Metal compute shader-based pixelate effect.
-//  Demonstrates the basic pattern for Metal-based render hooks.
+//  Demonstrates the basic pattern for Metal-based effects.
 //
 
 import Foundation
@@ -19,7 +19,7 @@ struct PixelateParamsGPU {
 
 /// Simple Metal-based pixelate effect.
 /// Demonstrates clean Metal shader integration pattern.
-final class PixelateMetalHook: Effect {
+final class PixelateMetalEffect: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 
@@ -71,25 +71,25 @@ final class PixelateMetalHook: Effect {
     
     private func loadShader() {
         guard let device = device else {
-            print("⚠️ PixelateMetalHook: No Metal device")
+            print("⚠️ PixelateMetalEffect: No Metal device")
             return
         }
         
         do {
             let library = try device.makeDefaultLibrary(bundle: Bundle.main)
             guard let function = library.makeFunction(name: "pixelateKernel") else {
-                print("⚠️ PixelateMetalHook: Kernel function not found")
+                print("⚠️ PixelateMetalEffect: Kernel function not found")
                 return
             }
             pipelineState = try device.makeComputePipelineState(function: function)
         } catch {
-            print("⚠️ PixelateMetalHook: Failed to create pipeline: \(error)")
+            print("⚠️ PixelateMetalEffect: Failed to create pipeline: \(error)")
         }
     }
     
     // MARK: - Effect Protocol
     
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         guard let device = device,
               let commandQueue = commandQueue,
               let pipeline = pipelineState else {
@@ -162,7 +162,7 @@ final class PixelateMetalHook: Effect {
     }
     
     func copy() -> Effect {
-        PixelateMetalHook(blockSize: blockSize, name: customName)
+        PixelateMetalEffect(blockSize: blockSize, name: customName)
     }
 }
 

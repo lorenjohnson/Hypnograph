@@ -1,5 +1,5 @@
 //
-//  FeedbackLoopHook.swift
+//  FeedbackLoopEffect.swift
 //  Hypnograph
 //
 //  Creates video feedback loop effect - like pointing a camera at its own monitor
@@ -12,7 +12,7 @@ import CoreGraphics
 
 /// Feedback loop - simulates analog video feedback
 /// Scales down and rotates previous frame, blends with current
-struct FeedbackLoopHook: Effect {
+struct FeedbackLoopEffect: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 
@@ -48,7 +48,7 @@ struct FeedbackLoopHook: Effect {
         self.init(scale: p.cgFloat("scale"), rotation: p.cgFloat("rotation"), intensity: p.float("intensity"))
     }
     
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         guard let prevFrame = context.frameBuffer.previousFrame(offset: 1) else {
             return image
         }

@@ -1,5 +1,5 @@
 //
-//  LUTHook.swift
+//  LUTEffect.swift
 //  Hypnograph
 //
 //  Apply a 3D LUT (Look Up Table) from a .cube file using CIColorCube filter.
@@ -11,7 +11,7 @@ import CoreMedia
 import Foundation
 
 /// Applies a 3D color LUT from a .cube file
-final class LUTHook: Effect {
+final class LUTEffect: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 
@@ -62,7 +62,7 @@ final class LUTHook: Effect {
 
     private func loadLUT() {
         guard !lutFileName.isEmpty else {
-            print("⚠️ LUTHook: No LUT file specified")
+            print("⚠️ LUTEffect: No LUT file specified")
             return
         }
 
@@ -75,7 +75,7 @@ final class LUTHook: Effect {
         }
 
         guard FileManager.default.fileExists(atPath: lutURL.path) else {
-            print("⚠️ LUTHook: LUT file not found at \(lutURL.path)")
+            print("⚠️ LUTEffect: LUT file not found at \(lutURL.path)")
             return
         }
 
@@ -83,7 +83,7 @@ final class LUTHook: Effect {
             let content = try String(contentsOf: lutURL, encoding: .utf8)
             parseCubeFile(content)
         } catch {
-            print("⚠️ LUTHook: Failed to read LUT file: \(error)")
+            print("⚠️ LUTEffect: Failed to read LUT file: \(error)")
         }
     }
 
@@ -126,13 +126,13 @@ final class LUTHook: Effect {
         }
 
         guard size > 0 else {
-            print("⚠️ LUTHook: Invalid LUT size")
+            print("⚠️ LUTEffect: Invalid LUT size")
             return
         }
 
         let expectedCount = size * size * size * 4
         guard rgbValues.count == expectedCount else {
-            print("⚠️ LUTHook: Expected \(expectedCount) values, got \(rgbValues.count)")
+            print("⚠️ LUTEffect: Expected \(expectedCount) values, got \(rgbValues.count)")
             return
         }
 
@@ -140,12 +140,12 @@ final class LUTHook: Effect {
         lutData = Data(bytes: rgbValues, count: rgbValues.count * MemoryLayout<Float>.size)
         lutSize = size
         lutLoaded = true
-        print("✓ LUTHook: Loaded \(lutFileName) (\(size)x\(size)x\(size))")
+        print("✓ LUTEffect: Loaded \(lutFileName) (\(size)x\(size)x\(size))")
     }
 
     // MARK: - Effect
 
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         guard lutLoaded, let lutData = lutData else {
             return image
         }
@@ -212,7 +212,7 @@ final class LUTHook: Effect {
     }
 
     func copy() -> Effect {
-        LUTHook(lutFile: lutFileName, intensity: intensity, name: customName)
+        LUTEffect(lutFile: lutFileName, intensity: intensity, name: customName)
     }
 }
 

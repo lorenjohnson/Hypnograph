@@ -1,5 +1,5 @@
 //
-//  EdgeDecayHook.swift
+//  EdgeDecayEffect.swift
 //  Hypnograph
 //
 //  Emphasizes and decays edges over time
@@ -12,7 +12,7 @@ import CoreGraphics
 
 /// Edge decay - finds edges and blends them with temporal decay
 /// Creates a sketchy, hand-drawn look that dissolves over time
-struct EdgeDecayHook: Effect {
+struct EdgeDecayEffect: Effect {
     var name: String { "Edge Decay" }
     
     /// How much edge to blend in (0.0 = subtle, 1.0 = heavy)
@@ -31,7 +31,7 @@ struct EdgeDecayHook: Effect {
         self.init(intensity: p.float("intensity"))
     }
     
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         // Detect edges
         guard let edges = CIFilter(name: "CIEdges") else {
             return image

@@ -78,14 +78,14 @@ struct MontagePlayerView: NSViewRepresentable {
                 let config = RenderEngine.Config(
                     outputSize: outputSize,
                     frameRate: 30,
-                    enableGlobalHooks: true
+                    enableGlobalEffects: true
                 )
 
                 let result = await engine.makePlayerItem(
                     recipe: recipe,
                     strategy: strategy,
                     config: config,
-                    hookManager: effectManager
+                    effectManager: effectManager
                 )
 
                 guard !Task.isCancelled else {

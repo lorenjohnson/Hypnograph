@@ -1,10 +1,10 @@
 //
-//  PixelDriftMetalHook.swift
+//  ColorEchoMetalEffect.swift
 //  Hypnograph
 //
-//  Pixel drift effect - pixels smear in direction of motion.
-//  Creates organic trails where movement occurs, clean elsewhere.
-//  Simple 3-parameter effect.
+//  Color echo effect via Metal compute shader.
+//  Each RGB channel comes from a different point in time.
+//  Single-pass implementation for efficiency.
 //
 
 import Foundation
@@ -12,60 +12,57 @@ import CoreImage
 import CoreVideo
 import Metal
 
-/// GPU parameters - must match PixelDriftShader.metal
-struct PixelDriftParamsGPU {
+/// GPU parameters struct - must match layout in ColorEchoShader.metal
+struct ColorEchoParamsGPU {
+    var intensity: Float
     var textureWidth: Int32
     var textureHeight: Int32
-    var driftStrength: Float
-    var threshold: Float
-    var decay: Float
-    var randomSeed: UInt32
 }
 
-/// Pixel drift effect - motion causes smearing trails
-final class PixelDriftMetalHook: Effect {
+/// Color echo effect using Metal compute shader.
+/// Red from current frame, green from N frames ago, blue from 2N frames ago.
+final class ColorEchoMetalEffect: Effect {
 
-    // MARK: - Parameter Specs
+    // MARK: - Parameter Specs (source of truth)
 
     static var parameterSpecs: [String: ParameterSpec] {
         [
-            "driftStrength": .float(default: 8.0, range: 1...30),
-            "threshold": .float(default: 0.05, range: 0...0.5),
-            "decay": .float(default: 0.6, range: 0...1)
+            "channelOffset": .int(default: 4, range: 1...30),
+            "intensity": .float(default: 1.0, range: 0.5...1.0)
         ]
     }
 
     // MARK: - Properties
 
-    var name: String { "Pixel Drift" }
-    var requiredLookback: Int { 5 }
+    var name: String { customName ?? "Color Echo" }
+    private let customName: String?
 
-    var driftStrength: Float
-    var threshold: Float
-    var decay: Float
+    /// Needs 2x channel offset frames (blue channel is furthest back)
+    var requiredLookback: Int { channelOffset * 2 + 1 }
 
-    // Metal state
+    let channelOffset: Int
+    var intensity: Float
+
+    // Metal resources
     private let device: MTLDevice?
     private let commandQueue: MTLCommandQueue?
     private var pipelineState: MTLComputePipelineState?
     private var textureCache: CVMetalTextureCache?
 
-    // Buffers
+    // Reusable buffers
     private var inputBuffer: CVPixelBuffer?
     private var outputBuffer: CVPixelBuffer?
-    private var feedbackBuffer: CVPixelBuffer?
-    private var frameCounter: UInt32 = 0
 
     // MARK: - Init
 
-    init(driftStrength: Float, threshold: Float, decay: Float) {
-        self.driftStrength = max(1, min(30, driftStrength))
-        self.threshold = max(0, min(0.5, threshold))
-        self.decay = max(0, min(1, decay))
-
+    init(channelOffset: Int, intensity: Float, name: String? = nil) {
+        self.channelOffset = max(1, min(30, channelOffset))
+        self.intensity = max(0.5, min(1.0, intensity))
+        self.customName = name
         self.device = MTLCreateSystemDefaultDevice()
         self.commandQueue = device?.makeCommandQueue()
 
+        // Create texture cache
         if let device = device {
             var cache: CVMetalTextureCache?
             CVMetalTextureCacheCreate(kCFAllocatorDefault, nil, device, nil, &cache)
@@ -77,33 +74,38 @@ final class PixelDriftMetalHook: Effect {
 
     required convenience init?(params: [String: AnyCodableValue]?) {
         let p = Params(params, specs: Self.parameterSpecs)
-        self.init(driftStrength: p.float("driftStrength"), threshold: p.float("threshold"), decay: p.float("decay"))
+        self.init(channelOffset: p.int("channelOffset"), intensity: p.float("intensity"))
     }
 
     private func loadShader() {
-        guard let device = device else { return }
+        guard let device = device else {
+            print("⚠️ ColorEchoMetalEffect: No Metal device")
+            return
+        }
 
         do {
             let library = try device.makeDefaultLibrary(bundle: Bundle.main)
-            guard let function = library.makeFunction(name: "pixelDriftKernel") else {
-                print("⚠️ PixelDriftMetalHook: Kernel not found")
+            guard let function = library.makeFunction(name: "colorEchoKernel") else {
+                print("⚠️ ColorEchoMetalEffect: Kernel function not found")
                 return
             }
             pipelineState = try device.makeComputePipelineState(function: function)
         } catch {
-            print("⚠️ PixelDriftMetalHook: Pipeline error: \(error)")
+            print("⚠️ ColorEchoMetalEffect: Failed to create pipeline: \(error)")
         }
     }
 
-    // MARK: - Buffer Management
+    // MARK: - Texture Management
 
     private func ensureBuffers(width: Int, height: Int) {
+        // Check if existing buffers are correct size
         if let buf = inputBuffer,
            CVPixelBufferGetWidth(buf) == width,
            CVPixelBufferGetHeight(buf) == height {
             return
         }
 
+        // Create new buffers
         let attrs: [String: Any] = [
             kCVPixelBufferMetalCompatibilityKey as String: true,
             kCVPixelBufferIOSurfacePropertiesKey as String: [:]
@@ -113,12 +115,11 @@ final class PixelDriftMetalHook: Effect {
                            kCVPixelFormatType_32BGRA, attrs as CFDictionary, &inputBuffer)
         CVPixelBufferCreate(kCFAllocatorDefault, width, height,
                            kCVPixelFormatType_32BGRA, attrs as CFDictionary, &outputBuffer)
-        CVPixelBufferCreate(kCFAllocatorDefault, width, height,
-                           kCVPixelFormatType_32BGRA, attrs as CFDictionary, &feedbackBuffer)
     }
 
     private func textureFromBuffer(_ buffer: CVPixelBuffer) -> MTLTexture? {
         guard let cache = textureCache else { return nil }
+
         let width = CVPixelBufferGetWidth(buffer)
         let height = CVPixelBufferGetHeight(buffer)
 
@@ -127,17 +128,14 @@ final class PixelDriftMetalHook: Effect {
             kCFAllocatorDefault, cache, buffer, nil,
             .bgra8Unorm, width, height, 0, &cvTexture
         )
+
         guard status == kCVReturnSuccess, let tex = cvTexture else { return nil }
         return CVMetalTextureGetTexture(tex)
     }
 
     // MARK: - Effect Protocol
 
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
-        frameCounter &+= 1
-
-        guard context.frameBuffer.frameCount >= 2 else { return image }
-
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         guard let device = device,
               let commandQueue = commandQueue,
               let pipeline = pipelineState else {
@@ -147,37 +145,44 @@ final class PixelDriftMetalHook: Effect {
         let extent = image.extent
         let width = Int(extent.width)
         let height = Int(extent.height)
+
         guard width > 0, height > 0 else { return image }
 
-        // Get previous frame for motion detection
-        guard let previousTexture = context.frameBuffer.texture(atHistoryOffset: 1) else {
+        // Get frame buffer textures using texture() like DatamoshMetalEffect
+        let maxOffset = max(0, context.frameBuffer.frameCount - 1)
+        guard maxOffset >= 1 else { return image }
+
+        let greenOffset = min(channelOffset, maxOffset)
+        let blueOffset = min(channelOffset * 2, maxOffset)
+
+        guard let greenTexture = context.frameBuffer.texture(atHistoryOffset: greenOffset),
+              let blueTexture = context.frameBuffer.texture(atHistoryOffset: blueOffset) else {
             return image
         }
 
+        // Ensure we have buffers
         ensureBuffers(width: width, height: height)
-        guard let inBuf = inputBuffer,
-              let outBuf = outputBuffer,
-              let fbBuf = feedbackBuffer else { return image }
 
-        // Render current to input
+        guard let inBuf = inputBuffer, let outBuf = outputBuffer else { return image }
+
+        // Render CIImage to input buffer (same coordinate system as frame buffer)
         SharedRenderer.ciContext.render(image, to: inBuf, bounds: extent,
                                         colorSpace: CGColorSpaceCreateDeviceRGB())
 
+        // Convert buffers to textures
         guard let currentTexture = textureFromBuffer(inBuf),
-              let outputTexture = textureFromBuffer(outBuf),
-              let feedbackTexture = textureFromBuffer(fbBuf) else {
+              let outputTexture = textureFromBuffer(outBuf) else {
             return image
         }
 
-        var gpuParams = PixelDriftParamsGPU(
+        // Setup GPU params
+        var gpuParams = ColorEchoParamsGPU(
+            intensity: intensity,
             textureWidth: Int32(width),
-            textureHeight: Int32(height),
-            driftStrength: driftStrength,
-            threshold: threshold,
-            decay: decay,
-            randomSeed: frameCounter
+            textureHeight: Int32(height)
         )
 
+        // Run compute shader
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
               let encoder = commandBuffer.makeComputeCommandEncoder() else {
             return image
@@ -185,10 +190,10 @@ final class PixelDriftMetalHook: Effect {
 
         encoder.setComputePipelineState(pipeline)
         encoder.setTexture(currentTexture, index: 0)
-        encoder.setTexture(previousTexture, index: 1)
-        encoder.setTexture(feedbackTexture, index: 2)
+        encoder.setTexture(greenTexture, index: 1)
+        encoder.setTexture(blueTexture, index: 2)
         encoder.setTexture(outputTexture, index: 3)
-        encoder.setBytes(&gpuParams, length: MemoryLayout<PixelDriftParamsGPU>.stride, index: 0)
+        encoder.setBytes(&gpuParams, length: MemoryLayout<ColorEchoParamsGPU>.stride, index: 0)
 
         let threadWidth = pipeline.threadExecutionWidth
         let threadHeight = pipeline.maxTotalThreadsPerThreadgroup / threadWidth
@@ -198,33 +203,23 @@ final class PixelDriftMetalHook: Effect {
             height: (height + threadHeight - 1) / threadHeight,
             depth: 1
         )
-
         encoder.dispatchThreadgroups(threadgroups, threadsPerThreadgroup: threadsPerGroup)
         encoder.endEncoding()
+
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
 
-        // Copy output to feedback for next frame
-        let blitBuffer = commandQueue.makeCommandBuffer()
-        if let blitEncoder = blitBuffer?.makeBlitCommandEncoder() {
-            blitEncoder.copy(from: outputTexture, to: feedbackTexture)
-            blitEncoder.endEncoding()
-            blitBuffer?.commit()
-            blitBuffer?.waitUntilCompleted()
-        }
-
+        // Convert output buffer back to CIImage
         return CIImage(cvPixelBuffer: outBuf)
     }
 
     func reset() {
         inputBuffer = nil
         outputBuffer = nil
-        feedbackBuffer = nil
-        frameCounter = 0
     }
 
     func copy() -> Effect {
-        PixelDriftMetalHook(driftStrength: driftStrength, threshold: threshold, decay: decay)
+        ColorEchoMetalEffect(channelOffset: channelOffset, intensity: intensity, name: customName)
     }
 }
 

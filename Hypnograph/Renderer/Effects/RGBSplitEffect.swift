@@ -1,5 +1,5 @@
 //
-//  RGBSplitHook.swift
+//  RGBSplitEffect.swift
 //  Hypnograph
 //
 //  RGB channel separation glitch effect
@@ -10,7 +10,7 @@ import CoreMedia
 import CoreGraphics
 
 /// RGB channel separation effect using CoreImage filters
-struct RGBSplitSimpleHook: Effect {
+struct RGBSplitSimpleEffect: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 
@@ -38,7 +38,7 @@ struct RGBSplitSimpleHook: Effect {
         self.init(offsetAmount: p.float("offsetAmount"), animated: p.bool("animated"))
     }
     
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         // Calculate offset (animate if enabled)
         var offset = CGFloat(offsetAmount)
         if animated {

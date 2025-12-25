@@ -23,15 +23,15 @@ enum EffectConfigLoader {
             return config.effects
         }
         // Load and cache
-        _ = loadEffectsWithDefinitions()
+        _ = loadChainsWithDefinitions()
         return cachedConfig?.effects ?? []
     }
 
     /// @deprecated Use currentChains instead
     static var currentDefinitions: [EffectChain] { currentChains }
 
-    /// Callback for live effect application (set by EffectManager)
-    static var onEffectUpdated: ((Int, Effect) -> Void)?
+    /// Callback for live effect chain updates (set by HypnographState)
+    static var onEffectChainUpdated: ((Int, EffectChain) -> Void)?
 
     /// Debounce timer for async file save AND effect instantiation
     private static var saveTimer: Timer?
@@ -40,19 +40,19 @@ enum EffectConfigLoader {
     /// Track which effects need re-instantiation
     private static var pendingInstantiations: Set<Int> = []
 
-    /// Update a hook's parameter value - updates cache immediately, defers instantiation and save
-    static func updateParameter(effectIndex: Int, hookIndex: Int?, paramName: String, value: AnyCodableValue) {
+    /// Update an effect's parameter value - updates cache immediately, defers instantiation and save
+    static func updateParameter(effectIndex: Int, effectDefIndex: Int?, paramName: String, value: AnyCodableValue) {
         guard var config = cachedConfig else { return }
         guard effectIndex >= 0 && effectIndex < config.effects.count else { return }
 
         var chain = config.effects[effectIndex]
 
-        if let hookIdx = hookIndex {
-            // Update a hook's parameter
-            guard hookIdx >= 0 && hookIdx < chain.hooks.count else { return }
-            var params = chain.hooks[hookIdx].params ?? [:]
+        if let defIdx = effectDefIndex {
+            // Update an effect definition's parameter
+            guard defIdx >= 0 && defIdx < chain.effects.count else { return }
+            var params = chain.effects[defIdx].params ?? [:]
             params[paramName] = value
-            chain.hooks[hookIdx].params = params
+            chain.effects[defIdx].params = params
         } else {
             // Update the chain's own parameter (future: chain-level params)
             var params = chain.params ?? [:]
@@ -69,17 +69,17 @@ enum EffectConfigLoader {
         scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
     }
 
-    /// Add a hook to an effect chain
-    static func addHookToChain(effectIndex: Int, hookType: String) {
+    /// Add an effect to an effect chain
+    static func addEffectToChain(effectIndex: Int, effectType: String) {
         guard var config = cachedConfig else { return }
         guard effectIndex >= 0 && effectIndex < config.effects.count else { return }
 
         var chain = config.effects[effectIndex]
 
-        // Create new hook with default params from registry
-        let defaultParams = EffectRegistry.defaults(for: hookType)
-        let newHook = HookDefinition(type: hookType, params: defaultParams)
-        chain.hooks.append(newHook)
+        // Create new effect with default params from registry
+        let defaultParams = EffectRegistry.defaults(for: effectType)
+        let newEffect = EffectDefinition(type: effectType, params: defaultParams)
+        chain.effects.append(newEffect)
 
         var effects = config.effects
         effects[effectIndex] = chain
@@ -89,15 +89,15 @@ enum EffectConfigLoader {
         scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
     }
 
-    /// Remove a hook from an effect chain
-    static func removeHookFromChain(effectIndex: Int, hookIndex: Int) {
+    /// Remove an effect from an effect chain
+    static func removeEffectFromChain(effectIndex: Int, effectDefIndex: Int) {
         guard var config = cachedConfig else { return }
         guard effectIndex >= 0 && effectIndex < config.effects.count else { return }
 
         var chain = config.effects[effectIndex]
-        guard hookIndex >= 0 && hookIndex < chain.hooks.count else { return }
+        guard effectDefIndex >= 0 && effectDefIndex < chain.effects.count else { return }
 
-        chain.hooks.remove(at: hookIndex)
+        chain.effects.remove(at: effectDefIndex)
 
         var effects = config.effects
         effects[effectIndex] = chain
@@ -107,7 +107,7 @@ enum EffectConfigLoader {
         scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
     }
 
-    /// Create a new effect chain with BasicHook as default
+    /// Create a new effect chain with BasicEffect as default
     /// Returns the index of the new chain
     @discardableResult
     static func createNewEffect() -> Int {
@@ -123,10 +123,10 @@ enum EffectConfigLoader {
             uniqueName = "\(baseName) \(counter)"
         }
 
-        // Create chain with BasicHook as default hook
-        let basicDefaults = EffectRegistry.defaults(for: "BasicHook")
-        let basicHook = HookDefinition(type: "BasicHook", params: basicDefaults)
-        let newChain = EffectChain(name: uniqueName, hooks: [basicHook])
+        // Create chain with BasicEffect as default effect
+        let basicDefaults = EffectRegistry.defaults(for: "BasicEffect")
+        let basicEffect = EffectDefinition(type: "BasicEffect", params: basicDefaults)
+        let newChain = EffectChain(name: uniqueName, effects: [basicEffect])
 
         var effects = config.effects
         effects.append(newChain)
@@ -160,24 +160,23 @@ enum EffectConfigLoader {
     /// This directly updates EffectChainLibrary's cache without clearing our in-memory config
     private static func reloadEffectAll() {
         guard let config = cachedConfig else { return }
-        let hooks = instantiateEffects(from: config)
 
         // Directly update EffectChainLibrary's cached result without going through reload()
         // which would clear our in-memory config
-        EffectChainLibrary.updateCache(with: hooks)
+        EffectChainLibrary.updateCache(with: config.effects)
     }
 
-    /// Reorder hooks in an effect chain
-    static func reorderHooksInChain(effectIndex: Int, fromIndex: Int, toIndex: Int) {
+    /// Reorder effects in an effect chain
+    static func reorderEffectsInChain(effectIndex: Int, fromIndex: Int, toIndex: Int) {
         guard var config = cachedConfig else { return }
         guard effectIndex >= 0 && effectIndex < config.effects.count else { return }
 
         var chain = config.effects[effectIndex]
-        guard fromIndex >= 0 && fromIndex < chain.hooks.count else { return }
-        guard toIndex >= 0 && toIndex < chain.hooks.count else { return }
+        guard fromIndex >= 0 && fromIndex < chain.effects.count else { return }
+        guard toIndex >= 0 && toIndex < chain.effects.count else { return }
 
-        let hook = chain.hooks.remove(at: fromIndex)
-        chain.hooks.insert(hook, at: toIndex)
+        let effect = chain.effects.remove(at: fromIndex)
+        chain.effects.insert(effect, at: toIndex)
 
         var effects = config.effects
         effects[effectIndex] = chain
@@ -187,28 +186,28 @@ enum EffectConfigLoader {
         scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
     }
 
-    /// Toggle hook enabled state (stored as _enabled param)
-    static func setHookEnabled(effectIndex: Int, hookIndex: Int, enabled: Bool) {
-        updateParameter(effectIndex: effectIndex, hookIndex: hookIndex, paramName: "_enabled", value: .bool(enabled))
+    /// Toggle effect enabled state (stored as _enabled param)
+    static func setEffectEnabled(effectIndex: Int, effectDefIndex: Int, enabled: Bool) {
+        updateParameter(effectIndex: effectIndex, effectDefIndex: effectDefIndex, paramName: "_enabled", value: .bool(enabled))
     }
 
-    /// Reset a hook's parameters to their default values
-    static func resetHookToDefaults(effectIndex: Int, hookIndex: Int) {
+    /// Reset an effect's parameters to their default values
+    static func resetEffectToDefaults(effectIndex: Int, effectDefIndex: Int) {
         guard var config = cachedConfig else { return }
         guard effectIndex >= 0 && effectIndex < config.effects.count else { return }
 
         var chain = config.effects[effectIndex]
-        guard hookIndex >= 0 && hookIndex < chain.hooks.count else { return }
+        guard effectDefIndex >= 0 && effectDefIndex < chain.effects.count else { return }
 
-        let hook = chain.hooks[hookIndex]
+        let effectDef = chain.effects[effectDefIndex]
 
         // Get defaults, preserve _enabled state
-        var defaults = EffectRegistry.defaults(for: hook.type)
-        if let wasEnabled = hook.params?["_enabled"] {
+        var defaults = EffectRegistry.defaults(for: effectDef.type)
+        if let wasEnabled = effectDef.params?["_enabled"] {
             defaults["_enabled"] = wasEnabled
         }
 
-        chain.hooks[hookIndex].params = defaults
+        chain.effects[effectDefIndex].params = defaults
 
         var effects = config.effects
         effects[effectIndex] = chain
@@ -250,7 +249,7 @@ enum EffectConfigLoader {
         }
     }
 
-    /// Perform all pending instantiations in one batch
+    /// Perform all pending chain updates in one batch
     private static func performPendingInstantiations() {
         guard let config = cachedConfig else {
             pendingInstantiations.removeAll()
@@ -260,9 +259,7 @@ enum EffectConfigLoader {
         for effectIndex in pendingInstantiations {
             guard effectIndex >= 0 && effectIndex < config.effects.count else { continue }
             let chain = config.effects[effectIndex]
-            if let newEffect = instantiateChain(chain) {
-                onEffectUpdated?(effectIndex, newEffect)
-            }
+            onEffectChainUpdated?(effectIndex, chain)
         }
         pendingInstantiations.removeAll()
     }
@@ -328,34 +325,34 @@ enum EffectConfigLoader {
     }
 
     // MARK: - Loading
-    
-    /// Result of loading effects
+
+    /// Result of loading effect chains
     struct LoadResult {
-        let effects: [Effect]
+        let chains: [EffectChain]
         let source: Source
         let error: Error?
-        
+
         enum Source {
             case user
             case bundled
             case hardcoded
         }
     }
-    
-    /// Load effects, with fallback chain: user config → source file (debug) → bundled → hardcoded
-    static func loadEffects() -> LoadResult {
-        loadEffectsWithDefinitions()
+
+    /// Load effect chains, with fallback chain: user config → source file (debug) → bundled → hardcoded
+    static func loadChains() -> LoadResult {
+        loadChainsWithDefinitions()
     }
 
-    /// Load effects and cache definitions for editing
-    private static func loadEffectsWithDefinitions() -> LoadResult {
+    /// Load effect chains and cache for editing
+    private static func loadChainsWithDefinitions() -> LoadResult {
         // Try user config first
         if FileManager.default.fileExists(atPath: userConfigURL.path) {
             do {
-                let (effects, config) = try loadFromURLWithConfig(userConfigURL)
+                let config = try loadConfigFromURL(userConfigURL)
                 cachedConfig = config
                 cachedConfigURL = userConfigURL
-                return LoadResult(effects: effects, source: .user, error: nil)
+                return LoadResult(chains: config.effects, source: .user, error: nil)
             } catch {
                 print("⚠️ EffectConfigLoader: Failed to load user config: \(error)")
                 // Fall through to bundled
@@ -366,10 +363,10 @@ enum EffectConfigLoader {
         #if DEBUG
         if let sourceURL = sourceConfigURL {
             do {
-                let (effects, config) = try loadFromURLWithConfig(sourceURL)
+                let config = try loadConfigFromURL(sourceURL)
                 cachedConfig = config
                 cachedConfigURL = sourceURL
-                return LoadResult(effects: effects, source: .bundled, error: nil)
+                return LoadResult(chains: config.effects, source: .bundled, error: nil)
             } catch {
                 print("⚠️ EffectConfigLoader: Failed to load source config: \(error)")
                 // Fall through to bundled
@@ -380,10 +377,10 @@ enum EffectConfigLoader {
         // Try bundled default
         if let bundledURL = bundledConfigURL {
             do {
-                let (effects, config) = try loadFromURLWithConfig(bundledURL)
+                let config = try loadConfigFromURL(bundledURL)
                 cachedConfig = config
                 cachedConfigURL = bundledURL
-                return LoadResult(effects: effects, source: .bundled, error: nil)
+                return LoadResult(chains: config.effects, source: .bundled, error: nil)
             } catch {
                 print("⚠️ EffectConfigLoader: Failed to load bundled config: \(error)")
                 // Fall through to hardcoded
@@ -394,7 +391,7 @@ enum EffectConfigLoader {
         print("ℹ️ EffectConfigLoader: Using hardcoded defaults")
         cachedConfig = nil
         cachedConfigURL = nil
-        return LoadResult(effects: hardcodedDefaults, source: .hardcoded, error: nil)
+        return LoadResult(chains: hardcodedDefaults, source: .hardcoded, error: nil)
     }
 
     /// Clear cached config (call on reload)
@@ -403,14 +400,14 @@ enum EffectConfigLoader {
         cachedConfigURL = nil
     }
 
-    /// Load effects from a specific URL
-    static func loadFromURL(_ url: URL) throws -> [Effect] {
-        let (effects, _) = try loadFromURLWithConfig(url)
-        return effects
+    /// Load effect chains from a specific URL
+    static func loadFromURL(_ url: URL) throws -> [EffectChain] {
+        let config = try loadConfigFromURL(url)
+        return config.effects
     }
 
-    /// Load effects from a specific URL and return both effects and raw config
-    private static func loadFromURLWithConfig(_ url: URL) throws -> ([Effect], EffectLibraryConfig) {
+    /// Load config from a specific URL
+    private static func loadConfigFromURL(_ url: URL) throws -> EffectLibraryConfig {
         let data = try Data(contentsOf: url)
         guard let jsonString = String(data: data, encoding: .utf8) else {
             throw LoadError.invalidEncoding
@@ -422,8 +419,7 @@ enum EffectConfigLoader {
             throw LoadError.invalidEncoding
         }
 
-        let config = try JSONDecoder().decode(EffectLibraryConfig.self, from: cleanData)
-        return (instantiateEffects(from: config), config)
+        return try JSONDecoder().decode(EffectLibraryConfig.self, from: cleanData)
     }
     
     // MARK: - Comment Stripping (JSONC Support)
@@ -482,45 +478,32 @@ enum EffectConfigLoader {
     
     // MARK: - Instantiation
 
-    /// Convert parsed config to Effect instances
-    private static func instantiateEffects(from config: EffectLibraryConfig) -> [Effect] {
-        config.effects.compactMap { instantiateChain($0) }
-    }
-
-    /// Instantiate an Effect from an EffectChain.
+    /// Instantiate Effects from an EffectChain.
     /// Public so recipes can instantiate effects from their stored chains.
-    static func instantiateChain(_ chain: EffectChain) -> Effect? {
-        // Filter to enabled hooks only
-        let enabledHooks = chain.hooks.filter { $0.isEnabled }
+    /// Returns a flat array of effects to apply in sequence.
+    static func instantiateChain(_ chain: EffectChain) -> [Effect] {
+        // Filter to enabled effects only
+        let enabledEffects = chain.effects.filter { $0.isEnabled }
 
-        // Instantiate each hook
-        let childEffects = enabledHooks.compactMap { instantiateHook($0) }
-
-        // Return ChainedHook even if empty - keeps effect list indices stable
-        // An empty ChainedHook acts as a pass-through
-        return ChainedHook(name: chain.name ?? "Chain", hooks: childEffects)
+        // Instantiate each effect
+        return enabledEffects.compactMap { instantiateEffectDef($0) }
     }
 
-    /// Instantiate an Effect from a HookDefinition
-    static func instantiateHook(_ hook: HookDefinition) -> Effect? {
+    /// Instantiate an Effect from an EffectDefinition
+    static func instantiateEffectDef(_ effectDef: EffectDefinition) -> Effect? {
         // Check if disabled
-        guard hook.isEnabled else { return nil }
+        guard effectDef.isEnabled else { return nil }
 
         // Create from registry
-        guard let effect = EffectRegistry.create(type: hook.type, params: hook.params) else {
+        guard let effect = EffectRegistry.create(type: effectDef.type, params: effectDef.params) else {
             return nil
         }
 
         return effect
     }
 
-    /// @deprecated Use instantiateChain instead
-    static func instantiateEffect(_ def: EffectChain) -> Effect? {
-        instantiateChain(def)
-    }
-    
     // MARK: - Errors
-    
+
     enum LoadError: Error, LocalizedError {
         case invalidEncoding
         case fileNotFound
@@ -536,17 +519,18 @@ enum EffectConfigLoader {
     // MARK: - Hardcoded Fallback
 
     /// Last-resort fallback if no config files work
-    static let hardcodedDefaults: [Effect] = [
-        RGBSplitSimpleHook(offsetAmount: 15.0, animated: true),
-        ChainedHook(name: "Datamosh: Default", hooks: [
-            DatamoshMetalHook(params: .default)
+    static let hardcodedDefaults: [EffectChain] = [
+        EffectChain(name: "RGB Split", effects: [
+            EffectDefinition(type: "RGBSplitSimpleEffect", params: ["offsetAmount": .double(15.0), "animated": .bool(true)])
         ]),
-        ChainedHook(name: "Datamosh: Subtle", hooks: [
-            DatamoshMetalHook(params: .subtle)
+        EffectChain(name: "Datamosh: Default", effects: [
+            EffectDefinition(type: "DatamoshMetalEffect", params: nil)
         ]),
-        ChainedHook(name: "Hold + Ghost", hooks: [
-            HoldFrameHook(freezeInterval: 6.0, holdDuration: 5.0, trailBoost: 2.5),
-            GhostBlurHook(intensity: 0.2, trailLength: 10, blurAmount: 8.0)
+        EffectChain(name: "Hold Frame", effects: [
+            EffectDefinition(type: "HoldFrameEffect", params: ["freezeInterval": .double(6.0), "holdDuration": .double(5.0), "trailBoost": .double(2.5)])
+        ]),
+        EffectChain(name: "Ghost Blur", effects: [
+            EffectDefinition(type: "GhostBlurEffect", params: ["intensity": .double(0.2), "trailLength": .int(10), "blurAmount": .double(8.0)])
         ])
     ]
 }

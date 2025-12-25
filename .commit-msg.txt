@@ -1,0 +1,26 @@
+refactor: Complete Hook→Effect terminology migration
+
+BREAKING: Remove all legacy "hook" terminology and support
+
+Effects System Cleanup:
+- Rename all *Hook files/classes to *Effect (22 files)
+- Delete RenderHooks.swift (obsolete global singleton)
+- Delete ChainedHook.swift (functionality now in EffectChain)
+- Remove legacy "hooks" JSON key decoder from EffectConfigSchema
+- Update effects-default.json to new format with Effect type names
+
+Architecture:
+- Effect protocol: pure (context, image) → image transformations
+- EffectChain: named container for 0-n EffectDefinitions (JSON-serializable)
+- EffectManager: runtime manager with frame buffer for temporal effects
+- EffectChainLibrary: static cache loaded from user/bundled/fallback configs
+- EffectRegistry: type name → Effect.Type mapping and instantiation
+
+Bug Fixes:
+- Fix Effects window selection not highlighting current effect
+  (was reading from instantiated effect name, now reads effectChain.name)
+- Make EffectManager.settings @Published for UI reactivity
+
+Documentation:
+- Replace work plan.txt with render system architecture summary
+

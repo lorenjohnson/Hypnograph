@@ -3,22 +3,22 @@
 //  Hypnograph
 //
 //  Codable schema for effects. Two main types:
-//  - EffectChain: A named container for 0-n hooks (stored in recipe, per layer)
-//  - HookDefinition: A single effect with type + params
+//  - EffectChain: A named container for 0-n effects (stored in recipe, per layer)
+//  - EffectDefinition: A single effect with type + params
 //
 
 import Foundation
 
 // MARK: - Core Types
 
-/// An effect chain containing 0-n hooks applied in sequence.
+/// An effect chain containing 0-n effects applied in sequence.
 /// This is the top-level effect container stored on recipes (global or per-source).
 struct EffectChain: Codable, Equatable {
     /// Display name for the chain
     var name: String?
 
-    /// The hooks to apply in sequence (0-n)
-    var hooks: [HookDefinition]
+    /// The effects to apply in sequence (0-n)
+    var effects: [EffectDefinition]
 
     /// Future: chain-level parameters (e.g., overall strength/mix)
     var params: [String: AnyCodableValue]?
@@ -26,76 +26,59 @@ struct EffectChain: Codable, Equatable {
     /// Create an empty chain
     init() {
         self.name = nil
-        self.hooks = []
+        self.effects = []
         self.params = nil
     }
 
-    /// Create a named chain with hooks
-    init(name: String?, hooks: [HookDefinition], params: [String: AnyCodableValue]? = nil) {
+    /// Create a named chain with effects
+    init(name: String?, effects: [EffectDefinition], params: [String: AnyCodableValue]? = nil) {
         self.name = name
-        self.hooks = hooks
+        self.effects = effects
         self.params = params
     }
 
-    /// Whether this chain has any hooks
-    var isEmpty: Bool { hooks.isEmpty }
+    /// Whether this chain has any effects
+    var isEmpty: Bool { effects.isEmpty }
 
-    /// Whether this chain has any enabled hooks
-    var hasEnabledHooks: Bool {
-        hooks.contains { $0.isEnabled }
-    }
-
-    /// For single-hook chains, returns the hook type. For multi-hook chains, returns nil.
-    /// Used for backward compatibility with code that expects a single effect type.
-    var resolvedType: String? {
-        hooks.count == 1 ? hooks.first?.type : nil
-    }
-
-    /// Whether this is a chained effect (has multiple hooks or is explicitly a chain)
-    /// For backward compatibility - all EffectChains are conceptually "chained"
-    var isChained: Bool {
-        true  // All chains are chained by definition
+    /// Whether this chain has any enabled effects
+    var hasEnabledEffects: Bool {
+        effects.contains { $0.isEnabled }
     }
 }
 
-/// Definition of a single hook (effect) within a chain.
-struct HookDefinition: Codable, Equatable {
-    /// Optional display name for this hook
+/// Definition of a single effect within a chain.
+struct EffectDefinition: Codable, Equatable {
+    /// Optional display name for this effect
     var name: String?
 
-    /// The hook type (e.g., "DatamoshMetalHook", "GlitchBlocksMetalHook")
+    /// The effect type (e.g., "DatamoshEffect", "GlitchBlocksEffect")
     var type: String
 
-    /// Parameters for this hook
+    /// Parameters for this effect
     var params: [String: AnyCodableValue]?
 
-    /// Create a hook with type and optional params
+    /// Create an effect with type and optional params
     init(type: String, params: [String: AnyCodableValue]? = nil) {
         self.name = nil
         self.type = type
         self.params = params
     }
 
-    /// Create a hook with name, type, and optional params
+    /// Create an effect with name, type, and optional params
     init(name: String?, type: String, params: [String: AnyCodableValue]? = nil) {
         self.name = name
         self.type = type
         self.params = params
     }
 
-    /// Whether this hook is enabled (checks _enabled param, defaults to true)
+    /// Whether this effect is enabled (checks _enabled param, defaults to true)
     var isEnabled: Bool {
         params?["_enabled"]?.boolValue ?? true
     }
 
-    /// The resolved type - for HookDefinition this is always the type
-    var resolvedType: String {
-        type
-    }
-
     /// Create a copy with updated params
-    func with(params: [String: AnyCodableValue]?) -> HookDefinition {
-        HookDefinition(name: name, type: type, params: params)
+    func with(params: [String: AnyCodableValue]?) -> EffectDefinition {
+        EffectDefinition(name: name, type: type, params: params)
     }
 }
 
@@ -109,22 +92,16 @@ struct EffectLibraryConfig: Codable {
 
 // MARK: - Deprecated Aliases (for transition)
 
-/// @deprecated Use EffectChain instead
-typealias EffectDefinition = EffectChain
 
-/// @deprecated Use EffectLibraryConfig instead
-typealias EffectConfig = EffectLibraryConfig
 
 // MARK: - EffectChain JSON Compatibility
 
 extension EffectChain {
-    /// Coding keys for JSON compatibility with old format
+    /// Coding keys for JSON
     enum CodingKeys: String, CodingKey {
         case name
-        case hooks
+        case effects
         case params
-        // Legacy keys for reading old format
-        case type
     }
 
     init(from decoder: Decoder) throws {
@@ -132,27 +109,13 @@ extension EffectChain {
 
         name = try container.decodeIfPresent(String.self, forKey: .name)
         params = try container.decodeIfPresent([String: AnyCodableValue].self, forKey: .params)
-
-        // Try to decode hooks array first (new format)
-        if let hooksArray = try container.decodeIfPresent([HookDefinition].self, forKey: .hooks) {
-            hooks = hooksArray
-        }
-        // Legacy: if no hooks but has type, this is a single-hook chain
-        else if let type = try container.decodeIfPresent(String.self, forKey: .type) {
-            hooks = [HookDefinition(type: type, params: params)]
-            // Clear params since they belong to the hook, not the chain
-            self.params = nil
-        }
-        // Empty chain
-        else {
-            hooks = []
-        }
+        effects = try container.decodeIfPresent([EffectDefinition].self, forKey: .effects) ?? []
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encodeIfPresent(name, forKey: .name)
-        try container.encode(hooks, forKey: .hooks)
+        try container.encode(effects, forKey: .effects)
         try container.encodeIfPresent(params, forKey: .params)
     }
 }

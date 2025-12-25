@@ -1,5 +1,5 @@
 //
-//  PosterizeDecayHook.swift
+//  PosterizeDecayEffect.swift
 //  Hypnograph
 //
 //  Posterizes with temporal blending for chunky, animated look
@@ -12,7 +12,7 @@ import CoreGraphics
 
 /// Posterize decay - reduces colors and blends with time
 /// Creates a chunky, animated poster look with temporal variation
-struct PosterizeDecayHook: Effect {
+struct PosterizeDecayEffect: Effect {
     var name: String { "Posterize Decay" }
 
     static var parameterSpecs: [String: ParameterSpec] {
@@ -38,7 +38,7 @@ struct PosterizeDecayHook: Effect {
         self.init(levels: p.float("levels"), decayAmount: p.float("decayAmount"))
     }
     
-    func willRenderFrame(_ context: inout RenderContext, image: CIImage) -> CIImage {
+    func apply(to image: CIImage, context: inout RenderContext) -> CIImage {
         // Posterize current frame
         guard let posterize = CIFilter(name: "CIColorPosterize") else {
             return image
