@@ -943,13 +943,25 @@ struct ParameterSliderRow: View {
                         // File picker parameter
                         filePicker(currentValue: s, spec: spec!)
                     } else {
-                        stringTextField(currentValue: s)
+                        TextField("", text: Binding(
+                            get: { s },
+                            set: { onChange(.string($0)) }
+                        ))
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 11, design: .monospaced))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(isTextFieldFocused ? Color.white : Color.white.opacity(0.1))
+                        .foregroundColor(isTextFieldFocused ? .black : .white)
+                        .cornerRadius(3)
+                        .focused($isTextFieldFocused)
                     }
                 }
             }
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 4)
+        .focusable()  // Makes this row participate in Tab navigation
         .onAppear {
             initializeValues()
         }
@@ -1057,33 +1069,6 @@ struct ParameterSliderRow: View {
             .cornerRadius(3)
             .focused($isTextFieldFocused)
             .onSubmit(onSubmit)
-    }
-
-    /// String text field for general string parameters
-    /// Uses local @State to prevent focus loss during typing
-    @ViewBuilder
-    private func stringTextField(currentValue: String) -> some View {
-        // Use textValue state which is synced from currentValue on appear/change
-        TextField("", text: Binding(
-            get: { textValue.isEmpty && !isTextFieldFocused ? currentValue : textValue },
-            set: { newValue in
-                textValue = newValue
-                onChange(.string(newValue))
-            }
-        ))
-        .textFieldStyle(.plain)
-        .font(.system(size: 11, design: .monospaced))
-        .padding(.horizontal, 4)
-        .padding(.vertical, 2)
-        .background(isTextFieldFocused ? Color.white : Color.white.opacity(0.1))
-        .foregroundColor(isTextFieldFocused ? .black : .white)
-        .cornerRadius(3)
-        .focused($isTextFieldFocused)
-        .onAppear {
-            if textValue.isEmpty {
-                textValue = currentValue
-            }
-        }
     }
 
     /// Choice picker for enum-style parameters

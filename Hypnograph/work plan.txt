@@ -1,3 +1,4 @@
+
 - Bug: Text entry for editing Effect Chain name etc is not working in Effect modal again
 - Rename current TextOverlayEffect to TextSourceEffect
 - Make a new TextOverlayEffect which allows me to type things and send them directly to the text overlay live! This text overlap allows me to select an exact font size and position on screen (by alignment: center, top, bottom, left, right, center, top-left, top-right, bottom-left, bottom-right)
@@ -8,8 +9,8 @@
 
 ----
 
-- Move Divine into its own product, and focus it on ios usage possibly? It just looks at a single Apple Photos directory or file directory for simplicity
-
 - Let's add the timeline editor for sources. Pretty much a basic timeline editor with the ablity to specify the Basic effects properties for each layer including Blend Mode.
 
+- Performance Mode has a "Video Mixer" that specifies the transition between hypnograms. Right now it's a simple crossfade but we should make it configurable with 2-3 options. We would add these 2-4 options as push buttons in the header of the Preview panel in the main window.
 
+- Move Divine into its own product, and focus it on ios usage possibly? It just looks at a single Apple Photos directory or file directory for simplicity
