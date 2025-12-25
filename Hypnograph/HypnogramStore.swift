@@ -8,6 +8,9 @@
 
 import Foundation
 import Combine
+import CoreImage
+import AppKit
+import UniformTypeIdentifiers
 
 /// Metadata for a saved hypnogram
 struct HypnogramEntry: Identifiable, Codable {
@@ -15,16 +18,26 @@ struct HypnogramEntry: Identifiable, Codable {
     let name: String
     let createdAt: Date
     let recipeURL: URL
-    var thumbnailURL: URL?
+    var thumbnailBase64: String?
     var isFavorite: Bool
 
-    init(name: String, recipeURL: URL, thumbnailURL: URL? = nil, isFavorite: Bool = false) {
+    init(name: String, recipeURL: URL, thumbnailBase64: String? = nil, isFavorite: Bool = false) {
         self.id = UUID()
         self.name = name
         self.createdAt = Date()
         self.recipeURL = recipeURL
-        self.thumbnailURL = thumbnailURL
+        self.thumbnailBase64 = thumbnailBase64
         self.isFavorite = isFavorite
+    }
+
+    /// Decode thumbnail from base64 to NSImage
+    var thumbnailImage: NSImage? {
+        guard let base64 = thumbnailBase64,
+              let data = Data(base64Encoded: base64),
+              let image = NSImage(data: data) else {
+            return nil
+        }
+        return image
     }
 }
 
@@ -59,20 +72,23 @@ final class HypnogramStore: ObservableObject {
     ///   - recipe: The recipe to save
     ///   - name: Display name for the entry
     ///   - isFavorite: Whether to mark as favorite
-    ///   - thumbnailURL: Optional thumbnail image URL
+    ///   - thumbnailImage: Optional CIImage to use as thumbnail (will be resized and encoded)
     /// - Returns: The created entry, or nil if save failed
     @discardableResult
-    func add(recipe: HypnogramRecipe, name: String? = nil, isFavorite: Bool = false, thumbnailURL: URL? = nil) -> HypnogramEntry? {
+    func add(recipe: HypnogramRecipe, name: String? = nil, isFavorite: Bool = false, thumbnailImage: CIImage? = nil) -> HypnogramEntry? {
         // Save recipe to file
         guard let recipeURL = RecipeStore.save(recipe) else {
             return nil
         }
 
+        // Generate thumbnail base64 if image provided
+        let thumbnailBase64 = thumbnailImage.flatMap { Self.encodeThumbnail($0) }
+
         let displayName = name ?? "Hypnogram \(DateFormatter.shortDateTime.string(from: Date()))"
         let entry = HypnogramEntry(
             name: displayName,
             recipeURL: recipeURL,
-            thumbnailURL: thumbnailURL,
+            thumbnailBase64: thumbnailBase64,
             isFavorite: isFavorite
         )
 
@@ -88,7 +104,7 @@ final class HypnogramStore: ObservableObject {
         let entry = HypnogramEntry(
             name: displayName,
             recipeURL: url,
-            thumbnailURL: nil,
+            thumbnailBase64: nil,
             isFavorite: isFavorite
         )
 
@@ -141,6 +157,39 @@ final class HypnogramStore: ObservableObject {
         } catch {
             print("⚠️ HypnogramStore: Failed to save: \(error)")
         }
+    }
+
+    // MARK: - Thumbnail Encoding
+
+    /// Thumbnail size (square, small for base64 efficiency)
+    private static let thumbnailSize: CGFloat = 120
+
+    /// Encode a CIImage to base64 JPEG string (resized to thumbnail size)
+    static func encodeThumbnail(_ image: CIImage) -> String? {
+        let context = CIContext(options: [.workingColorSpace: CGColorSpaceCreateDeviceRGB()])
+
+        // Scale down to thumbnail size
+        let extent = image.extent
+        let scale = thumbnailSize / max(extent.width, extent.height)
+        let scaledImage = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        let scaledExtent = scaledImage.extent
+
+        // Create CGImage
+        guard let cgImage = context.createCGImage(scaledImage, from: scaledExtent) else {
+            print("⚠️ HypnogramStore: Failed to create CGImage for thumbnail")
+            return nil
+        }
+
+        // Convert to JPEG data
+        let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: scaledExtent.width, height: scaledExtent.height))
+        guard let tiffData = nsImage.tiffRepresentation,
+              let bitmapRep = NSBitmapImageRep(data: tiffData),
+              let jpegData = bitmapRep.representation(using: .jpeg, properties: [.compressionFactor: 0.7]) else {
+            print("⚠️ HypnogramStore: Failed to encode thumbnail as JPEG")
+            return nil
+        }
+
+        return jpegData.base64EncodedString()
     }
 }
 

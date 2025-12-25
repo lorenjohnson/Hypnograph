@@ -847,9 +847,13 @@ final class Dream: ObservableObject {
             return
         }
 
+        // Grab current frame for thumbnail
+        let thumbnailImage = activePlayer.effectManager.frameBuffer.currentFrame
+
         if let entry = HypnogramStore.shared.add(
             recipe: activePlayer.recipe,
-            isFavorite: true
+            isFavorite: true,
+            thumbnailImage: thumbnailImage
         ) {
             AppNotifications.show("Added to favorites: \(entry.name)", flash: true)
         }
