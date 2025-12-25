@@ -129,6 +129,23 @@ struct PlayerSettingsView: View {
                 .pickerStyle(.menu)
                 .frame(width: 120)
             }
+
+            // Effect Buffer Mode
+            HStack {
+                Text("Effect Buffer:")
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.8))
+
+                Spacer()
+
+                Picker("", selection: $player.effectBufferMode) {
+                    ForEach(EffectBufferMode.allCases, id: \.self) { mode in
+                        Text(mode.localizedName).tag(mode)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(width: 160)
+            }
         }
         .foregroundColor(.white)
         .padding(16)

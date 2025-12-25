@@ -44,13 +44,20 @@ final class DreamPlayerState: ObservableObject {
     @Published var outputResolution: OutputResolution
     
     // MARK: - Generation Settings (for "New" operations)
-    
+
     /// Max sources when generating new random hypnograms
     @Published var maxSourcesForNew: Int
-    
+
     /// Target duration for new hypnograms
     @Published var targetDuration: CMTime
-    
+
+    /// Effect buffer behavior: play immediately vs wait for buffer to fill
+    @Published var effectBufferMode: EffectBufferMode = .playWithEffect {
+        didSet {
+            effectManager.effectBufferMode = effectBufferMode
+        }
+    }
+
     // MARK: - UI State
 
     @Published var isHUDVisible: Bool = false
