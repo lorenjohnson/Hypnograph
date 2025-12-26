@@ -278,10 +278,11 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
                 playRate: playRate
             )
 
+            // Always evict old frames to limit memory (don't wait for cache hit)
+            sharedSlowMoPipeline.evictOldFrames(beforeIndex: outputFrameCounter - 10)
+
             // Check if we have a pre-computed frame ready
             if let interpolated = sharedSlowMoPipeline.getFrame(outputFrameIndex: outputFrameCounter) {
-                // Evict old frames to limit memory
-                sharedSlowMoPipeline.evictOldFrames(beforeIndex: outputFrameCounter - 10)
                 return CIImage(cvPixelBuffer: interpolated)
             }
         }
