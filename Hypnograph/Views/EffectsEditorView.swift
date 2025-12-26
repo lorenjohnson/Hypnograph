@@ -487,8 +487,6 @@ struct EffectsEditorView: View {
                 }
             }
         }
-        // Expose text editing state to Commands via FocusedValues
-        .focusedValue(\.isTyping, isTextEditing)
     }
 
     // MARK: - Navigation Helpers
@@ -563,8 +561,83 @@ struct EffectsEditorView: View {
                     }
                 }
             }
+
+            Spacer()
+
+            // Library action buttons
+            effectLibraryButtons
         }
         .padding(.trailing, 12)
+    }
+
+    // MARK: - Effect Library Buttons
+
+    /// Buttons for saving and loading effect chain libraries
+    private var effectLibraryButtons: some View {
+        HStack(spacing: 8) {
+            // Autosave toggle
+            Button(action: {
+                state.settings.effectsAutosave.toggle()
+                state.saveSettings()
+                // If turning autosave on and there are unsaved changes, save now
+                if state.settings.effectsAutosave && EffectConfigLoader.hasUnsavedChanges {
+                    EffectConfigLoader.save()
+                    AppNotifications.show("Effects saved", flash: true, duration: 1.0)
+                }
+            }) {
+                Image(systemName: state.settings.effectsAutosave ? "arrow.triangle.2.circlepath" : "arrow.triangle.2.circlepath.circle")
+                    .font(.system(size: 16))
+                    .foregroundColor(state.settings.effectsAutosave ? .green : .orange)
+            }
+            .buttonStyle(.plain)
+            .hudTooltip(state.settings.effectsAutosave ? "Autosave ON" : "Autosave OFF (⌘⇧E to save)")
+
+            // Save to Default Library
+            Button(action: saveToDefaultLibrary) {
+                Image(systemName: "square.and.arrow.down.fill")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white.opacity(0.7))
+            }
+            .buttonStyle(.plain)
+            .hudTooltip("Save to Default Effects Library")
+
+            // Save to File (with file picker)
+            Button(action: saveLibraryToFile) {
+                Image(systemName: "square.and.arrow.down")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white.opacity(0.7))
+            }
+            .buttonStyle(.plain)
+            .hudTooltip("Save Effects Library to File")
+
+            // Load from File (JSON or Hypnogram)
+            Button(action: loadLibraryFromFile) {
+                Image(systemName: "folder")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white.opacity(0.7))
+            }
+            .buttonStyle(.plain)
+            .hudTooltip("Load Effects from File (.json or .hypnogram)")
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
+    }
+
+    // MARK: - Library Actions
+
+    /// Save current effect chains to the default library location
+    private func saveToDefaultLibrary() {
+        EffectChainLibraryActions.saveToDefaultLibrary()
+    }
+
+    /// Save current effect chains to a user-chosen file
+    private func saveLibraryToFile() {
+        EffectChainLibraryActions.saveLibraryToFile()
+    }
+
+    /// Load effect chain library from a file (.json or .hypnogram)
+    private func loadLibraryFromFile() {
+        EffectChainLibraryActions.loadLibraryFromFile()
     }
 
     /// Background color for selected effect row
@@ -639,7 +712,8 @@ struct EffectsEditorView: View {
                         viewModel.updateEffectName(effectIndex: selectedEffectIndex, name: newName)
                         // Update recipe immediately (for UI refresh - no debounce needed)
                         dream.activeEffectManager.updateChainName(for: currentLayer, name: newName)
-                    }
+                    },
+                    focusedField: $focusedField
                 )
 
                 Divider()
@@ -971,8 +1045,6 @@ struct ParameterSliderRow: View {
             // Re-initialize when value changes externally
             initializeFromValue(newValue)
         }
-        // Expose text field focus to Commands via FocusedValues
-        .focusedValue(\.isTyping, isTextFieldFocused)
     }
 
     private func initializeValues() {
@@ -1265,10 +1337,10 @@ struct ParameterSliderRow: View {
 struct EditableEffectNameHeader: View {
     let name: String
     let onSave: (String) -> Void
+    var focusedField: FocusState<EffectsEditorField?>.Binding
 
     @State private var isEditing = false
     @State private var editedName: String = ""
-    @FocusState private var isTextFieldFocused: Bool
 
     var body: some View {
         HStack {
@@ -1277,18 +1349,16 @@ struct EditableEffectNameHeader: View {
                     .textFieldStyle(.roundedBorder)
                     .font(.system(.headline, design: .monospaced))
                     .foregroundColor(.black)
-                    .focused($isTextFieldFocused)
+                    .focused(focusedField, equals: .effectName)
                     .onSubmit {
                         saveAndClose()
                     }
                     .onAppear {
                         // Auto-focus the text field when editing starts
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            isTextFieldFocused = true
+                            focusedField.wrappedValue = .effectName
                         }
                     }
-                    // Expose text field focus to Commands via FocusedValues
-                    .focusedValue(\.isTyping, isTextFieldFocused)
 
                 Button(action: saveAndClose) {
                     Image(systemName: "checkmark.circle.fill")
@@ -1298,6 +1368,7 @@ struct EditableEffectNameHeader: View {
 
                 Button(action: {
                     isEditing = false
+                    focusedField.wrappedValue = nil
                 }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.red.opacity(0.7))
@@ -1331,6 +1402,7 @@ struct EditableEffectNameHeader: View {
             onSave(trimmed)
         }
         isEditing = false
+        focusedField.wrappedValue = nil
     }
 }
 

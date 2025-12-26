@@ -82,7 +82,7 @@ enum EffectRegistry {
         "LUTEffect": LUTEffect.self,
 
         // Source Effects
-        "TextSourceEffect": TextSourceEffect.self
+        "TextOverlayEffect": TextOverlayEffect.self
     ]
 
     /// Create an Effect from a type name and parameters using init?(params:)

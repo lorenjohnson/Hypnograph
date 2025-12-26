@@ -65,6 +65,7 @@ struct HUDView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var dream: Dream
     @ObservedObject var divine: Divine
+    @ObservedObject private var tooltipManager = TooltipManager.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -99,6 +100,25 @@ struct HUDView: View {
                     }
                 }
             }
+
+            // Tooltip display section
+            if let tooltip = tooltipManager.currentTooltip {
+                Spacer().frame(height: 12)
+
+                Divider()
+                    .background(Color.white.opacity(0.3))
+
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 10))
+                        .foregroundColor(.cyan)
+                    Text(tooltip)
+                        .font(.caption)
+                        .foregroundColor(.cyan)
+                        .lineLimit(2)
+                }
+                .padding(.top, 4)
+            }
         }
         .foregroundColor(.white)
         .padding(12)
@@ -106,6 +126,7 @@ struct HUDView: View {
             Color.black.opacity(0.6)
                 .cornerRadius(10)
         )
+        .fixedSize()
     }
 
     private func hudItems() -> [HUDItem] {

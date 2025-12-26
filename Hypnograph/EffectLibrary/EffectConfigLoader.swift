@@ -40,6 +40,24 @@ enum EffectConfigLoader {
     /// Track which effects need re-instantiation
     private static var pendingInstantiations: Set<Int> = []
 
+    // MARK: - Dirty Tracking
+
+    /// Whether there are unsaved changes to effect configurations
+    private(set) static var hasUnsavedChanges: Bool = false
+
+    /// Callback when autosave setting is needed (injected by app)
+    static var isAutosaveEnabled: (() -> Bool)?
+
+    /// Mark config as dirty (has unsaved changes)
+    private static func markDirty() {
+        hasUnsavedChanges = true
+    }
+
+    /// Mark config as clean (just saved or loaded)
+    static func markClean() {
+        hasUnsavedChanges = false
+    }
+
     /// Update an effect's parameter value - updates cache immediately, defers instantiation and save
     static func updateParameter(effectIndex: Int, effectDefIndex: Int?, paramName: String, value: AnyCodableValue) {
         guard var config = cachedConfig else { return }
@@ -66,7 +84,7 @@ enum EffectConfigLoader {
         cachedConfig = config
 
         // Schedule debounced instantiation and save
-        scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
+        scheduleInstantiationAndSave(effectIndex: effectIndex)
     }
 
     /// Add an effect to an effect chain
@@ -86,7 +104,7 @@ enum EffectConfigLoader {
         config = EffectLibraryConfig(version: config.version, effects: effects)
         cachedConfig = config
 
-        scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
+        scheduleInstantiationAndSave(effectIndex: effectIndex)
     }
 
     /// Remove an effect from an effect chain
@@ -104,7 +122,7 @@ enum EffectConfigLoader {
         config = EffectLibraryConfig(version: config.version, effects: effects)
         cachedConfig = config
 
-        scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
+        scheduleInstantiationAndSave(effectIndex: effectIndex)
     }
 
     /// Create a new effect chain with BasicEffect as default
@@ -136,7 +154,7 @@ enum EffectConfigLoader {
         // Reload EffectChainLibrary.all to include the new chain
         reloadEffectAll()
 
-        scheduleSave(config)
+        scheduleSave()
         return effects.count - 1
     }
 
@@ -153,7 +171,7 @@ enum EffectConfigLoader {
         // Reload EffectChainLibrary.all to reflect the deletion
         reloadEffectAll()
 
-        scheduleSave(config)
+        scheduleSave()
     }
 
     /// Reload EffectChainLibrary.all from cached config
@@ -183,7 +201,7 @@ enum EffectConfigLoader {
         config = EffectLibraryConfig(version: config.version, effects: effects)
         cachedConfig = config
 
-        scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
+        scheduleInstantiationAndSave(effectIndex: effectIndex)
     }
 
     /// Toggle effect enabled state (stored as _enabled param)
@@ -214,7 +232,7 @@ enum EffectConfigLoader {
         config = EffectLibraryConfig(version: config.version, effects: effects)
         cachedConfig = config
 
-        scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
+        scheduleInstantiationAndSave(effectIndex: effectIndex)
     }
 
     /// Update the name of an effect chain
@@ -230,22 +248,28 @@ enum EffectConfigLoader {
         config = EffectLibraryConfig(version: config.version, effects: effects)
         cachedConfig = config
 
-        scheduleInstantiationAndSave(effectIndex: effectIndex, config: config)
+        scheduleInstantiationAndSave(effectIndex: effectIndex)
     }
 
     /// Schedule debounced instantiation AND file save
     /// Batches multiple rapid changes into a single heavy operation
-    private static func scheduleInstantiationAndSave(effectIndex: Int, config: EffectLibraryConfig) {
+    private static func scheduleInstantiationAndSave(effectIndex: Int) {
+        // Mark as dirty immediately
+        markDirty()
+
         // Track which chains need re-instantiation
         pendingInstantiations.insert(effectIndex)
 
         // Cancel any pending timer
         saveTimer?.invalidate()
 
-        // Schedule combined instantiation + save after debounce interval
+        // Schedule combined instantiation + conditional save after debounce interval
         saveTimer = Timer.scheduledTimer(withTimeInterval: saveDebounceInterval, repeats: false) { _ in
             performPendingInstantiations()
-            saveToFile(config)
+            // Only save to file if autosave is enabled
+            if isAutosaveEnabled?() ?? true {
+                save()
+            }
         }
     }
 
@@ -265,33 +289,48 @@ enum EffectConfigLoader {
     }
 
     /// Schedule a debounced save to file (for operations that don't need re-instantiation)
-    private static func scheduleSave(_ config: EffectLibraryConfig) {
+    private static func scheduleSave() {
+        // Mark as dirty immediately
+        markDirty()
+
         // Cancel any pending save
         saveTimer?.invalidate()
 
-        // Schedule new save after debounce interval
+        // Schedule new save after debounce interval (only if autosave enabled)
         saveTimer = Timer.scheduledTimer(withTimeInterval: saveDebounceInterval, repeats: false) { _ in
-            saveToFile(config)
+            if isAutosaveEnabled?() ?? true {
+                save()
+            }
         }
     }
 
-    /// Save config to file asynchronously
-    /// Always saves to userConfigURL (Application Support), regardless of where we loaded from
-    private static func saveToFile(_ config: EffectLibraryConfig) {
-        let url = userConfigURL
+    /// Save current config to file
+    /// - Parameter url: Optional URL to save to. If nil, saves to default userConfigURL
+    /// - Note: Only marks clean when saving to the default location
+    static func save(to url: URL? = nil) {
+        guard let config = cachedConfig else { return }
+        let targetURL = url ?? userConfigURL
+        let isDefaultLocation = (url == nil)
 
         // Save on background queue
         DispatchQueue.global(qos: .utility).async {
             do {
                 // Ensure directory exists
-                let directory = url.deletingLastPathComponent()
+                let directory = targetURL.deletingLastPathComponent()
                 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
                 let encoder = JSONEncoder()
                 encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
                 let data = try encoder.encode(config)
-                try data.write(to: url)
-                print("✓ Effects saved to \(url.path)")
+                try data.write(to: targetURL)
+                print("✓ Effects saved to \(targetURL.path)")
+
+                // Only mark as clean when saving to the default location
+                if isDefaultLocation {
+                    DispatchQueue.main.async {
+                        markClean()
+                    }
+                }
             } catch {
                 print("⚠️ EffectConfigLoader: Failed to save config: \(error)")
             }
@@ -346,6 +385,9 @@ enum EffectConfigLoader {
 
     /// Load effect chains and cache for editing
     private static func loadChainsWithDefinitions() -> LoadResult {
+        // Mark clean when loading fresh data
+        markClean()
+
         // Try user config first
         if FileManager.default.fileExists(atPath: userConfigURL.path) {
             do {
