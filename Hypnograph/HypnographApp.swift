@@ -36,6 +36,9 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     weak var mainWindow: NSWindow?
     var gameControllerManager: GameControllerManager?
 
+    /// Callback to check if autosave is enabled (injected by app)
+    var isAutosaveEnabled: (() -> Bool)?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Request notification authorization
         AppNotifications.requestAuthorization()
@@ -53,6 +56,36 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // Check for unsaved effect changes when autosave is disabled
+        let autosaveOn = isAutosaveEnabled?() ?? true
+        if !autosaveOn && EffectConfigLoader.hasUnsavedChanges {
+            // Show save prompt
+            let alert = NSAlert()
+            alert.messageText = "Save Effect Changes?"
+            alert.informativeText = "You have unsaved effect parameter changes. Would you like to save them before quitting?"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Save")
+            alert.addButton(withTitle: "Don't Save")
+            alert.addButton(withTitle: "Cancel")
+
+            let response = alert.runModal()
+            switch response {
+            case .alertFirstButtonReturn:
+                // Save
+                EffectConfigLoader.save()
+                print("Hypnograph: Saved effect changes before quit")
+            case .alertSecondButtonReturn:
+                // Don't save - continue to quit
+                break
+            case .alertThirdButtonReturn:
+                // Cancel - don't quit
+                return .terminateCancel
+            default:
+                break
+            }
+        }
+
+        // Check for active render jobs
         guard let queue = renderQueue else {
             return .terminateNow
         }
@@ -161,6 +194,14 @@ struct HypnographApp: App {
 
                 appDelegate.renderQueue = renderQueue
 
+                // Wire up autosave callbacks
+                appDelegate.isAutosaveEnabled = { [weak state] in
+                    state?.settings.effectsAutosave ?? true
+                }
+                EffectConfigLoader.isAutosaveEnabled = { [weak state] in
+                    state?.settings.effectsAutosave ?? true
+                }
+
                 // Initialize game controller support
                 appDelegate.gameControllerManager = GameControllerManager(
                     state: state,
@@ -196,8 +237,8 @@ struct AppCommands: Commands {
     private weak var appDelegate: HypnographAppDelegate?
     private let cycleModuleHandler: () -> Void
 
-    /// Whether a text field is currently focused (from FocusedValues)
-    @FocusedValue(\.isTyping) private var isTyping
+    /// Whether a text field is currently being edited (from TextFieldFocusMonitor)
+    private var isTyping: Bool { state.textFieldFocusMonitor.isEditing }
 
     init(
         state: HypnographState,
@@ -230,7 +271,7 @@ struct AppCommands: Commands {
                 dream.activePlayer.isPaused.toggle()
             }
             .keyboardShortcut(.space, modifiers: [])
-            .disabled(isTyping == true)
+            .disabled(isTyping)
 
             Button("Restart Session (Reload Settings)") {
                 switch state.currentModuleType {
@@ -277,7 +318,7 @@ struct AppCommands: Commands {
                 dream.saveSnapshot()
             }
             .keyboardShortcut("s", modifiers: [])
-            .disabled(isTyping == true)
+            .disabled(isTyping)
 
             Divider()
 
@@ -313,7 +354,7 @@ struct AppCommands: Commands {
                 cycleModuleHandler()
             }
             .keyboardShortcut("~", modifiers: [])
-            .disabled(isTyping == true)
+            .disabled(isTyping)
 
             Divider()
 
@@ -322,7 +363,7 @@ struct AppCommands: Commands {
                 set: { _ in state.toggleWatchMode() }
             ))
             .keyboardShortcut("w", modifiers: [])
-            .disabled(isTyping == true)
+            .disabled(isTyping)
 
             Divider()
 
@@ -332,18 +373,18 @@ struct AppCommands: Commands {
                     set: { dream.activePlayer.isHUDVisible = $0 }
                 ))
                 .keyboardShortcut("i", modifiers: [])
-                .disabled(isTyping == true)
+                .disabled(isTyping)
 
                 Toggle("Effects Editor", isOn: Binding(
                     get: { dream.activePlayer.isEffectsEditorVisible },
                     set: { dream.activePlayer.isEffectsEditorVisible = $0 }
                 ))
                 .keyboardShortcut("e", modifiers: [])
-                .disabled(isTyping == true)
+                .disabled(isTyping)
 
                 Toggle("Hypnogram List", isOn: $state.isHypnogramListVisible)
                     .keyboardShortcut("h", modifiers: [])
-                    .disabled(isTyping == true || state.currentModuleType != .dream)
+                    .disabled(isTyping || state.currentModuleType != .dream)
             }
 
             Divider()
@@ -355,7 +396,7 @@ struct AppCommands: Commands {
                     set: { dream.activePlayer.isPlayerSettingsVisible = $0 }
                 ))
                 .keyboardShortcut("p", modifiers: [])
-                .disabled(isTyping == true || state.currentModuleType != .dream)
+                .disabled(isTyping || state.currentModuleType != .dream)
             }
 
             Divider()
@@ -363,7 +404,7 @@ struct AppCommands: Commands {
             Section("Performance Display") {
                 Toggle("Performance Preview", isOn: $state.isPerformancePreviewVisible)
                     .keyboardShortcut("l", modifiers: [])
-                    .disabled(isTyping == true)
+                    .disabled(isTyping)
 
                 Toggle("Live Mode", isOn: Binding(
                     get: { dream.isLiveMode },

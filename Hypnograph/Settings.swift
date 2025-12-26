@@ -148,6 +148,9 @@ struct Settings: Codable {
     /// Whether the effects list column is collapsed in the Effects Editor
     var effectsListCollapsed: Bool
 
+    /// Whether effect parameter changes are automatically saved to disk
+    var effectsAutosave: Bool
+
     // Single source of truth for defaults
     private enum Defaults {
         static let watch: Bool = true
@@ -164,6 +167,7 @@ struct Settings: Codable {
         static let displayResolution: OutputResolution = .p1080
         static let sourceMediaTypes: Set<SourceMediaType> = [.images, .videos]
         static let effectsListCollapsed: Bool = false
+        static let effectsAutosave: Bool = true
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -171,7 +175,7 @@ struct Settings: Codable {
         case watch, maxSourcesForNew, outputSeconds, snapshotsFolder
         case activeLibrariesPerMode
         case aspectRatio, outputResolution, displayResolution, sourceMediaTypes
-        case effectsListCollapsed
+        case effectsListCollapsed, effectsAutosave
     }
 
     init(
@@ -186,7 +190,8 @@ struct Settings: Codable {
         outputResolution: OutputResolution = Defaults.outputResolution,
         displayResolution: OutputResolution = Defaults.displayResolution,
         sourceMediaTypes: Set<SourceMediaType> = Defaults.sourceMediaTypes,
-        effectsListCollapsed: Bool = Defaults.effectsListCollapsed
+        effectsListCollapsed: Bool = Defaults.effectsListCollapsed,
+        effectsAutosave: Bool = Defaults.effectsAutosave
     ) {
         self.outputFolder = outputFolder
         self.sourceFolders = sourceFolders
@@ -200,6 +205,7 @@ struct Settings: Codable {
         self.displayResolution = displayResolution
         self.sourceMediaTypes = sourceMediaTypes
         self.effectsListCollapsed = effectsListCollapsed
+        self.effectsAutosave = effectsAutosave
     }
 
     init(from decoder: Decoder) throws {
@@ -232,6 +238,8 @@ struct Settings: Codable {
         }
         effectsListCollapsed = try c.decodeIfPresent(Bool.self, forKey: .effectsListCollapsed)
             ?? Defaults.effectsListCollapsed
+        effectsAutosave = try c.decodeIfPresent(Bool.self, forKey: .effectsAutosave)
+            ?? Defaults.effectsAutosave
     }
 
     func encode(to encoder: Encoder) throws {
@@ -248,6 +256,7 @@ struct Settings: Codable {
         try c.encode(displayResolution, forKey: .displayResolution)
         try c.encode(Array(sourceMediaTypes), forKey: .sourceMediaTypes)
         try c.encode(effectsListCollapsed, forKey: .effectsListCollapsed)
+        try c.encode(effectsAutosave, forKey: .effectsAutosave)
     }
 
     // MARK: - Derived values
