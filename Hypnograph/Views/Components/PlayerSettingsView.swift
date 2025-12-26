@@ -102,7 +102,6 @@ struct PlayerSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header
             HStack {
                 Text("Player Settings")
                     .font(.system(.title3, design: .monospaced))
@@ -123,7 +122,20 @@ struct PlayerSettingsView: View {
             Divider()
                 .background(Color.white.opacity(0.3))
 
-            // Max Sources
+            HStack {
+                Text("Watch Mode:")
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.8))
+
+                Spacer()
+
+                Toggle("", isOn: Binding(
+                    get: { dream.state.settings.watch },
+                    set: { _ in dream.state.toggleWatchMode() }
+                ))
+                .toggleStyle(.switch)
+            }
+
             HStack {
                 Text("Max Sources:")
                     .font(.system(.body, design: .monospaced))
@@ -140,7 +152,10 @@ struct PlayerSettingsView: View {
                     .labelsHidden()
             }
 
-            // Target Duration
+            Divider()
+                .background(Color.white.opacity(0.3))
+                .padding(.vertical, 4)
+
             HStack {
                 Text("Duration:")
                     .font(.system(.body, design: .monospaced))
@@ -161,7 +176,6 @@ struct PlayerSettingsView: View {
                 .labelsHidden()
             }
 
-            // Play Rate
             HStack {
                 Text("Play Rate:")
                     .font(.system(.body, design: .monospaced))
@@ -178,7 +192,6 @@ struct PlayerSettingsView: View {
                     .frame(width: 100)
             }
 
-            // Aspect Ratio picker
             HStack {
                 Text("Aspect Ratio:")
                     .font(.system(.body, design: .monospaced))
@@ -195,7 +208,6 @@ struct PlayerSettingsView: View {
                 .frame(width: 120)
             }
 
-            // Audio section header
             Divider()
                 .background(Color.white.opacity(0.3))
                 .padding(.vertical, 4)
@@ -225,4 +237,6 @@ struct PlayerSettingsView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
+
+
 

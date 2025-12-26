@@ -250,10 +250,10 @@ final class HypnographState: ObservableObject {
             savePerModuleLibrariesToSettings()
         }
 
-        // Trigger the module to regenerate content with new library
+        // Don't regenerate content immediately when changing sources
+        // Just reset the watch timer and let it fire naturally
         watchTimer?.invalidate()
         watchTimer = nil
-        onWatchTimerFired?()
         if settings.watch {
             scheduleWatchTimer()
         }

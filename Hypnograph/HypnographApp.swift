@@ -180,6 +180,7 @@ struct HypnographApp: App {
                 dream: dream,
                 divine: divine
             )
+            .accentColor(.blue)
             .onAppear {
                 DispatchQueue.main.async {
                     guard let window = NSApp.windows.first else { return }
