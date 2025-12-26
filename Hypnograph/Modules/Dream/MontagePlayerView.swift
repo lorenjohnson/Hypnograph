@@ -14,6 +14,9 @@ struct MontagePlayerView: NSViewRepresentable {
     let isPaused: Bool
     let effectsChangeCounter: Int
     let effectManager: EffectManager
+    let isMuted: Bool
+    let volume: Float
+    var audioRouter: AudioRouter? = nil
 
     class Coordinator {
         var player: AVPlayer?
@@ -29,6 +32,8 @@ struct MontagePlayerView: NSViewRepresentable {
         var currentPlayerItem: AVPlayerItem?
         var currentVideoComposition: AVVideoComposition?
         var playRate: Float = 0.8
+        var lastMutedState: Bool?
+        var lastVolume: Float?
     }
 
     func makeCoordinator() -> Coordinator {
@@ -128,6 +133,9 @@ struct MontagePlayerView: NSViewRepresentable {
                             ])
                         }
 
+                        // TODO: Audio routing to specific device will be implemented later
+                        // For now, audio plays through system default when not muted
+
                         let player: AVPlayer
                         if let existing = c.player {
                             player = existing
@@ -142,6 +150,7 @@ struct MontagePlayerView: NSViewRepresentable {
                         playerView.player = player
 
                         c.lastPauseState = nil
+                        c.lastMutedState = nil  // Reset so mute state is reapplied
                         c.lastEffectsCounter = effectsChangeCounter
 
                         self.setupMontageObservers(player: player, item: buildResult.playerItem, coordinator: c)
@@ -192,6 +201,21 @@ struct MontagePlayerView: NSViewRepresentable {
                     player.seek(to: currentTime, toleranceBefore: .zero, toleranceAfter: .zero)
                 }
             }
+        }
+
+        // Apply mute state
+        // TODO: When audio routing is implemented, route to specific device
+        // For now, just mute/unmute based on whether an audio device is selected
+        if c.lastMutedState != isMuted {
+            c.player?.isMuted = isMuted
+            c.lastMutedState = isMuted
+            print("🔊 MontagePlayerView: Player muted = \(isMuted)")
+        }
+
+        // Apply volume
+        if c.lastVolume != volume {
+            c.player?.volume = volume
+            c.lastVolume = volume
         }
     }
 

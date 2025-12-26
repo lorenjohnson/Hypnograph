@@ -24,30 +24,35 @@ struct SequencePlayerView: NSViewRepresentable {
     let isPaused: Bool
     let effectsChangeCounter: Int
     let effectManager: EffectManager
+    let isMuted: Bool
+    let volume: Float
+    var audioRouter: AudioRouter? = nil
 
     /// Optional callback when source index changes (for syncing Performance Display)
     var onSourceIndexChanged: ((Int) -> Void)?
-    
+
     class Coordinator: NSObject {
         // Current display mode
         enum DisplayMode {
             case video(AVPlayer)
             case stillImage(MetalImageView)
         }
-        
+
         var displayMode: DisplayMode?
         var containerView: NSView?
         var playerView: AVPlayerView?
         var metalView: MetalImageView?
-        
+
         // Timing
         var durationTimer: Timer?
         var currentSourceStartTime: Date?
-        
+
         // State tracking
         var lastSourceIndex: Int = -1
         var lastPauseState: Bool?
         var lastEffectsCounter: Int?
+        var lastMutedState: Bool?
+        var lastVolume: Float?
         var lastRecipeIdentity: String?
 
         // End observer for video
@@ -133,6 +138,24 @@ struct SequencePlayerView: NSViewRepresentable {
             if isPaused {
                 forceRedraw(coordinator: c)
             }
+        }
+
+        // Apply mute state to video player
+        // TODO: Audio routing to specific device will be implemented later
+        if c.lastMutedState != isMuted {
+            if case .video(let player) = c.displayMode {
+                player.isMuted = isMuted
+            }
+            c.lastMutedState = isMuted
+            print("🔊 SequencePlayerView: Player muted = \(isMuted)")
+        }
+
+        // Apply volume to video player
+        if c.lastVolume != volume {
+            if case .video(let player) = c.displayMode {
+                player.volume = volume
+            }
+            c.lastVolume = volume
         }
     }
     
@@ -349,6 +372,9 @@ struct SequencePlayerView: NSViewRepresentable {
                 let playerItem = AVPlayerItem(asset: composition)
                 playerItem.videoComposition = videoComposition
 
+                // TODO: Audio routing to specific device will be implemented later
+                // For now, audio plays through system default when not muted
+
                 let player: AVPlayer
                 if let existingPlayer = playerView.player {
                     existingPlayer.replaceCurrentItem(with: playerItem)
@@ -359,6 +385,7 @@ struct SequencePlayerView: NSViewRepresentable {
                 }
 
                 c.displayMode = .video(player)
+                c.lastMutedState = nil  // Reset so mute state is reapplied
 
                 // Setup end observer for clip duration
                 self.setupClipEndObserver(player: player, clipEndTime: source.clip.duration, coordinator: c)

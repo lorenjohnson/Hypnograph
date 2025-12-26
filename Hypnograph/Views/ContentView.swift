@@ -86,6 +86,7 @@ struct ContentView: View {
             if state.currentModuleType == .dream && dream.activePlayer.isPlayerSettingsVisible {
                 PlayerSettingsView(
                     player: dream.activePlayer,
+                    dream: dream,
                     onClose: {
                         dream.activePlayer.isPlayerSettingsVisible = false
                     }
