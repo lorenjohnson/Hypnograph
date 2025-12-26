@@ -132,7 +132,7 @@ struct HypnographApp: App {
             print("⚠️ Failed to load settings, using emergency fallback: \(error)")
             settings = Settings(
                 outputFolder: "~/Movies/Hypnograph/Renders",
-                sourceFolders: SourceFoldersParam.array([
+                sources: SourcesParam.array([
                     "~/Movies/Hypnograph/sources"
                 ]),
                 watch: true,

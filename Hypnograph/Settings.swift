@@ -28,9 +28,9 @@ struct SourceLibraryInfo: Identifiable {
     }
 }
 
-// MARK: - Polymorphic sourceFolders
+// MARK: - Polymorphic sources
 
-enum SourceFoldersParam: Codable {
+enum SourcesParam: Codable {
     case array([String])
     case dictionary([String: [String]])
 
@@ -53,7 +53,7 @@ enum SourceFoldersParam: Codable {
         }
 
         throw DecodingError.typeMismatch(
-            SourceFoldersParam.self,
+            SourcesParam.self,
             .init(codingPath: decoder.codingPath,
                   debugDescription: "Expected [String], [String: String], or [String: [String]]")
         )
@@ -124,7 +124,7 @@ enum OutputResolution: Int, Codable, CaseIterable {
 struct Settings: Codable {
     // Required in JSON
     var outputFolder: String
-    var sourceFolders: SourceFoldersParam
+    var sources: SourcesParam
 
     // Optional in JSON (but non-optional in code)
     var watch: Bool
@@ -158,7 +158,7 @@ struct Settings: Codable {
         static let outputFolder = "~/Movies/Hypnograph/renders"
         static let snapshotsFolder = "~/Movies/Hypnograph/snapshots"
         static let outputSeconds = 60
-        static let sourceFolders = SourceFoldersParam.array([
+        static let sources = SourcesParam.array([
             "~/Movies/Hypnograph/sources"
         ])
         static let activeLibrariesPerMode: [String: [String]] = [:]
@@ -171,7 +171,7 @@ struct Settings: Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case outputFolder, sourceFolders
+        case outputFolder, sources
         case watch, maxSourcesForNew, outputSeconds, snapshotsFolder
         case activeLibrariesPerMode
         case aspectRatio, outputResolution, displayResolution, sourceMediaTypes
@@ -180,7 +180,7 @@ struct Settings: Codable {
 
     init(
         outputFolder: String,
-        sourceFolders: SourceFoldersParam,
+        sources: SourcesParam,
         watch: Bool = Defaults.watch,
         maxSourcesForNew: Int = Defaults.maxSourcesForNew,
         outputSeconds: Int = Defaults.outputSeconds,
@@ -194,7 +194,7 @@ struct Settings: Codable {
         effectsAutosave: Bool = Defaults.effectsAutosave
     ) {
         self.outputFolder = outputFolder
-        self.sourceFolders = sourceFolders
+        self.sources = sources
         self.watch = watch
         self.maxSourcesForNew = maxSourcesForNew
         self.outputSeconds = outputSeconds
@@ -213,8 +213,8 @@ struct Settings: Codable {
 
         outputFolder   = try c.decodeIfPresent(String.self, forKey: .outputFolder)
             ?? Defaults.outputFolder
-        sourceFolders  = try c.decodeIfPresent(SourceFoldersParam.self, forKey: .sourceFolders)
-            ?? Defaults.sourceFolders
+        sources  = try c.decodeIfPresent(SourcesParam.self, forKey: .sources)
+            ?? Defaults.sources
         watch = try c.decodeIfPresent(Bool.self, forKey: .watch)
             ?? Defaults.watch
         maxSourcesForNew = try c.decodeIfPresent(Int.self, forKey: .maxSourcesForNew)
@@ -245,7 +245,7 @@ struct Settings: Codable {
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(outputFolder, forKey: .outputFolder)
-        try c.encode(sourceFolders, forKey: .sourceFolders)
+        try c.encode(sources, forKey: .sources)
         try c.encode(watch, forKey: .watch)
         try c.encode(maxSourcesForNew, forKey: .maxSourcesForNew)
         try c.encode(outputSeconds, forKey: .outputSeconds)
@@ -280,18 +280,18 @@ struct Settings: Codable {
     }
 
     var sourceLibraries: [String: [String]] {
-        sourceFolders.libraries.mapValues { folders in
+        sources.libraries.mapValues { folders in
             folders.map { ($0 as NSString).expandingTildeInPath }
         }
     }
 
     var sourceLibraryOrder: [String] {
-        let order = sourceFolders.libraryOrder
+        let order = sources.libraryOrder
         return order.isEmpty ? [defaultSourceLibraryKey] : order
     }
 
     var defaultSourceLibraryKey: String {
-        sourceFolders.defaultKey
+        sources.defaultKey
     }
 
     func folders(forLibraries keys: Set<String>) -> [String] {
@@ -313,3 +313,5 @@ enum SettingsLoader {
         return try JSONDecoder().decode(Settings.self, from: data)
     }
 }
+
+

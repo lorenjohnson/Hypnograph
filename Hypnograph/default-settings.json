@@ -1,6 +1,6 @@
 {
   "watch": true,
-  "sourceFolders": {
+  "sources": {
     "default": "~/Movies/Hypnograph/sources",
     "From Finder Helper": []
   },
