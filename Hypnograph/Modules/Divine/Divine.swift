@@ -97,28 +97,35 @@ final class Divine: ObservableObject {
 
     // MARK: - Menus
 
+    /// Whether a text field is being edited - disables single-key shortcuts
+    private var isTyping: Bool { state.textFieldFocusMonitor.isEditing }
+
     @ViewBuilder
     func compositionMenu() -> some View {
         Button("Add Card") { [self] in
             addCard()
         }
         .keyboardShortcut(".", modifiers: [])
+        .disabled(isTyping)
 
         Button("> Next Card") { [self] in
             nextCard()
         }
         .keyboardShortcut(.rightArrow, modifiers: [])
+        .disabled(isTyping)
 
         Button("< Previous Card") { [self] in
             previousCard()
         }
         .keyboardShortcut(.leftArrow, modifiers: [])
+        .disabled(isTyping)
 
-        ForEach(0..<9, id: \.self) { idx in
-            Button("Select Card \(idx + 1)") { [self] in
+        ForEach(0..<9, id: \.self) { [self] idx in
+            Button("Select Card \(idx + 1)") {
                 selectCard(index: idx)
             }
             .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
+            .disabled(isTyping)
         }
 
         Divider()
@@ -159,6 +166,7 @@ final class Divine: ObservableObject {
             deleteCurrentCard()
         }
         .keyboardShortcut(.delete, modifiers: [])
+        .disabled(isTyping)
 
         Button("Add to Exclude List") { [self] in
             excludeCurrentCardSource()

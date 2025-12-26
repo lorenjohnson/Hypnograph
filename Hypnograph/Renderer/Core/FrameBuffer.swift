@@ -74,6 +74,11 @@ final class FrameBuffer {
             return
         }
 
+        // Flush old pool before creating new one to release memory
+        if let oldPool = pixelBufferPool {
+            CVPixelBufferPoolFlush(oldPool, [.excessBuffers])
+        }
+
         bufferWidth = width
         bufferHeight = height
 
@@ -225,9 +230,16 @@ final class FrameBuffer {
         writeIndex = 0
         validCount = 0
         lastTime = nil
+
         // Flush texture cache to release any cached Metal textures from old pixel buffers
         Self.flushTextureCache()
-        print("🔄 FrameBuffer: cleared \(previousCount) frames, flushed texture cache")
+
+        // Flush excess buffers from pool to reclaim memory
+        if let pool = pixelBufferPool {
+            CVPixelBufferPoolFlush(pool, [.excessBuffers])
+        }
+
+        print("🔄 FrameBuffer: cleared \(previousCount) frames, flushed texture cache and pool")
     }
 
     // MARK: - Capacity Control

@@ -43,6 +43,9 @@ final class HypnographState: ObservableObject {
 
     // MARK: - Global UI State
 
+    /// Monitors text field editing - used to disable single-key shortcuts while typing
+    let textFieldFocusMonitor = TextFieldFocusMonitor()
+
     /// Performance preview panel visibility (sidebar panel)
     @Published var isPerformancePreviewVisible: Bool = false
 

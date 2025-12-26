@@ -33,6 +33,9 @@ final class SlowMoPipeline: @unchecked Sendable {
     /// Max concurrent VT operations (VTFrameProcessor is heavy)
     private let maxConcurrentOperations = 2
 
+    /// Maximum frames to keep in cache to limit memory
+    private let maxCacheSize = 30
+
     // MARK: - State (protected by actor-like serial queue)
 
     /// Serial queue for all state access
@@ -88,7 +91,7 @@ final class SlowMoPipeline: @unchecked Sendable {
             self.sourceFrames[prevSourceIndex] = prevBuffer
             self.sourceFrames[currentSourceIndex] = currentBuffer
 
-            // Clean old source frames (keep last 4)
+            // Clean old source frames (keep last 4 for interpolation flexibility)
             let minIndex = max(0, prevSourceIndex - 2)
             self.sourceFrames = self.sourceFrames.filter { $0.key >= minIndex }
 
@@ -119,7 +122,22 @@ final class SlowMoPipeline: @unchecked Sendable {
     /// Evict old frames from cache to limit memory
     func evictOldFrames(beforeIndex: Int) {
         stateQueue.async { [weak self] in
-            self?.frameCache = self?.frameCache.filter { $0.key >= beforeIndex } ?? [:]
+            guard let self = self else { return }
+
+            // Remove frames before the specified index
+            self.frameCache = self.frameCache.filter { $0.key >= beforeIndex }
+
+            // Also enforce maximum cache size as a safety limit
+            if self.frameCache.count > self.maxCacheSize {
+                let sortedKeys = self.frameCache.keys.sorted()
+                let keysToRemove = sortedKeys.prefix(self.frameCache.count - self.maxCacheSize)
+                for key in keysToRemove {
+                    self.frameCache.removeValue(forKey: key)
+                }
+            }
+
+            // Note: sourceFrames are cleaned in submitSourceFrames (keep last 4)
+            // Don't clean here to avoid race with in-flight requests
         }
     }
 
