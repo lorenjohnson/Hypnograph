@@ -57,6 +57,36 @@ final class Dream: ObservableObject {
 
     var isLiveMode: Bool { performanceMode == .live }
 
+    // MARK: - Audio Output
+
+    /// Audio router for Preview player
+    let previewAudioRouter = AudioRouter()
+
+    /// Audio router for Performance player
+    let performanceAudioRouter = AudioRouter()
+
+    /// Selected audio output device for Preview player (nil = None/muted)
+    @Published var previewAudioDevice: AudioOutputDevice? = nil
+
+    /// Selected audio output device for Performance player (nil = None/muted)
+    @Published var performanceAudioDevice: AudioOutputDevice? = nil
+
+    /// Volume level for Preview audio (0.0 to 1.0)
+    @Published var previewVolume: Float = 1.0
+
+    /// Volume level for Performance audio (0.0 to 1.0)
+    @Published var performanceVolume: Float = 1.0
+
+    /// Whether preview audio is enabled
+    var isPreviewAudioEnabled: Bool {
+        previewAudioDevice != nil && previewAudioDevice != .none
+    }
+
+    /// Whether performance audio is enabled
+    var isPerformanceAudioEnabled: Bool {
+        performanceAudioDevice != nil && performanceAudioDevice != .none
+    }
+
     /// Returns the active EffectManager based on performance mode
     /// In live mode, effects go to the performance display; in edit mode, to the active player
     var activeEffectManager: EffectManager {
@@ -94,6 +124,48 @@ final class Dream: ObservableObject {
 
         // Generate initial content for montage player
         generateNewHypnogram(for: montagePlayer)
+
+        // Observe audio device changes for Preview
+        $previewAudioDevice
+            .sink { [weak self] device in
+                guard let self = self else { return }
+                self.previewAudioRouter.setOutputDevice(device)
+                print("🔊 Preview audio: \(device?.name ?? "None")")
+            }
+            .store(in: &playerSubscriptions)
+
+        // Observe audio device changes for Performance
+        $performanceAudioDevice
+            .sink { [weak self] device in
+                guard let self = self else { return }
+                self.performanceAudioRouter.setOutputDevice(device)
+                // Also update performance display mute state and router
+                let muted = device == nil || device == .none
+                self.performanceDisplay.setMuted(muted)
+                self.performanceDisplay.setAudioRouter(muted ? nil : self.performanceAudioRouter)
+                print("🔊 Performance audio: \(device?.name ?? "None")")
+            }
+            .store(in: &playerSubscriptions)
+
+        // Observe volume changes for Preview
+        $previewVolume
+            .sink { [weak self] volume in
+                self?.previewAudioRouter.volume = volume
+            }
+            .store(in: &playerSubscriptions)
+
+        // Observe volume changes for Performance
+        $performanceVolume
+            .sink { [weak self] volume in
+                guard let self = self else { return }
+                self.performanceAudioRouter.volume = volume
+                self.performanceDisplay.setVolume(volume)
+            }
+            .store(in: &playerSubscriptions)
+
+        // Apply initial audio settings (both start muted/None)
+        performanceDisplay.setMuted(true)
+        performanceDisplay.setAudioRouter(nil)
     }
 
     /// Create a renderer on-demand with current settings (aspect ratio + resolution)
@@ -304,12 +376,16 @@ final class Dream: ObservableObject {
 
     // MARK: - Menus
 
+    /// Whether a text field is being edited - disables single-key shortcuts
+    private var isTyping: Bool { state.textFieldFocusMonitor.isEditing }
+
     @ViewBuilder
     func compositionMenu() -> some View {
         Button("Toggle Mode (Montage/Sequence)") { [self] in
             toggleMode()
         }
         .keyboardShortcut("`", modifiers: [])
+        .disabled(isTyping)
 
         Divider()
 
@@ -334,11 +410,13 @@ final class Dream: ObservableObject {
                 nextSource()
             }
             .keyboardShortcut(.rightArrow, modifiers: [])
+            .disabled(isTyping)
 
             Button("< Previous Source") { [self] in
                 previousSource()
             }
             .keyboardShortcut(.leftArrow, modifiers: [])
+            .disabled(isTyping)
         } else {
             Button("> Next Source") { [self] in
                 nextSource()
@@ -349,17 +427,19 @@ final class Dream: ObservableObject {
             }
         }
 
-        ForEach(0..<9, id: \.self) { idx in
-            Button("Select Source \(idx + 1)") { [self] in
+        ForEach(0..<9, id: \.self) { [self] idx in
+            Button("Select Source \(idx + 1)") {
                 selectSource(index: idx)
             }
             .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
+            .disabled(isTyping)
         }
 
         Button("Select Global Layer") { [self] in
             activePlayer.selectGlobalLayer()
         }
         .keyboardShortcut("0", modifiers: [])
+        .disabled(isTyping)
 
         Divider()
 
@@ -367,6 +447,7 @@ final class Dream: ObservableObject {
             clearCurrentLayerEffect()
         }
         .keyboardShortcut("c", modifiers: [])
+        .disabled(isTyping)
 
         Button("Clear All Effects") { [self] in
             clearAllEffects()
@@ -379,6 +460,7 @@ final class Dream: ObservableObject {
             new()
         }
         .keyboardShortcut("n", modifiers: [])
+        .disabled(isTyping)
 
         Divider()
 
@@ -427,6 +509,8 @@ final class Dream: ObservableObject {
         // Also update in settings for persistence
         state.settings.aspectRatio = ratio
         state.saveSettings()
+        // Notify Dream to update menus
+        objectWillChange.send()
     }
 
     func setOutputResolution(_ resolution: OutputResolution) {
@@ -434,6 +518,8 @@ final class Dream: ObservableObject {
         // Also update in settings for persistence
         state.settings.outputResolution = resolution
         state.saveSettings()
+        // Notify Dream to update menus
+        objectWillChange.send()
     }
 
     @ViewBuilder
@@ -442,6 +528,7 @@ final class Dream: ObservableObject {
             cycleBlendMode()
         }
         .keyboardShortcut("m", modifiers: [])
+        .disabled(isTyping)
 
         Divider()
 
@@ -449,11 +536,13 @@ final class Dream: ObservableObject {
             rotateCurrentSource()
         }
         .keyboardShortcut("r", modifiers: [])
+        .disabled(isTyping)
 
         Button("New Random Clip") { [self] in
             newRandomClip()
         }
         .keyboardShortcut(".", modifiers: [])
+        .disabled(isTyping)
 
         Divider()
 
@@ -461,6 +550,7 @@ final class Dream: ObservableObject {
             deleteCurrentSource()
         }
         .keyboardShortcut(.delete, modifiers: [])
+        .disabled(isTyping)
 
         Button("Add to Exclude List") { [self] in
             excludeCurrentSource()
@@ -495,6 +585,9 @@ final class Dream: ObservableObject {
         let recipe = makeDisplayRecipe()
         let player = activePlayer
 
+        // Preview is muted if no audio device selected
+        let previewMuted = !isPreviewAudioEnabled
+
         switch mode {
         case .montage:
             return AnyView(
@@ -512,7 +605,10 @@ final class Dream: ObservableObject {
                     ),
                     isPaused: player.isPaused,
                     effectsChangeCounter: player.effectsChangeCounter,
-                    effectManager: player.effectManager
+                    effectManager: player.effectManager,
+                    isMuted: previewMuted,
+                    volume: previewVolume,
+                    audioRouter: previewAudioRouter
                 )
                 .id("dream-montage-\(player.aspectRatio.displayString)-\(player.outputResolution.rawValue)-\(player.targetDuration.seconds)-\(recipe.playRate)")
             )
@@ -530,6 +626,9 @@ final class Dream: ObservableObject {
                     isPaused: player.isPaused,
                     effectsChangeCounter: player.effectsChangeCounter,
                     effectManager: player.effectManager,
+                    isMuted: previewMuted,
+                    volume: previewVolume,
+                    audioRouter: previewAudioRouter,
                     onSourceIndexChanged: { [weak self] newIndex in
                         // Sync Performance Display when auto-advancing in sequence mode
                         self?.performanceDisplay.seekToSource(index: newIndex)
