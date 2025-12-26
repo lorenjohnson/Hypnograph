@@ -52,8 +52,8 @@ case "$cmd" in
       short="${full/#$HOME/~}"
 
       jq --arg p "$short" '
-        .sourceFolders = (
-          (.sourceFolders // []) + [$p]
+        .sources = (
+          (.sources // []) + [$p]
           | unique
         )
       ' "$SETTINGS" > "$tmp"
@@ -73,11 +73,11 @@ case "$cmd" in
     echo "Backed up settings to: $backup"
 
     jq '
-      .sourceFolders = []
+      .sources = []
     ' "$SETTINGS" > "$tmp"
 
     mv "$tmp" "$SETTINGS"
-    echo "Cleared sourceFolders in settings."
+    echo "Cleared sources in settings."
     ;;
 
   uploads)

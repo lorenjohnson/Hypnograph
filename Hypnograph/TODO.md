@@ -1,8 +1,6 @@
 General:
 
-- Adding a sourceFolder without any files in it causes a crash
-- Add a defatul
-- Rename sourceFolders simple to sources or "sources"? to reflect better that both files and folders are supported
+- ~~Rename sourceFolders simple to sources or "sources"? to reflect better that both files and folders are supported~~ ✅ COMPLETED
 - OutputHeight / width are currently ignored from settings file (see existing "Task Difficulty ranking" chat for this)
 - General Mode domain diligence. I think there is some duplication here that can still be sorted through.
 - Saving in Sequence Mode isn't working
@@ -41,3 +39,7 @@ Initial TestFlight Release:
   - Create TestFlight group
   - Submit for review
   - Release to TestFlight
+
+
+
+

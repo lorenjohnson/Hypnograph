@@ -50,14 +50,14 @@ final class MediaSourcesLibrary {
     /// Total number of assets in this library
     var assetCount: Int { sourceIndex.count }
 
-    init(sourceFolders: [String], allowedMediaTypes: Set<SourceMediaType> = [.images, .videos]) {
+    init(sources: [String], allowedMediaTypes: Set<SourceMediaType> = [.images, .videos]) {
         self.allowedMediaTypes = allowedMediaTypes
-        if sourceFolders.isEmpty {
+        if sources.isEmpty {
             // No explicit sources → default to Photos library videos
             loadFilesFromPhotosLibrary()
         } else {
             // Explicit folders / files → current behavior
-            loadFiles(from: sourceFolders)
+            loadFiles(from: sources)
         }
         applyExclusions()
     }
@@ -73,7 +73,7 @@ final class MediaSourcesLibrary {
     /// Set `includeAllPhotos` to true to include all items from Photos library
     /// Use `customPhotosAssetIds` to include specific Photos assets by local identifier
     init(
-        sourceFolders: [String],
+        sources: [String],
         photosAlbums: [PHAssetCollection] = [],
         includeAllPhotos: Bool = false,
         customPhotosAssetIds: [String] = [],
@@ -81,9 +81,9 @@ final class MediaSourcesLibrary {
     ) {
         self.allowedMediaTypes = allowedMediaTypes
 
-        // Load folder sources
-        if !sourceFolders.isEmpty {
-            loadFiles(from: sourceFolders)
+        /// Load folder/file sources
+        if !sources.isEmpty {
+            loadFiles(from: sources)
             applyExclusions()
         }
 

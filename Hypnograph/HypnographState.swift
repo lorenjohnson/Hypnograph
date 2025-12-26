@@ -98,9 +98,9 @@ final class HypnographState: ObservableObject {
         self.currentLibraryKey = defaultKey
         self.activeLibraryKeys = activeKeys
         self.library = MediaSourcesLibrary(
-            sourceFolders: settings.folders(forLibraries: activeKeys),
-            allowedMediaTypes: settings.sourceMediaTypes
-        )
+      sources: settings.folders(forLibraries: activeKeys),
+      allowedMediaTypes: settings.sourceMediaTypes
+    )
 
         // Initialize aspect ratio and resolution from settings
         self.aspectRatio = settings.aspectRatio
@@ -237,9 +237,9 @@ final class HypnographState: ObservableObject {
 
         // Create combined library
         library = MediaSourcesLibrary(
-            sourceFolders: folderPaths,
-            photosAlbums: photosAlbums,
-            includeAllPhotos: includeAllPhotos,
+      sources: folderPaths,
+      photosAlbums: photosAlbums,
+      includeAllPhotos: includeAllPhotos,
             customPhotosAssetIds: includeCustomSelection ? customPhotosAssetIds : [],
             allowedMediaTypes: settings.sourceMediaTypes
         )
@@ -330,9 +330,9 @@ final class HypnographState: ObservableObject {
 
             // Count assets by creating a temporary library
             let tempLibrary = MediaSourcesLibrary(
-                sourceFolders: paths,
-                allowedMediaTypes: settings.sourceMediaTypes
-            )
+      sources: paths,
+      allowedMediaTypes: settings.sourceMediaTypes
+    )
             let count = tempLibrary.assetCount
 
             // Only include non-empty libraries
