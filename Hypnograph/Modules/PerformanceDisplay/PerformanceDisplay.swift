@@ -51,7 +51,6 @@ final class PerformanceDisplay: ObservableObject {
     func setMuted(_ muted: Bool) {
         isMuted = muted
         let targetVolume: Float = muted ? 0.0 : currentVolume
-        print("🔊 PerformanceDisplay: setMuted(\(muted)) → volume \(targetVolume)")
 
         // Apply immediately if on main thread, otherwise dispatch
         if Thread.isMainThread {
@@ -65,18 +64,9 @@ final class PerformanceDisplay: ObservableObject {
     }
 
     private func applyVolume(_ volume: Float) {
-        guard let content = contentView else {
-            print("🔊 PerformanceDisplay: No content view, volume will apply on player creation")
-            return
-        }
-        if let playerA = content.playerA.player {
-            playerA.volume = volume
-            print("🔊 PerformanceDisplay: Player A volume = \(volume)")
-        }
-        if let playerB = content.playerB.player {
-            playerB.volume = volume
-            print("🔊 PerformanceDisplay: Player B volume = \(volume)")
-        }
+        guard let content = contentView else { return }
+        content.playerA.player?.volume = volume
+        content.playerB.player?.volume = volume
     }
 
     // MARK: - Audio Routing
@@ -144,11 +134,9 @@ final class PerformanceDisplay: ObservableObject {
     /// Render engine for building compositions
     private let renderEngine = RenderEngine()
 
-    /// AVPlayerLoopers for seamless gapless looping (must keep strong reference)
-    /// Using AVPlayerLooper with AVQueuePlayer is Apple's recommended approach
-    /// for stable, gapless audio/video looping
-    private var looperA: AVPlayerLooper?
-    private var looperB: AVPlayerLooper?
+    /// End observers for notification-based looping (matching preview behavior)
+    private var endObserverA: Any?
+    private var endObserverB: Any?
 
     /// This display's own EffectManager - independent of preview
     let effectManager = EffectManager()
@@ -517,74 +505,34 @@ final class PerformanceDisplay: ObservableObject {
         let nextPlayerView = nextSlot == .a ? content.playerA : content.playerB
         let currentPlayerView = activePlayer == .a ? content.playerA : content.playerB
 
-        // Apply audio routing if router is active
-        if let router = audioRouter, router.isActive {
-            if let audioMix = router.createAudioMix(for: buildResult.playerItem) {
-                buildResult.playerItem.audioMix = audioMix
-            }
-        }
+        // Audio routing disabled - may cause spurious sounds
+        // if let router = audioRouter, router.isActive { ... }
 
-        // Configure player item for stable performance playback
-        // Request a larger forward buffer to prevent audio jitter
-        buildResult.playerItem.preferredForwardBufferDuration = 10.0  // 10 seconds of buffer
-
-        // Use high-quality audio time pitch algorithm for non-1.0 playback rates
-        // TimeDomain is best for music/general audio when slowing down
+        // Match preview exactly - only set audioTimePitchAlgorithm
         buildResult.playerItem.audioTimePitchAlgorithm = .timeDomain
 
-        // Setup player using AVQueuePlayer for seamless looping with AVPlayerLooper
-        let queuePlayer: AVQueuePlayer
-        if let existing = nextPlayerView.player as? AVQueuePlayer {
-            // Disable old looper before replacing item
-            if nextSlot == .a {
-                looperA?.disableLooping()
-                looperA = nil
-            } else {
-                looperB?.disableLooping()
-                looperB = nil
-            }
-            existing.removeAllItems()
-            queuePlayer = existing
+        // Setup player - simple AVPlayer like preview
+        let player: AVPlayer
+        if let existing = nextPlayerView.player {
+            existing.replaceCurrentItem(with: buildResult.playerItem)
+            player = existing
         } else {
-            queuePlayer = AVQueuePlayer()
-            // Configure player for performance stability - wait for buffer before playing
-            queuePlayer.automaticallyWaitsToMinimizeStalling = true
-            nextPlayerView.player = queuePlayer
+            player = AVPlayer(playerItem: buildResult.playerItem)
+            nextPlayerView.player = player
         }
 
-        // Create AVPlayerLooper for seamless gapless looping
-        let looper = AVPlayerLooper(player: queuePlayer, templateItem: buildResult.playerItem)
+        // Setup notification-based looping (same as preview)
+        setupLooping(for: player, item: buildResult.playerItem, slot: nextSlot)
 
-        // Store strong reference to looper (required - looper is disabled if deallocated)
-        if nextSlot == .a {
-            looperA = looper
-        } else {
-            looperB = looper
-        }
-
-        // Apply volume (use volume for reliable audio control)
-        queuePlayer.volume = isMuted ? 0.0 : currentVolume
-        print("🔊 PerformanceDisplay: New player volume = \(queuePlayer.volume)")
-
-        // Wait for player to be ready before starting playback
-        nextPlayerView.alphaValue = 0
-
-        // Give the looper a moment to set up, then wait for the actual current item
-        try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms for looper setup
-        if let currentItem = queuePlayer.currentItem {
-            await waitForPlayerReady(item: currentItem)
-        } else {
-            await waitForPlayerReady(item: buildResult.playerItem)
-        }
-
-        // Immediately mute the outgoing player to reduce audio contention during crossfade
-        // Audio crossfades sound bad anyway - clean cut is better
+        // Mute old player immediately before starting new one
         currentPlayerView.player?.volume = 0.0
 
-        // Start playback at recipe's play rate
-        queuePlayer.playImmediately(atRate: currentRecipe?.playRate ?? 0.8)
+        // Start new player with correct volume
+        player.volume = isMuted ? 0.0 : currentVolume
+        nextPlayerView.alphaValue = 0
+        player.playImmediately(atRate: currentRecipe?.playRate ?? 0.8)
 
-        // Crossfade animation (visual only - audio already switched)
+        // Visual crossfade
         let duration = crossfadeDuration
 
         NSAnimationContext.runAnimationGroup { context in
@@ -595,17 +543,13 @@ final class PerformanceDisplay: ObservableObject {
         } completionHandler: { [weak self] in
             guard let self = self else { return }
 
-            // Stop old player completely to free resources
+            // Stop old player completely and release composition
             currentPlayerView.player?.pause()
+            currentPlayerView.player?.replaceCurrentItem(with: nil)
 
             // Update active slot
             self.activePlayer = nextSlot
             self.isTransitioning = false
-
-            // Ensure volume is correct on now-active player
-            let targetVolume: Float = self.isMuted ? 0.0 : self.currentVolume
-            self.activeAVPlayer?.volume = targetVolume
-            print("🔊 PerformanceDisplay: After crossfade, active player volume = \(targetVolume)")
 
             print("✅ PerformanceDisplay: Crossfade complete")
         }
@@ -613,37 +557,34 @@ final class PerformanceDisplay: ObservableObject {
         print("🎬 PerformanceDisplay: Crossfading over \(duration)s")
     }
 
-    /// Wait for player item to be ready and buffered, with timeout
-    /// Returns when playbackLikelyToKeepUp or after timeout (whichever comes first)
-    private func waitForPlayerReady(item: AVPlayerItem, timeout: TimeInterval = 5.0) async {
-        let startTime = Date()
-
-        // First wait for readyToPlay status
-        while item.status != .readyToPlay && item.status != .failed {
-            if Date().timeIntervalSince(startTime) > timeout {
-                print("⚠️ PerformanceDisplay: Timed out waiting for player ready, proceeding anyway")
-                return
-            }
-            try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms polling
+    /// Setup notification-based looping for a player (same approach as preview)
+    private func setupLooping(for player: AVPlayer, item: AVPlayerItem, slot: PlayerSlot) {
+        // Remove old observer for this slot
+        if slot == .a, let observer = endObserverA {
+            NotificationCenter.default.removeObserver(observer)
+            endObserverA = nil
+        } else if slot == .b, let observer = endObserverB {
+            NotificationCenter.default.removeObserver(observer)
+            endObserverB = nil
         }
 
-        if item.status == .failed {
-            print("⚠️ PerformanceDisplay: Player item failed: \(item.error?.localizedDescription ?? "unknown")")
-            return
+        // Add new observer
+        let playRate = currentRecipe?.playRate ?? 0.8
+        let observer = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: item,
+            queue: .main
+        ) { [weak player] _ in
+            player?.seek(to: .zero)
+            player?.playImmediately(atRate: playRate)
         }
 
-        // Now wait for buffer to fill (playbackLikelyToKeepUp)
-        // This is key for preventing audio stuttering
-        while !item.isPlaybackLikelyToKeepUp && !item.isPlaybackBufferFull {
-            if Date().timeIntervalSince(startTime) > timeout {
-                print("⚠️ PerformanceDisplay: Timed out waiting for buffer, proceeding anyway")
-                return
-            }
-            try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms polling
+        // Store observer reference
+        if slot == .a {
+            endObserverA = observer
+        } else {
+            endObserverB = observer
         }
-
-        let elapsed = Date().timeIntervalSince(startTime)
-        print("🎬 PerformanceDisplay: Player ready and buffered after \(String(format: "%.2f", elapsed))s")
     }
 }
 
