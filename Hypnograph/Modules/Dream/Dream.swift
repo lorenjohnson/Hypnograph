@@ -579,8 +579,8 @@ final class Dream: ObservableObject {
         let recipe = makeDisplayRecipe()
         let player = activePlayer
 
-        // Preview is muted if no audio device selected
-        let previewMuted = !isPreviewAudioEnabled
+        // Preview is muted if no audio device selected OR volume is 0
+        let previewMuted = !isPreviewAudioEnabled || previewVolume == 0
 
         switch mode {
         case .montage:

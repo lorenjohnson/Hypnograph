@@ -149,8 +149,17 @@ struct MontagePlayerView: NSViewRepresentable {
                         c.currentVideoComposition = buildResult.playerItem.videoComposition
                         playerView.player = player
 
+                        // Apply mute and volume immediately, before playback starts.
+                        // This is necessary because player setup runs in an async Task that
+                        // completes after updateNSView() returns. SwiftUI won't call updateNSView
+                        // again until a binding changes, so the mute/volume logic at the end of
+                        // updateNSView would miss the window before playImmediately() is called.
+                        player.isMuted = self.isMuted
+                        player.volume = self.volume
+                        c.lastMutedState = self.isMuted
+                        c.lastVolume = self.volume
+
                         c.lastPauseState = nil
-                        c.lastMutedState = nil  // Reset so mute state is reapplied
                         c.lastEffectsCounter = effectsChangeCounter
 
                         self.setupMontageObservers(player: player, item: buildResult.playerItem, coordinator: c)
