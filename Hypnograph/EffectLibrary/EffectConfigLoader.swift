@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import CryptoKit
 
 /// Loads effect configurations from JSON files
 enum EffectConfigLoader {
@@ -40,22 +41,37 @@ enum EffectConfigLoader {
     /// Track which effects need re-instantiation
     private static var pendingInstantiations: Set<Int> = []
 
-    // MARK: - Dirty Tracking
+    // MARK: - Dirty Tracking (Hash-based)
 
-    /// Whether there are unsaved changes to effect configurations
-    private(set) static var hasUnsavedChanges: Bool = false
+    /// Hash of the last saved/loaded config - used to detect unsaved changes
+    private static var savedConfigHash: String?
 
     /// Callback when autosave setting is needed (injected by app)
     static var isAutosaveEnabled: (() -> Bool)?
 
-    /// Mark config as dirty (has unsaved changes)
-    private static func markDirty() {
-        hasUnsavedChanges = true
+    /// Whether there are unsaved changes (compares current config hash to saved hash)
+    static var hasUnsavedChanges: Bool {
+        guard let config = cachedConfig else { return false }
+        guard let savedHash = savedConfigHash else { return true }
+        return computeConfigHash(config) != savedHash
     }
 
-    /// Mark config as clean (just saved or loaded)
-    static func markClean() {
-        hasUnsavedChanges = false
+    /// Compute SHA-256 hash of a config for dirty comparison
+    private static func computeConfigHash(_ config: EffectLibraryConfig) -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]  // Ensure consistent ordering
+        guard let data = try? encoder.encode(config) else { return "" }
+        let digest = SHA256.hash(data: data)
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Update saved hash to match current config (call after save or load)
+    private static func updateSavedHash() {
+        guard let config = cachedConfig else {
+            savedConfigHash = nil
+            return
+        }
+        savedConfigHash = computeConfigHash(config)
     }
 
     /// Update an effect's parameter value - updates cache immediately, defers instantiation and save
@@ -254,9 +270,6 @@ enum EffectConfigLoader {
     /// Schedule debounced instantiation AND file save
     /// Batches multiple rapid changes into a single heavy operation
     private static func scheduleInstantiationAndSave(effectIndex: Int) {
-        // Mark as dirty immediately
-        markDirty()
-
         // Track which chains need re-instantiation
         pendingInstantiations.insert(effectIndex)
 
@@ -290,9 +303,6 @@ enum EffectConfigLoader {
 
     /// Schedule a debounced save to file (for operations that don't need re-instantiation)
     private static func scheduleSave() {
-        // Mark as dirty immediately
-        markDirty()
-
         // Cancel any pending save
         saveTimer?.invalidate()
 
@@ -325,10 +335,10 @@ enum EffectConfigLoader {
                 try data.write(to: targetURL)
                 print("✓ Effects saved to \(targetURL.path)")
 
-                // Only mark as clean when saving to the default location
+                // Update saved hash when saving to the default location
                 if isDefaultLocation {
                     DispatchQueue.main.async {
-                        markClean()
+                        updateSavedHash()
                     }
                 }
             } catch {
@@ -385,15 +395,13 @@ enum EffectConfigLoader {
 
     /// Load effect chains and cache for editing
     private static func loadChainsWithDefinitions() -> LoadResult {
-        // Mark clean when loading fresh data
-        markClean()
-
         // Try user config first
         if FileManager.default.fileExists(atPath: userConfigURL.path) {
             do {
                 let config = try loadConfigFromURL(userConfigURL)
                 cachedConfig = config
                 cachedConfigURL = userConfigURL
+                updateSavedHash()
                 return LoadResult(chains: config.effects, source: .user, error: nil)
             } catch {
                 print("⚠️ EffectConfigLoader: Failed to load user config: \(error)")
@@ -408,6 +416,7 @@ enum EffectConfigLoader {
                 let config = try loadConfigFromURL(sourceURL)
                 cachedConfig = config
                 cachedConfigURL = sourceURL
+                updateSavedHash()
                 return LoadResult(chains: config.effects, source: .bundled, error: nil)
             } catch {
                 print("⚠️ EffectConfigLoader: Failed to load source config: \(error)")
@@ -422,6 +431,7 @@ enum EffectConfigLoader {
                 let config = try loadConfigFromURL(bundledURL)
                 cachedConfig = config
                 cachedConfigURL = bundledURL
+                updateSavedHash()
                 return LoadResult(chains: config.effects, source: .bundled, error: nil)
             } catch {
                 print("⚠️ EffectConfigLoader: Failed to load bundled config: \(error)")
@@ -433,6 +443,7 @@ enum EffectConfigLoader {
         print("ℹ️ EffectConfigLoader: Using hardcoded defaults")
         cachedConfig = nil
         cachedConfigURL = nil
+        updateSavedHash()
         return LoadResult(chains: hardcodedDefaults, source: .hardcoded, error: nil)
     }
 
