@@ -288,58 +288,29 @@ final class TextOverlayEffect: Effect {
         return nil
     }
 
-    /// Split text content into display blocks, preferring natural break points
-    /// Priority: double newlines (paragraphs) > single newlines > sentence endings (. ! ?)
+    /// Split text content into display blocks at line breaks or periods
     private func splitIntoBlocks(_ content: String) -> [String] {
-        // First try splitting by double newlines (paragraphs)
-        let paragraphs = content.components(separatedBy: "\n\n")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-
-        // If we got reasonable paragraph chunks, use them
-        if paragraphs.count > 1 {
-            // Further split very long paragraphs at sentence boundaries
-            return paragraphs.flatMap { splitLongBlock($0) }
-        }
-
-        // Try splitting by single newlines
+        // First split by any newlines
         let lines = content.components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
 
-        if lines.count > 1 {
-            return lines.flatMap { splitLongBlock($0) }
-        }
-
-        // No line breaks - split at sentence endings
-        return splitAtSentences(content)
+        // Then split each line at periods
+        return lines.flatMap { splitAtPeriods($0) }
     }
 
-    /// Split a long block at sentence boundaries if it exceeds a reasonable length
-    private func splitLongBlock(_ text: String) -> [String] {
-        // If short enough, return as-is
-        let maxChars = 200
-        if text.count <= maxChars {
-            return [text]
-        }
-
-        // Split at sentence endings
-        return splitAtSentences(text)
-    }
-
-    /// Split text at sentence-ending punctuation (. ! ?)
-    private func splitAtSentences(_ text: String) -> [String] {
-        var sentences: [String] = []
+    /// Split text at periods
+    private func splitAtPeriods(_ text: String) -> [String] {
+        var blocks: [String] = []
         var current = ""
 
         for char in text {
             current.append(char)
 
-            // Check for sentence-ending punctuation followed by space or end
-            if char == "." || char == "!" || char == "?" {
+            if char == "." {
                 let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !trimmed.isEmpty {
-                    sentences.append(trimmed)
+                    blocks.append(trimmed)
                 }
                 current = ""
             }
@@ -348,10 +319,10 @@ final class TextOverlayEffect: Effect {
         // Add any remaining text
         let remaining = current.trimmingCharacters(in: .whitespacesAndNewlines)
         if !remaining.isEmpty {
-            sentences.append(remaining)
+            blocks.append(remaining)
         }
 
-        return sentences.isEmpty ? [text] : sentences
+        return blocks.isEmpty ? [text] : blocks
     }
 
     /// Strip markdown formatting to plain text
@@ -579,7 +550,7 @@ final class TextOverlayEffect: Effect {
         let snippet = TextSnippet(
             text: text,
             position: randomPosition(for: size),
-            fontSize: fSize,
+            fontSize: fSize, 
             opacity: snippetOpacity,
             wrapExtension: wrapExt,
             framesRemaining: duration,
