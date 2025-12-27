@@ -359,51 +359,29 @@ struct EffectsEditorView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Header showing which layer is being edited
             HStack {
-                Text(dream.activePlayer.editingLayerDisplay)
-                    .font(.system(.title3, design: .monospaced))
-                    .fontWeight(.bold)
-                    .foregroundColor(dream.activePlayer.isOnGlobalLayer ? .cyan : .orange)
-
-                Spacer()
-
-                // Add new effect button
-                Button(action: {
-                    let newIndex = viewModel.createNewEffect()
-                    // Select the new effect immediately
-                    selectEffect(at: newIndex)
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus")
-                        Text("Add")
-                    }
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.white.opacity(0.8))
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color.cyan.opacity(0.6))
-                .cornerRadius(4)
-
-                // Toggle effects list sidebar button (styled like Performance "Window" button)
+                // Toggle effects list sidebar button (icon only with tooltip)
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         state.settings.effectsListCollapsed.toggle()
                         state.saveSettings()
                     }
                 }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "sidebar.left")
-                        Text(state.settings.effectsListCollapsed ? "Show List" : "Hide List")
-                    }
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.white.opacity(0.8))
+                    Image(systemName: "sidebar.left")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.8))
+                        .frame(width: 24, height: 24)
                 }
                 .buttonStyle(.plain)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
                 .background(state.settings.effectsListCollapsed ? Color.gray.opacity(0.4) : Color.blue.opacity(0.6))
                 .cornerRadius(4)
+                .hudTooltip(state.settings.effectsListCollapsed ? "Show Effects List" : "Hide Effects List")
+
+                Text(dream.activePlayer.editingLayerDisplay)
+                    .font(.system(.title3, design: .monospaced))
+                    .fontWeight(.bold)
+                    .foregroundColor(dream.activePlayer.isOnGlobalLayer ? .cyan : .orange)
+
+                Spacer()
 
                 // Close button
                 Button(action: {
@@ -524,8 +502,28 @@ struct EffectsEditorView: View {
         let currentlySelected = selectedEffectIndex
 
         return VStack(alignment: .leading, spacing: 8) {
-            Text("Effects")
-                .font(.headline)
+            // Effects header with add button
+            HStack {
+                Text("Effects")
+                    .font(.headline)
+
+                Spacer()
+
+                // Add new effect button
+                Button(action: {
+                    let newIndex = viewModel.createNewEffect()
+                    selectEffect(at: newIndex)
+                }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.white.opacity(0.8))
+                        .frame(width: 20, height: 20)
+                }
+                .buttonStyle(.plain)
+                .background(Color.cyan.opacity(0.6))
+                .cornerRadius(4)
+                .hudTooltip("Add New Effect")
+            }
 
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 4) {
