@@ -276,8 +276,8 @@ struct EffectsEditorView: View {
     /// SwiftUI focus state - tracks which field has keyboard focus
     @FocusState private var focusedField: EffectsEditorField?
 
-    /// Track which effect in the chain is expanded (only one at a time, first by default)
-    @State private var expandedEffectIndex: Int = 0
+    /// Track which effects in the chain are expanded (multiple allowed)
+    @State private var expandedEffectIndices: Set<Int> = []
 
     /// Currently dragged effect index for reordering
     @State private var draggingEffectIndex: Int?
@@ -478,13 +478,6 @@ struct EffectsEditorView: View {
             // Sync active section when focus changes
             if let field = newField {
                 viewModel.activeSection = field
-
-                // Expand effect when Tab navigates to its checkbox
-                if case .effectCheckbox(let effectDefIndex) = field {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        expandedEffectIndex = effectDefIndex
-                    }
-                }
             }
         }
     }
@@ -511,23 +504,6 @@ struct EffectsEditorView: View {
 
             // Select new effect with immediate UI feedback
             selectEffect(at: newIndex)
-
-        case .parameterList, .none:
-            // Navigate between effects in the chain when list is collapsed or focus not set
-            let effectsCount = currentEffectsCount
-            guard effectsCount > 1 else { return }  // No navigation needed for single effect
-
-            var newIndex = expandedEffectIndex + delta
-            // Wrap around
-            if newIndex < 0 {
-                newIndex = effectsCount - 1
-            } else if newIndex >= effectsCount {
-                newIndex = 0
-            }
-
-            withAnimation(.easeInOut(duration: 0.15)) {
-                expandedEffectIndex = newIndex
-            }
 
         default:
             // In text fields, let native focus handle navigation
@@ -574,7 +550,7 @@ struct EffectsEditorView: View {
 
     /// Buttons for saving and loading effect chain libraries
     private var effectLibraryButtons: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .center, spacing: 8) {
             // Autosave toggle
             Button(action: {
                 state.settings.effectsAutosave.toggle()
@@ -588,6 +564,7 @@ struct EffectsEditorView: View {
                 Image(systemName: state.settings.effectsAutosave ? "arrow.triangle.2.circlepath" : "arrow.triangle.2.circlepath.circle")
                     .font(.system(size: 16))
                     .foregroundColor(state.settings.effectsAutosave ? .green : .orange)
+                    .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
             .hudTooltip(state.settings.effectsAutosave ? "Autosave ON" : "Autosave OFF (⌘⇧E to save)")
@@ -597,6 +574,7 @@ struct EffectsEditorView: View {
                 Image(systemName: "square.and.arrow.down.fill")
                     .font(.system(size: 16))
                     .foregroundColor(.white.opacity(0.7))
+                    .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
             .hudTooltip("Save to Default Effects Library")
@@ -606,6 +584,7 @@ struct EffectsEditorView: View {
                 Image(systemName: "square.and.arrow.down")
                     .font(.system(size: 16))
                     .foregroundColor(.white.opacity(0.7))
+                    .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
             .hudTooltip("Save Effects Library to File")
@@ -615,6 +594,7 @@ struct EffectsEditorView: View {
                 Image(systemName: "folder")
                     .font(.system(size: 16))
                     .foregroundColor(.white.opacity(0.7))
+                    .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
             .hudTooltip("Load Effects from File (.json or .hypnogram)")
@@ -769,10 +749,10 @@ struct EffectsEditorView: View {
     @ViewBuilder
     private func chainedEffectSection(effectDef: EffectDefinition, childIndex: Int, totalEffects: Int, layer: Int) -> some View {
         let isEnabled = effectDef.params?["_enabled"]?.boolValue ?? true
-        let isExpanded = expandedEffectIndex == childIndex
+        let isExpanded = expandedEffectIndices.contains(childIndex)
 
         VStack(alignment: .leading, spacing: 0) {
-            // Header with controls - any interaction selects this effect
+            // Header with controls - tap anywhere (except buttons) to expand/collapse
             HStack(spacing: 6) {
                 // Drag handle indicator
                 Image(systemName: "line.3.horizontal")
@@ -780,7 +760,7 @@ struct EffectsEditorView: View {
                     .foregroundColor(.white.opacity(0.4))
                     .frame(width: 20)
 
-                // Effect name - use formatted type name
+                // Effect name
                 Text(formatEffectType(effectDef.type) ?? "Effect \(childIndex + 1)")
                     .font(.system(.body, design: .monospaced).bold())
                     .foregroundColor(isEnabled ? .white : .white.opacity(0.5))
@@ -793,10 +773,10 @@ struct EffectsEditorView: View {
                     viewModel.removeEffectFromChain(effectIndex: selectedEffectIndex, effectDefIndex: childIndex)
                     // Update recipe (for immediate UI refresh)
                     dream.activeEffectManager.removeEffectFromChain(for: layer, effectDefIndex: childIndex)
-                    // If we deleted the expanded effect, expand the first remaining effect
-                    if expandedEffectIndex >= totalEffects - 1 {
-                        expandedEffectIndex = max(0, totalEffects - 2)
-                    }
+                    // Clean up expanded indices
+                    expandedEffectIndices.remove(childIndex)
+                    // Shift down indices above the deleted one
+                    expandedEffectIndices = Set(expandedEffectIndices.map { $0 > childIndex ? $0 - 1 : $0 })
                 }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .medium))
@@ -807,7 +787,6 @@ struct EffectsEditorView: View {
 
                 // Reset to defaults button
                 Button(action: {
-                    expandedEffectIndex = childIndex
                     // Update library (for persistence)
                     viewModel.resetEffectToDefaults(effectIndex: selectedEffectIndex, effectDefIndex: childIndex)
                     // Update recipe (for immediate UI refresh)
@@ -820,12 +799,18 @@ struct EffectsEditorView: View {
                 .buttonStyle(.borderless)
                 .help("Reset to defaults")
 
-                // Enable/disable toggle - focusable, Tab focus expands the effect
+                // Enable/disable toggle
                 Toggle("", isOn: Binding(
                     get: { isEnabled },
                     set: { newValue in
-                        expandedEffectIndex = childIndex
-                        // Update enabled state via recipe parameter update
+                        // Update library (for persistence and dirty tracking)
+                        viewModel.updateParameter(
+                            effectIndex: selectedEffectIndex,
+                            effectDefIndex: childIndex,
+                            paramName: "_enabled",
+                            value: .bool(newValue)
+                        )
+                        // Update recipe (for immediate rendering)
                         dream.activeEffectManager.updateEffectParameter(
                             for: layer,
                             effectDefIndex: childIndex,
@@ -841,12 +826,17 @@ struct EffectsEditorView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
-            .background(isExpanded ? Color.white.opacity(0.2) : Color.white.opacity(0.1))
+            .background(isExpanded ? Color.white.opacity(0.24) : Color.white.opacity(0.1))
             .cornerRadius(6)
             .contentShape(Rectangle())
             .onTapGesture {
+                // Toggle expand/collapse on tap (buttons have higher priority)
                 withAnimation(.easeInOut(duration: 0.15)) {
-                    expandedEffectIndex = childIndex
+                    if expandedEffectIndices.contains(childIndex) {
+                        expandedEffectIndices.remove(childIndex)
+                    } else {
+                        expandedEffectIndices.insert(childIndex)
+                    }
                 }
             }
 
@@ -901,7 +891,14 @@ struct EffectsEditorView: View {
                         effectType: effectDef.type,
                         spec: specs[key],
                         onChange: { newValue in
-                            // Update effect parameter in chain
+                            // Update library (for persistence and dirty tracking)
+                            viewModel.updateParameter(
+                                effectIndex: selectedEffectIndex,
+                                effectDefIndex: effectDefIndex,
+                                paramName: key,
+                                value: newValue
+                            )
+                            // Update recipe (for immediate rendering)
                             dream.activeEffectManager.updateEffectParameter(
                                 for: layer,
                                 effectDefIndex: effectDefIndex,
