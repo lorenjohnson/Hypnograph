@@ -53,9 +53,24 @@ final class DreamPlayerState: ObservableObject {
 
     // MARK: - UI State
 
-    @Published var isHUDVisible: Bool = false
-    @Published var isEffectsEditorVisible: Bool = false
-    @Published var isPlayerSettingsVisible: Bool = false
+    /// Unified window visibility state with clean screen support
+    @Published var windowState = WindowState()
+
+    /// Convenience accessors for backward compatibility
+    var isHUDVisible: Bool {
+        get { windowState.isVisible(.hud) }
+        set { windowState.set(.hud, visible: newValue) }
+    }
+
+    var isEffectsEditorVisible: Bool {
+        get { windowState.isVisible(.effectsEditor) }
+        set { windowState.set(.effectsEditor, visible: newValue) }
+    }
+
+    var isPlayerSettingsVisible: Bool {
+        get { windowState.isVisible(.playerSettings) }
+        set { windowState.set(.playerSettings, visible: newValue) }
+    }
     
     // MARK: - Effect Processing
 
@@ -187,11 +202,19 @@ final class DreamPlayerState: ObservableObject {
     }
 
     func toggleHUD() {
-        isHUDVisible.toggle()
+        windowState.toggle(.hud)
     }
 
     func toggleEffectsEditor() {
-        isEffectsEditorVisible.toggle()
+        windowState.toggle(.effectsEditor)
+    }
+
+    func togglePlayerSettings() {
+        windowState.toggle(.playerSettings)
+    }
+
+    func toggleCleanScreen() {
+        windowState.toggleCleanScreen()
     }
 
     // MARK: - Recipe Management

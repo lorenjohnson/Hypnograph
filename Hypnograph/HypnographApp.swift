@@ -372,14 +372,14 @@ struct AppCommands: Commands {
             Section("Overlays") {
                 Toggle("Info HUD", isOn: Binding(
                     get: { dream.activePlayer.isHUDVisible },
-                    set: { dream.activePlayer.isHUDVisible = $0 }
+                    set: { _ in dream.activePlayer.toggleHUD() }
                 ))
                 .keyboardShortcut("i", modifiers: [])
                 .disabled(isTyping)
 
                 Toggle("Effects Editor", isOn: Binding(
                     get: { dream.activePlayer.isEffectsEditorVisible },
-                    set: { dream.activePlayer.isEffectsEditorVisible = $0 }
+                    set: { _ in dream.activePlayer.toggleEffectsEditor() }
                 ))
                 .keyboardShortcut("e", modifiers: [])
                 .disabled(isTyping)
@@ -387,6 +387,12 @@ struct AppCommands: Commands {
                 Toggle("Hypnogram List", isOn: $state.isHypnogramListVisible)
                     .keyboardShortcut("h", modifiers: [])
                     .disabled(isTyping || state.currentModuleType != .dream)
+
+                Button("Clean Screen") {
+                    dream.activePlayer.toggleCleanScreen()
+                }
+                .keyboardShortcut(.tab, modifiers: [])
+                .disabled(isTyping)
             }
 
             Divider()
@@ -395,7 +401,7 @@ struct AppCommands: Commands {
             Section("Player") {
                 Toggle("Player Settings", isOn: Binding(
                     get: { dream.activePlayer.isPlayerSettingsVisible },
-                    set: { dream.activePlayer.isPlayerSettingsVisible = $0 }
+                    set: { _ in dream.activePlayer.togglePlayerSettings() }
                 ))
                 .keyboardShortcut("p", modifiers: [])
                 .disabled(isTyping || state.currentModuleType != .dream)
