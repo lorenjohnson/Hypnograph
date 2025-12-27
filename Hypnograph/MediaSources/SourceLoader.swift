@@ -23,21 +23,60 @@ struct LoadedSource {
     let ciImage: CIImage?  // For still images - the actual image data
 }
 
-/// Loads sources with fault tolerance
+/// Loads sources with fault tolerance and caching
 final class SourceLoader {
+
+    // MARK: - Cache
+
+    /// Cache of loaded sources by file identifier
+    /// This prevents reloading the same asset multiple times during composition builds
+    private static var cache: [String: LoadedSource] = [:]
+    private static let cacheQueue = DispatchQueue(label: "com.hypnograph.sourceloader.cache")
+
+    /// Clear the source cache (call when sources change)
+    static func clearCache() {
+        cacheQueue.sync {
+            cache.removeAll()
+        }
+    }
+
+    /// Remove a specific source from cache
+    static func invalidate(fileID: String) {
+        cacheQueue.sync {
+            _ = cache.removeValue(forKey: fileID)
+        }
+    }
 
     // MARK: - Loading
 
     /// Load a source, return error if it fails (never crashes)
+    /// Uses caching to avoid reloading the same source multiple times
     func load(source: HypnogramSource) async -> Result<LoadedSource, RenderError> {
         let file = source.clip.file
+        let cacheKey = file.id.uuidString
 
+        // Check cache first
+        if let cached = Self.cacheQueue.sync(execute: { Self.cache[cacheKey] }) {
+            return .success(cached)
+        }
+
+        // Load and cache
+        let result: Result<LoadedSource, RenderError>
         switch file.mediaKind {
         case .image:
-            return await loadImageSource(source: source)
+            result = await loadImageSource(source: source)
         case .video:
-            return await loadVideoSource(source: source)
+            result = await loadVideoSource(source: source)
         }
+
+        // Cache successful loads
+        if case .success(let loaded) = result {
+            Self.cacheQueue.sync {
+                Self.cache[cacheKey] = loaded
+            }
+        }
+
+        return result
     }
     
     // MARK: - Video Loading

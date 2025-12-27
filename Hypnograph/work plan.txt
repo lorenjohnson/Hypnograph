@@ -1,3 +1,4 @@
+- Store audio devices
 - Make favorites a playlist manager
   - Not sure I can Favorite a Sequence
 

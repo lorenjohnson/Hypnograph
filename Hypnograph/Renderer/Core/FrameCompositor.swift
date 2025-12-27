@@ -19,7 +19,9 @@ final class FrameCompositor: NSObject, AVVideoCompositing {
     /// Use shared CIContext for GPU-efficient rendering (no duplicate Metal contexts)
     private var ciContext: CIContext { SharedRenderer.ciContext }
 
-    private let renderQueue = DispatchQueue(label: "com.hypnograph.framecompositor", qos: .userInteractive)
+    // Use .userInitiated instead of .userInteractive to avoid starving audio playback
+    // Audio runs at .userInteractive, so our video rendering should be slightly lower priority
+    private let renderQueue = DispatchQueue(label: "com.hypnograph.framecompositor", qos: .userInitiated)
 
     // MARK: - Slow-Mo State
 
