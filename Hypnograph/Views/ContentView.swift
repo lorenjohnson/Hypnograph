@@ -54,7 +54,7 @@ struct ContentView: View {
 
             // HUD and Hypnogram List - top left (below LIVE if visible)
             VStack(alignment: .leading, spacing: 8) {
-                if dream.activePlayer.isHUDVisible {
+                if state.windowState.isVisible(.hud) {
                     HUDView(
                         state: state,
                         dream: dream,
@@ -62,7 +62,7 @@ struct ContentView: View {
                     )
                 }
 
-                if state.isHypnogramListVisible && state.currentModuleType == .dream {
+                if state.windowState.isVisible(.hypnogramList) && state.currentModuleType == .dream {
                     HypnogramListView(
                         store: HypnogramStore.shared,
                         onLoad: { entry in
@@ -79,22 +79,22 @@ struct ContentView: View {
             }
             .padding(.top, dream.isLiveMode ? 56 : 12)
             .padding(.leading, 12)
-            .animation(.easeInOut(duration: 0.2), value: state.isHypnogramListVisible)
+            .animation(.easeInOut(duration: 0.2), value: state.windowState.hypnogramList)
         }
         .overlay(alignment: .bottomLeading) {
             // Player Settings - bottom left, Dream module only
-            if state.currentModuleType == .dream && dream.activePlayer.isPlayerSettingsVisible {
+            if state.currentModuleType == .dream && state.windowState.isVisible(.playerSettings) {
                 PlayerSettingsView(
                     player: dream.activePlayer,
                     dream: dream,
                     onClose: {
-                        dream.activePlayer.isPlayerSettingsVisible = false
+                        state.windowState.set(.playerSettings, visible: false)
                     }
                 )
                 .padding(.leading, 12)
                 .padding(.bottom, 12)
                 .transition(.move(edge: .leading).combined(with: .opacity))
-                .animation(.easeInOut(duration: 0.2), value: dream.activePlayer.isPlayerSettingsVisible)
+                .animation(.easeInOut(duration: 0.2), value: state.windowState.playerSettings)
             }
         }
         .overlay(alignment: .topTrailing) {
@@ -108,19 +108,19 @@ struct ContentView: View {
         .overlay(alignment: .topTrailing) {
             // Right-side panels: Effects editor (top-aligned) and Performance preview (bottom)
             VStack(spacing: 0) {
-                if dream.activePlayer.isEffectsEditorVisible {
+                if state.windowState.isVisible(.effectsEditor) {
                     EffectsEditorView(viewModel: effectsEditorViewModel, state: state, dream: dream)
-                        .padding(.bottom, state.isPerformancePreviewVisible ? 12 : 0)
+                        .padding(.bottom, state.windowState.isVisible(.performancePreview) ? 12 : 0)
                         .transition(.move(edge: .trailing))
                 }
 
                 Spacer(minLength: 0)
 
-                if state.isPerformancePreviewVisible {
+                if state.windowState.isVisible(.performancePreview) {
                     PerformancePreviewView(
                         performanceDisplay: dream.performanceDisplay,
                         onClose: {
-                            state.isPerformancePreviewVisible = false
+                            state.windowState.set(.performancePreview, visible: false)
                         }
                     )
                     .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -129,8 +129,8 @@ struct ContentView: View {
             .padding(.top, 12)
             .padding(.trailing, 12)
             .padding(.bottom, 12)
-            .animation(.easeInOut(duration: 0.2), value: dream.activePlayer.isEffectsEditorVisible)
-            .animation(.easeInOut(duration: 0.2), value: state.isPerformancePreviewVisible)
+            .animation(.easeInOut(duration: 0.2), value: state.windowState.effectsEditor)
+            .animation(.easeInOut(duration: 0.2), value: state.windowState.performancePreview)
         }
         .appNotifications()
         .background(Color.black)

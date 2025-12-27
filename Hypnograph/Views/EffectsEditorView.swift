@@ -385,7 +385,7 @@ struct EffectsEditorView: View {
 
                 // Close button
                 Button(action: {
-                    dream.activePlayer.isEffectsEditorVisible = false
+                    state.windowState.set(.effectsEditor, visible: false)
                 }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .bold))

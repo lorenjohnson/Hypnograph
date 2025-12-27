@@ -1,17 +1,32 @@
+- Performance mode stress test: Test for perfomrance and crashing
+- Make favorites a playlist manager
+  - Not sure I can Favorite a Sequence
+
+- Rotate functionality can be removed for now
+- Does Performance display still fade between compositions?
+- Fix still image support / test sequence mode integration with Live View... Ultiamtely can I compose montages and send them to the live display and will they fade between? Currently it seems to take forever for them to render when they are still images probably because of frame buffer contracts and such, but I they could/should be light at least when they are image only composions.
+- Move Divine into its own product, and focus it on ios usage possibly? It just looks at a single Apple Photos directory or file directory for simplicity
+
 - Basic Sources Window ...
   - Let's add the timeline editor for sources. Pretty much a basic timeline editor with the ablity to specify the Basic effects properties for each layer including Blend Mode.
   - Finish scoping spacial transforms UI, layer editor, moving Diving into its own product.
 
-- Fix still image support / test sequence mode integration with Live View... Ultiamtely can I compose montages and send them to the live display and will they fade between? Currently it seems to take forever for them to render when they are still images probably because of frame buffer contracts and such, but I they could/should be light at least when they are image only composions.
-- Fix Effects params text entry?
-
-- Performance mode stress test: Test for perfomrance and crashing
-
-- Move Divine into its own product, and focus it on ios usage possibly? It just looks at a single Apple Photos directory or file directory for simplicity
-
 ----
 
-- Respond to mic input or Midi Clock or OSC input from Live/etc?
+
 ----
 ---
+
+- Respond to mic input or Midi Clock or OSC input from Live/etc?
+- Update Game Controller to do only these things:
+  - Next effect (E)
+  - Previous Effect (Shift+E)
+  - Save Hypnogram (the json) 
+  - Save snapshot (S)
+  - Select a favorite
+  - Send to Performance Display (Return)
+  - New Hypnogram (N)
+  - Toggle clean screen on/off (the hammburger like button)
+
 - Performance Mode has a "Video Mixer" that specifies the transition between hypnograms. Right now it's a simple crossfade but we should make it configurable with 2-3 options. We would add these 2-4 options as push buttons in the header of the Preview panel in the main window.
+
