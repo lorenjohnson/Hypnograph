@@ -98,7 +98,7 @@ final class Divine: ObservableObject {
     // MARK: - Menus
 
     /// Whether a text field is being edited - disables single-key shortcuts
-    private var isTyping: Bool { state.textFieldFocusMonitor.isEditing }
+    private var isTyping: Bool { state.isTyping }
 
     @ViewBuilder
     func compositionMenu() -> some View {

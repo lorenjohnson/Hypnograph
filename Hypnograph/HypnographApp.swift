@@ -233,7 +233,7 @@ struct HypnographApp: App {
                     state?.windowState.toggleCleanScreen()
                 }
                 appDelegate.isTypingActive = { [weak state] in
-                    state?.textFieldFocusMonitor.isEditing ?? false
+                    state?.isTyping ?? false
                 }
 
                 // Initialize game controller support
@@ -271,8 +271,8 @@ struct AppCommands: Commands {
     private weak var appDelegate: HypnographAppDelegate?
     private let cycleModuleHandler: () -> Void
 
-    /// Whether a text field is currently being edited (from TextFieldFocusMonitor)
-    private var isTyping: Bool { state.textFieldFocusMonitor.isEditing }
+    /// Whether a text field is currently being edited
+    private var isTyping: Bool { state.isTyping }
 
     init(
         state: HypnographState,

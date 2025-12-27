@@ -46,6 +46,9 @@ final class HypnographState: ObservableObject {
     /// Monitors text field editing - used to disable single-key shortcuts while typing
     let textFieldFocusMonitor = TextFieldFocusMonitor()
 
+    /// Whether a text field is currently being edited (convenience for disabling shortcuts)
+    var isTyping: Bool { textFieldFocusMonitor.isEditing }
+
     /// Unified window visibility state with clean screen support
     @Published var windowState = WindowState()
 
