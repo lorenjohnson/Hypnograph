@@ -39,7 +39,6 @@ enum BasicColorSpace: String, CaseIterable {
 
 /// GPU parameters struct - must match layout in BasicShader.metal
 struct BasicParamsGPU {
-    var opacity: Float
     var contrast: Float
     var brightness: Float
     var saturation: Float
@@ -51,14 +50,13 @@ struct BasicParamsGPU {
 }
 
 /// Basic image adjustments effect.
-/// Provides opacity, contrast, brightness, and saturation controls.
+/// Provides contrast, brightness, saturation, hue, and invert controls.
 final class BasicEffect: Effect {
 
     // MARK: - Parameter Specs (source of truth)
 
     static var parameterSpecs: [String: ParameterSpec] {
         [
-            "opacity": .float(default: 1.0, range: 0...1),
             "contrast": .float(default: 0.0, range: -1...1),
             "brightness": .float(default: 0.0, range: -1...1),
             "saturation": .float(default: 0.0, range: -1...1),
@@ -76,7 +74,6 @@ final class BasicEffect: Effect {
     // MARK: - Configuration
 
     private let customName: String?
-    var opacity: Float
     var contrast: Float
     var brightness: Float
     var saturation: Float
@@ -93,9 +90,8 @@ final class BasicEffect: Effect {
 
     // MARK: - Init
 
-    init(opacity: Float, contrast: Float, brightness: Float, saturation: Float,
+    init(contrast: Float, brightness: Float, saturation: Float,
          hueShift: Float, colorSpace: BasicColorSpace, invert: Bool, name: String? = nil) {
-        self.opacity = max(0, min(1, opacity))
         self.contrast = max(-1, min(1, contrast))
         self.brightness = max(-1, min(1, brightness))
         self.saturation = max(-1, min(1, saturation))
@@ -119,7 +115,7 @@ final class BasicEffect: Effect {
     required convenience init?(params: [String: AnyCodableValue]?) {
         let p = Params(params, specs: Self.parameterSpecs)
         let colorSpace = BasicColorSpace(rawValue: p.string("colorSpace")) ?? .rgb
-        self.init(opacity: p.float("opacity"), contrast: p.float("contrast"),
+        self.init(contrast: p.float("contrast"),
                   brightness: p.float("brightness"), saturation: p.float("saturation"),
                   hueShift: p.float("hueShift"), colorSpace: colorSpace, invert: p.bool("invert"))
     }
@@ -177,7 +173,6 @@ final class BasicEffect: Effect {
 
         // Setup GPU params
         var gpuParams = BasicParamsGPU(
-            opacity: opacity,
             contrast: contrast,
             brightness: brightness,
             saturation: saturation,
@@ -223,7 +218,7 @@ final class BasicEffect: Effect {
     }
 
     func copy() -> Effect {
-        BasicEffect(opacity: opacity, contrast: contrast, brightness: brightness,
+        BasicEffect(contrast: contrast, brightness: brightness,
                   saturation: saturation, hueShift: hueShift, colorSpace: colorSpace,
                   invert: invert, name: customName)
     }

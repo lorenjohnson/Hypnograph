@@ -10,7 +10,7 @@ import SwiftUI
 
 /// Configuration for modal panel appearance
 struct ModalPanelStyle {
-    var backgroundColor: Color = Color.black.opacity(0.9)
+    var backgroundColor: Color = Color.black.opacity(0.6)
     var cornerRadius: CGFloat = 12
     var padding: CGFloat = 16
     var minWidth: CGFloat? = nil
