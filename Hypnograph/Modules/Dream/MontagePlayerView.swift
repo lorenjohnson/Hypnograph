@@ -149,6 +149,9 @@ struct MontagePlayerView: NSViewRepresentable {
                         c.currentVideoComposition = buildResult.playerItem.videoComposition
                         playerView.player = player
 
+                        // Use high-quality audio time pitch algorithm for non-1.0 playback rates
+                        buildResult.playerItem.audioTimePitchAlgorithm = .timeDomain
+
                         // Apply mute and volume immediately, before playback starts.
                         // This is necessary because player setup runs in an async Task that
                         // completes after updateNSView() returns. SwiftUI won't call updateNSView

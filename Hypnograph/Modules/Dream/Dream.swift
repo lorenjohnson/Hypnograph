@@ -929,6 +929,9 @@ final class Dream: ObservableObject {
         // Clear frame buffer for clean slate
         activePlayer.effectManager.clearFrameBuffer()
 
+        // Import effect chains from recipe into library so they're available for editing
+        EffectChainLibraryActions.importChainsFromRecipe(recipe)
+
         // Notify player to reload
         activePlayer.notifyRecipeChanged()
     }

@@ -110,6 +110,16 @@ enum EffectChainLibraryActions {
         AppNotifications.show("Imported \(chains.count) effect chains", flash: true)
     }
     
+    // MARK: - Recipe Import
+
+    /// Import effect chains from a recipe into the library (used when loading hypnograms)
+    /// Merges chains into the library, avoiding duplicates by name
+    static func importChainsFromRecipe(_ recipe: HypnogramRecipe) {
+        let chains = extractEffectChains(from: recipe)
+        guard !chains.isEmpty else { return }
+        mergeChains(chains)
+    }
+
     // MARK: - Private Helpers
 
     /// Replace the current library with new chains
@@ -117,7 +127,7 @@ enum EffectChainLibraryActions {
         // Use EffectChainLibrary to update the cache
         EffectChainLibrary.updateCache(with: chains)
     }
-    
+
     /// Extract effect chains from a recipe (global + per-source)
     private static func extractEffectChains(from recipe: HypnogramRecipe) -> [EffectChain] {
         var chains: [EffectChain] = []
@@ -147,19 +157,20 @@ enum EffectChainLibraryActions {
         return chains
     }
     
-    /// Merge new chains into the current library (avoiding duplicates by name)
+    /// Merge new chains into the current library (overwrites on name collision)
     private static func mergeChains(_ newChains: [EffectChain]) {
         var currentChains = EffectConfigLoader.currentChains
-        let existingNames = Set(currentChains.compactMap { $0.name })
-        
+
         for chain in newChains {
-            // Skip if a chain with the same name already exists
-            if let name = chain.name, existingNames.contains(name) {
-                continue
+            // If chain with same name exists, replace it
+            if let name = chain.name,
+               let existingIndex = currentChains.firstIndex(where: { $0.name == name }) {
+                currentChains[existingIndex] = chain
+            } else {
+                currentChains.append(chain)
             }
-            currentChains.append(chain)
         }
-        
+
         EffectChainLibrary.updateCache(with: currentChains)
     }
 }
