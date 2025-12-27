@@ -16,7 +16,7 @@ import Photos
 
 /// Manages the current in-progress hypnogram.
 @MainActor
-final class HypnographState: ObservableObject {
+final class HypnographState: ObservableObject, WindowStateProvider {
 
     // MARK: - Core configuration
 
@@ -46,11 +46,20 @@ final class HypnographState: ObservableObject {
     /// Monitors text field editing - used to disable single-key shortcuts while typing
     let textFieldFocusMonitor = TextFieldFocusMonitor()
 
-    /// Performance preview panel visibility (sidebar panel)
-    @Published var isPerformancePreviewVisible: Bool = false
+    /// Unified window visibility state with clean screen support
+    @Published var windowState = WindowState()
 
-    /// Hypnogram favorites/history panel visibility
-    @Published var isHypnogramListVisible: Bool = false
+    /// Convenience accessor for performance preview visibility
+    var isPerformancePreviewVisible: Bool {
+        get { windowState.isVisible(.performancePreview) }
+        set { windowState.set(.performancePreview, visible: newValue) }
+    }
+
+    /// Convenience accessor for hypnogram list visibility
+    var isHypnogramListVisible: Bool {
+        get { windowState.isVisible(.hypnogramList) }
+        set { windowState.set(.hypnogramList, visible: newValue) }
+    }
 
     /// Shared effects editor view model for controller/keyboard navigation
     let effectsEditorViewModel = EffectsEditorViewModel()
@@ -118,7 +127,11 @@ final class HypnographState: ObservableObject {
     // MARK: - UI Toggles
 
     func togglePerformancePreview() {
-        isPerformancePreviewVisible.toggle()
+        windowState.toggle(.performancePreview)
+    }
+
+    func toggleHypnogramList() {
+        windowState.toggle(.hypnogramList)
     }
 
     func toggleWatchMode() {
