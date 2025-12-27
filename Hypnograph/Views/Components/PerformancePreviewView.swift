@@ -88,13 +88,17 @@ struct PerformancePreviewView: View {
                     PerformancePlayerWrapper(performanceDisplay: performanceDisplay)
                         .aspectRatio(16/9, contentMode: .fit)
                 } else {
-                    // Placeholder when no content yet
+                    // Placeholder when no source assigned
                     VStack(spacing: 8) {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white.opacity(0.5)))
-                        Text("Loading...")
+                        Image(systemName: "play.display")
+                            .font(.system(size: 32))
+                            .foregroundColor(.white.opacity(0.3))
+                        Text("No Source")
                             .font(.system(size: 12, design: .monospaced))
                             .foregroundColor(.white.opacity(0.4))
+                        Text("Press ⌘Return to send")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.3))
                     }
                 }
             }

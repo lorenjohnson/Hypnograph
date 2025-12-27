@@ -532,12 +532,6 @@ final class Dream: ObservableObject {
 
         Divider()
 
-        Button("Rotate 90° Clockwise") { [self] in
-            rotateCurrentSource()
-        }
-        .keyboardShortcut("r", modifiers: [])
-        .disabled(isTyping)
-
         Button("New Random Clip") { [self] in
             newRandomClip()
         }
@@ -986,18 +980,7 @@ final class Dream: ObservableObject {
         activePlayer.effectManager.cycleBlendMode(for: idx)
     }
 
-    // MARK: - Transform
 
-    /// Rotate the current source by 90 degrees clockwise
-    func rotateCurrentSource() {
-        state.noteUserInteraction()
-        let idx = activePlayer.currentSourceIndex
-        guard idx >= 0, idx < activePlayer.sources.count else { return }
-
-        // Append a 90-degree clockwise rotation to the transforms array
-        let rotation90 = CGAffineTransform(rotationAngle: .pi / 2)
-        activePlayer.sources[idx].transforms.append(rotation90)
-    }
 
     // MARK: - Effects
 
