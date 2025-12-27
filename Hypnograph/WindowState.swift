@@ -95,15 +95,14 @@ struct WindowState {
     }
 
     /// Toggle clean screen mode
-    /// - additionalWindowsVisible: callback to check per-player windows (not tracked here)
     /// - Does nothing if no windows are visible (can't enter clean screen with nothing to hide)
-    mutating func toggleCleanScreen(additionalWindowsVisible: Bool = false) {
+    mutating func toggleCleanScreen() {
         if isCleanScreen {
             // Exit clean screen
             isCleanScreen = false
         } else {
             // Enter clean screen only if something is visible
-            if hasAnyWindowVisible || additionalWindowsVisible {
+            if hasAnyWindowVisible {
                 isCleanScreen = true
             }
         }
