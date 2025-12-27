@@ -16,7 +16,6 @@ struct MontagePlayerView: NSViewRepresentable {
     let effectManager: EffectManager
     let isMuted: Bool
     let volume: Float
-    var audioRouter: AudioRouter? = nil
 
     class Coordinator {
         var player: AVPlayer?
@@ -133,9 +132,6 @@ struct MontagePlayerView: NSViewRepresentable {
                             ])
                         }
 
-                        // TODO: Audio routing to specific device will be implemented later
-                        // For now, audio plays through system default when not muted
-
                         let player: AVPlayer
                         if let existing = c.player {
                             player = existing
@@ -216,8 +212,6 @@ struct MontagePlayerView: NSViewRepresentable {
         }
 
         // Apply mute state
-        // TODO: When audio routing is implemented, route to specific device
-        // For now, just mute/unmute based on whether an audio device is selected
         if c.lastMutedState != isMuted {
             c.player?.isMuted = isMuted
             c.lastMutedState = isMuted

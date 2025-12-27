@@ -58,17 +58,16 @@ final class Dream: ObservableObject {
     var isLiveMode: Bool { performanceMode == .live }
 
     // MARK: - Audio Output
-
-    /// Audio router for Preview player
-    let previewAudioRouter = AudioRouter()
-
-    /// Audio router for Performance player
-    let performanceAudioRouter = AudioRouter()
+    // NOTE: Audio device routing is disabled pending AVAudioEngine implementation.
+    // These properties are kept for UI but not connected to players.
+    // Both Preview and Performance currently use system default audio output.
 
     /// Selected audio output device for Preview player (nil = None/muted)
+    /// NOTE: Not currently functional - see above
     @Published var previewAudioDevice: AudioOutputDevice? = nil
 
     /// Selected audio output device for Performance player (nil = None/muted)
+    /// NOTE: Not currently functional - see above
     @Published var performanceAudioDevice: AudioOutputDevice? = nil
 
     /// Volume level for Preview audio (0.0 to 1.0)
@@ -76,16 +75,6 @@ final class Dream: ObservableObject {
 
     /// Volume level for Performance audio (0.0 to 1.0)
     @Published var performanceVolume: Float = 1.0
-
-    /// Whether preview audio is enabled
-    var isPreviewAudioEnabled: Bool {
-        previewAudioDevice != nil && previewAudioDevice != .none
-    }
-
-    /// Whether performance audio is enabled
-    var isPerformanceAudioEnabled: Bool {
-        performanceAudioDevice != nil && performanceAudioDevice != .none
-    }
 
     /// Returns the active EffectManager based on performance mode
     /// In live mode, effects go to the performance display; in edit mode, to the active player
@@ -125,47 +114,13 @@ final class Dream: ObservableObject {
         // Generate initial content for montage player
         generateNewHypnogram(for: montagePlayer)
 
-        // Observe audio device changes for Preview
-        $previewAudioDevice
-            .sink { [weak self] device in
-                guard let self = self else { return }
-                self.previewAudioRouter.setOutputDevice(device)
-                print("🔊 Preview audio: \(device?.name ?? "None")")
-            }
-            .store(in: &playerSubscriptions)
-
-        // Observe audio device changes for Performance
-        $performanceAudioDevice
-            .sink { [weak self] device in
-                guard let self = self else { return }
-                self.performanceAudioRouter.setOutputDevice(device)
-                // Also update performance display mute state and router
-                let muted = device == nil || device == .none
-                self.performanceDisplay.setMuted(muted)
-                self.performanceDisplay.setAudioRouter(muted ? nil : self.performanceAudioRouter)
-                print("🔊 Performance audio: \(device?.name ?? "None")")
-            }
-            .store(in: &playerSubscriptions)
-
-        // Observe volume changes for Preview
-        $previewVolume
-            .sink { [weak self] volume in
-                self?.previewAudioRouter.volume = volume
-            }
-            .store(in: &playerSubscriptions)
-
-        // Observe volume changes for Performance
+        // NOTE: Audio device routing subscriptions removed pending AVAudioEngine implementation
+        // Performance volume still applied to performance display
         $performanceVolume
             .sink { [weak self] volume in
-                guard let self = self else { return }
-                self.performanceAudioRouter.volume = volume
-                self.performanceDisplay.setVolume(volume)
+                self?.performanceDisplay.setVolume(volume)
             }
             .store(in: &playerSubscriptions)
-
-        // Apply initial audio settings (both start muted/None)
-        performanceDisplay.setMuted(true)
-        performanceDisplay.setAudioRouter(nil)
     }
 
     /// Create a renderer on-demand with current settings (aspect ratio + resolution)
@@ -580,7 +535,8 @@ final class Dream: ObservableObject {
         let player = activePlayer
 
         // Preview is muted if no audio device selected OR volume is 0
-        let previewMuted = !isPreviewAudioEnabled || previewVolume == 0
+        // Preview uses volume control - muted when volume is 0
+        let previewMuted = previewVolume == 0
 
         switch mode {
         case .montage:
@@ -601,8 +557,7 @@ final class Dream: ObservableObject {
                     effectsChangeCounter: player.effectsChangeCounter,
                     effectManager: player.effectManager,
                     isMuted: previewMuted,
-                    volume: previewVolume,
-                    audioRouter: previewAudioRouter
+                    volume: previewVolume
                 )
                 .id("dream-montage-\(player.aspectRatio.displayString)-\(player.outputResolution.rawValue)-\(player.targetDuration.seconds)-\(recipe.playRate)")
             )
@@ -622,7 +577,6 @@ final class Dream: ObservableObject {
                     effectManager: player.effectManager,
                     isMuted: previewMuted,
                     volume: previewVolume,
-                    audioRouter: previewAudioRouter,
                     onSourceIndexChanged: { [weak self] newIndex in
                         // Sync Performance Display when auto-advancing in sequence mode
                         self?.performanceDisplay.seekToSource(index: newIndex)

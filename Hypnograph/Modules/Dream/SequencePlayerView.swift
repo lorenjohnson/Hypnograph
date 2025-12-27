@@ -26,7 +26,6 @@ struct SequencePlayerView: NSViewRepresentable {
     let effectManager: EffectManager
     let isMuted: Bool
     let volume: Float
-    var audioRouter: AudioRouter? = nil
 
     /// Optional callback when source index changes (for syncing Performance Display)
     var onSourceIndexChanged: ((Int) -> Void)?
@@ -141,7 +140,6 @@ struct SequencePlayerView: NSViewRepresentable {
         }
 
         // Apply mute state to video player
-        // TODO: Audio routing to specific device will be implemented later
         if c.lastMutedState != isMuted {
             if case .video(let player) = c.displayMode {
                 player.isMuted = isMuted
@@ -371,9 +369,6 @@ struct SequencePlayerView: NSViewRepresentable {
                 // Create player item with composition
                 let playerItem = AVPlayerItem(asset: composition)
                 playerItem.videoComposition = videoComposition
-
-                // TODO: Audio routing to specific device will be implemented later
-                // For now, audio plays through system default when not muted
 
                 let player: AVPlayer
                 if let existingPlayer = playerView.player {

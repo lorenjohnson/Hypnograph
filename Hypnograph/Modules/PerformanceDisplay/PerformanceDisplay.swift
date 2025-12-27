@@ -46,21 +46,15 @@ final class PerformanceDisplay: ObservableObject {
         return activePlayer == .a ? content.playerA.player : content.playerB.player
     }
 
-    /// Set mute state on both players (A and B)
-    /// Uses volume control for more reliable audio switching
-    func setMuted(_ muted: Bool) {
-        isMuted = muted
-        let targetVolume: Float = muted ? 0.0 : currentVolume
+    // MARK: - Audio
+    // Note: Performance display uses system default audio output.
+    // AudioRouter caused stuttering due to MTAudioProcessingTap contention with A/B crossfade.
+    // Use system audio routing (e.g., macOS Sound settings) to direct performance audio.
 
-        // Apply immediately if on main thread, otherwise dispatch
-        if Thread.isMainThread {
-            applyVolume(targetVolume)
-        } else {
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                self.applyVolume(self.isMuted ? 0.0 : self.currentVolume)
-            }
-        }
+    /// Set volume level for performance audio (0.0 = muted, 1.0 = full volume)
+    func setVolume(_ volume: Float) {
+        currentVolume = volume
+        applyVolume(volume)
     }
 
     private func applyVolume(_ volume: Float) {
@@ -69,60 +63,13 @@ final class PerformanceDisplay: ObservableObject {
         content.playerB.player?.volume = volume
     }
 
-    // MARK: - Audio Routing
-
-    /// Audio router for routing to specific device
-    var audioRouter: AudioRouter?
-
-    /// Set the audio router for device-specific routing
-    /// Also applies the audio mix to the currently playing content
-    func setAudioRouter(_ router: AudioRouter?) {
-        self.audioRouter = router
-
-        // Apply audio routing to current player item if content is already playing
-        if let router = router, router.isActive {
-            applyAudioRoutingToCurrentPlayer()
-        }
-    }
-
-    /// Apply audio routing to the currently active player
-    private func applyAudioRoutingToCurrentPlayer() {
-        guard let router = audioRouter, router.isActive else { return }
-        guard let content = contentView else { return }
-
-        let currentPlayerView = activePlayer == .a ? content.playerA : content.playerB
-        guard let player = currentPlayerView.player,
-              let currentItem = player.currentItem else { return }
-
-        // Use async version since the item is already playing and tracks may need loading
-        Task {
-            if let audioMix = await router.createAudioMixAsync(for: currentItem) {
-                await MainActor.run {
-                    currentItem.audioMix = audioMix
-                    print("🔊 PerformanceDisplay: Applied audio routing to current player")
-                }
-            }
-        }
-    }
-
-    /// Set volume level for performance audio
-    func setVolume(_ volume: Float) {
-        currentVolume = volume
-        if !isMuted {
-            applyVolume(volume)
-        }
-    }
-
     // MARK: - Private
 
     private var window: PerformanceWindow?
     private var contentView: PerformanceContentView?
 
-    /// Current mute state (applied to new players)
-    /// Defaults to true since default audioSource is .preview (performance muted)
-    private var isMuted: Bool = true
-
     /// Current volume level (0.0 to 1.0)
+    /// Performance audio uses system default output - mute by setting volume to 0
     private var currentVolume: Float = 1.0
 
     /// Which player is currently active (A or B)
@@ -505,10 +452,6 @@ final class PerformanceDisplay: ObservableObject {
         let nextPlayerView = nextSlot == .a ? content.playerA : content.playerB
         let currentPlayerView = activePlayer == .a ? content.playerA : content.playerB
 
-        // Audio routing disabled - may cause spurious sounds
-        // if let router = audioRouter, router.isActive { ... }
-
-        // Match preview exactly - only set audioTimePitchAlgorithm
         buildResult.playerItem.audioTimePitchAlgorithm = .timeDomain
 
         // Setup player - simple AVPlayer like preview
@@ -528,7 +471,7 @@ final class PerformanceDisplay: ObservableObject {
         currentPlayerView.player?.volume = 0.0
 
         // Start new player with correct volume
-        player.volume = isMuted ? 0.0 : currentVolume
+        player.volume = currentVolume
         nextPlayerView.alphaValue = 0
         player.playImmediately(atRate: currentRecipe?.playRate ?? 0.8)
 
