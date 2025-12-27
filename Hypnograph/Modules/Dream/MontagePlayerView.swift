@@ -14,7 +14,7 @@ struct MontagePlayerView: NSViewRepresentable {
     let isPaused: Bool
     let effectsChangeCounter: Int
     let effectManager: EffectManager
-    let isMuted: Bool
+    /// Volume level (0.0 to 1.0) - use 0 for muted
     let volume: Float
     /// Audio output device UID (nil = system default)
     var audioDeviceUID: String? = nil
@@ -33,7 +33,6 @@ struct MontagePlayerView: NSViewRepresentable {
         var currentPlayerItem: AVPlayerItem?
         var currentVideoComposition: AVVideoComposition?
         var playRate: Float = 0.8
-        var lastMutedState: Bool?
         var lastVolume: Float?
         /// Use a sentinel to distinguish "never set" from "set to nil (system default)"
         private static let notSetSentinel = "___NOT_SET___"
@@ -158,15 +157,17 @@ struct MontagePlayerView: NSViewRepresentable {
                         // Use high-quality audio time pitch algorithm for non-1.0 playback rates
                         buildResult.playerItem.audioTimePitchAlgorithm = .timeDomain
 
-                        // Apply mute and volume immediately, before playback starts.
+                        // Apply volume and audio device immediately, before playback starts.
                         // This is necessary because player setup runs in an async Task that
                         // completes after updateNSView() returns. SwiftUI won't call updateNSView
-                        // again until a binding changes, so the mute/volume logic at the end of
+                        // again until a binding changes, so the audio settings logic at the end of
                         // updateNSView would miss the window before playImmediately() is called.
-                        player.isMuted = self.isMuted
+                        // Note: muting is done via volume=0, not player.isMuted
                         player.volume = self.volume
-                        c.lastMutedState = self.isMuted
+                        player.audioOutputDeviceUniqueID = self.audioDeviceUID
                         c.lastVolume = self.volume
+                        c.lastAudioDeviceUID = self.audioDeviceUID
+                        print("🔊 MontagePlayerView: Setup - Audio device = \(self.audioDeviceUID ?? "System Default"), volume=\(self.volume)")
 
                         c.lastPauseState = nil
                         c.lastEffectsCounter = effectsChangeCounter
@@ -221,14 +222,7 @@ struct MontagePlayerView: NSViewRepresentable {
             }
         }
 
-        // Apply mute state
-        if c.lastMutedState != isMuted {
-            c.player?.isMuted = isMuted
-            c.lastMutedState = isMuted
-            print("🔊 MontagePlayerView: Player muted = \(isMuted)")
-        }
-
-        // Apply volume
+        // Apply volume (muting is done via volume=0)
         if c.lastVolume != volume {
             c.player?.volume = volume
             c.lastVolume = volume

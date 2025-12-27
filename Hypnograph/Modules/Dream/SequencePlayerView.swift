@@ -24,7 +24,7 @@ struct SequencePlayerView: NSViewRepresentable {
     let isPaused: Bool
     let effectsChangeCounter: Int
     let effectManager: EffectManager
-    let isMuted: Bool
+    /// Volume level (0.0 to 1.0) - use 0 for muted
     let volume: Float
     /// Audio output device UID (nil = system default)
     var audioDeviceUID: String? = nil
@@ -52,7 +52,6 @@ struct SequencePlayerView: NSViewRepresentable {
         var lastSourceIndex: Int = -1
         var lastPauseState: Bool?
         var lastEffectsCounter: Int?
-        var lastMutedState: Bool?
         var lastVolume: Float?
         var lastRecipeIdentity: String?
         /// Use a sentinel to distinguish "never set" from "set to nil (system default)"
@@ -149,16 +148,7 @@ struct SequencePlayerView: NSViewRepresentable {
             }
         }
 
-        // Apply mute state to video player
-        if c.lastMutedState != isMuted {
-            if case .video(let player) = c.displayMode {
-                player.isMuted = isMuted
-            }
-            c.lastMutedState = isMuted
-            print("🔊 SequencePlayerView: Player muted = \(isMuted)")
-        }
-
-        // Apply volume to video player
+        // Apply volume to video player (muting is done via volume=0)
         if c.lastVolume != volume {
             if case .video(let player) = c.displayMode {
                 player.volume = volume
@@ -400,15 +390,17 @@ struct SequencePlayerView: NSViewRepresentable {
 
                 c.displayMode = .video(player)
 
-                // Apply mute and volume immediately, before playback starts.
+                // Apply volume and audio device immediately, before playback starts.
                 // This is necessary because player setup runs in an async Task that
                 // completes after updateNSView() returns. SwiftUI won't call updateNSView
-                // again until a binding changes, so the mute/volume logic at the end of
+                // again until a binding changes, so the audio settings logic at the end of
                 // updateNSView would miss the window before playImmediately() is called.
-                player.isMuted = self.isMuted
+                // Note: muting is done via volume=0, not player.isMuted
                 player.volume = self.volume
-                c.lastMutedState = self.isMuted
+                player.audioOutputDeviceUniqueID = self.audioDeviceUID
                 c.lastVolume = self.volume
+                c.lastAudioDeviceUID = self.audioDeviceUID
+                print("🔊 SequencePlayerView: Setup - Audio device = \(self.audioDeviceUID ?? "System Default"), volume=\(self.volume)")
 
                 // Setup end observer for clip duration
                 self.setupClipEndObserver(player: player, clipEndTime: source.clip.duration, coordinator: c)

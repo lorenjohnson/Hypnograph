@@ -12,32 +12,59 @@ import Combine
 /// Represents an audio output device
 struct AudioOutputDevice: Identifiable, Hashable {
     let id: AudioDeviceID
-    let uid: String
+    let uid: String?
     let name: String
-    
-    /// Special "None" device representing muted state
-    static let none = AudioOutputDevice(id: 0, uid: "none", name: "None")
-    
-    /// System default device
-    static let systemDefault = AudioOutputDevice(id: 0, uid: "default", name: "System Default")
+
+    /// Check if this is the system default device (nil UID)
+    var isSystemDefault: Bool { uid == nil }
 }
 
 /// Manages discovery of audio output devices
 @MainActor
 class AudioDeviceManager: ObservableObject {
     static let shared = AudioDeviceManager()
-    
+
     @Published private(set) var outputDevices: [AudioOutputDevice] = []
-    
+
+    /// System default device with dynamic name showing actual default device
+    var systemDefault: AudioOutputDevice {
+        let defaultName = getSystemDefaultDeviceName() ?? "Unknown"
+        return AudioOutputDevice(id: 0, uid: nil, name: "System Default (\(defaultName))")
+    }
+
     private init() {
         refreshDevices()
         setupDeviceChangeListener()
     }
-    
+
+    /// Get the name of the current system default output device
+    private func getSystemDefaultDeviceName() -> String? {
+        var propertyAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        var deviceID: AudioDeviceID = 0
+        var dataSize = UInt32(MemoryLayout<AudioDeviceID>.size)
+
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &propertyAddress,
+            0, nil,
+            &dataSize,
+            &deviceID
+        )
+
+        guard status == noErr, deviceID != 0 else { return nil }
+        return getDeviceName(deviceID: deviceID)
+    }
+
     /// Refresh the list of available output devices
     func refreshDevices() {
-        var devices: [AudioOutputDevice] = [.none]
-        
+        // Start with system default (with dynamic name)
+        var devices: [AudioOutputDevice] = [systemDefault]
+
         var propertyAddress = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDevices,
             mScope: kAudioObjectPropertyScopeGlobal,
