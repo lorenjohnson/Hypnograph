@@ -109,10 +109,6 @@ final class Dream: ObservableObject {
         self.sequencePlayer = DreamPlayerState(settings: state.settings)
         self.performanceDisplay = PerformanceDisplay()
 
-        // Wire up parent window state provider for clean screen coordination
-        montagePlayer.parentWindowStateProvider = state
-        sequencePlayer.parentWindowStateProvider = state
-
         // Forward player state changes to Dream's objectWillChange for SwiftUI reactivity
         montagePlayer.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
@@ -302,7 +298,7 @@ final class Dream: ObservableObject {
         activeEffectManager.cycleEffect(for: activePlayer.currentSourceIndex, direction: direction)
 
         // Show flash message when effects panel is not open
-        if !activePlayer.isEffectsEditorVisible {
+        if !state.windowState.isVisible(.effectsEditor) {
             let effectName = activeEffectManager.effectName(for: activePlayer.currentSourceIndex)
             let layerLabel = activePlayer.currentSourceIndex == -1 ? "Global" : "Source \(activePlayer.currentSourceIndex + 1)"
             AppNotifications.show("\(layerLabel): \(effectName)", flash: true, duration: 1.5)
@@ -315,7 +311,7 @@ final class Dream: ObservableObject {
         activeEffectManager.clearEffect(for: activePlayer.currentSourceIndex)
 
         // Show flash message when effects panel is not open
-        if !activePlayer.isEffectsEditorVisible {
+        if !state.windowState.isVisible(.effectsEditor) {
             let layerLabel = activePlayer.currentSourceIndex == -1 ? "Global" : "Source \(activePlayer.currentSourceIndex + 1)"
             AppNotifications.show("\(layerLabel): None", flash: true, duration: 1.5)
         }
@@ -409,7 +405,7 @@ final class Dream: ObservableObject {
         .keyboardShortcut("n", modifiers: [.shift])
 
         // Only use arrow shortcuts when effects editor is closed (otherwise they adjust params)
-        if !activePlayer.isEffectsEditorVisible {
+        if !state.windowState.isVisible(.effectsEditor) {
             Button("> Next Source") { [self] in
                 nextSource()
             }
@@ -744,7 +740,7 @@ final class Dream: ObservableObject {
     }
 
     func toggleHUD() {
-        activePlayer.toggleHUD()
+        state.windowState.toggle(.hud)
     }
 
     func togglePause() {

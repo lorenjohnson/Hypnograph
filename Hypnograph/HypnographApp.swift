@@ -39,9 +39,33 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Callback to check if autosave is enabled (injected by app)
     var isAutosaveEnabled: (() -> Bool)?
 
+    /// Callback to toggle clean screen (injected by app)
+    var toggleCleanScreen: (() -> Void)?
+
+    /// Callback to check if typing is active (injected by app)
+    var isTypingActive: (() -> Bool)?
+
+    /// Event monitor for Tab key (workaround for SwiftUI menu shortcut not registering until menu opened)
+    private var tabKeyMonitor: Any?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Request notification authorization
         AppNotifications.requestAuthorization()
+
+        // Install Tab key monitor to work around SwiftUI menu shortcut bug
+        tabKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            // Check for Tab key (keyCode 48) with no modifiers
+            if event.keyCode == 48 && event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty {
+                // Don't intercept if user is typing in a text field
+                if self?.isTypingActive?() == true {
+                    return event
+                }
+                // Toggle clean screen
+                self?.toggleCleanScreen?()
+                return nil  // Consume the event
+            }
+            return event
+        }
 
         // Request Photos library authorization and refresh hidden assets cache
         Task {
@@ -202,6 +226,14 @@ struct HypnographApp: App {
                 }
                 EffectConfigLoader.isAutosaveEnabled = { [weak state] in
                     state?.settings.effectsAutosave ?? true
+                }
+
+                // Wire up Tab key callbacks for clean screen toggle
+                appDelegate.toggleCleanScreen = { [weak state] in
+                    state?.windowState.toggleCleanScreen()
+                }
+                appDelegate.isTypingActive = { [weak state] in
+                    state?.textFieldFocusMonitor.isEditing ?? false
                 }
 
                 // Initialize game controller support
@@ -371,31 +403,31 @@ struct AppCommands: Commands {
 
             Section("Overlays") {
                 Toggle("Info HUD", isOn: Binding(
-                    get: { dream.activePlayer.isHUDVisible },
-                    set: { _ in dream.activePlayer.toggleHUD() }
+                    get: { state.windowState.isVisible(.hud) },
+                    set: { _ in state.windowState.toggle(.hud) }
                 ))
                 .keyboardShortcut("i", modifiers: [])
                 .disabled(isTyping)
 
                 Toggle("Effects Editor", isOn: Binding(
-                    get: { dream.activePlayer.isEffectsEditorVisible },
-                    set: { _ in dream.activePlayer.toggleEffectsEditor() }
+                    get: { state.windowState.isVisible(.effectsEditor) },
+                    set: { _ in state.windowState.toggle(.effectsEditor) }
                 ))
                 .keyboardShortcut("e", modifiers: [])
                 .disabled(isTyping)
 
                 Toggle("Hypnogram List", isOn: Binding(
-                    get: { state.isHypnogramListVisible },
-                    set: { _ in state.toggleHypnogramList() }
+                    get: { state.windowState.isVisible(.hypnogramList) },
+                    set: { _ in state.windowState.toggle(.hypnogramList) }
                 ))
                 .keyboardShortcut("h", modifiers: [])
                 .disabled(isTyping || state.currentModuleType != .dream)
 
-                Button("Clean Screen") {
-                    dream.activePlayer.toggleCleanScreen()
+                // Clean Screen: Tab key handled via NSEvent monitor in app delegate
+                // (workaround for SwiftUI menu shortcut not registering until menu opened)
+                Button("Clean Screen (Tab)") {
+                    state.windowState.toggleCleanScreen()
                 }
-                .keyboardShortcut(.tab, modifiers: [])
-                .disabled(isTyping)
             }
 
             Divider()
@@ -403,8 +435,8 @@ struct AppCommands: Commands {
             // Player Settings - only for Dream module
             Section("Player") {
                 Toggle("Player Settings", isOn: Binding(
-                    get: { dream.activePlayer.isPlayerSettingsVisible },
-                    set: { _ in dream.activePlayer.togglePlayerSettings() }
+                    get: { state.windowState.isVisible(.playerSettings) },
+                    set: { _ in state.windowState.toggle(.playerSettings) }
                 ))
                 .keyboardShortcut("p", modifiers: [])
                 .disabled(isTyping || state.currentModuleType != .dream)
@@ -414,8 +446,8 @@ struct AppCommands: Commands {
 
             Section("Performance Display") {
                 Toggle("Performance Preview", isOn: Binding(
-                    get: { state.isPerformancePreviewVisible },
-                    set: { _ in state.togglePerformancePreview() }
+                    get: { state.windowState.isVisible(.performancePreview) },
+                    set: { _ in state.windowState.toggle(.performancePreview) }
                 ))
                 .keyboardShortcut("l", modifiers: [])
                 .disabled(isTyping)

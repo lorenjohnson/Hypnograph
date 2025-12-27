@@ -100,7 +100,7 @@ final class GameControllerManager {
 
     /// Check if the effects editor is currently visible
     private var isEffectsEditorVisible: Bool {
-        dream?.activePlayer.isEffectsEditorVisible ?? false
+        state?.windowState.isVisible(.effectsEditor) ?? false
     }
 
     /// Get the effects editor view model

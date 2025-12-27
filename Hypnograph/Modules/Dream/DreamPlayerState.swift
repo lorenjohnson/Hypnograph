@@ -51,27 +51,7 @@ final class DreamPlayerState: ObservableObject {
     /// Target duration for new hypnograms
     @Published var targetDuration: CMTime
 
-    // MARK: - UI State (delegated to WindowStateProvider)
 
-    /// Reference to parent's window state - all visibility is stored there
-    /// Set by Dream after initialization
-    weak var parentWindowStateProvider: WindowStateProvider?
-
-    /// Window visibility - delegates to parent's WindowState (single source of truth)
-    var isHUDVisible: Bool {
-        get { parentWindowStateProvider?.windowState.isVisible(.hud) ?? false }
-        set { parentWindowStateProvider?.windowState.set(.hud, visible: newValue) }
-    }
-
-    var isEffectsEditorVisible: Bool {
-        get { parentWindowStateProvider?.windowState.isVisible(.effectsEditor) ?? false }
-        set { parentWindowStateProvider?.windowState.set(.effectsEditor, visible: newValue) }
-    }
-
-    var isPlayerSettingsVisible: Bool {
-        get { parentWindowStateProvider?.windowState.isVisible(.playerSettings) ?? false }
-        set { parentWindowStateProvider?.windowState.set(.playerSettings, visible: newValue) }
-    }
     
     // MARK: - Effect Processing
 
@@ -200,22 +180,6 @@ final class DreamPlayerState: ObservableObject {
 
     func togglePause() {
         isPaused.toggle()
-    }
-
-    func toggleHUD() {
-        parentWindowStateProvider?.windowState.toggle(.hud)
-    }
-
-    func toggleEffectsEditor() {
-        parentWindowStateProvider?.windowState.toggle(.effectsEditor)
-    }
-
-    func togglePlayerSettings() {
-        parentWindowStateProvider?.windowState.toggle(.playerSettings)
-    }
-
-    func toggleCleanScreen() {
-        parentWindowStateProvider?.windowState.toggleCleanScreen()
     }
 
     // MARK: - Recipe Management

@@ -16,7 +16,7 @@ import Photos
 
 /// Manages the current in-progress hypnogram.
 @MainActor
-final class HypnographState: ObservableObject, WindowStateProvider {
+final class HypnographState: ObservableObject {
 
     // MARK: - Core configuration
 
@@ -48,18 +48,6 @@ final class HypnographState: ObservableObject, WindowStateProvider {
 
     /// Unified window visibility state with clean screen support
     @Published var windowState = WindowState()
-
-    /// Convenience accessor for performance preview visibility
-    var isPerformancePreviewVisible: Bool {
-        get { windowState.isVisible(.performancePreview) }
-        set { windowState.set(.performancePreview, visible: newValue) }
-    }
-
-    /// Convenience accessor for hypnogram list visibility
-    var isHypnogramListVisible: Bool {
-        get { windowState.isVisible(.hypnogramList) }
-        set { windowState.set(.hypnogramList, visible: newValue) }
-    }
 
     /// Shared effects editor view model for controller/keyboard navigation
     let effectsEditorViewModel = EffectsEditorViewModel()
@@ -125,14 +113,6 @@ final class HypnographState: ObservableObject, WindowStateProvider {
     }
 
     // MARK: - UI Toggles
-
-    func togglePerformancePreview() {
-        windowState.toggle(.performancePreview)
-    }
-
-    func toggleHypnogramList() {
-        windowState.toggle(.hypnogramList)
-    }
 
     func toggleWatchMode() {
         settings.watch.toggle()

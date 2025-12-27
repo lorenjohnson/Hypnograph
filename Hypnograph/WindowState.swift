@@ -8,20 +8,11 @@
 
 import Foundation
 
-/// Protocol for objects that provide access to the shared WindowState
-@MainActor
-protocol WindowStateProvider: AnyObject {
-    var windowState: WindowState { get set }
-}
-
 /// Which window/overlay to show or hide
 enum Window: CaseIterable {
-    // Per-player windows (managed by DreamPlayerState)
     case hud
     case effectsEditor
     case playerSettings
-
-    // App-level windows (managed by HypnographState)
     case hypnogramList
     case performancePreview
 }
