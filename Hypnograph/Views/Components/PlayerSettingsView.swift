@@ -120,19 +120,11 @@ struct AudioDeviceRow: View {
     @Binding var volume: Float
     @StateObject private var audioManager = AudioDeviceManager.shared
 
-    /// Use device ID for stable selection (AudioDeviceID is stable across refreshes)
-    private var selectedDeviceID: Binding<AudioDeviceID> {
-        Binding(
-            get: { selectedDevice?.id ?? 0 },
-            set: { newID in
-                if newID == 0 {
-                    selectedDevice = nil
-                } else {
-                    selectedDevice = audioManager.outputDevices.first { $0.id == newID }
-                }
-            }
-        )
-    }
+    /// Remember volume before muting so we can restore it
+    @State private var volumeBeforeMute: Float = 1.0
+
+    /// Muted when volume is 0
+    private var isMuted: Bool { volume == 0 }
 
     var body: some View {
         VStack(spacing: 6) {
@@ -143,35 +135,50 @@ struct AudioDeviceRow: View {
 
                 Spacer()
 
-                Picker("", selection: selectedDeviceID) {
-                    Text("None").tag(AudioDeviceID(0))
-                    ForEach(audioManager.outputDevices.filter { $0 != .none }) { device in
-                        Text(device.name).tag(device.id)
+                Picker("", selection: $selectedDevice) {
+                    ForEach(audioManager.outputDevices) { device in
+                        Text(device.name).tag(device as AudioOutputDevice?)
                     }
                 }
                 .pickerStyle(.menu)
-                .frame(width: 160)
+                .frame(width: 200)
             }
 
-            // Volume slider (only show when device is selected)
-            if selectedDevice != nil {
-                HStack(spacing: 8) {
-                    Image(systemName: "speaker.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.5))
-                        .frame(width: 20)
-
-                    Slider(value: Binding(
-                        get: { Double(volume) },
-                        set: { volume = Float($0) }
-                    ), in: 0...1)
-                    .controlSize(.small)
-
-                    Image(systemName: "speaker.wave.3.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.5))
+            // Volume slider (always visible)
+            HStack(spacing: 8) {
+                // Mute button
+                Button {
+                    if isMuted {
+                        // Unmute: restore previous volume
+                        volume = volumeBeforeMute
+                    } else {
+                        // Mute: save current volume and set to 0
+                        volumeBeforeMute = max(volume, 0.1) // Ensure we have something to restore
+                        volume = 0
+                    }
+                } label: {
+                    Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(isMuted ? .red : .white.opacity(0.6))
+                        .frame(width: 24, height: 24)
                 }
-                .padding(.leading, 20)
+                .buttonStyle(.plain)
+                .frame(height: 24)
+
+                Slider(value: $volume, in: 0...1)
+                .controlSize(.small)
+
+                // Max volume button
+                Button {
+                    volume = 1.0
+                } label: {
+                    Image(systemName: "speaker.wave.3.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.white.opacity(0.6))
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.plain)
+                .frame(height: 24)
             }
         }
     }

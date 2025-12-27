@@ -59,6 +59,9 @@ final class Dream: ObservableObject {
 
     // MARK: - Audio Output
 
+    /// Audio device manager for device discovery
+    @ObservedObject private var audioManager = AudioDeviceManager.shared
+
     /// Selected audio output device for Preview player (nil = system default)
     @Published var previewAudioDevice: AudioOutputDevice? = nil
 
@@ -71,26 +74,20 @@ final class Dream: ObservableObject {
     /// Volume level for Performance audio (0.0 to 1.0)
     @Published var performanceVolume: Float = 1.0
 
-    /// Whether preview audio is muted (None device selected)
-    var isPreviewMuted: Bool {
-        previewAudioDevice == .none
-    }
-
-    /// Whether performance audio is muted (None device selected)
-    var isPerformanceMuted: Bool {
-        performanceAudioDevice == .none
-    }
-
     /// Get the device UID for preview audio routing (nil = system default)
     var previewAudioDeviceUID: String? {
-        guard let device = previewAudioDevice, device != .none else { return nil }
-        return device.uid == "default" ? nil : device.uid
+        previewAudioDevice?.uid
     }
 
     /// Get the device UID for performance audio routing (nil = system default)
     var performanceAudioDeviceUID: String? {
-        guard let device = performanceAudioDevice, device != .none else { return nil }
-        return device.uid == "default" ? nil : device.uid
+        performanceAudioDevice?.uid
+    }
+
+    /// Find audio device by UID, returns system default if not found
+    private func findAudioDevice(byUID uid: String?) -> AudioOutputDevice? {
+        guard let uid = uid else { return audioManager.systemDefault }
+        return audioManager.outputDevices.first { $0.uid == uid } ?? audioManager.systemDefault
     }
 
     /// Returns the active EffectManager based on performance mode
@@ -115,6 +112,9 @@ final class Dream: ObservableObject {
         self.sequencePlayer = DreamPlayerState(settings: state.settings)
         self.performanceDisplay = PerformanceDisplay()
 
+        // Load audio settings from disk
+        loadAudioSettings()
+
         // Forward player state changes to Dream's objectWillChange for SwiftUI reactivity
         montagePlayer.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
@@ -131,39 +131,109 @@ final class Dream: ObservableObject {
         // Generate initial content for montage player
         generateNewHypnogram(for: montagePlayer)
 
+        // Watch for device list changes (device disconnected)
+        audioManager.$outputDevices
+            .receive(on: RunLoop.main)
+            .sink { [weak self] devices in
+                self?.handleDeviceListChange(devices)
+            }
+            .store(in: &playerSubscriptions)
+
         // Performance audio subscriptions
         // Use .receive(on: RunLoop.main) to ensure sink runs AFTER property is updated
         $performanceVolume
             .receive(on: RunLoop.main)
+            .dropFirst()  // Skip initial value (loaded from settings)
             .sink { [weak self] volume in
                 guard let self = self else { return }
-                let isMuted = self.performanceAudioDevice == .none
-                let effectiveVolume = isMuted ? Float(0) : volume
-                self.performanceDisplay.setVolume(effectiveVolume)
+                self.performanceDisplay.setVolume(volume)
+                self.saveAudioSettings()
             }
             .store(in: &playerSubscriptions)
 
         $performanceAudioDevice
             .receive(on: RunLoop.main)
+            .dropFirst()  // Skip initial value (loaded from settings)
             .sink { [weak self] device in
                 guard let self = self else { return }
-                // Now self.performanceAudioDevice has the NEW value
-                let isMuted = device == .none
-                let deviceUID: String? = {
-                    guard let d = device, d != .none else { return nil }
-                    return d.uid == "default" ? nil : d.uid
-                }()
+                // device.uid is nil for system default
+                let deviceUID = device?.uid
 
-                print("🔊 Dream: performanceAudioDevice changed to \(device?.name ?? "nil"), muted=\(isMuted), uid=\(deviceUID ?? "nil")")
+                print("🔊 Dream: performanceAudioDevice changed to \(device?.name ?? "nil"), uid=\(deviceUID ?? "System Default")")
 
-                if isMuted {
-                    self.performanceDisplay.setVolume(0)
-                } else {
-                    self.performanceDisplay.setVolume(self.performanceVolume)
-                }
                 self.performanceDisplay.setAudioDevice(deviceUID)
+                self.saveAudioSettings()
             }
             .store(in: &playerSubscriptions)
+
+        // Preview audio subscriptions (for saving settings)
+        $previewAudioDevice
+            .receive(on: RunLoop.main)
+            .dropFirst()  // Skip initial value (loaded from settings)
+            .sink { [weak self] _ in
+                self?.saveAudioSettings()
+            }
+            .store(in: &playerSubscriptions)
+
+        $previewVolume
+            .receive(on: RunLoop.main)
+            .dropFirst()  // Skip initial value (loaded from settings)
+            .sink { [weak self] _ in
+                self?.saveAudioSettings()
+            }
+            .store(in: &playerSubscriptions)
+    }
+
+    // MARK: - Audio Settings Persistence
+
+    /// Load audio device and volume settings from Settings
+    private func loadAudioSettings() {
+        let settings = state.settings
+
+        // Load volumes
+        previewVolume = settings.previewVolume
+        performanceVolume = settings.performanceVolume
+
+        // Load devices by UID, defaulting to system default if not found
+        previewAudioDevice = findAudioDevice(byUID: settings.previewAudioDeviceUID)
+        performanceAudioDevice = findAudioDevice(byUID: settings.performanceAudioDeviceUID)
+
+        // Apply initial performance audio settings to PerformanceDisplay
+        // (subscriptions use .dropFirst() so initial values aren't applied via Combine)
+        performanceDisplay.setVolume(performanceVolume)
+        performanceDisplay.setAudioDevice(performanceAudioDevice?.uid)
+
+        print("🔊 Dream: Loaded audio settings - preview: \(previewAudioDevice?.name ?? "System Default") @ \(previewVolume), performance: \(performanceAudioDevice?.name ?? "System Default") @ \(performanceVolume)")
+    }
+
+    /// Save audio device and volume settings to Settings
+    private func saveAudioSettings() {
+        // device.uid is nil for system default, which maps to nil in storage
+        state.settings.previewAudioDeviceUID = previewAudioDevice?.uid
+        state.settings.previewVolume = previewVolume
+        state.settings.performanceAudioDeviceUID = performanceAudioDevice?.uid
+        state.settings.performanceVolume = performanceVolume
+
+        state.saveSettings()
+    }
+
+    /// Handle device list changes - switch to system default if current device is no longer available
+    private func handleDeviceListChange(_ devices: [AudioOutputDevice]) {
+        // Check preview device
+        if let preview = previewAudioDevice,
+           !preview.isSystemDefault,
+           !devices.contains(where: { $0.uid == preview.uid }) {
+            print("🔊 Dream: Preview audio device '\(preview.name)' disconnected, switching to System Default")
+            previewAudioDevice = audioManager.systemDefault
+        }
+
+        // Check performance device
+        if let performance = performanceAudioDevice,
+           !performance.isSystemDefault,
+           !devices.contains(where: { $0.uid == performance.uid }) {
+            print("🔊 Dream: Performance audio device '\(performance.name)' disconnected, switching to System Default")
+            performanceAudioDevice = audioManager.systemDefault
+        }
     }
 
     /// Create a renderer on-demand with current settings (aspect ratio + resolution)
@@ -577,11 +647,6 @@ final class Dream: ObservableObject {
         let recipe = makeDisplayRecipe()
         let player = activePlayer
 
-        // Preview is muted if "None" device selected
-        let previewMuted = isPreviewMuted
-        // Effective volume is 0 if muted, otherwise use slider value
-        let effectiveVolume = previewMuted ? Float(0) : previewVolume
-
         switch mode {
         case .montage:
             return AnyView(
@@ -600,8 +665,7 @@ final class Dream: ObservableObject {
                     isPaused: player.isPaused,
                     effectsChangeCounter: player.effectsChangeCounter,
                     effectManager: player.effectManager,
-                    isMuted: previewMuted,
-                    volume: effectiveVolume,
+                    volume: previewVolume,
                     audioDeviceUID: previewAudioDeviceUID
                 )
                 .id("dream-montage-\(player.aspectRatio.displayString)-\(player.outputResolution.rawValue)-\(player.targetDuration.seconds)-\(recipe.playRate)")
@@ -620,8 +684,7 @@ final class Dream: ObservableObject {
                     isPaused: player.isPaused,
                     effectsChangeCounter: player.effectsChangeCounter,
                     effectManager: player.effectManager,
-                    isMuted: previewMuted,
-                    volume: effectiveVolume,
+                    volume: previewVolume,
                     audioDeviceUID: previewAudioDeviceUID,
                     onSourceIndexChanged: { [weak self] newIndex in
                         // Sync Performance Display when auto-advancing in sequence mode

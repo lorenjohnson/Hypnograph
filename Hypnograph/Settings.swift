@@ -151,6 +151,20 @@ struct Settings: Codable {
     /// Whether effect parameter changes are automatically saved to disk
     var effectsAutosave: Bool
 
+    // MARK: - Audio Settings
+
+    /// Preview audio device UID (nil = None/muted)
+    var previewAudioDeviceUID: String?
+
+    /// Preview audio volume (0.0 to 1.0)
+    var previewVolume: Float
+
+    /// Performance audio device UID (nil = None/muted)
+    var performanceAudioDeviceUID: String?
+
+    /// Performance audio volume (0.0 to 1.0)
+    var performanceVolume: Float
+
     // Single source of truth for defaults
     private enum Defaults {
         static let watch: Bool = true
@@ -168,6 +182,11 @@ struct Settings: Codable {
         static let sourceMediaTypes: Set<SourceMediaType> = [.images, .videos]
         static let effectsListCollapsed: Bool = false
         static let effectsAutosave: Bool = true
+        // Audio defaults: nil UID = system default, volume = 1.0
+        static let previewAudioDeviceUID: String? = nil
+        static let previewVolume: Float = 1.0
+        static let performanceAudioDeviceUID: String? = nil
+        static let performanceVolume: Float = 1.0
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -176,6 +195,8 @@ struct Settings: Codable {
         case activeLibrariesPerMode
         case aspectRatio, outputResolution, displayResolution, sourceMediaTypes
         case effectsListCollapsed, effectsAutosave
+        case previewAudioDeviceUID, previewVolume
+        case performanceAudioDeviceUID, performanceVolume
     }
 
     init(
@@ -191,7 +212,11 @@ struct Settings: Codable {
         displayResolution: OutputResolution = Defaults.displayResolution,
         sourceMediaTypes: Set<SourceMediaType> = Defaults.sourceMediaTypes,
         effectsListCollapsed: Bool = Defaults.effectsListCollapsed,
-        effectsAutosave: Bool = Defaults.effectsAutosave
+        effectsAutosave: Bool = Defaults.effectsAutosave,
+        previewAudioDeviceUID: String? = Defaults.previewAudioDeviceUID,
+        previewVolume: Float = Defaults.previewVolume,
+        performanceAudioDeviceUID: String? = Defaults.performanceAudioDeviceUID,
+        performanceVolume: Float = Defaults.performanceVolume
     ) {
         self.outputFolder = outputFolder
         self.sources = sources
@@ -206,6 +231,10 @@ struct Settings: Codable {
         self.sourceMediaTypes = sourceMediaTypes
         self.effectsListCollapsed = effectsListCollapsed
         self.effectsAutosave = effectsAutosave
+        self.previewAudioDeviceUID = previewAudioDeviceUID
+        self.previewVolume = previewVolume
+        self.performanceAudioDeviceUID = performanceAudioDeviceUID
+        self.performanceVolume = performanceVolume
     }
 
     init(from decoder: Decoder) throws {
@@ -240,6 +269,14 @@ struct Settings: Codable {
             ?? Defaults.effectsListCollapsed
         effectsAutosave = try c.decodeIfPresent(Bool.self, forKey: .effectsAutosave)
             ?? Defaults.effectsAutosave
+        previewAudioDeviceUID = try c.decodeIfPresent(String.self, forKey: .previewAudioDeviceUID)
+            ?? Defaults.previewAudioDeviceUID
+        previewVolume = try c.decodeIfPresent(Float.self, forKey: .previewVolume)
+            ?? Defaults.previewVolume
+        performanceAudioDeviceUID = try c.decodeIfPresent(String.self, forKey: .performanceAudioDeviceUID)
+            ?? Defaults.performanceAudioDeviceUID
+        performanceVolume = try c.decodeIfPresent(Float.self, forKey: .performanceVolume)
+            ?? Defaults.performanceVolume
     }
 
     func encode(to encoder: Encoder) throws {
@@ -257,6 +294,10 @@ struct Settings: Codable {
         try c.encode(Array(sourceMediaTypes), forKey: .sourceMediaTypes)
         try c.encode(effectsListCollapsed, forKey: .effectsListCollapsed)
         try c.encode(effectsAutosave, forKey: .effectsAutosave)
+        try c.encodeIfPresent(previewAudioDeviceUID, forKey: .previewAudioDeviceUID)
+        try c.encode(previewVolume, forKey: .previewVolume)
+        try c.encodeIfPresent(performanceAudioDeviceUID, forKey: .performanceAudioDeviceUID)
+        try c.encode(performanceVolume, forKey: .performanceVolume)
     }
 
     // MARK: - Derived values
