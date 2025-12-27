@@ -2,8 +2,8 @@
 //  BasicShader.metal
 //  Hypnograph
 //
-//  Basic image adjustments: opacity, contrast, brightness, saturation, hue.
-//  All adjustment parameters use -1 to 1 scale (0 = no change) except opacity (0-1).
+//  Basic image adjustments: contrast, brightness, saturation, hue, invert.
+//  All adjustment parameters use -1 to 1 scale (0 = no change).
 //
 
 #include <metal_stdlib>
@@ -11,7 +11,6 @@ using namespace metal;
 
 // Parameters passed from Swift - must match BasicParamsGPU
 struct BasicParams {
-    float opacity;       // 0.0 = transparent, 1.0 = fully opaque
     float contrast;      // -1 to 1: 0 = no change, -1 = flat, 1 = high contrast
     float brightness;    // -1 to 1: 0 = no change, -1 = black, 1 = white
     float saturation;    // -1 to 1: 0 = no change, -1 = grayscale, 1 = oversaturated
@@ -184,10 +183,7 @@ kernel void basicKernel(
     // Clamp to valid range
     rgb = clamp(rgb, 0.0f, 1.0f);
 
-    // Apply opacity to alpha channel
-    float alpha = color.a * clamp(params.opacity, 0.0f, 1.0f);
-
-    // Write to output
-    outputTexture.write(float4(rgb, alpha), gid);
+    // Write to output (preserve original alpha)
+    outputTexture.write(float4(rgb, color.a), gid);
 }
 

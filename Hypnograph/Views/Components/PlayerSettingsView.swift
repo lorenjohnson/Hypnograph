@@ -9,6 +9,110 @@
 import SwiftUI
 import CoreMedia
 
+// MARK: - Dark Mode Toggle Styles
+
+/// Custom switch style that shows better on dark backgrounds when disabled
+/// Provides a visible background capsule for the switch track
+struct DarkModeSwitchStyle: ToggleStyle {
+    @SwiftUI.Environment(\.isEnabled) private var isEnabled
+
+    /// Whether to use compact sizing (for inline use in lists)
+    var compact: Bool = false
+
+    private var trackWidth: CGFloat { compact ? 32 : 44 }
+    private var trackHeight: CGFloat { compact ? 18 : 24 }
+    private var thumbSize: CGFloat { compact ? 14 : 20 }
+    private var thumbOffset: CGFloat { compact ? 7 : 10 }
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack {
+            configuration.label
+
+            if !compact {
+                Spacer()
+            }
+
+            // Custom switch appearance
+            ZStack {
+                // Track background - visible even when disabled
+                Capsule()
+                    .fill(configuration.isOn
+                        ? Color.blue.opacity(isEnabled ? 1.0 : 0.4)
+                        : Color.white.opacity(isEnabled ? 0.3 : 0.15))
+                    .frame(width: trackWidth, height: trackHeight)
+
+                // Thumb
+                Circle()
+                    .fill(Color.white.opacity(isEnabled ? 1.0 : 0.6))
+                    .frame(width: thumbSize, height: thumbSize)
+                    .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
+                    .offset(x: configuration.isOn ? thumbOffset : -thumbOffset)
+            }
+            .animation(.easeInOut(duration: 0.15), value: configuration.isOn)
+            .onTapGesture {
+                if isEnabled {
+                    configuration.isOn.toggle()
+                }
+            }
+        }
+    }
+}
+
+/// Custom checkbox style that shows better on dark backgrounds
+/// Provides a visible border and background for the checkbox
+struct DarkModeCheckboxStyle: ToggleStyle {
+    @SwiftUI.Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 6) {
+            // Custom checkbox appearance
+            ZStack {
+                // Background box
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(configuration.isOn
+                        ? Color.blue.opacity(isEnabled ? 1.0 : 0.4)
+                        : Color.white.opacity(isEnabled ? 0.15 : 0.08))
+                    .frame(width: 16, height: 16)
+
+                // Border
+                RoundedRectangle(cornerRadius: 3)
+                    .strokeBorder(Color.white.opacity(isEnabled ? 0.5 : 0.25), lineWidth: 1)
+                    .frame(width: 16, height: 16)
+
+                // Checkmark
+                if configuration.isOn {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white.opacity(isEnabled ? 1.0 : 0.6))
+                }
+            }
+            .onTapGesture {
+                if isEnabled {
+                    configuration.isOn.toggle()
+                }
+            }
+
+            configuration.label
+        }
+    }
+}
+
+extension ToggleStyle where Self == DarkModeSwitchStyle {
+    /// A switch style optimized for dark backgrounds with visible disabled states
+    static var darkModeSwitch: DarkModeSwitchStyle { DarkModeSwitchStyle() }
+
+    /// A compact switch style for inline use in lists
+    static var darkModeSwitchCompact: DarkModeSwitchStyle { DarkModeSwitchStyle(compact: true) }
+
+    /// Alias for darkModeSwitch
+    static var darkMode: DarkModeSwitchStyle { DarkModeSwitchStyle() }
+}
+
+extension ToggleStyle where Self == DarkModeCheckboxStyle {
+    /// A checkbox style optimized for dark backgrounds with visible disabled states
+    static var darkModeCheckbox: DarkModeCheckboxStyle { DarkModeCheckboxStyle() }
+}
+
 /// Row component for audio device selection with volume slider
 struct AudioDeviceRow: View {
     let label: String
@@ -133,7 +237,7 @@ struct PlayerSettingsView: View {
                     get: { dream.state.settings.watch },
                     set: { _ in dream.state.toggleWatchMode() }
                 ))
-                .toggleStyle(.switch)
+                .toggleStyle(.darkMode)
             }
 
             HStack {
@@ -233,7 +337,7 @@ struct PlayerSettingsView: View {
         .foregroundColor(.white)
         .padding(16)
         .frame(width: 320)
-        .background(Color.black.opacity(0.9))
+        .background(Color.black.opacity(0.6))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }

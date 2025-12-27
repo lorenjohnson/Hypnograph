@@ -729,7 +729,7 @@ struct EffectsEditorView: View {
                     .foregroundColor(.white.opacity(0.5))
             }
         }
-        .padding(.leading, 12)
+        .padding(.leading, state.settings.effectsListCollapsed ? 0 : 12)
     }
 
     @ViewBuilder
@@ -834,7 +834,7 @@ struct EffectsEditorView: View {
                         )
                     }
                 ))
-                .toggleStyle(.checkbox)
+                .toggleStyle(.darkModeSwitchCompact)
                 .labelsHidden()
                 .help(isEnabled ? "Disable effect" : "Enable effect")
                 .focused($focusedField, equals: .effectCheckbox(childIndex))
@@ -853,7 +853,6 @@ struct EffectsEditorView: View {
             // Parameters (show when expanded, even if disabled - allows pre-configuration)
             if isExpanded {
                 parameterFieldsForEffect(effectDef, layer: layer, effectDefIndex: childIndex)
-                    .padding(.leading, 28)
                     .padding(.top, 8)
                     .opacity(isEnabled ? 1.0 : 0.5)
             }
@@ -1003,6 +1002,7 @@ struct ParameterSliderRow: View {
                         get: { b },
                         set: { onChange(.bool($0)) }
                     ))
+                    .toggleStyle(.darkModeCheckbox)
                     .labelsHidden()
 
                 case .string(let s):

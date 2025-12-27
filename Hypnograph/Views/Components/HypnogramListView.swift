@@ -96,7 +96,7 @@ struct HypnogramListView: View {
             }
         }
         .frame(width: panelSize.width, height: panelSize.height)
-        .background(Color.black.opacity(0.9))
+        .background(Color.black.opacity(0.6))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
