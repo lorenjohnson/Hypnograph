@@ -53,23 +53,58 @@ final class DreamPlayerState: ObservableObject {
 
     // MARK: - UI State
 
-    /// Unified window visibility state with clean screen support
-    @Published var windowState = WindowState()
+    /// Reference to parent's window state for clean screen coordination
+    /// Set by Dream after initialization
+    weak var parentWindowStateProvider: WindowStateProvider?
 
-    /// Convenience accessors for backward compatibility
+    /// Per-player window visibility states (the "true" states)
+    @Published private var _isHUDVisible: Bool = false
+    @Published private var _isEffectsEditorVisible: Bool = false
+    @Published private var _isPlayerSettingsVisible: Bool = false
+
+    /// Computed accessors that respect clean screen mode from parent
     var isHUDVisible: Bool {
-        get { windowState.isVisible(.hud) }
-        set { windowState.set(.hud, visible: newValue) }
+        get {
+            guard let provider = parentWindowStateProvider else { return _isHUDVisible }
+            return provider.windowState.isCleanScreen ? false : _isHUDVisible
+        }
+        set {
+            if let provider = parentWindowStateProvider, provider.windowState.isCleanScreen {
+                exitCleanScreen()
+            }
+            _isHUDVisible = newValue
+        }
     }
 
     var isEffectsEditorVisible: Bool {
-        get { windowState.isVisible(.effectsEditor) }
-        set { windowState.set(.effectsEditor, visible: newValue) }
+        get {
+            guard let provider = parentWindowStateProvider else { return _isEffectsEditorVisible }
+            return provider.windowState.isCleanScreen ? false : _isEffectsEditorVisible
+        }
+        set {
+            if let provider = parentWindowStateProvider, provider.windowState.isCleanScreen {
+                exitCleanScreen()
+            }
+            _isEffectsEditorVisible = newValue
+        }
     }
 
     var isPlayerSettingsVisible: Bool {
-        get { windowState.isVisible(.playerSettings) }
-        set { windowState.set(.playerSettings, visible: newValue) }
+        get {
+            guard let provider = parentWindowStateProvider else { return _isPlayerSettingsVisible }
+            return provider.windowState.isCleanScreen ? false : _isPlayerSettingsVisible
+        }
+        set {
+            if let provider = parentWindowStateProvider, provider.windowState.isCleanScreen {
+                exitCleanScreen()
+            }
+            _isPlayerSettingsVisible = newValue
+        }
+    }
+
+    /// Whether any per-player window is visible (ignoring clean screen)
+    var hasAnyWindowVisible: Bool {
+        _isHUDVisible || _isEffectsEditorVisible || _isPlayerSettingsVisible
     }
     
     // MARK: - Effect Processing
@@ -202,19 +237,41 @@ final class DreamPlayerState: ObservableObject {
     }
 
     func toggleHUD() {
-        windowState.toggle(.hud)
+        // If in clean screen, exit first (consumes keypress)
+        if let provider = parentWindowStateProvider, provider.windowState.isCleanScreen {
+            exitCleanScreen()
+            return
+        }
+        _isHUDVisible.toggle()
     }
 
     func toggleEffectsEditor() {
-        windowState.toggle(.effectsEditor)
+        // If in clean screen, exit first (consumes keypress)
+        if let provider = parentWindowStateProvider, provider.windowState.isCleanScreen {
+            exitCleanScreen()
+            return
+        }
+        _isEffectsEditorVisible.toggle()
     }
 
     func togglePlayerSettings() {
-        windowState.toggle(.playerSettings)
+        // If in clean screen, exit first (consumes keypress)
+        if let provider = parentWindowStateProvider, provider.windowState.isCleanScreen {
+            exitCleanScreen()
+            return
+        }
+        _isPlayerSettingsVisible.toggle()
     }
 
     func toggleCleanScreen() {
-        windowState.toggleCleanScreen()
+        parentWindowStateProvider?.windowState.toggleCleanScreen(
+            additionalWindowsVisible: hasAnyWindowVisible
+        )
+    }
+
+    /// Exit clean screen mode on parent
+    private func exitCleanScreen() {
+        parentWindowStateProvider?.windowState.isCleanScreen = false
     }
 
     // MARK: - Recipe Management

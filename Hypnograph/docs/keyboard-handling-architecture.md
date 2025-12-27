@@ -1,91 +1,224 @@
-# Keyboard Handling Architecture for Effects Editor Text Field Focus
+# Keyboard Handling Architecture for Text Fields vs Single-Key Shortcuts
 
-## Problem
+## The Problem (Recurring)
 
-In a macOS SwiftUI app, the Effects Editor overlay contains text input fields (parameter values, effect names). When users clicked into these text fields, keyboard input wasn't working properly because global keyboard shortcuts defined in the app's Commands struct were capturing keystrokes before they could reach the text fields.
-
-Affected shortcuts (all with no modifiers):
-- Space → toggles pause/play
+This app uses single-key shortcuts (no modifiers) for quick access:
+- Space → pause/play
 - S → save snapshot
-- W → toggle watch mode
-- I → toggle HUD
 - E → toggle Effects Editor
-- P → toggle Performance Preview
-- ~ → cycle module
+- 1-9 → select sources
+- etc.
 
-## Architecture
+Text fields in modals (Effects Editor, etc.) conflict with these shortcuts. When typing "test", pressing 's' triggers Save Snapshot instead of typing 's'.
 
-### FocusedValues (SwiftUI-native approach)
+**This has regressed multiple times** because the architecture is fragile and spread across multiple files.
 
-The solution uses SwiftUI's `FocusedValues` mechanism to expose text field focus state to Commands without polluting global app state:
+## Current Architecture (and Why It Breaks)
 
-**1. Define FocusedValueKey** (`Hypnograph/FocusedValues.swift`):
+### The Approach: FocusedValues + .disabled()
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Text Field                                                     │
+│  └─ @FocusState isTextFieldFocused                              │
+│     └─ .focusedValue(\.isTyping, isTextFieldFocused)            │
+│                          │                                      │
+│                          ▼                                      │
+│  AppCommands                                                    │
+│  └─ @FocusedValue(\.isTyping) private var isTyping              │
+│     └─ .disabled(isTyping == true)                              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Files Involved
+
+1. **FocusedValues.swift** - Defines `IsTypingKey`
+2. **HypnographApp.swift** - `AppCommands` reads `@FocusedValue(\.isTyping)`
+3. **EffectsEditorView.swift** - Multiple components expose focus:
+   - `ParameterSliderRow` has `@FocusState isTextFieldFocused`
+   - `EditableEffectNameHeader` has its own focus state
+   - Parent view computes `isTextEditing` from `focusedField` enum
+4. **Dream.swift** - `compositionMenu()` and `sourceMenu()` define more shortcuts
+5. **Divine.swift** - `compositionMenu()` and `sourceMenu()` define more shortcuts
+
+### Why It Breaks
+
+1. **Multiple .focusedValue() calls override each other**
+   - Parent: `.focusedValue(\.isTyping, isTextEditing)`
+   - Child: `.focusedValue(\.isTyping, isTextFieldFocused)`
+   - SwiftUI uses innermost in responder chain, but behavior is unreliable
+
+2. **Child components have isolated @FocusState**
+   - `EditableEffectNameHeader` has its own `@FocusState`
+   - Parent's `focusedField` enum doesn't know about it
+   - So `isTextEditing` returns false even when editing
+
+3. **Module menus don't check isTyping at all**
+   - `Dream.compositionMenu()` shortcuts like "n", "c", "1-9" aren't disabled
+   - These steal keystrokes even when text field is focused
+
+4. **FocusedValues are fragile across view hierarchies**
+   - Overlays, sheets, and modals may not propagate correctly
+   - Depends on exact view tree structure
+
+## Recommended Fix: Centralize with Global State
+
+### Why Global State Is Actually Better Here
+
+The "pure SwiftUI" FocusedValues approach sounds clean but:
+- Requires every text field to remember to expose focus
+- Requires every shortcut to check focus
+- Easy to miss one → regression
+- Hard to debug when it breaks
+
+A simple global "isTypingAnywhere" flag is:
+- One place to set
+- One place to check
+- Can't forget
+- Easy to debug
+
+### Implementation
+
+**1. Add to HypnographState:**
+
 ```swift
-struct IsTypingKey: FocusedValueKey {
-    typealias Value = Bool
-}
+// In HypnographState.swift
+@Published var isTypingInTextField: Bool = false
+```
 
-extension FocusedValues {
-    var isTyping: Bool? {
-        get { self[IsTypingKey.self] }
-        set { self[IsTypingKey.self] = newValue }
+**2. Create a unified text field wrapper:**
+
+```swift
+// TextFieldWrapper.swift
+struct HypnoTextField: View {
+    let placeholder: String
+    @Binding var text: String
+    @EnvironmentObject var state: HypnographState
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        TextField(placeholder, text: $text)
+            .focused($isFocused)
+            .onChange(of: isFocused) { _, newValue in
+                state.isTypingInTextField = newValue
+            }
+            .onDisappear {
+                // Safety: clear if this field was focused
+                if isFocused {
+                    state.isTypingInTextField = false
+                }
+            }
     }
 }
 ```
 
-**2. Views expose focus via `.focusedValue()`**:
+**3. All shortcuts check the flag:**
+
 ```swift
-// ParameterSliderRow (has local @FocusState isTextFieldFocused)
-.focusedValue(\.isTyping, isTextFieldFocused)
+// In AppCommands
+Button("Save Snapshot") { ... }
+    .keyboardShortcut("s", modifiers: [])
+    .disabled(state.isTypingInTextField)
 
-// EditableEffectNameHeader
-.focusedValue(\.isTyping, isTextFieldFocused)
-
-// EffectsEditorView (for its own isTextEditing computed property)
-.focusedValue(\.isTyping, isTextEditing)
+// In Dream.compositionMenu()
+Button("New Hypnogram") { ... }
+    .keyboardShortcut("n", modifiers: [])
+    .disabled(state.isTypingInTextField)
 ```
 
-**3. AppCommands reads via `@FocusedValue`**:
-```swift
-struct AppCommands: Commands {
-    @FocusedValue(\.isTyping) private var isTyping
+**4. Replace all TextField/TextEditor usage with HypnoTextField**
 
-    var body: some Commands {
-        Button("Save Snapshot") { ... }
-            .keyboardShortcut("s", modifiers: [])
-            .disabled(isTyping == true)
+### Alternative: NSEvent Global Monitor
+
+If global state feels wrong, use AppKit's event system:
+
+```swift
+// In HypnographApp
+class KeyboardMonitor: ObservableObject {
+    @Published var isFirstResponderTextField: Bool = false
+
+    init() {
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            // Check if first responder is a text field
+            if let firstResponder = NSApp.keyWindow?.firstResponder,
+               firstResponder is NSText || firstResponder is NSTextView {
+                self?.isFirstResponderTextField = true
+                return event // Let it through to text field
+            }
+            self?.isFirstResponderTextField = false
+            return event
+        }
     }
 }
 ```
 
-### Data Flow
+This is more "macOS native" but adds AppKit dependency.
 
-1. User clicks text field in EffectsEditorView
-2. SwiftUI sets local @FocusState to true
-3. View's `.focusedValue(\.isTyping, true)` exposes state to responder chain
-4. AppCommands receives updated `@FocusedValue(\.isTyping)`
-5. User presses 's' key
-6. Menu command is disabled (isTyping == true), key event passes to text field
-7. When user clicks away, focus state becomes false, shortcuts re-enable
+### Best Hybrid Approach
 
-### Why `.disabled()` Instead of Guards
+Keep FocusedValues for the mechanism, but:
 
-- `.disabled()` **does work** in SwiftUI Commands (contrary to some assumptions)
-- Disabled commands don't fire at all, avoiding keystroke consumption ambiguity
-- Menu items visually reflect availability (grayed out when typing)
-- Cleaner code without repeated guard boilerplate
-- Direct bindings like `$state.isHUDVisible` can be used instead of custom Binding wrappers
+1. **Single source of truth**: Only ONE `.focusedValue(\.isTyping, ...)` per modal/overlay, at the top level
+2. **Child components update parent state**: Pass `Binding<Bool>` or use `@EnvironmentObject`
+3. **Audit ALL keyboard shortcuts**: Search for `keyboardShortcut.*modifiers: \[\]` and add `.disabled()`
 
-### Advantages of FocusedValues
+## Checklist for Adding New Text Fields
 
-1. **No global state** - Focus is transient UI state that stays in the view hierarchy
-2. **Automatic cleanup** - SwiftUI manages the responder chain automatically
-3. **Multi-window/modal safe** - Each window/modal can expose its own focus state independently
-4. **No callbacks** - Views simply expose state, Commands simply read it
+- [ ] Use `HypnoTextField` wrapper OR
+- [ ] Connect to parent's focus state via binding
+- [ ] Verify shortcuts are disabled when focused (test manually)
+- [ ] Add to this doc's list of text field locations
 
-### Files Changed
+## Text Field Locations (Current)
 
-1. `Hypnograph/FocusedValues.swift` - New file defining IsTypingKey
-2. `Hypnograph/HypnographApp.swift` - Uses `@FocusedValue(\.isTyping)` and `.disabled(isTyping == true)`
-3. `Hypnograph/Views/EffectsEditorView.swift` - Added `.focusedValue()` to text field components
+1. `EffectsEditorView.swift`
+   - `ParameterSliderRow.compactTextField` - parameter value editing
+   - `EditableEffectNameHeader` - effect chain name editing
+
+2. Future locations should use `HypnoTextField` wrapper
+
+## Shortcuts That MUST Check isTyping
+
+Search pattern: `keyboardShortcut.*modifiers: \[\]`
+
+**AppCommands (HypnographApp.swift):**
+- ✅ Space (pause)
+- ✅ s (save snapshot)
+- ✅ ~ (cycle module)
+- ✅ w (watch)
+- ✅ i (HUD)
+- ✅ e (effects editor)
+- ✅ p (player settings)
+- ✅ l (performance preview)
+- ✅ h (hypnogram list)
+
+**Dream.compositionMenu():**
+- ❌ ` (toggle mode) - MISSING
+- ❌ 1-9 (select source) - MISSING
+- ❌ 0 (global layer) - MISSING
+- ❌ c (clear effect) - MISSING
+- ❌ n (new hypnogram) - MISSING
+- ❌ arrow keys (when editor closed) - OK (conditional)
+
+**Dream.sourceMenu():**
+- ❌ m (blend mode) - MISSING
+- ❌ r (rotate) - MISSING
+- ❌ . (random clip) - MISSING
+- ❌ delete (delete source) - MISSING
+
+**Divine.compositionMenu():**
+- ❌ . (add card) - MISSING
+- ❌ arrow keys - MISSING
+- ❌ 1-9 (select card) - MISSING
+- ❌ delete - MISSING
+
+## Summary
+
+The current FocusedValues approach is architecturally nice but practically fragile. Options:
+
+1. **Quick fix**: Audit all shortcuts, add `.disabled(isTyping == true)` everywhere
+2. **Medium fix**: Create `HypnoTextField` wrapper that sets global state
+3. **Full fix**: Use NSEvent monitor to detect text field focus at AppKit level
+
+Recommend option 2 for balance of simplicity and robustness.
 

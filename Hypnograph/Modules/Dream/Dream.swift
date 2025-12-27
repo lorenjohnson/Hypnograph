@@ -109,6 +109,10 @@ final class Dream: ObservableObject {
         self.sequencePlayer = DreamPlayerState(settings: state.settings)
         self.performanceDisplay = PerformanceDisplay()
 
+        // Wire up parent window state provider for clean screen coordination
+        montagePlayer.parentWindowStateProvider = state
+        sequencePlayer.parentWindowStateProvider = state
+
         // Forward player state changes to Dream's objectWillChange for SwiftUI reactivity
         montagePlayer.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }

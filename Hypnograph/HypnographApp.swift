@@ -384,9 +384,12 @@ struct AppCommands: Commands {
                 .keyboardShortcut("e", modifiers: [])
                 .disabled(isTyping)
 
-                Toggle("Hypnogram List", isOn: $state.isHypnogramListVisible)
-                    .keyboardShortcut("h", modifiers: [])
-                    .disabled(isTyping || state.currentModuleType != .dream)
+                Toggle("Hypnogram List", isOn: Binding(
+                    get: { state.isHypnogramListVisible },
+                    set: { _ in state.toggleHypnogramList() }
+                ))
+                .keyboardShortcut("h", modifiers: [])
+                .disabled(isTyping || state.currentModuleType != .dream)
 
                 Button("Clean Screen") {
                     dream.activePlayer.toggleCleanScreen()
@@ -410,9 +413,12 @@ struct AppCommands: Commands {
             Divider()
 
             Section("Performance Display") {
-                Toggle("Performance Preview", isOn: $state.isPerformancePreviewVisible)
-                    .keyboardShortcut("l", modifiers: [])
-                    .disabled(isTyping)
+                Toggle("Performance Preview", isOn: Binding(
+                    get: { state.isPerformancePreviewVisible },
+                    set: { _ in state.togglePerformancePreview() }
+                ))
+                .keyboardShortcut("l", modifiers: [])
+                .disabled(isTyping)
 
                 Toggle("Live Mode", isOn: Binding(
                     get: { dream.isLiveMode },
