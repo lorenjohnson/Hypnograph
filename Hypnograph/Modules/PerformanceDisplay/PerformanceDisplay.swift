@@ -47,20 +47,42 @@ final class PerformanceDisplay: ObservableObject {
     }
 
     // MARK: - Audio
-    // Note: Performance display uses system default audio output.
-    // AudioRouter caused stuttering due to MTAudioProcessingTap contention with A/B crossfade.
-    // Use system audio routing (e.g., macOS Sound settings) to direct performance audio.
 
     /// Set volume level for performance audio (0.0 = muted, 1.0 = full volume)
     func setVolume(_ volume: Float) {
         currentVolume = volume
-        applyVolume(volume)
+        applyVolumeToActivePlayer()
+        print("🔊 PerformanceDisplay: Volume = \(volume)")
     }
 
-    private func applyVolume(_ volume: Float) {
-        guard let content = contentView else { return }
-        content.playerA.player?.volume = volume
-        content.playerB.player?.volume = volume
+    /// Set the audio output device for performance display
+    /// - Parameter deviceUID: The Core Audio device UID, or nil for system default
+    func setAudioDevice(_ deviceUID: String?) {
+        currentAudioDeviceUID = deviceUID
+        applyAudioDeviceToAllPlayers()
+        print("🔊 PerformanceDisplay: Audio device = \(deviceUID ?? "System Default")")
+    }
+
+    /// Apply volume to the currently active player only (not the fading-out player)
+    private func applyVolumeToActivePlayer() {
+        guard let content = contentView else {
+            print("⚠️ PerformanceDisplay: No contentView for volume")
+            return
+        }
+        let activePlayerView = activePlayer == .a ? content.playerA : content.playerB
+        activePlayerView.player?.volume = currentVolume
+        print("🔊 PerformanceDisplay: Applied volume \(currentVolume) to player \(activePlayer)")
+    }
+
+    /// Apply audio device to all players (so new player during crossfade gets correct device)
+    private func applyAudioDeviceToAllPlayers() {
+        guard let content = contentView else {
+            print("⚠️ PerformanceDisplay: No contentView for audio device")
+            return
+        }
+        content.playerA.player?.audioOutputDeviceUniqueID = currentAudioDeviceUID
+        content.playerB.player?.audioOutputDeviceUniqueID = currentAudioDeviceUID
+        print("🔊 PerformanceDisplay: Applied device to both players")
     }
 
     // MARK: - Private
@@ -69,8 +91,10 @@ final class PerformanceDisplay: ObservableObject {
     private var contentView: PerformanceContentView?
 
     /// Current volume level (0.0 to 1.0)
-    /// Performance audio uses system default output - mute by setting volume to 0
     private var currentVolume: Float = 1.0
+
+    /// Current audio device UID (nil = system default)
+    private var currentAudioDeviceUID: String?
 
     /// Which player is currently active (A or B)
     private var activePlayer: PlayerSlot = .a
@@ -470,8 +494,9 @@ final class PerformanceDisplay: ObservableObject {
         // Mute old player immediately before starting new one
         currentPlayerView.player?.volume = 0.0
 
-        // Start new player with correct volume
+        // Start new player with correct volume and audio device
         player.volume = currentVolume
+        player.audioOutputDeviceUniqueID = currentAudioDeviceUID
         nextPlayerView.alphaValue = 0
         player.playImmediately(atRate: currentRecipe?.playRate ?? 0.8)
 
