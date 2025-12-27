@@ -312,10 +312,6 @@ struct PlayerSettingsView: View {
                 .frame(width: 120)
             }
 
-            // MARK: - Audio Section (Disabled pending AVAudioEngine implementation)
-            // TODO: Re-enable when audio device routing is implemented with AVAudioEngine
-            // Currently both Preview and Performance use system default audio output.
-            /*
             Divider()
                 .background(Color.white.opacity(0.3))
                 .padding(.vertical, 4)
@@ -337,7 +333,6 @@ struct PlayerSettingsView: View {
                 selectedDevice: $dream.performanceAudioDevice,
                 volume: $dream.performanceVolume
             )
-            */
         }
         .foregroundColor(.white)
         .padding(16)

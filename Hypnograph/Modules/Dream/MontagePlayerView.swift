@@ -16,6 +16,8 @@ struct MontagePlayerView: NSViewRepresentable {
     let effectManager: EffectManager
     let isMuted: Bool
     let volume: Float
+    /// Audio output device UID (nil = system default)
+    var audioDeviceUID: String? = nil
 
     class Coordinator {
         var player: AVPlayer?
@@ -33,6 +35,14 @@ struct MontagePlayerView: NSViewRepresentable {
         var playRate: Float = 0.8
         var lastMutedState: Bool?
         var lastVolume: Float?
+        /// Use a sentinel to distinguish "never set" from "set to nil (system default)"
+        private static let notSetSentinel = "___NOT_SET___"
+        var lastAudioDeviceUID: String? = notSetSentinel
+
+        func audioDeviceChanged(to newUID: String?) -> Bool {
+            if lastAudioDeviceUID == Self.notSetSentinel { return true }
+            return lastAudioDeviceUID != newUID
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -222,6 +232,13 @@ struct MontagePlayerView: NSViewRepresentable {
         if c.lastVolume != volume {
             c.player?.volume = volume
             c.lastVolume = volume
+        }
+
+        // Apply audio output device routing
+        if c.audioDeviceChanged(to: audioDeviceUID) {
+            c.player?.audioOutputDeviceUniqueID = audioDeviceUID
+            c.lastAudioDeviceUID = audioDeviceUID
+            print("🔊 MontagePlayerView: Audio device = \(audioDeviceUID ?? "System Default")")
         }
     }
 

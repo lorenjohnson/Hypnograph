@@ -26,6 +26,8 @@ struct SequencePlayerView: NSViewRepresentable {
     let effectManager: EffectManager
     let isMuted: Bool
     let volume: Float
+    /// Audio output device UID (nil = system default)
+    var audioDeviceUID: String? = nil
 
     /// Optional callback when source index changes (for syncing Performance Display)
     var onSourceIndexChanged: ((Int) -> Void)?
@@ -53,6 +55,14 @@ struct SequencePlayerView: NSViewRepresentable {
         var lastMutedState: Bool?
         var lastVolume: Float?
         var lastRecipeIdentity: String?
+        /// Use a sentinel to distinguish "never set" from "set to nil (system default)"
+        private static let notSetSentinel = "___NOT_SET___"
+        var lastAudioDeviceUID: String? = notSetSentinel
+
+        func audioDeviceChanged(to newUID: String?) -> Bool {
+            if lastAudioDeviceUID == Self.notSetSentinel { return true }
+            return lastAudioDeviceUID != newUID
+        }
 
         // End observer for video
         var endObserverToken: Any?
@@ -154,6 +164,15 @@ struct SequencePlayerView: NSViewRepresentable {
                 player.volume = volume
             }
             c.lastVolume = volume
+        }
+
+        // Apply audio output device routing
+        if c.audioDeviceChanged(to: audioDeviceUID) {
+            if case .video(let player) = c.displayMode {
+                player.audioOutputDeviceUniqueID = audioDeviceUID
+            }
+            c.lastAudioDeviceUID = audioDeviceUID
+            print("🔊 SequencePlayerView: Audio device = \(audioDeviceUID ?? "System Default")")
         }
     }
     
