@@ -1,4 +1,11 @@
-- Store audio devices
+Bugs:
+
+- I tried to add Text Overlay Effect to an Effect Chain and then I saved the Effects Library and restrated but it didn't still show that effect. It was there when I looked at the effects.json file so I'm not sure what is going on there only effect defined in that chain. I created a new effect and added Basic efect and saved it and it worked fine on save and retreival on reboot.
+- I would like the window state to restore including whether clean screen is currently enabled
+- When there were no windows in the saved window state then Tab toggles on all windows... may change this to just being a special keystroke for show all windows but not sure yet
+
+
+- Combine some/most/all of what is in the HUD into Player Settings modal
 - Make favorites a playlist manager
   - Not sure I can Favorite a Sequence
 
