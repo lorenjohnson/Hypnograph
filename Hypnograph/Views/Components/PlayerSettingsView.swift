@@ -113,6 +113,120 @@ extension ToggleStyle where Self == DarkModeCheckboxStyle {
     static var darkModeCheckbox: DarkModeCheckboxStyle { DarkModeCheckboxStyle() }
 }
 
+// MARK: - Play Rate Control
+
+/// Play rate slider with snap points at 50%, 80%, 100%, 200% and visual indicators
+struct PlayRateControl: View {
+    @Binding var playRate: Float
+
+    /// Snap points for the slider (including min/max for visual indicators)
+    private let snapPoints: [Float] = [0.25, 0.5, 0.8, 1.0, 1.5, 2.0]
+    private let snapThreshold: Float = 0.03  // Snap when within 3%
+
+    private let minValue: Float = 0.25
+    private let maxValue: Float = 2.0
+
+    /// Find next lower snap point
+    private func previousSnapPoint() -> Float {
+        for snap in snapPoints.reversed() {
+            if snap < playRate - 0.01 {
+                return snap
+            }
+        }
+        return minValue
+    }
+
+    /// Find next higher snap point
+    private func nextSnapPoint() -> Float {
+        for snap in snapPoints {
+            if snap > playRate + 0.01 {
+                return snap
+            }
+        }
+        return maxValue
+    }
+
+    /// Snap value if close to a snap point
+    private func snappedValue(_ value: Float) -> Float {
+        for snap in snapPoints {
+            if abs(value - snap) < snapThreshold {
+                return snap
+            }
+        }
+        return value
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            HStack {
+                Text("Play Rate:")
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.8))
+
+                Spacer()
+
+                Text(String(format: "%.0f%%", playRate * 100))
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(.white)
+            }
+
+            HStack(spacing: 8) {
+                // Turtle button - go to previous snap point
+                Button {
+                    playRate = previousSnapPoint()
+                } label: {
+                    Image(systemName: "tortoise.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.white.opacity(0.6))
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.plain)
+
+                // Slider with snap point indicators behind
+                Slider(
+                    value: Binding(
+                        get: { Double(playRate) },
+                        set: { playRate = snappedValue(Float($0)) }
+                    ),
+                    in: Double(minValue)...Double(maxValue)
+                )
+                .controlSize(.small)
+                .background(
+                    GeometryReader { geometry in
+                        // Account for slider thumb radius (the handle center can't go to the edge)
+                        // For small controlSize, thumb is about 12px wide, so 6px from edge
+                        let thumbRadius: CGFloat = 6
+                        let trackWidth = geometry.size.width - (thumbRadius * 2)
+
+                        // Snap point indicators (behind slider)
+                        ForEach(snapPoints, id: \.self) { snap in
+                            let normalizedPosition = CGFloat((snap - minValue) / (maxValue - minValue))
+                            let position = thumbRadius + (normalizedPosition * trackWidth)
+                            let isAt100 = snap == 1.0
+
+                            Rectangle()
+                                .fill(Color.white.opacity(0.2))
+                                .frame(width: 2, height: isAt100 ? 18 : 12)
+                                .position(x: position, y: geometry.size.height / 2)
+                        }
+                    }
+                )
+
+                // Rabbit button - go to next snap point
+                Button {
+                    playRate = nextSnapPoint()
+                } label: {
+                    Image(systemName: "hare.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.white.opacity(0.6))
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
 /// Row component for audio device selection with volume slider
 struct AudioDeviceRow: View {
     let label: String
@@ -287,21 +401,7 @@ struct PlayerSettingsView: View {
                 .labelsHidden()
             }
 
-            HStack {
-                Text("Play Rate:")
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.8))
-
-                Spacer()
-
-                Text(String(format: "%.0f%%", player.playRate * 100))
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.white)
-                    .frame(minWidth: 50)
-
-                Slider(value: $player.playRate, in: 0.25...2.0, step: 0.05)
-                    .frame(width: 100)
-            }
+            PlayRateControl(playRate: $player.playRate)
 
             HStack {
                 Text("Aspect Ratio:")
