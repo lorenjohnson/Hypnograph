@@ -4,17 +4,18 @@
 <dict>
 	<key>NSExtension</key>
 	<dict>
-		<key>NSExtensionAttributes</key>
-		<dict>
-			<key>QLIsDataBasedPreview</key>
-			<false/>
-			<key>QLSupportedContentTypes</key>
-			<array>
-				<string>com.hypnograph.hypnogram</string>
-			</array>
-			<key>QLSupportsSearchableItems</key>
-			<false/>
-		</dict>
+			<key>NSExtensionAttributes</key>
+			<dict>
+				<!-- View-controller-based Quick Look preview (not data-based) -->
+				<key>QLIsDataBasedPreview</key>
+				<false/>
+				<key>QLSupportedContentTypes</key>
+				<array>
+					<string>com.hypnograph.hypnogram</string>
+				</array>
+				<key>QLSupportsSearchableItems</key>
+				<false/>
+			</dict>
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.quicklook.preview</string>
 		<key>NSExtensionPrincipalClass</key>
