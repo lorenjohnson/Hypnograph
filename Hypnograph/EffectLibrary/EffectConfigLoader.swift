@@ -99,6 +99,9 @@ enum EffectConfigLoader {
         config = EffectLibraryConfig(version: config.version, effects: effects)
         cachedConfig = config
 
+        // Keep EffectChainLibrary.all in sync
+        reloadEffectAll()
+
         // Schedule debounced instantiation and save
         scheduleInstantiationAndSave(effectIndex: effectIndex)
     }
@@ -120,6 +123,9 @@ enum EffectConfigLoader {
         config = EffectLibraryConfig(version: config.version, effects: effects)
         cachedConfig = config
 
+        // Keep EffectChainLibrary.all in sync
+        reloadEffectAll()
+
         scheduleInstantiationAndSave(effectIndex: effectIndex)
     }
 
@@ -137,6 +143,9 @@ enum EffectConfigLoader {
         effects[effectIndex] = chain
         config = EffectLibraryConfig(version: config.version, effects: effects)
         cachedConfig = config
+
+        // Keep EffectChainLibrary.all in sync
+        reloadEffectAll()
 
         scheduleInstantiationAndSave(effectIndex: effectIndex)
     }
@@ -217,6 +226,9 @@ enum EffectConfigLoader {
         config = EffectLibraryConfig(version: config.version, effects: effects)
         cachedConfig = config
 
+        // Keep EffectChainLibrary.all in sync
+        reloadEffectAll()
+
         scheduleInstantiationAndSave(effectIndex: effectIndex)
     }
 
@@ -248,6 +260,9 @@ enum EffectConfigLoader {
         config = EffectLibraryConfig(version: config.version, effects: effects)
         cachedConfig = config
 
+        // Keep EffectChainLibrary.all in sync
+        reloadEffectAll()
+
         scheduleInstantiationAndSave(effectIndex: effectIndex)
     }
 
@@ -263,6 +278,9 @@ enum EffectConfigLoader {
         effects[effectIndex] = chain
         config = EffectLibraryConfig(version: config.version, effects: effects)
         cachedConfig = config
+
+        // Keep EffectChainLibrary.all in sync
+        reloadEffectAll()
 
         scheduleInstantiationAndSave(effectIndex: effectIndex)
     }
@@ -441,7 +459,8 @@ enum EffectConfigLoader {
 
         // Hardcoded fallback
         print("ℹ️ EffectConfigLoader: Using hardcoded defaults")
-        cachedConfig = nil
+        let config = EffectLibraryConfig(version: 1, effects: hardcodedDefaults)
+        cachedConfig = config
         cachedConfigURL = nil
         updateSavedHash()
         return LoadResult(chains: hardcodedDefaults, source: .hardcoded, error: nil)
