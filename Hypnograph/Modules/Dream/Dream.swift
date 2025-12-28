@@ -532,15 +532,14 @@ final class Dream: ObservableObject {
 
         Divider()
 
-        Button("Save") { [self] in
+        Button("Save Hypnogram") { [self] in
             save()
         }
         .keyboardShortcut("s", modifiers: [.command])
 
-        Button("Save Snapshot") { [self] in
-            saveSnapshot()
+        Button("Render Video") { [self] in
+            renderAndSaveVideo()
         }
-        .keyboardShortcut("s", modifiers: [.command, .shift])
 
         Button("Favorite Hypnogram") { [self] in
             favoriteCurrentHypnogram()
@@ -846,68 +845,54 @@ final class Dream: ObservableObject {
         activePlayer.sources[idx].clip = clip
     }
 
-    /// Save a snapshot of the current frame from the frame buffer
-    func saveSnapshot() {
+    /// Save current hypnogram: snapshot with embedded recipe (.hypnogram file)
+    /// This is the main save action (S / Cmd-S)
+    func save() {
         // Grab the current frame from the frame buffer (which stores the fully composited frame)
         guard let currentFrame = activePlayer.effectManager.frameBuffer.currentFrame else {
-            print("DreamMode: no current frame available for snapshot")
+            print("Dream: no current frame available for save")
             return
         }
 
-        print("DreamMode: saving snapshot of current frame...")
+        print("Dream: saving hypnogram...")
 
         // Convert CIImage to CGImage with proper color space
         let context = CIContext(options: [.workingColorSpace: CGColorSpaceCreateDeviceRGB()])
         let colorSpace = CGColorSpaceCreateDeviceRGB()
 
         guard let cgImage = context.createCGImage(currentFrame, from: currentFrame.extent, format: .RGBA8, colorSpace: colorSpace) else {
-            print("DreamMode: failed to convert CIImage to CGImage")
+            print("Dream: failed to convert CIImage to CGImage")
             return
         }
 
-        // Ensure snapshots folder exists
-        let snapshotsURL = state.settings.snapshotsURL
-        do {
-            try FileManager.default.createDirectory(at: snapshotsURL, withIntermediateDirectories: true, attributes: nil)
-        } catch {
-            print("DreamMode: failed to create snapshots folder: \(error)")
-            return
-        }
+        // Get the current recipe
+        let recipe = activePlayer.recipe.copyForExport()
 
-        // Save to file in snapshots folder
-        let timestamp = ISO8601DateFormatter().string(from: Date())
-            .replacingOccurrences(of: ":", with: "-")
-        let filename = "hypnograph-snapshot-\(timestamp).png"
-        let outputURL = snapshotsURL.appendingPathComponent(filename)
-
-        guard let destination = CGImageDestinationCreateWithURL(outputURL as CFURL, kUTTypePNG, 1, nil) else {
-            print("DreamMode: failed to create image destination")
-            return
-        }
-
-        CGImageDestinationAddImage(destination, cgImage, nil)
-
-        if CGImageDestinationFinalize(destination) {
-            print("✅ DreamMode: Snapshot saved to \(outputURL.path)")
-            AppNotifications.show("Snapshot saved", flash: true)
+        // Save as .hypnogram file (PNG with embedded recipe)
+        if let savedURL = RecipeStore.save(recipe, snapshot: cgImage) {
+            print("✅ Dream: Hypnogram saved to \(savedURL.path)")
+            AppNotifications.show("Hypnogram saved", flash: true)
 
             // Also save to Apple Photos if write access is available
             if ApplePhotos.shared.status.canWrite {
                 Task {
-                    let success = await ApplePhotos.shared.saveImage(at: outputURL)
+                    let success = await ApplePhotos.shared.saveImage(at: savedURL)
                     if success {
-                        print("✅ DreamMode: Snapshot added to Apple Photos")
+                        print("✅ Dream: Hypnogram added to Apple Photos")
                     }
                 }
             }
         } else {
-            print("DreamMode: failed to save snapshot")
+            print("Dream: failed to save hypnogram")
+            AppNotifications.show("Failed to save", flash: true)
         }
     }
 
-    func save() {
+    /// Render and save the hypnogram as a video file (enqueue to render queue)
+    /// This is the legacy save behavior - available in menu without hotkey
+    func renderAndSaveVideo() {
         guard !activePlayer.recipe.sources.isEmpty else {
-            print("Dream[\(mode.rawValue)]: no sources to save.")
+            print("Dream[\(mode.rawValue)]: no sources to render.")
             return
         }
 
@@ -929,6 +914,8 @@ final class Dream: ObservableObject {
         // Enqueue immediately (don't defer - the renderer handles async internally)
         renderQueue.enqueue(renderer: renderer, recipe: renderRecipe)
 
+        AppNotifications.show("Rendering video...", flash: true)
+
         // Reset for next hypnogram
         // Defer this to avoid modifying @Published during button action
         DispatchQueue.main.async { [weak self] in
@@ -943,10 +930,20 @@ final class Dream: ObservableObject {
         }
     }
 
-    /// Save recipe to .hypnogram file (with file picker)
-    func saveRecipe() {
-        guard !activePlayer.recipe.sources.isEmpty else {
-            print("Dream: no sources to save recipe")
+    /// Save hypnogram to a specific location (with file picker)
+    func saveAs() {
+        // Grab the current frame from the frame buffer
+        guard let currentFrame = activePlayer.effectManager.frameBuffer.currentFrame else {
+            print("Dream: no current frame available for save")
+            return
+        }
+
+        // Convert CIImage to CGImage
+        let context = CIContext(options: [.workingColorSpace: CGColorSpaceCreateDeviceRGB()])
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+
+        guard let cgImage = context.createCGImage(currentFrame, from: currentFrame.extent, format: .RGBA8, colorSpace: colorSpace) else {
+            print("Dream: failed to convert CIImage to CGImage")
             return
         }
 
@@ -955,11 +952,13 @@ final class Dream: ObservableObject {
         panel.nameFieldStringValue = "hypnogram-\(formattedTimestamp()).\(RecipeStore.fileExtension)"
         panel.directoryURL = RecipeStore.recipesDirectory
 
-        panel.begin { [self] response in
+        let recipe = activePlayer.recipe.copyForExport()
+
+        panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
 
-            if RecipeStore.save(activePlayer.recipe, to: url) != nil {
-                AppNotifications.show("Recipe saved", flash: true)
+            if RecipeStore.save(recipe, snapshot: cgImage, to: url) != nil {
+                AppNotifications.show("Hypnogram saved", flash: true)
             }
         }
     }
@@ -1006,13 +1005,25 @@ final class Dream: ObservableObject {
             return
         }
 
-        // Grab current frame for thumbnail
-        let thumbnailImage = activePlayer.effectManager.frameBuffer.currentFrame
+        // Grab current frame for snapshot
+        guard let currentFrame = activePlayer.effectManager.frameBuffer.currentFrame else {
+            print("Dream: no current frame available for favorite")
+            return
+        }
+
+        // Convert CIImage to CGImage
+        let context = CIContext(options: [.workingColorSpace: CGColorSpaceCreateDeviceRGB()])
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+
+        guard let cgImage = context.createCGImage(currentFrame, from: currentFrame.extent, format: .RGBA8, colorSpace: colorSpace) else {
+            print("Dream: failed to convert CIImage to CGImage for favorite")
+            return
+        }
 
         if let entry = HypnogramStore.shared.add(
             recipe: activePlayer.recipe,
-            isFavorite: true,
-            thumbnailImage: thumbnailImage
+            snapshot: cgImage,
+            isFavorite: true
         ) {
             AppNotifications.show("Added to favorites: \(entry.name)", flash: true)
         }

@@ -45,6 +45,9 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Callback to check if typing is active (injected by app)
     var isTypingActive: (() -> Bool)?
 
+    /// Callback to open a recipe file (injected by app)
+    var openRecipeFile: ((URL) -> Void)?
+
     /// Event monitor for Tab key (workaround for SwiftUI menu shortcut not registering until menu opened)
     private var tabKeyMonitor: Any?
 
@@ -127,6 +130,18 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
         }
 
         return .terminateLater
+    }
+
+    /// Handle files opened via double-click or drag-drop onto the app
+    func application(_ application: NSApplication, open urls: [URL]) {
+        // Filter for .hypnogram files
+        let hypnogramURLs = urls.filter { $0.pathExtension == RecipeStore.fileExtension }
+
+        // Open the first hypnogram file
+        if let url = hypnogramURLs.first {
+            print("Hypnograph: Opening file \(url.lastPathComponent)")
+            openRecipeFile?(url)
+        }
     }
 }
 
@@ -236,6 +251,16 @@ struct HypnographApp: App {
                     state?.isTyping ?? false
                 }
 
+                // Wire up recipe file opening
+                appDelegate.openRecipeFile = { [weak dream] url in
+                    guard let recipe = RecipeStore.load(from: url) else {
+                        AppNotifications.show("Failed to load recipe", flash: true)
+                        return
+                    }
+                    dream?.loadRecipe(recipe)
+                    AppNotifications.show("Loaded \(url.lastPathComponent)", flash: true)
+                }
+
                 // Initialize game controller support
                 appDelegate.gameControllerManager = GameControllerManager(
                     state: state,
@@ -340,7 +365,7 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(replacing: .saveItem) {
-            Button("Save") {
+            Button("Save Hypnogram") {
                 switch state.currentModuleType {
                 case .dream: dream.save()
                 case .divine: divine.save()
@@ -348,11 +373,14 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("s", modifiers: [.command])
 
-            Button("Save Snapshot") {
-                dream.saveSnapshot()
+            Button("Save Hypnogram As…") {
+                dream.saveAs()
             }
-            .keyboardShortcut("s", modifiers: [])
-            .disabled(isTyping)
+            .keyboardShortcut("s", modifiers: [.command, .shift])
+
+            Button("Render Video and Save") {
+                dream.renderAndSaveVideo()
+            }
 
             Divider()
 
@@ -360,11 +388,6 @@ struct AppCommands: Commands {
                 dream.openRecipe()
             }
             .keyboardShortcut("o", modifiers: [.command])
-
-            Button("Save Recipe…") {
-                dream.saveRecipe()
-            }
-            .keyboardShortcut("s", modifiers: [.command, .option])
         }
 
         CommandGroup(after: .sidebar) {
