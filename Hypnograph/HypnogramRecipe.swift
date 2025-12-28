@@ -31,7 +31,7 @@ struct HypnogramRecipe: Codable {
     init(
         sources: [HypnogramSource],
         targetDuration: CMTime,
-        playRate: Float = 0.8,
+        playRate: Float = 1.0,
         effectChain: EffectChain? = nil
     ) {
         self.sources = sources
@@ -44,7 +44,7 @@ struct HypnogramRecipe: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         sources = try container.decode([HypnogramSource].self, forKey: .sources)
         targetDuration = try container.decode(CodableCMTime.self, forKey: .targetDuration).cmTime
-        playRate = try container.decodeIfPresent(Float.self, forKey: .playRate) ?? 0.8
+        playRate = try container.decodeIfPresent(Float.self, forKey: .playRate) ?? 1.0
         effectChain = try container.decodeIfPresent(EffectChain.self, forKey: .effectChain) ?? EffectChain()
     }
 
