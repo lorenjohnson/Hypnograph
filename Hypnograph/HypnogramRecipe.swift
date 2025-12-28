@@ -24,20 +24,25 @@ struct HypnogramRecipe: Codable {
     /// This is the single source of truth for effects. Use effectChain.apply() to apply effects.
     var effectChain: EffectChain
 
+    /// Base64-encoded JPEG snapshot of the hypnogram (1080p resolution)
+    var snapshot: String?
+
     private enum CodingKeys: String, CodingKey {
-        case sources, targetDuration, playRate, effectChain
+        case sources, targetDuration, playRate, effectChain, snapshot
     }
 
     init(
         sources: [HypnogramSource],
         targetDuration: CMTime,
         playRate: Float = 1.0,
-        effectChain: EffectChain? = nil
+        effectChain: EffectChain? = nil,
+        snapshot: String? = nil
     ) {
         self.sources = sources
         self.targetDuration = targetDuration
         self.playRate = playRate
         self.effectChain = effectChain ?? EffectChain()
+        self.snapshot = snapshot
     }
 
     init(from decoder: Decoder) throws {
@@ -46,6 +51,7 @@ struct HypnogramRecipe: Codable {
         targetDuration = try container.decode(CodableCMTime.self, forKey: .targetDuration).cmTime
         playRate = try container.decodeIfPresent(Float.self, forKey: .playRate) ?? 1.0
         effectChain = try container.decodeIfPresent(EffectChain.self, forKey: .effectChain) ?? EffectChain()
+        snapshot = try container.decodeIfPresent(String.self, forKey: .snapshot)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -54,6 +60,7 @@ struct HypnogramRecipe: Codable {
         try container.encode(CodableCMTime(targetDuration), forKey: .targetDuration)
         try container.encode(playRate, forKey: .playRate)
         try container.encode(effectChain, forKey: .effectChain)
+        try container.encodeIfPresent(snapshot, forKey: .snapshot)
     }
 
     /// Create a deep copy with fresh effect instances for export.

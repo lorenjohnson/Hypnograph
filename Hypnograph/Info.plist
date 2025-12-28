@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Exported Type Identifiers (UTI) -->
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.hypnograph.hypnogram</string>
+			<key>UTTypeDescription</key>
+			<string>Hypnogram Document</string>
+			<key>UTTypeIconFile</key>
+			<string>AppIcon</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<!-- NOT public.png - we don't want image editors to claim this -->
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>hypnogram</string>
+				</array>
+				<key>public.mime-type</key>
+				<string>application/x-hypnogram</string>
+			</dict>
+		</dict>
+	</array>
+	
+	<!-- Document Types - what files we can open -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Hypnogram Document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.hypnograph.hypnogram</string>
+			</array>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).HypnogramDocument</string>
+		</dict>
+	</array>
+</dict>
+</plist>
+
