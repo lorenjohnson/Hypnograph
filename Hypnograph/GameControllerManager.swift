@@ -137,10 +137,10 @@ final class GameControllerManager {
             self?.dream?.cycleEffect()
         }
 
-        // Y Button (top) - Snapshot (S)
+        // Y Button (top) - Save Hypnogram (S)
         gamepad.buttonY.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed else { return }
-            self?.dream?.saveSnapshot()
+            self?.dream?.save()
         }
     }
 
