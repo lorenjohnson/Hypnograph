@@ -27,9 +27,9 @@ struct PerformancePreviewView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header
+            // Header: Title and control buttons
             HStack {
-                Text("Performance")
+                Text("Preview")
                     .font(.system(.title3, design: .monospaced))
                     .fontWeight(.bold)
                     .foregroundColor(.white)

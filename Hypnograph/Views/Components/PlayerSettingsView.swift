@@ -327,6 +327,7 @@ struct PlayerSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // Header row 1: Title and close button
             HStack {
                 Text("Player Settings")
                     .font(.system(.title3, design: .monospaced))
@@ -342,6 +343,41 @@ struct PlayerSettingsView: View {
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut(.escape, modifiers: [])
+            }
+
+            // Header row 2: Player mode switcher (full width)
+            HStack(spacing: 6) {
+                // Montage mode button
+                playerModeButton(
+                    icon: "square.grid.2x2",
+                    label: "Montage",
+                    isSelected: !dream.isLiveMode && dream.mode == .montage,
+                    action: {
+                        if dream.isLiveMode { dream.togglePerformanceMode() }
+                        if dream.mode != .montage { dream.toggleMode() }
+                    }
+                )
+
+                // Sequence mode button
+                playerModeButton(
+                    icon: "arrow.right.square",
+                    label: "Sequence",
+                    isSelected: !dream.isLiveMode && dream.mode == .sequence,
+                    action: {
+                        if dream.isLiveMode { dream.togglePerformanceMode() }
+                        if dream.mode != .sequence { dream.toggleMode() }
+                    }
+                )
+
+                // Performance mode button
+                playerModeButton(
+                    icon: "play.display",
+                    label: "Perf",
+                    isSelected: dream.isLiveMode,
+                    action: {
+                        if !dream.isLiveMode { dream.togglePerformanceMode() }
+                    }
+                )
             }
 
             Divider()
@@ -447,7 +483,28 @@ struct PlayerSettingsView: View {
         .background(Color.black.opacity(0.6))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
+
+    /// Helper to create a player mode button with icon and label
+    @ViewBuilder
+    private func playerModeButton(
+        icon: String,
+        label: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                Text(label)
+            }
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(isSelected ? .white : .white.opacity(0.6))
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity)
+        .background(isSelected ? Color.blue.opacity(0.8) : Color.white.opacity(0.15))
+        .cornerRadius(6)
+    }
 }
-
-
-
