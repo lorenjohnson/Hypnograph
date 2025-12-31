@@ -309,9 +309,26 @@ final class Dream: ObservableObject {
 
     // MARK: - Mode
 
+    /// Toggle between montage and sequence (used by PlayerSettingsView buttons)
     func toggleMode() {
         state.noteUserInteraction()
         mode = (mode == .montage) ? .sequence : .montage
+    }
+
+    /// Cycle through all three modes: Montage → Sequence → Performance → Montage
+    func cycleMode() {
+        state.noteUserInteraction()
+        if isLiveMode {
+            // Live → Montage (exit live mode)
+            performanceMode = .edit
+            mode = .montage
+        } else if mode == .montage {
+            // Montage → Sequence
+            mode = .sequence
+        } else {
+            // Sequence → Live
+            performanceMode = .live
+        }
     }
 
     // MARK: - Source Navigation (with flash solo in montage mode, sequence sync)
@@ -449,8 +466,8 @@ final class Dream: ObservableObject {
 
     @ViewBuilder
     func compositionMenu() -> some View {
-        Button("Toggle Mode (Montage/Sequence)") { [self] in
-            toggleMode()
+        Button("Cycle Mode (Montage/Sequence/Performance)") { [self] in
+            cycleMode()
         }
         .keyboardShortcut("`", modifiers: [])
         .disabled(isTyping)
