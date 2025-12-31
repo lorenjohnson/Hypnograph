@@ -1,9 +1,27 @@
+- Change the .hypnogram file extension to .hypno
+
+- I would like to be able to click on the file/s used in the composition and open it either in Apple Photos or Finder (just opening a finder window to the file selected without actually opening it) if it is a file 
+
+- Add Copy to Library button to effects items in editor?
+
+- Add a Merge effects from Library button to Favorite items in the Hypnogram List?
+
+document the effects library handling including the effeects library window
+document the TextFieldFocusMonitor tab handling focus keybord handling in this app
+document the render library 
+document the favorites, save, and retrieval system as is
+
 Bugs:
 
-- I tried to add Text Overlay Effect to an Effect Chain and then I saved the Effects Library and restrated but it didn't still show that effect. It was there when I looked at the effects.json file so I'm not sure what is going on there only effect defined in that chain. I created a new effect and added Basic efect and saved it and it worked fine on save and retreival on reboot.
+- Effect Manager bugs
+  - Effect name editing is once AGAIN not working. It opens into edit mode but I can't type any text. the isTyping thing is again disconnected somehow. 
+- Combine some/most/all of what is in the HUD into Player Settings modal
+- Change the default locaiton of stored Hypnograms to ~/Documents/Hypnograph (or are there better alternatives?)
 - I would like the window state to restore including whether clean screen is currently enabled
 - When there were no windows in the saved window state then Tab toggles on all windows... may change this to just being a special keystroke for show all windows but not sure yet
-- Combine some/most/all of what is in the HUD into Player Settings modal
+
+
+- Add Loop true/false to Player Settings with true default and this means that sequence should also loop, and that Montage view shouldn't unless this is on. The attribute goes with the recipe. Make sure this same attribute is understood by all the players (i.e. by Performance Display and its preview). 
 
 
 - Make favorites a playlist manager
@@ -32,3 +50,4 @@ Bugs:
   - Toggle clean screen on/off (the hammburger like button)
 
 - Performance Mode has a "Video Mixer" that specifies the transition between hypnograms. Right now it's a simple crossfade but we should make it configurable with 2-3 options. We would add these 2-4 options as push buttons in the header of the Preview panel in the main window.
+- Make a Quick Look player? / Hypnogram Player?
