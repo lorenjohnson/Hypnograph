@@ -132,7 +132,7 @@ final class TextOverlayEffect: Effect {
 
     required convenience init?(params: [String: AnyCodableValue]?) {
         let p = Params(params, specs: Self.parameterSpecs)
-        let randomSeed = params?["randomSeed"]?.intValue.map { UInt64($0) }
+        let randomSeed = params?["randomSeed"]?.intValue.flatMap { UInt64($0) }
         self.init(fontSize: p.float("fontSize"), fontSizeVariation: p.float("fontSizeVariation"),
                   opacity: p.float("opacity"), maxTextCount: p.int("maxTextCount"),
                   changeIntervalFrames: p.int("changeIntervalFrames"), durationMultiplier: p.float("durationMultiplier"),

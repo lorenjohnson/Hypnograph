@@ -86,6 +86,12 @@ final class EffectManager {
     /// Callback when effects change (for UI updates)
     var onEffectChanged: (() -> Void)?
 
+    // MARK: - Effects Session
+
+    /// The effects session this manager uses for chain lookups
+    /// Set by the owner (HypnographState, PerformanceDisplay, etc.)
+    weak var session: EffectsSession?
+
     // MARK: - Flash Solo
 
     /// When set, only render this source index (for flash solo preview)
@@ -297,14 +303,21 @@ final class EffectManager {
         setEffect(from: chain, for: layer)
     }
 
-    /// Re-apply active effects using fresh instances from the reloaded config.
+    /// Re-apply active effects using fresh instances from the session.
     /// Called when effects config changes to apply parameter updates immediately.
     func reapplyActiveEffects() {
         guard let recipe = recipeProvider?() else { return }
 
+        // Get the chain list from session (required) - use thread-safe snapshot
+        guard let session = session else {
+            print("⚠️ EffectManager.reapplyActiveEffects: No session available")
+            return
+        }
+        let availableChains = session.chainsSnapshot
+
         // Re-apply global effect by name from stored chain
         let currentName = recipe.effectChain.name
-        if let freshChain = EffectChainLibrary.all.first(where: { $0.name == currentName }) {
+        if let freshChain = availableChains.first(where: { $0.name == currentName }) {
             // Replace with fresh chain - it will re-instantiate effects on next apply()
             globalEffectChainSetter?(freshChain.copy())
             print("🔄 Reapplied global effect: \(currentName ?? "unnamed")")
@@ -313,7 +326,7 @@ final class EffectManager {
         // Re-apply per-source effects by name from stored chains
         for (index, source) in recipe.sources.enumerated() {
             let currentSourceName = source.effectChain.name
-            if let freshChain = EffectChainLibrary.all.first(where: { $0.name == currentSourceName }) {
+            if let freshChain = availableChains.first(where: { $0.name == currentSourceName }) {
                 sourceEffectChainSetter?(index, freshChain.copy())
                 print("🔄 Reapplied source \(index) effect: \(currentSourceName ?? "unnamed")")
             }
@@ -396,11 +409,18 @@ final class EffectManager {
         frameBuffer.clear()
         resetFrameIndex()
 
+        // Get chains from session (required) - use thread-safe snapshot
+        guard let session = session else {
+            print("⚠️ EffectManager.cycleEffect: No session available")
+            return
+        }
+        let chains = session.chainsSnapshot
+
         let currentName = effectName(for: layer)
-        let currentIndex = EffectChainLibrary.all.firstIndex { $0.name == currentName } ?? -1
+        let currentIndex = chains.firstIndex { $0.name == currentName } ?? -1
 
         // Cycle through effects: -1 (None) -> 0 -> 1 -> ... -> count-1 -> -1
-        let effectCount = EffectChainLibrary.all.count
+        let effectCount = chains.count
         let totalStates = effectCount + 1  // +1 for "None"
 
         // Convert to 0-based index where 0 = None, 1+ = effects
@@ -408,7 +428,7 @@ final class EffectManager {
         let next0Based = (current0Based + direction + totalStates) % totalStates
         let nextIndex = next0Based - 1  // Back to -1 based
 
-        setEffect(from: nextIndex >= 0 ? EffectChainLibrary.all[nextIndex] : nil, for: layer)
+        setEffect(from: nextIndex >= 0 ? chains[nextIndex] : nil, for: layer)
     }
 
     // MARK: - Application

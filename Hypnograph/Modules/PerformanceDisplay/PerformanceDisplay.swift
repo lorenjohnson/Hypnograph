@@ -112,6 +112,9 @@ final class PerformanceDisplay: ObservableObject {
     /// This display's own EffectManager - independent of preview
     let effectManager = EffectManager()
 
+    /// This display's own effects session - for live mode effects
+    let effectsSession: EffectsSession
+
     /// The current recipe being displayed (mutable for live effect changes)
     private var currentRecipe: HypnogramRecipe?
 
@@ -131,11 +134,16 @@ final class PerformanceDisplay: ObservableObject {
 
     // MARK: - Init
 
-    init() {
+    init(effectsFilename: String = "live-effects.json") {
+        self.effectsSession = EffectsSession(filename: effectsFilename)
         setupEffectManager()
+        setupEffectsSession()
     }
 
     private func setupEffectManager() {
+        // Wire up the effects session for chain lookups
+        effectManager.session = effectsSession
+
         // Wire up recipe provider to return the mutable current recipe
         effectManager.recipeProvider = { [weak self] in
             self?.currentRecipe
@@ -157,6 +165,18 @@ final class PerformanceDisplay: ObservableObject {
             print("🎬 PerformanceDisplay: sourceEffectChainSetter - setting source[\(sourceIndex)] chain: \(chain.name ?? "unnamed")")
             recipe.sources[sourceIndex].effectChain = chain
             self.currentRecipe = recipe
+        }
+    }
+
+    private func setupEffectsSession() {
+        // When a chain is updated in the session, reapply active effects
+        effectsSession.onChainUpdated = { [weak self] _, _ in
+            self?.effectManager.reapplyActiveEffects()
+        }
+
+        // When session is reloaded, reapply active effects
+        effectsSession.onSessionReloaded = { [weak self] in
+            self?.effectManager.reapplyActiveEffects()
         }
     }
     

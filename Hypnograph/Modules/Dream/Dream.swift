@@ -96,6 +96,12 @@ final class Dream: ObservableObject {
         isLiveMode ? performanceDisplay.effectManager : activePlayer.effectManager
     }
 
+    /// Returns the active EffectsSession based on performance mode
+    /// In live mode, uses performance display's session; in edit mode, uses the active player's session
+    var effectsSession: EffectsSession {
+        isLiveMode ? performanceDisplay.effectsSession : activePlayer.effectsSession
+    }
+
     func togglePerformanceMode() {
         performanceMode = (performanceMode == .edit) ? .live : .edit
         print("🎬 Performance Mode: \(performanceMode == .live ? "LIVE" : "Edit")")
@@ -107,10 +113,10 @@ final class Dream: ObservableObject {
         self.state = state
         self.renderQueue = renderQueue
 
-        // Create independent player states
-        self.montagePlayer = DreamPlayerState(settings: state.settings)
-        self.sequencePlayer = DreamPlayerState(settings: state.settings)
-        self.performanceDisplay = PerformanceDisplay()
+        // Create independent player states with mode-specific effects files
+        self.montagePlayer = DreamPlayerState(settings: state.settings, effectsFilename: "montage-effects.json")
+        self.sequencePlayer = DreamPlayerState(settings: state.settings, effectsFilename: "sequence-effects.json")
+        self.performanceDisplay = PerformanceDisplay(effectsFilename: "live-effects.json")
 
         // Load audio settings from disk
         loadAudioSettings()
@@ -1015,6 +1021,11 @@ final class Dream: ObservableObject {
         activePlayer.notifyRecipeChanged()
     }
 
+    private func formattedTimestamp() -> String {
+        ISO8601DateFormatter().string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+    }
+
     /// Favorite the current hypnogram (save to store as favorite)
     func favoriteCurrentHypnogram() {
         guard !activePlayer.recipe.sources.isEmpty else {
@@ -1044,11 +1055,6 @@ final class Dream: ObservableObject {
         ) {
             AppNotifications.show("Added to favorites: \(entry.name)", flash: true)
         }
-    }
-
-    private func formattedTimestamp() -> String {
-        ISO8601DateFormatter().string(from: Date())
-            .replacingOccurrences(of: ":", with: "-")
     }
 
     // MARK: - Montage blend modes

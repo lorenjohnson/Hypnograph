@@ -230,8 +230,8 @@ final class GameControllerManager {
 
             if newIndex == -1 {
                 dream.activeEffectManager.clearEffect(for: -1)
-            } else if newIndex >= 0 && newIndex < EffectChainLibrary.all.count {
-                dream.activeEffectManager.setGlobalEffect(from: EffectChainLibrary.all[newIndex])
+            } else if newIndex >= 0 && newIndex < chains.count {
+                dream.activeEffectManager.setGlobalEffect(from: chains[newIndex])
             }
 
         default:

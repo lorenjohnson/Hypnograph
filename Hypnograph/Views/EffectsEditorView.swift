@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import Combine
 
 /// Focus fields for the effects editor
 /// Uses SwiftUI's native focus system for tab/shift-tab navigation
@@ -25,6 +26,9 @@ enum EffectsEditorField: Hashable {
 final class EffectsEditorViewModel: ObservableObject {
     @Published var showingAddEffectPicker: Bool = false
 
+    /// Subscription to session changes for auto-sync
+    private var sessionCancellable: AnyCancellable?
+
     // MARK: - Navigation State
 
     /// Which section has keyboard navigation focus (for arrow keys)
@@ -36,12 +40,41 @@ final class EffectsEditorViewModel: ObservableObject {
     @Published private var pendingSelection: [Int: Int] = [:]
 
     /// Local copy of effect chains for immediate UI updates
-    /// This is the source of truth for the UI - synced from EffectConfigLoader
+    /// This mirrors the session's chains for UI responsiveness
     @Published private(set) var effectChains: [EffectChain] = []
 
+    /// The session this view model is working with (set by the view on appear)
+    weak var session: EffectsSession? {
+        didSet {
+            setupSessionSubscription()
+            syncFromSession()
+        }
+    }
+
     init() {
-        // Initialize from current config
-        syncFromConfig()
+        // Chains will be synced when session is set
+    }
+
+    /// Subscribe to session changes to auto-sync when chains are modified
+    /// (e.g., when loading a hypnogram imports effect chains)
+    private func setupSessionSubscription() {
+        // Cancel any existing subscription
+        sessionCancellable?.cancel()
+
+        guard let session = session else {
+            sessionCancellable = nil
+            return
+        }
+
+        // Subscribe to session's $chains publisher to sync AFTER chains change
+        // (Not objectWillChange which fires BEFORE the change)
+        sessionCancellable = session.$chains
+            .dropFirst() // Skip initial value (we already synced in didSet)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] newChains in
+                // Session chains changed - update our local copy
+                self?.effectChains = newChains
+            }
     }
 
     /// Check if arrow key navigation should be active (not in a text field)
@@ -54,9 +87,14 @@ final class EffectsEditorViewModel: ObservableObject {
         }
     }
 
-    /// Sync local chains from the config loader
+    /// Sync local chains from the session
+    func syncFromSession() {
+        effectChains = session?.chains ?? []
+    }
+
+    /// Legacy: Sync from config loader (for backwards compatibility during migration)
     func syncFromConfig() {
-        effectChains = EffectConfigLoader.currentChains
+        syncFromSession()
     }
 
     /// Set pending selection for immediate UI update
@@ -129,6 +167,8 @@ final class EffectsEditorViewModel: ObservableObject {
 
     /// Update a parameter value for an effect (or child effect in a chain)
     func updateParameter(effectIndex: Int, effectDefIndex: Int?, paramName: String, value: AnyCodableValue) {
+        guard let session = session else { return }
+
         // Update local state for responsive UI
         updateLocalChain(at: effectIndex) { chain in
             if let defIndex = effectDefIndex {
@@ -148,92 +188,46 @@ final class EffectsEditorViewModel: ObservableObject {
                 return updatedChain
             }
         }
-        // Persist to config
-        EffectConfigLoader.updateParameter(
-            effectIndex: effectIndex,
-            effectDefIndex: effectDefIndex,
-            paramName: paramName,
-            value: value
-        )
+
+        // Persist to session
+        session.updateParameter(chainIndex: effectIndex, effectIndex: effectDefIndex, key: paramName, value: value)
     }
 
     /// Add an effect to the currently selected effect chain
     func addEffectToChain(effectIndex: Int, effectType: String) {
-        // Update local state for responsive UI
-        updateLocalChain(at: effectIndex) { chain in
-            var updatedChain = chain
-            let defaults = EffectRegistry.defaults(for: effectType)
-            let newEffect = EffectDefinition(type: effectType, params: defaults)
-            updatedChain.effects.append(newEffect)
-            return updatedChain
-        }
-        // Update config (instantiation is debounced in EffectConfigLoader)
-        EffectConfigLoader.addEffectToChain(effectIndex: effectIndex, effectType: effectType)
+        guard let session = session else { return }
+        // Session update triggers subscription which syncs effectChains
+        session.addEffectToChain(chainIndex: effectIndex, effectType: effectType)
     }
 
     /// Remove an effect from the currently selected effect chain
     func removeEffectFromChain(effectIndex: Int, effectDefIndex: Int) {
-        updateLocalChain(at: effectIndex) { chain in
-            var updatedChain = chain
-            guard effectDefIndex >= 0 && effectDefIndex < updatedChain.effects.count else { return chain }
-            updatedChain.effects.remove(at: effectDefIndex)
-            return updatedChain
-        }
-        EffectConfigLoader.removeEffectFromChain(effectIndex: effectIndex, effectDefIndex: effectDefIndex)
+        guard let session = session else { return }
+        session.removeEffectFromChain(chainIndex: effectIndex, effectIndex: effectDefIndex)
     }
 
     /// Reorder effects in the currently selected effect chain
     func reorderEffects(effectIndex: Int, fromIndex: Int, toIndex: Int) {
-        updateLocalChain(at: effectIndex) { chain in
-            var updatedChain = chain
-            guard fromIndex >= 0 && fromIndex < updatedChain.effects.count else { return chain }
-            guard toIndex >= 0 && toIndex < updatedChain.effects.count else { return chain }
-            let effect = updatedChain.effects.remove(at: fromIndex)
-            updatedChain.effects.insert(effect, at: toIndex)
-            return updatedChain
-        }
-        EffectConfigLoader.reorderEffectsInChain(effectIndex: effectIndex, fromIndex: fromIndex, toIndex: toIndex)
+        guard let session = session else { return }
+        session.reorderEffectsInChain(chainIndex: effectIndex, fromIndex: fromIndex, toIndex: toIndex)
     }
 
     /// Toggle effect enabled state
     func setEffectEnabled(effectIndex: Int, effectDefIndex: Int, enabled: Bool) {
-        updateLocalChain(at: effectIndex) { chain in
-            var updatedChain = chain
-            guard effectDefIndex >= 0 && effectDefIndex < updatedChain.effects.count else { return chain }
-            var params = updatedChain.effects[effectDefIndex].params ?? [:]
-            params["_enabled"] = .bool(enabled)
-            updatedChain.effects[effectDefIndex].params = params
-            return updatedChain
-        }
-        EffectConfigLoader.setEffectEnabled(effectIndex: effectIndex, effectDefIndex: effectDefIndex, enabled: enabled)
+        guard let session = session else { return }
+        session.setEffectEnabled(chainIndex: effectIndex, effectIndex: effectDefIndex, enabled: enabled)
     }
 
     /// Reset an effect's parameters to their default values
     func resetEffectToDefaults(effectIndex: Int, effectDefIndex: Int) {
-        updateLocalChain(at: effectIndex) { chain in
-            var updatedChain = chain
-            guard effectDefIndex >= 0 && effectDefIndex < updatedChain.effects.count else { return chain }
-            let effectType = updatedChain.effects[effectDefIndex].type
-
-            // Get defaults from EffectRegistry, preserve _enabled state
-            var defaults = EffectRegistry.defaults(for: effectType)
-            if let wasEnabled = updatedChain.effects[effectDefIndex].params?["_enabled"] {
-                defaults["_enabled"] = wasEnabled
-            }
-            updatedChain.effects[effectDefIndex].params = defaults
-            return updatedChain
-        }
-        EffectConfigLoader.resetEffectToDefaults(effectIndex: effectIndex, effectDefIndex: effectDefIndex)
+        guard let session = session else { return }
+        session.resetEffectToDefaults(chainIndex: effectIndex, effectIndex: effectDefIndex)
     }
 
     /// Update the name of the selected effect chain
     func updateEffectName(effectIndex: Int, name: String) {
-        updateLocalChain(at: effectIndex) { chain in
-            var updatedChain = chain
-            updatedChain.name = name
-            return updatedChain
-        }
-        EffectConfigLoader.updateEffectName(effectIndex: effectIndex, name: name)
+        guard let session = session else { return }
+        session.updateChainName(chainIndex: effectIndex, name: name)
     }
 
     /// Available effect types for adding to chains
@@ -245,21 +239,21 @@ final class EffectsEditorViewModel: ObservableObject {
     /// Returns the index of the new chain
     @discardableResult
     func createNewEffect() -> Int {
-        let index = EffectConfigLoader.createNewEffect()
-        syncFromConfig()  // Sync to get the new effect
-        return index
+        guard let session = session else { return -1 }
+        return session.createNewChain()
+        // Subscription will sync effectChains
     }
 
     /// Delete an effect chain at the given index
     func deleteEffect(at index: Int) {
-        guard index >= 0 && index < effectChains.count else { return }
-        effectChains.remove(at: index)
-        EffectConfigLoader.deleteEffect(at: index)
+        guard let session = session else { return }
+        session.deleteChain(at: index)
+        // Subscription will sync effectChains
     }
 
     // MARK: - Private Helpers
 
-    /// Update a local chain immediately (for responsive UI)
+    /// Update a local chain immediately (for responsive UI - used by parameter sliders)
     private func updateLocalChain(at index: Int, transform: (EffectChain) -> EffectChain) {
         guard index >= 0 && index < effectChains.count else { return }
         effectChains[index] = transform(effectChains[index])
@@ -281,6 +275,9 @@ struct EffectsEditorView: View {
 
     /// Currently dragged effect index for reordering
     @State private var draggingEffectIndex: Int?
+
+    /// Show confirmation dialog for restoring default effects library
+    @State private var showRestoreConfirmation = false
 
     /// Current layer being edited (-1 = global, 0+ = source)
     private var currentLayer: Int {
@@ -443,6 +440,9 @@ struct EffectsEditorView: View {
         }
         // Left/right arrow and Tab/Shift-Tab handled natively by SwiftUI focus system
         .onAppear {
+            // Connect view model to the active session
+            viewModel.session = dream.effectsSession
+
             // Auto-expand list when no effect is selected (None)
             if selectedEffectIndex == -1 && state.settings.effectsListCollapsed {
                 state.settings.effectsListCollapsed = false
@@ -452,11 +452,34 @@ struct EffectsEditorView: View {
             focusedField = .effectList
             viewModel.activeSection = .effectList
         }
+        .onChange(of: dream.isLiveMode) { _, _ in
+            // Update session when performance mode changes (Edit ↔ Live)
+            viewModel.session = dream.effectsSession
+        }
+        .onChange(of: dream.mode) { _, _ in
+            // Update session when dream mode changes (Montage ↔ Sequence)
+            viewModel.session = dream.effectsSession
+        }
         .onChange(of: focusedField) { _, newField in
             // Sync active section when focus changes
             if let field = newField {
                 viewModel.activeSection = field
             }
+        }
+        .confirmationDialog(
+            "Restore Default Effects Library?",
+            isPresented: $showRestoreConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Restore Defaults", role: .destructive) {
+                guard let session = viewModel.session else { return }
+                EffectChainLibraryActions.restoreDefaultLibrary(session: session) {
+                    viewModel.syncFromSession()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will replace your current effects library with the built-in defaults. This cannot be undone.")
         }
     }
 
@@ -549,23 +572,15 @@ struct EffectsEditorView: View {
     /// Buttons for saving and loading effect chain libraries
     private var effectLibraryButtons: some View {
         HStack(alignment: .center, spacing: 8) {
-            // Autosave toggle
-            Button(action: {
-                state.settings.effectsAutosave.toggle()
-                state.saveSettings()
-                // If turning autosave on and there are unsaved changes, save now
-                if state.settings.effectsAutosave && EffectConfigLoader.hasUnsavedChanges {
-                    EffectConfigLoader.save()
-                    AppNotifications.show("Effects saved", flash: true, duration: 1.0)
-                }
-            }) {
-                Image(systemName: state.settings.effectsAutosave ? "arrow.triangle.2.circlepath" : "arrow.triangle.2.circlepath.circle")
+            // Restore Default Effects Library
+            Button(action: restoreDefaultLibrary) {
+                Image(systemName: "arrow.counterclockwise")
                     .font(.system(size: 16))
-                    .foregroundColor(state.settings.effectsAutosave ? .green : .orange)
+                    .foregroundColor(.orange)
                     .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
-            .hudTooltip(state.settings.effectsAutosave ? "Autosave ON" : "Autosave OFF (⌘⇧E to save)")
+            .hudTooltip("Restore Default Effects Library")
 
             // Save to Default Library
             Button(action: saveToDefaultLibrary) {
@@ -603,19 +618,38 @@ struct EffectsEditorView: View {
 
     // MARK: - Library Actions
 
+    private func restoreDefaultLibrary() {
+        showRestoreConfirmation = true
+    }
+
     /// Save current effect chains to the default library location
     private func saveToDefaultLibrary() {
-        EffectChainLibraryActions.saveToDefaultLibrary()
+        guard let session = viewModel.session else { return }
+        EffectChainLibraryActions.saveToDefaultLibrary(session: session)
     }
 
     /// Save current effect chains to a user-chosen file
     private func saveLibraryToFile() {
-        EffectChainLibraryActions.saveLibraryToFile()
+        guard let session = viewModel.session else { return }
+        EffectChainLibraryActions.saveLibraryToFile(session: session)
     }
 
     /// Load effect chain library from a file (.json or .hypnogram)
     private func loadLibraryFromFile() {
-        EffectChainLibraryActions.loadLibraryFromFile()
+        guard let session = viewModel.session else { return }
+        EffectChainLibraryActions.loadLibraryFromFile(session: session) {
+            viewModel.syncFromSession()
+            // Restore window and responder chain after panel closes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // Force window to reclaim key status and reset responder chain
+                if let window = NSApp.mainWindow {
+                    window.makeKeyAndOrderFront(nil)
+                    // Clear first responder to reset the responder chain
+                    window.makeFirstResponder(nil)
+                }
+                focusedField = .effectList
+            }
+        }
     }
 
     /// Background color for selected effect row
@@ -686,9 +720,10 @@ struct EffectsEditorView: View {
                 EditableEffectNameHeader(
                     name: def.name ?? "Unnamed",
                     onSave: { newName in
-                        // Update library (for persistence)
+                        // Update session (for persistence)
                         viewModel.updateEffectName(effectIndex: selectedEffectIndex, name: newName)
-                        // Update recipe immediately (for UI refresh - no debounce needed)
+                        // Also update the recipe's chain directly (reapplyActiveEffects can't
+                        // find the chain by old name after a rename)
                         dream.activeEffectManager.updateChainName(for: currentLayer, name: newName)
                     },
                     focusedField: $focusedField
@@ -731,10 +766,9 @@ struct EffectsEditorView: View {
                     draggingIndex: $draggingEffectIndex,
                     effectIndex: selectedEffectIndex,
                     onReorder: { from, to in
-                        // Update library (for persistence)
+                        // Update session (for persistence) - the session's onChainUpdated callback
+                        // will trigger effectManager.reapplyActiveEffects() for immediate preview
                         viewModel.reorderEffects(effectIndex: selectedEffectIndex, fromIndex: from, toIndex: to)
-                        // Update recipe (for immediate UI refresh)
-                        dream.activeEffectManager.reorderEffectsInChain(for: layer, fromIndex: from, toIndex: to)
                     }
                 ))
             }
@@ -767,10 +801,9 @@ struct EffectsEditorView: View {
 
                 // Delete button
                 Button(action: {
-                    // Update library (for persistence)
+                    // Update session (for persistence) - the session's onChainUpdated callback
+                    // will trigger effectManager.reapplyActiveEffects() for immediate preview
                     viewModel.removeEffectFromChain(effectIndex: selectedEffectIndex, effectDefIndex: childIndex)
-                    // Update recipe (for immediate UI refresh)
-                    dream.activeEffectManager.removeEffectFromChain(for: layer, effectDefIndex: childIndex)
                     // Clean up expanded indices
                     expandedEffectIndices.remove(childIndex)
                     // Shift down indices above the deleted one
@@ -785,10 +818,9 @@ struct EffectsEditorView: View {
 
                 // Reset to defaults button
                 Button(action: {
-                    // Update library (for persistence)
+                    // Update session (for persistence) - the session's onChainUpdated callback
+                    // will trigger effectManager.reapplyActiveEffects() for immediate preview
                     viewModel.resetEffectToDefaults(effectIndex: selectedEffectIndex, effectDefIndex: childIndex)
-                    // Update recipe (for immediate UI refresh)
-                    dream.activeEffectManager.resetEffectToDefaults(for: layer, effectDefIndex: childIndex)
                 }) {
                     Image(systemName: "arrow.uturn.backward")
                         .font(.system(size: 10, weight: .medium))
@@ -801,18 +833,12 @@ struct EffectsEditorView: View {
                 Toggle("", isOn: Binding(
                     get: { isEnabled },
                     set: { newValue in
-                        // Update library (for persistence and dirty tracking)
+                        // Update session (for persistence) - the session's onChainUpdated callback
+                        // will trigger effectManager.reapplyActiveEffects() for immediate preview
                         viewModel.updateParameter(
                             effectIndex: selectedEffectIndex,
                             effectDefIndex: childIndex,
                             paramName: "_enabled",
-                            value: .bool(newValue)
-                        )
-                        // Update recipe (for immediate rendering)
-                        dream.activeEffectManager.updateEffectParameter(
-                            for: layer,
-                            effectDefIndex: childIndex,
-                            key: "_enabled",
                             value: .bool(newValue)
                         )
                     }
@@ -852,10 +878,9 @@ struct EffectsEditorView: View {
         Menu {
             ForEach(viewModel.availableEffectTypes, id: \.type) { effect in
                 Button(effect.displayName) {
-                    // Update library (for persistence)
+                    // Update session (for persistence) - the session's onChainUpdated callback
+                    // will trigger effectManager.reapplyActiveEffects() for immediate preview
                     viewModel.addEffectToChain(effectIndex: selectedEffectIndex, effectType: effect.type)
-                    // Update recipe (for immediate UI refresh)
-                    dream.activeEffectManager.addEffectToChain(for: currentLayer, effectType: effect.type)
                 }
             }
         } label: {
@@ -890,18 +915,12 @@ struct EffectsEditorView: View {
                         effectType: effectDef.type,
                         spec: specs[key],
                         onChange: { newValue in
-                            // Update library (for persistence and dirty tracking)
+                            // Update session (for persistence) - the session's onChainUpdated callback
+                            // will trigger effectManager.reapplyActiveEffects() for immediate preview
                             viewModel.updateParameter(
                                 effectIndex: selectedEffectIndex,
                                 effectDefIndex: effectDefIndex,
                                 paramName: key,
-                                value: newValue
-                            )
-                            // Update recipe (for immediate rendering)
-                            dream.activeEffectManager.updateEffectParameter(
-                                for: layer,
-                                effectDefIndex: effectDefIndex,
-                                key: key,
                                 value: newValue
                             )
                         }

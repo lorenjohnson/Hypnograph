@@ -14,35 +14,35 @@ import Combine
 /// Each player maintains its own recipe, playback state, and generation settings.
 @MainActor
 final class DreamPlayerState: ObservableObject {
-    
+
     // MARK: - Recipe (the composition)
-    
+
     /// The current hypnogram recipe - sources, effects, duration
     @Published var recipe: HypnogramRecipe
-    
+
     // MARK: - Playback State
-    
+
     /// Current source index for navigation (-1 = global layer, 0+ = source index)
     /// Defaults to global layer so effects set via E key persist across new hypnograms
     @Published var currentSourceIndex: Int = -1
-    
+
     /// Optional playhead offset for scrubbing
     @Published var currentClipTimeOffset: CMTime?
-    
+
     /// Pause/play state
     @Published var isPaused: Bool = false
 
     /// Incremented when effects change - triggers re-render when paused
     @Published var effectsChangeCounter: Int = 0
-    
+
     // MARK: - Display Settings
-    
+
     /// Aspect ratio for this player
     @Published var aspectRatio: AspectRatio
-    
+
     /// Output resolution
     @Published var outputResolution: OutputResolution
-    
+
     // MARK: - Generation Settings (for "New" operations)
 
     /// Max sources when generating new random hypnograms
@@ -51,8 +51,11 @@ final class DreamPlayerState: ObservableObject {
     /// Target duration for new hypnograms
     @Published var targetDuration: CMTime
 
+    // MARK: - Effects Library
 
-    
+    /// This player's effects session - stores effect chains for this mode
+    let effectsSession: EffectsSession
+
     // MARK: - Effect Processing
 
     /// This player's own effect manager - independent effects per deck
@@ -70,8 +73,8 @@ final class DreamPlayerState: ObservableObject {
     }
 
     // MARK: - Init
-    
-    init(settings: Settings) {
+
+    init(settings: Settings, effectsFilename: String) {
         self.recipe = HypnogramRecipe(
             sources: [],
             targetDuration: settings.outputDuration
@@ -80,16 +83,21 @@ final class DreamPlayerState: ObservableObject {
         self.outputResolution = settings.outputResolution
         self.maxSourcesForNew = settings.maxSourcesForNew
         self.targetDuration = settings.outputDuration
-        
+        self.effectsSession = EffectsSession(filename: effectsFilename)
+
         setupEffectManager()
+        setupEffectsSession()
     }
-    
+
     private func setupEffectManager() {
+        // Wire up the effects session for chain lookups
+        effectManager.session = effectsSession
+
         // Increment counter when effects change
         effectManager.onEffectChanged = { [weak self] in
             self?.effectsChangeCounter += 1
         }
-        
+
         // Recipe provider
         effectManager.recipeProvider = { [weak self] in
             self?.recipe
@@ -110,6 +118,18 @@ final class DreamPlayerState: ObservableObject {
         effectManager.blendModeSetter = { [weak self] sourceIndex, blendMode in
             guard let self = self, sourceIndex < self.recipe.sources.count else { return }
             self.recipe.sources[sourceIndex].blendMode = blendMode
+        }
+    }
+
+    private func setupEffectsSession() {
+        // When a chain is updated in the session, reapply active effects
+        effectsSession.onChainUpdated = { [weak self] _, _ in
+            self?.effectManager.reapplyActiveEffects()
+        }
+
+        // When session is reloaded, reapply active effects
+        effectsSession.onSessionReloaded = { [weak self] in
+            self?.effectManager.reapplyActiveEffects()
         }
     }
 

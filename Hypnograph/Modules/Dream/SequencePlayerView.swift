@@ -364,6 +364,7 @@ struct SequencePlayerView: NSViewRepresentable {
                 videoComposition.customVideoCompositorClass = FrameCompositor.self
 
                 // Create instruction for the entire clip
+                // Pass effectManager so FrameCompositor can apply effects
                 let instruction = RenderInstruction(
                     timeRange: CMTimeRange(start: .zero, duration: source.clip.duration),
                     layerTrackIDs: [compVideoTrack.trackID],
@@ -371,7 +372,8 @@ struct SequencePlayerView: NSViewRepresentable {
                     transforms: [composedTransform],
                     sourceIndices: [index],
                     enableEffects: true,
-                    stillImages: [nil]
+                    stillImages: [nil],
+                    effectManager: self.effectManager
                 )
                 videoComposition.instructions = [instruction]
 

@@ -148,9 +148,6 @@ struct Settings: Codable {
     /// Whether the effects list column is collapsed in the Effects Editor
     var effectsListCollapsed: Bool
 
-    /// Whether effect parameter changes are automatically saved to disk
-    var effectsAutosave: Bool
-
     // MARK: - Audio Settings
 
     /// Preview audio device UID (nil = None/muted)
@@ -181,7 +178,6 @@ struct Settings: Codable {
         static let displayResolution: OutputResolution = .p1080
         static let sourceMediaTypes: Set<SourceMediaType> = [.images, .videos]
         static let effectsListCollapsed: Bool = false
-        static let effectsAutosave: Bool = true
         // Audio defaults: nil UID = system default, volume = 1.0
         static let previewAudioDeviceUID: String? = nil
         static let previewVolume: Float = 1.0
@@ -194,7 +190,7 @@ struct Settings: Codable {
         case watch, maxSourcesForNew, outputSeconds, snapshotsFolder
         case activeLibrariesPerMode
         case aspectRatio, outputResolution, displayResolution, sourceMediaTypes
-        case effectsListCollapsed, effectsAutosave
+        case effectsListCollapsed
         case previewAudioDeviceUID, previewVolume
         case performanceAudioDeviceUID, performanceVolume
     }
@@ -212,7 +208,6 @@ struct Settings: Codable {
         displayResolution: OutputResolution = Defaults.displayResolution,
         sourceMediaTypes: Set<SourceMediaType> = Defaults.sourceMediaTypes,
         effectsListCollapsed: Bool = Defaults.effectsListCollapsed,
-        effectsAutosave: Bool = Defaults.effectsAutosave,
         previewAudioDeviceUID: String? = Defaults.previewAudioDeviceUID,
         previewVolume: Float = Defaults.previewVolume,
         performanceAudioDeviceUID: String? = Defaults.performanceAudioDeviceUID,
@@ -230,7 +225,6 @@ struct Settings: Codable {
         self.displayResolution = displayResolution
         self.sourceMediaTypes = sourceMediaTypes
         self.effectsListCollapsed = effectsListCollapsed
-        self.effectsAutosave = effectsAutosave
         self.previewAudioDeviceUID = previewAudioDeviceUID
         self.previewVolume = previewVolume
         self.performanceAudioDeviceUID = performanceAudioDeviceUID
@@ -267,8 +261,6 @@ struct Settings: Codable {
         }
         effectsListCollapsed = try c.decodeIfPresent(Bool.self, forKey: .effectsListCollapsed)
             ?? Defaults.effectsListCollapsed
-        effectsAutosave = try c.decodeIfPresent(Bool.self, forKey: .effectsAutosave)
-            ?? Defaults.effectsAutosave
         previewAudioDeviceUID = try c.decodeIfPresent(String.self, forKey: .previewAudioDeviceUID)
             ?? Defaults.previewAudioDeviceUID
         previewVolume = try c.decodeIfPresent(Float.self, forKey: .previewVolume)
@@ -293,7 +285,6 @@ struct Settings: Codable {
         try c.encode(displayResolution, forKey: .displayResolution)
         try c.encode(Array(sourceMediaTypes), forKey: .sourceMediaTypes)
         try c.encode(effectsListCollapsed, forKey: .effectsListCollapsed)
-        try c.encode(effectsAutosave, forKey: .effectsAutosave)
         try c.encodeIfPresent(previewAudioDeviceUID, forKey: .previewAudioDeviceUID)
         try c.encode(previewVolume, forKey: .previewVolume)
         try c.encodeIfPresent(performanceAudioDeviceUID, forKey: .performanceAudioDeviceUID)
