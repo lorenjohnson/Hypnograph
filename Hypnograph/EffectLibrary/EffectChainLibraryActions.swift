@@ -11,22 +11,34 @@ import AppKit
 import UniformTypeIdentifiers
 
 /// Actions for saving and loading effect chain libraries
+@MainActor
 enum EffectChainLibraryActions {
-    
+
     // MARK: - Save to Default Library
 
     /// Save current effect chains to the default library location
     /// This saves immediately (no file picker - saves to ~/Library/Application Support/Hypnograph/effects.json)
-    static func saveToDefaultLibrary() {
-        EffectConfigLoader.save()
+    static func saveToDefaultLibrary(session: EffectsSession) {
+        session.save()
         AppNotifications.show("Effects saved to default library", flash: true)
+    }
+
+    // MARK: - Restore Default Library
+
+    /// Restore the built-in default effects library
+    /// Replaces the current library with bundled defaults
+    static func restoreDefaultLibrary(session: EffectsSession, completion: @escaping @MainActor () -> Void) {
+        let defaults = EffectsSession.loadBundledDefaults()
+        session.replaceChains(defaults)
+        AppNotifications.show("Restored \(defaults.count) default effect chains", flash: true)
+        completion()
     }
 
     // MARK: - Save to File
 
     /// Save current effect chains to a user-chosen file
     /// Opens a save file dialog for .json files
-    static func saveLibraryToFile() {
+    static func saveLibraryToFile(session: EffectsSession) {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [UTType.json]
         panel.nameFieldStringValue = "effects.json"
@@ -38,9 +50,10 @@ enum EffectChainLibraryActions {
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
 
-            EffectConfigLoader.save(to: url)
-
-            AppNotifications.show("Effects saved to \(url.lastPathComponent)", flash: true)
+            Task { @MainActor in
+                session.save(to: url)
+                AppNotifications.show("Effects saved to \(url.lastPathComponent)", flash: true)
+            }
         }
     }
 
@@ -48,7 +61,8 @@ enum EffectChainLibraryActions {
 
     /// Load effect chain library from a file (.json or .hypnogram)
     /// Opens a file picker that accepts both file types
-    static func loadLibraryFromFile() {
+    /// Includes a "Merge" checkbox (default: on) to merge vs replace effects
+    static func loadLibraryFromFile(session: EffectsSession, completion: @escaping @MainActor () -> Void) {
         let panel = NSOpenPanel()
 
         // Allow both JSON and Hypnogram files
@@ -63,27 +77,43 @@ enum EffectChainLibraryActions {
         // Start in the Application Support folder
         panel.directoryURL = EffectConfigLoader.userConfigURL.deletingLastPathComponent()
 
+        // Add accessory view with Merge checkbox
+        let mergeCheckbox = NSButton(checkboxWithTitle: "Merge with existing effects", target: nil, action: nil)
+        mergeCheckbox.state = .on  // Default to merge
+        panel.accessoryView = mergeCheckbox
+
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
 
-            let ext = url.pathExtension.lowercased()
+            let shouldMerge = mergeCheckbox.state == .on
 
-            if ext == RecipeStore.fileExtension {
-                // Load from hypnogram file
-                loadFromHypnogram(url: url)
-            } else {
-                // Load from JSON file
-                loadFromJSON(url: url)
+            Task { @MainActor in
+                let ext = url.pathExtension.lowercased()
+
+                if ext == RecipeStore.fileExtension {
+                    // Load from hypnogram file
+                    loadFromHypnogram(url: url, session: session, merge: shouldMerge)
+                } else {
+                    // Load from JSON file
+                    loadFromJSON(url: url, session: session, merge: shouldMerge)
+                }
+
+                completion()
             }
         }
     }
 
     /// Load effect chains from a JSON library file
-    private static func loadFromJSON(url: URL) {
+    private static func loadFromJSON(url: URL, session: EffectsSession, merge: Bool) {
         do {
             let chains = try EffectConfigLoader.loadFromURL(url)
-            replaceLibrary(with: chains)
-            AppNotifications.show("Loaded \(chains.count) effect chains", flash: true)
+            if merge {
+                session.merge(chains: chains)
+                AppNotifications.show("Merged \(chains.count) effect chains", flash: true)
+            } else {
+                session.replaceChains(chains)
+                AppNotifications.show("Loaded \(chains.count) effect chains", flash: true)
+            }
         } catch {
             print("⚠️ EffectChainLibraryActions: Failed to load library from \(url.path): \(error)")
             AppNotifications.show("Failed to load effects library", flash: true)
@@ -91,12 +121,27 @@ enum EffectChainLibraryActions {
     }
 
     /// Load effect chains from a hypnogram recipe file
-    private static func loadFromHypnogram(url: URL) {
+    /// If the recipe has an effectsLibrarySnapshot, uses that
+    /// Otherwise extracts only the chains used in the recipe
+    private static func loadFromHypnogram(url: URL, session: EffectsSession, merge: Bool) {
         guard let recipe = RecipeStore.load(from: url) else {
             AppNotifications.show("Failed to load hypnogram", flash: true)
             return
         }
 
+        // Prefer the full library snapshot if available
+        if let snapshot = recipe.effectsLibrarySnapshot, !snapshot.isEmpty {
+            if merge {
+                session.merge(chains: snapshot)
+                AppNotifications.show("Merged \(snapshot.count) effect chains from snapshot", flash: true)
+            } else {
+                session.replaceChains(snapshot)
+                AppNotifications.show("Loaded \(snapshot.count) effect chains from snapshot", flash: true)
+            }
+            return
+        }
+
+        // Fallback: extract only the chains used in the recipe
         let chains = extractEffectChains(from: recipe)
 
         if chains.isEmpty {
@@ -104,29 +149,26 @@ enum EffectChainLibraryActions {
             return
         }
 
-        // Merge extracted chains into current library
-        mergeChains(chains)
-
-        AppNotifications.show("Imported \(chains.count) effect chains", flash: true)
+        if merge {
+            session.merge(chains: chains)
+            AppNotifications.show("Merged \(chains.count) effect chains", flash: true)
+        } else {
+            session.replaceChains(chains)
+            AppNotifications.show("Loaded \(chains.count) effect chains", flash: true)
+        }
     }
-    
+
     // MARK: - Recipe Import
 
-    /// Import effect chains from a recipe into the library (used when loading hypnograms)
+    /// Import effect chains from a recipe into the session (used when loading hypnograms)
     /// Merges chains into the library, avoiding duplicates by name
-    static func importChainsFromRecipe(_ recipe: HypnogramRecipe) {
+    static func importChainsFromRecipe(_ recipe: HypnogramRecipe, into session: EffectsSession) {
         let chains = extractEffectChains(from: recipe)
         guard !chains.isEmpty else { return }
-        mergeChains(chains)
+        session.merge(chains: chains)
     }
 
     // MARK: - Private Helpers
-
-    /// Replace the current library with new chains
-    private static func replaceLibrary(with chains: [EffectChain]) {
-        // Use EffectChainLibrary to update the cache
-        EffectChainLibrary.updateCache(with: chains)
-    }
 
     /// Extract effect chains from a recipe (global + per-source)
     private static func extractEffectChains(from recipe: HypnogramRecipe) -> [EffectChain] {
@@ -156,22 +198,4 @@ enum EffectChainLibraryActions {
 
         return chains
     }
-    
-    /// Merge new chains into the current library (overwrites on name collision)
-    private static func mergeChains(_ newChains: [EffectChain]) {
-        var currentChains = EffectConfigLoader.currentChains
-
-        for chain in newChains {
-            // If chain with same name exists, replace it
-            if let name = chain.name,
-               let existingIndex = currentChains.firstIndex(where: { $0.name == name }) {
-                currentChains[existingIndex] = chain
-            } else {
-                currentChains.append(chain)
-            }
-        }
-
-        EffectChainLibrary.updateCache(with: currentChains)
-    }
 }
-
