@@ -70,18 +70,18 @@ final class HypnogramStore: ObservableObject {
     /// Add a new hypnogram entry
     /// - Parameters:
     ///   - recipe: The recipe to save
-    ///   - snapshot: CGImage snapshot of the current frame (required for new .hypnogram format)
+    ///   - snapshot: CGImage snapshot of the current frame (required for .hypno/.hypnogram format)
     ///   - name: Display name for the entry
     ///   - isFavorite: Whether to mark as favorite
     /// - Returns: The created entry, or nil if save failed
     @discardableResult
     func add(recipe: HypnogramRecipe, snapshot: CGImage, name: String? = nil, isFavorite: Bool = false) -> HypnogramEntry? {
-        // Save recipe + snapshot as .hypnogram file (PNG with embedded recipe)
+        // Save recipe + snapshot as .hypno file (PNG with embedded recipe)
         guard let recipeURL = RecipeStore.save(recipe, snapshot: snapshot) else {
             return nil
         }
 
-        // The .hypnogram file IS the thumbnail now - encode a smaller version for quick loading in list
+        // The .hypno/.hypnogram file IS the thumbnail now - encode a smaller version for quick loading in list
         let thumbnailBase64 = Self.encodeThumbnail(CIImage(cgImage: snapshot))
 
         let displayName = name ?? "Hypnogram \(DateFormatter.shortDateTime.string(from: Date()))"
@@ -203,4 +203,3 @@ private extension DateFormatter {
         return f
     }()
 }
-

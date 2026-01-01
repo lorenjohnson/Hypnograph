@@ -726,6 +726,9 @@ final class Dream: ObservableObject {
     private func makeDisplayRecipe() -> HypnogramRecipe {
         // Use the recipe from activePlayer, adjust target duration based on mode
         var recipe = activePlayer.recipe
+        recipe.mode = mode  // Store current mode in recipe
+        recipe.createdAt = Date()  // Set creation timestamp
+        recipe.effectsLibrarySnapshot = effectsSession.chains  // Snapshot the entire effects library
         switch mode {
         case .montage:
             recipe.targetDuration = activePlayer.targetDuration
@@ -868,7 +871,7 @@ final class Dream: ObservableObject {
         activePlayer.sources[idx].clip = clip
     }
 
-    /// Save current hypnogram: snapshot with embedded recipe (.hypnogram file)
+    /// Save current hypnogram: snapshot with embedded recipe (.hypno file)
     /// This is the main save action (S / Cmd-S)
     func save() {
         // Grab the current frame from the frame buffer (which stores the fully composited frame)
@@ -888,10 +891,10 @@ final class Dream: ObservableObject {
             return
         }
 
-        // Get the current recipe
-        let recipe = activePlayer.recipe.copyForExport()
+        // Get the current recipe with effects library snapshot
+        let recipe = makeDisplayRecipe().copyForExport()
 
-        // Save as .hypnogram file (PNG with embedded recipe)
+        // Save as .hypno file (PNG with embedded recipe)
         if let savedURL = RecipeStore.save(recipe, snapshot: cgImage) {
             print("✅ Dream: Hypnogram saved to \(savedURL.path)")
             AppNotifications.show("Hypnogram saved", flash: true)
@@ -970,60 +973,47 @@ final class Dream: ObservableObject {
             return
         }
 
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.init(filenameExtension: RecipeStore.fileExtension)!]
-        panel.nameFieldStringValue = "hypnogram-\(formattedTimestamp()).\(RecipeStore.fileExtension)"
-        panel.directoryURL = RecipeStore.recipesDirectory
-
-        let recipe = activePlayer.recipe.copyForExport()
-
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
-
-            if RecipeStore.save(recipe, snapshot: cgImage, to: url) != nil {
-                AppNotifications.show("Hypnogram saved", flash: true)
-            }
+        let recipe = makeDisplayRecipe().copyForExport()
+        RecipeFileActions.saveAs(recipe: recipe, snapshot: cgImage) {
+            AppNotifications.show("Hypnogram saved", flash: true)
         }
     }
 
-    /// Open a .hypnogram recipe file
+    /// Open a .hypno or .hypnogram recipe file
     func openRecipe() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.init(filenameExtension: RecipeStore.fileExtension)!]
-        panel.directoryURL = RecipeStore.recipesDirectory
-        panel.allowsMultipleSelection = false
-
-        panel.begin { [self] response in
-            guard response == .OK, let url = panel.url else { return }
-
-            guard let recipe = RecipeStore.load(from: url) else {
+        RecipeFileActions.openRecipe(
+            onLoaded: { [weak self] recipe in
+                self?.loadRecipe(recipe)
+                AppNotifications.show("Recipe loaded", flash: true)
+            },
+            onFailure: {
                 AppNotifications.show("Failed to load recipe", flash: true)
-                return
             }
-
-            loadRecipe(recipe)
-            AppNotifications.show("Recipe loaded", flash: true)
-        }
+        )
     }
 
     /// Load a recipe into the current player
     func loadRecipe(_ recipe: HypnogramRecipe) {
-        activePlayer.setRecipe(recipe)
-        activePlayer.currentSourceIndex = recipe.sources.isEmpty ? -1 : 0
+        // Ensure effect chains have names (required for library matching)
+        var mutableRecipe = recipe
+        mutableRecipe.ensureEffectChainNames()
+
+        // Switch to the mode the recipe was saved in
+        mode = mutableRecipe.mode
+
+        activePlayer.setRecipe(mutableRecipe)
+        // Default to Global layer (-1) so effects editor shows global effects first
+        activePlayer.currentSourceIndex = -1
 
         // Clear frame buffer for clean slate
         activePlayer.effectManager.clearFrameBuffer()
 
-        // Import effect chains from recipe into library so they're available for editing
-        EffectChainLibraryActions.importChainsFromRecipe(recipe)
+        // Import effect chains used in the recipe into the session
+        // (adds missing chains, replaces same-named chains with recipe versions)
+        EffectChainLibraryActions.importChainsFromRecipe(mutableRecipe, into: effectsSession)
 
         // Notify player to reload
         activePlayer.notifyRecipeChanged()
-    }
-
-    private func formattedTimestamp() -> String {
-        ISO8601DateFormatter().string(from: Date())
-            .replacingOccurrences(of: ":", with: "-")
     }
 
     /// Favorite the current hypnogram (save to store as favorite)

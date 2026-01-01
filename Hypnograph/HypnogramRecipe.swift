@@ -27,8 +27,18 @@ struct HypnogramRecipe: Codable {
     /// Base64-encoded JPEG snapshot of the hypnogram (1080p resolution)
     var snapshot: String?
 
+    /// The mode this hypnogram was created in (montage vs sequence)
+    var mode: DreamMode
+
+    /// When this recipe was created
+    var createdAt: Date
+
+    /// Snapshot of the entire effects library at save time
+    /// When loading, this replaces the current effects library
+    var effectsLibrarySnapshot: [EffectChain]?
+
     private enum CodingKeys: String, CodingKey {
-        case sources, targetDuration, playRate, effectChain, snapshot
+        case sources, targetDuration, playRate, effectChain, snapshot, mode, createdAt, effectsLibrarySnapshot
     }
 
     init(
@@ -36,13 +46,19 @@ struct HypnogramRecipe: Codable {
         targetDuration: CMTime,
         playRate: Float = 1.0,
         effectChain: EffectChain? = nil,
-        snapshot: String? = nil
+        snapshot: String? = nil,
+        mode: DreamMode = .montage,
+        createdAt: Date = Date(),
+        effectsLibrarySnapshot: [EffectChain]? = nil
     ) {
         self.sources = sources
         self.targetDuration = targetDuration
         self.playRate = playRate
         self.effectChain = effectChain ?? EffectChain()
         self.snapshot = snapshot
+        self.mode = mode
+        self.createdAt = createdAt
+        self.effectsLibrarySnapshot = effectsLibrarySnapshot
     }
 
     init(from decoder: Decoder) throws {
@@ -52,6 +68,9 @@ struct HypnogramRecipe: Codable {
         playRate = try container.decodeIfPresent(Float.self, forKey: .playRate) ?? 1.0
         effectChain = try container.decodeIfPresent(EffectChain.self, forKey: .effectChain) ?? EffectChain()
         snapshot = try container.decodeIfPresent(String.self, forKey: .snapshot)
+        mode = try container.decodeIfPresent(DreamMode.self, forKey: .mode) ?? .montage
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        effectsLibrarySnapshot = try container.decodeIfPresent([EffectChain].self, forKey: .effectsLibrarySnapshot)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -61,6 +80,9 @@ struct HypnogramRecipe: Codable {
         try container.encode(playRate, forKey: .playRate)
         try container.encode(effectChain, forKey: .effectChain)
         try container.encodeIfPresent(snapshot, forKey: .snapshot)
+        try container.encode(mode, forKey: .mode)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encodeIfPresent(effectsLibrarySnapshot, forKey: .effectsLibrarySnapshot)
     }
 
     /// Create a deep copy with fresh effect instances for export.
@@ -77,7 +99,25 @@ struct HypnogramRecipe: Codable {
             sources: copiedSources,
             targetDuration: targetDuration,
             playRate: playRate,
-            effectChain: effectChain.copy()
+            effectChain: effectChain.copy(),
+            mode: mode,
+            createdAt: createdAt,
+            effectsLibrarySnapshot: effectsLibrarySnapshot?.map { $0.copy() }
         )
+    }
+
+    mutating func ensureEffectChainNames() {
+        if !effectChain.effects.isEmpty &&
+            (effectChain.name == nil || effectChain.name?.isEmpty == true) {
+            effectChain.name = "Global (imported)"
+        }
+
+        for index in sources.indices {
+            let chain = sources[index].effectChain
+            if !chain.effects.isEmpty &&
+                (chain.name == nil || chain.name?.isEmpty == true) {
+                sources[index].effectChain.name = "Source \(index + 1) (imported)"
+            }
+        }
     }
 }

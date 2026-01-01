@@ -36,9 +36,6 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     weak var mainWindow: NSWindow?
     var gameControllerManager: GameControllerManager?
 
-    /// Callback to check if autosave is enabled (injected by app)
-    var isAutosaveEnabled: (() -> Bool)?
-
     /// Callback to toggle clean screen (injected by app)
     var toggleCleanScreen: (() -> Void)?
 
@@ -47,6 +44,12 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
 
     /// Callback to open a recipe file (injected by app)
     var openRecipeFile: ((URL) -> Void)?
+
+    /// Callback to check if any session has unsaved changes (injected by app)
+    var hasUnsavedEffectChanges: (() -> Bool)?
+
+    /// Callback to save all effect sessions (injected by app)
+    var saveEffectSessions: (() -> Void)?
 
     /// Event monitor for Tab key (workaround for SwiftUI menu shortcut not registering until menu opened)
     private var tabKeyMonitor: Any?
@@ -83,13 +86,10 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        // Check for unsaved effect changes when autosave is disabled
-        let autosaveOn = isAutosaveEnabled?() ?? true
-        if !autosaveOn && EffectConfigLoader.hasUnsavedChanges {
-            // Show save prompt
+        if hasUnsavedEffectChanges?() == true {
             let alert = NSAlert()
             alert.messageText = "Save Effect Changes?"
-            alert.informativeText = "You have unsaved effect parameter changes. Would you like to save them before quitting?"
+            alert.informativeText = "You have unsaved effect changes. Would you like to save them before quitting?"
             alert.alertStyle = .warning
             alert.addButton(withTitle: "Save")
             alert.addButton(withTitle: "Don't Save")
@@ -98,14 +98,8 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
             let response = alert.runModal()
             switch response {
             case .alertFirstButtonReturn:
-                // Save
-                EffectConfigLoader.save()
-                print("Hypnograph: Saved effect changes before quit")
-            case .alertSecondButtonReturn:
-                // Don't save - continue to quit
-                break
+                saveEffectSessions?()
             case .alertThirdButtonReturn:
-                // Cancel - don't quit
                 return .terminateCancel
             default:
                 break
@@ -134,8 +128,8 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
 
     /// Handle files opened via double-click or drag-drop onto the app
     func application(_ application: NSApplication, open urls: [URL]) {
-        // Filter for .hypnogram files
-        let hypnogramURLs = urls.filter { $0.pathExtension == RecipeStore.fileExtension }
+        // Filter for supported recipe files
+        let hypnogramURLs = urls.filter { RecipeStore.isSupportedExtension($0.pathExtension) }
 
         // Open the first hypnogram file
         if let url = hypnogramURLs.first {
@@ -235,12 +229,20 @@ struct HypnographApp: App {
 
                 appDelegate.renderQueue = renderQueue
 
-                // Wire up autosave callbacks
-                appDelegate.isAutosaveEnabled = { [weak state] in
-                    state?.settings.effectsAutosave ?? true
+                // Wire up session-based unsaved changes check
+                appDelegate.hasUnsavedEffectChanges = { [weak dream] in
+                    guard let dream = dream else { return false }
+                    // Check all sessions for unsaved changes
+                    return dream.montagePlayer.effectsSession.hasUnsavedChanges ||
+                           dream.sequencePlayer.effectsSession.hasUnsavedChanges ||
+                           dream.performanceDisplay.effectsSession.hasUnsavedChanges
                 }
-                EffectConfigLoader.isAutosaveEnabled = { [weak state] in
-                    state?.settings.effectsAutosave ?? true
+
+                // Wire up session-based save
+                appDelegate.saveEffectSessions = { [weak dream] in
+                    dream?.montagePlayer.effectsSession.save()
+                    dream?.sequencePlayer.effectsSession.save()
+                    dream?.performanceDisplay.effectsSession.save()
                 }
 
                 // Wire up Tab key callbacks for clean screen toggle

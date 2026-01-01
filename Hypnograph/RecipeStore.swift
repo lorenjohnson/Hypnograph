@@ -2,18 +2,21 @@
 //  RecipeStore.swift
 //  Hypnograph
 //
-//  Handles saving and loading HypnogramRecipe files (.hypnogram)
-//  A .hypnogram file is JSON with an embedded base64 JPEG snapshot.
+//  Handles saving and loading HypnogramRecipe files (.hypno / .hypnogram)
+//  These files are JSON with an embedded base64 JPEG snapshot.
 //
 
 import Foundation
 import AppKit
 
-/// Handles saving and loading HypnogramRecipe files (.hypnogram = JSON with embedded snapshot)
+/// Handles saving and loading HypnogramRecipe files (.hypno/.hypnogram = JSON with embedded snapshot)
 enum RecipeStore {
 
-    /// File extension for hypnogram files
-    static let fileExtension = "hypnogram"
+    /// Preferred file extension for new recipe files
+    static let fileExtension = "hypno"
+
+    /// All supported file extensions
+    static let fileExtensions = ["hypno", "hypnogram"]
 
     /// Snapshot resolution (1080p)
     static let snapshotWidth: CGFloat = 1920
@@ -35,12 +38,10 @@ enum RecipeStore {
     /// - Parameters:
     ///   - recipe: The recipe to save
     ///   - snapshotImage: The CGImage snapshot (will be resized to 1080p and encoded as JPEG)
-    /// - Returns: URL of the saved .hypnogram file, or nil if save failed
+    /// - Returns: URL of the saved .hypno file, or nil if save failed
     @discardableResult
     static func save(_ recipe: HypnogramRecipe, snapshot: CGImage) -> URL? {
-        let timestamp = ISO8601DateFormatter().string(from: Date())
-            .replacingOccurrences(of: ":", with: "-")
-        let filename = "hypnogram-\(timestamp).\(fileExtension)"
+        let filename = defaultFilename()
         let url = recipesDirectory.appendingPathComponent(filename)
 
         return save(recipe, snapshot: snapshot, to: url)
@@ -79,9 +80,20 @@ enum RecipeStore {
         }
     }
 
+    /// Default filename for a new recipe file.
+    static func defaultFilename(prefix: String = "hypno") -> String {
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+        return "\(prefix)-\(timestamp).\(fileExtension)"
+    }
+
+    static func isSupportedExtension(_ ext: String) -> Bool {
+        fileExtensions.contains(ext.lowercased())
+    }
+
     // MARK: - Load
 
-    /// Load a recipe from a .hypnogram file
+    /// Load a recipe from a .hypno or .hypnogram file
     /// - Parameter url: The URL to load from
     /// - Returns: The loaded recipe, or nil if load failed
     static func load(from url: URL) -> HypnogramRecipe? {
@@ -106,7 +118,7 @@ enum RecipeStore {
         }
     }
 
-    /// Load the snapshot image from a .hypnogram file
+    /// Load the snapshot image from a .hypno or .hypnogram file
     /// - Parameter url: The URL to load from
     /// - Returns: The snapshot as NSImage, or nil if not available
     static func loadThumbnail(from url: URL) -> NSImage? {
@@ -205,4 +217,3 @@ enum RecipeStore {
         return jpegData.base64EncodedString()
     }
 }
-
