@@ -508,28 +508,3 @@ struct PlayerSettingsView: View {
         .cornerRadius(6)
     }
 }
-
-    /// Helper to create a player mode button with icon and label
-    @ViewBuilder
-    private func playerModeButton(
-        icon: String,
-        label: String,
-        isSelected: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                Image(systemName: icon)
-                Text(label)
-            }
-            .font(.system(size: 11, weight: .medium))
-            .foregroundColor(isSelected ? .white : .white.opacity(0.6))
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.plain)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity)
-        .background(isSelected ? Color.blue.opacity(0.8) : Color.white.opacity(0.15))
-        .cornerRadius(6)
-    }
-}
