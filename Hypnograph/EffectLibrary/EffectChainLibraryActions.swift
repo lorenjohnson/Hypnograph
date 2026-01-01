@@ -59,20 +59,19 @@ enum EffectChainLibraryActions {
 
     // MARK: - Load from File
 
-    /// Load effect chain library from a file (.json or .hypnogram)
+    /// Load effect chain library from a file (.json, .hypno, or .hypnogram)
     /// Opens a file picker that accepts both file types
     /// Includes a "Merge" checkbox (default: on) to merge vs replace effects
     static func loadLibraryFromFile(session: EffectsSession, completion: @escaping @MainActor () -> Void) {
         let panel = NSOpenPanel()
 
-        // Allow both JSON and Hypnogram files
+        // Allow JSON and recipe files
         var allowedTypes: [UTType] = [UTType.json]
-        if let hypnogramType = UTType(filenameExtension: RecipeStore.fileExtension) {
-            allowedTypes.append(hypnogramType)
-        }
+        let recipeTypes = RecipeStore.fileExtensions.compactMap { UTType(filenameExtension: $0) }
+        allowedTypes.append(contentsOf: recipeTypes)
         panel.allowedContentTypes = allowedTypes
         panel.allowsMultipleSelection = false
-        panel.message = "Select an effects library (.json) or hypnogram file"
+        panel.message = "Select an effects library (.json) or recipe file (.hypno/.hypnogram)"
 
         // Start in the Application Support folder
         panel.directoryURL = EffectConfigLoader.userConfigURL.deletingLastPathComponent()
@@ -90,8 +89,8 @@ enum EffectChainLibraryActions {
             Task { @MainActor in
                 let ext = url.pathExtension.lowercased()
 
-                if ext == RecipeStore.fileExtension {
-                    // Load from hypnogram file
+                if RecipeStore.isSupportedExtension(ext) {
+                    // Load from recipe file
                     loadFromHypnogram(url: url, session: session, merge: shouldMerge)
                 } else {
                     // Load from JSON file

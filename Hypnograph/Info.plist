@@ -21,10 +21,11 @@
 			<dict>
 				<key>public.filename-extension</key>
 				<array>
+					<string>hypno</string>
 					<string>hypnogram</string>
 				</array>
 				<key>public.mime-type</key>
-				<string>application/x-hypnogram</string>
+				<string>application/x-hypno</string>
 			</dict>
 		</dict>
 	</array>
@@ -49,4 +50,3 @@
 	</array>
 </dict>
 </plist>
-

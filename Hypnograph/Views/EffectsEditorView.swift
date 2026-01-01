@@ -610,7 +610,7 @@ struct EffectsEditorView: View {
                     .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
-            .hudTooltip("Load Effects from File (.json or .hypnogram)")
+            .hudTooltip("Load Effects from File (.json, .hypno, or .hypnogram)")
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 4)
@@ -634,7 +634,7 @@ struct EffectsEditorView: View {
         EffectChainLibraryActions.saveLibraryToFile(session: session)
     }
 
-    /// Load effect chain library from a file (.json or .hypnogram)
+    /// Load effect chain library from a file (.json, .hypno, or .hypnogram)
     private func loadLibraryFromFile() {
         guard let session = viewModel.session else { return }
         EffectChainLibraryActions.loadLibraryFromFile(session: session) {
