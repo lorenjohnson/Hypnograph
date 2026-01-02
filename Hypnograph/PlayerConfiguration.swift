@@ -51,4 +51,28 @@ struct PlayerConfiguration: Codable {
         self.maxSourcesForNew = maxSourcesForNew
         self.targetDuration = targetDuration
     }
+
+    // MARK: - Codable
+
+    private enum CodingKeys: String, CodingKey {
+        case aspectRatio, playerResolution, maxSourcesForNew
+        case targetDurationSeconds
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        aspectRatio = try container.decode(AspectRatio.self, forKey: .aspectRatio)
+        playerResolution = try container.decode(OutputResolution.self, forKey: .playerResolution)
+        maxSourcesForNew = try container.decode(Int.self, forKey: .maxSourcesForNew)
+        let seconds = try container.decode(Double.self, forKey: .targetDurationSeconds)
+        targetDuration = CMTime(seconds: seconds, preferredTimescale: 600)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(aspectRatio, forKey: .aspectRatio)
+        try container.encode(playerResolution, forKey: .playerResolution)
+        try container.encode(maxSourcesForNew, forKey: .maxSourcesForNew)
+        try container.encode(targetDuration.seconds, forKey: .targetDurationSeconds)
+    }
 }
