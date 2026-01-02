@@ -116,7 +116,7 @@ final class Dream: ObservableObject {
         // Create independent player states with mode-specific effects files
         self.montagePlayer = DreamPlayerState(settings: state.settings, effectsFilename: "montage-effects.json")
         self.sequencePlayer = DreamPlayerState(settings: state.settings, effectsFilename: "sequence-effects.json")
-        self.livePlayer = LivePlayer(effectsFilename: "live-effects.json")
+        self.livePlayer = LivePlayer(settings: state.settings, effectsFilename: "live-effects.json")
 
         // Load audio settings from disk
         loadAudioSettings()
@@ -245,11 +245,11 @@ final class Dream: ObservableObject {
     /// Create a renderer on-demand with current settings (aspect ratio + resolution)
     private func makeRenderer(for mode: DreamMode) -> HypnogramRenderer {
         let outputSize = renderSize(
-            aspectRatio: activePlayer.aspectRatio,
-            maxDimension: activePlayer.outputResolution.maxDimension
+            aspectRatio: activePlayer.config.aspectRatio,
+            maxDimension: activePlayer.config.playerResolution.maxDimension
         )
         let strategy: CompositionBuilder.TimelineStrategy = (mode == .montage)
-            ? .montage(targetDuration: activePlayer.targetDuration)
+            ? .montage(targetDuration: activePlayer.config.targetDuration)
             : .sequence
         return HypnogramRenderer(
             outputURL: state.settings.outputURL,
@@ -575,7 +575,7 @@ final class Dream: ObservableObject {
         Section("Aspect Ratio") {
             ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
                 Toggle(ratio.menuLabel, isOn: Binding(
-                    get: { [self] in activePlayer.aspectRatio == ratio },
+                    get: { [self] in activePlayer.config.aspectRatio == ratio },
                     set: { [self] in if $0 { setAspectRatio(ratio) } }
                 ))
             }
@@ -585,7 +585,7 @@ final class Dream: ObservableObject {
         Section("Output Resolution") {
             ForEach(OutputResolution.allCases, id: \.self) { resolution in
                 Toggle(resolution.displayName, isOn: Binding(
-                    get: { [self] in activePlayer.outputResolution == resolution },
+                    get: { [self] in activePlayer.config.playerResolution == resolution },
                     set: { [self] in if $0 { setOutputResolution(resolution) } }
                 ))
             }
@@ -595,7 +595,7 @@ final class Dream: ObservableObject {
     // MARK: - Settings helpers
 
     func setAspectRatio(_ ratio: AspectRatio) {
-        activePlayer.aspectRatio = ratio
+        activePlayer.config.aspectRatio = ratio
         // Also update in settings for persistence
         state.settings.aspectRatio = ratio
         state.saveSettings()
@@ -604,7 +604,7 @@ final class Dream: ObservableObject {
     }
 
     func setOutputResolution(_ resolution: OutputResolution) {
-        activePlayer.outputResolution = resolution
+        activePlayer.config.playerResolution = resolution
         // Also update in settings for persistence
         state.settings.outputResolution = resolution
         state.saveSettings()
@@ -731,10 +731,10 @@ final class Dream: ObservableObject {
         recipe.effectsLibrarySnapshot = effectsSession.chains  // Snapshot the entire effects library
         switch mode {
         case .montage:
-            recipe.targetDuration = activePlayer.targetDuration
+            recipe.targetDuration = activePlayer.config.targetDuration
         case .sequence:
             let total = sequenceTotalDuration()
-            recipe.targetDuration = total.seconds > 0 ? total : activePlayer.targetDuration
+            recipe.targetDuration = total.seconds > 0 ? total : activePlayer.config.targetDuration
         }
         return recipe
     }
@@ -777,8 +777,8 @@ final class Dream: ObservableObject {
         // Send directly to performance display
         livePlayer.send(
             recipe: recipe,
-            aspectRatio: activePlayer.aspectRatio,
-            resolution: activePlayer.outputResolution,
+            aspectRatio: activePlayer.config.aspectRatio,
+            resolution: activePlayer.config.playerResolution,
             mode: mode
         )
     }
@@ -787,12 +787,12 @@ final class Dream: ObservableObject {
     /// Preserves the current effect chain from the active player
     private func generateRandomRecipe() -> HypnogramRecipe {
         var sources: [HypnogramSource] = []
-        let total = max(1, activePlayer.maxSourcesForNew)
+        let total = max(1, activePlayer.config.maxSourcesForNew)
         let minCount = min(2, total)
         let count = Int.random(in: minCount...total)
 
         for i in 0..<max(1, count) {
-            guard let clip = state.library.randomClip(clipLength: activePlayer.targetDuration.seconds) else {
+            guard let clip = state.library.randomClip(clipLength: activePlayer.config.targetDuration.seconds) else {
                 continue
             }
             // First source uses SourceOver, rest get random blend modes
@@ -806,7 +806,7 @@ final class Dream: ObservableObject {
 
         return HypnogramRecipe(
             sources: sources,
-            targetDuration: activePlayer.targetDuration,
+            targetDuration: activePlayer.config.targetDuration,
             effectChain: effectChain
         )
     }
@@ -815,8 +815,8 @@ final class Dream: ObservableObject {
     func sendToLivePlayer() {
         livePlayer.send(
             recipe: activePlayer.recipe,
-            aspectRatio: activePlayer.aspectRatio,
-            resolution: activePlayer.outputResolution,
+            aspectRatio: activePlayer.config.aspectRatio,
+            resolution: activePlayer.config.playerResolution,
             mode: mode
         )
     }
@@ -832,10 +832,10 @@ final class Dream: ObservableObject {
     func reloadSettings() {
         state.reloadSettings(from: Environment.defaultSettingsURL)
         // Also update player states with new settings
-        montagePlayer.targetDuration = state.settings.outputDuration
-        montagePlayer.maxSourcesForNew = state.settings.maxSourcesForNew
-        sequencePlayer.targetDuration = state.settings.outputDuration
-        sequencePlayer.maxSourcesForNew = state.settings.maxSourcesForNew
+        montagePlayer.config.targetDuration = state.settings.outputDuration
+        montagePlayer.config.maxSourcesForNew = state.settings.maxSourcesForNew
+        sequencePlayer.config.targetDuration = state.settings.outputDuration
+        sequencePlayer.config.maxSourcesForNew = state.settings.maxSourcesForNew
         if mode == .sequence {
             newRandomSequence()
         }
@@ -867,7 +867,7 @@ final class Dream: ObservableObject {
     private func replaceClipForCurrentSource() {
         let idx = activePlayer.currentSourceIndex
         guard idx >= 0, idx < activePlayer.sources.count else { return }
-        guard let clip = state.library.randomClip(clipLength: activePlayer.targetDuration.seconds) else { return }
+        guard let clip = state.library.randomClip(clipLength: activePlayer.config.targetDuration.seconds) else { return }
         activePlayer.sources[idx].clip = clip
     }
 
@@ -926,10 +926,10 @@ final class Dream: ObservableObject {
         var renderRecipe = activePlayer.recipe.copyForExport()
         switch mode {
         case .montage:
-            renderRecipe.targetDuration = activePlayer.targetDuration
+            renderRecipe.targetDuration = activePlayer.config.targetDuration
         case .sequence:
             let total = sequenceTotalDuration()
-            renderRecipe.targetDuration = total.seconds > 0 ? total : activePlayer.targetDuration
+            renderRecipe.targetDuration = total.seconds > 0 ? total : activePlayer.config.targetDuration
         }
 
         // Create renderer with current settings (aspect ratio + resolution)
