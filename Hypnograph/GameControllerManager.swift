@@ -293,18 +293,18 @@ final class GameControllerManager {
         if let rightThumbButton = gamepad.rightThumbstickButton {
             rightThumbButton.pressedChangedHandler = { [weak self] _, _, pressed in
                 guard pressed else { return }
-                self?.sendToPerformanceDisplay()
+                self?.sendToLivePlayer()
             }
         }
     }
 
     // MARK: - Performance Display
 
-    private func sendToPerformanceDisplay() {
+    private func sendToLivePlayer() {
         guard let dream = dream else { return }
 
         // Only works when performance display is visible
-        guard dream.performanceDisplay.isVisible else {
+        guard dream.livePlayer.isVisible else {
             print("🎮 Performance Display not visible, ignoring send")
             return
         }
@@ -312,7 +312,7 @@ final class GameControllerManager {
         guard let state = state else { return }
         switch state.currentModuleType {
         case .dream:
-            dream.performanceDisplay.send(
+            dream.livePlayer.send(
                 recipe: dream.currentRecipe,
                 aspectRatio: dream.activePlayer.aspectRatio,
                 resolution: dream.activePlayer.outputResolution,

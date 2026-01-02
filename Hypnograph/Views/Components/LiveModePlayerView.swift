@@ -13,15 +13,15 @@ import AppKit
 /// Full-screen player view that mirrors Performance Display content
 /// Used as the main preview when in Live mode (Cmd-P)
 struct LiveModePlayerView: View {
-    @ObservedObject var performanceDisplay: PerformanceDisplay
+    @ObservedObject var livePlayer: LivePlayer
 
     var body: some View {
         ZStack {
             Color.black
                 .ignoresSafeArea()
 
-            if performanceDisplay.hasContent {
-                LiveModeAVPlayerView(performanceDisplay: performanceDisplay)
+            if livePlayer.hasContent {
+                LiveModeAVPlayerView(livePlayer: livePlayer)
                     .ignoresSafeArea()
             } else {
                 // Placeholder when no content
@@ -43,20 +43,20 @@ struct LiveModePlayerView: View {
 
 /// NSViewRepresentable wrapper for AVPlayerView that mirrors Performance Display
 struct LiveModeAVPlayerView: NSViewRepresentable {
-    @ObservedObject var performanceDisplay: PerformanceDisplay
+    @ObservedObject var livePlayer: LivePlayer
 
     func makeNSView(context: Context) -> AVPlayerView {
         // Use HitTransparentPlayerView so keyboard shortcuts still work
         let playerView = HitTransparentPlayerView()
         playerView.controlsStyle = .none
         playerView.videoGravity = .resizeAspect
-        playerView.player = performanceDisplay.activeAVPlayer
+        playerView.player = livePlayer.activeAVPlayer
         return playerView
     }
 
     func updateNSView(_ nsView: AVPlayerView, context: Context) {
         // Mirror the active player from performance display
-        nsView.player = performanceDisplay.activeAVPlayer
+        nsView.player = livePlayer.activeAVPlayer
     }
 
     /// AVPlayerView that forwards mouse/keyboard events so SwiftUI and menu shortcuts still work
