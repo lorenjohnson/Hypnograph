@@ -31,7 +31,8 @@
       "Bash(claude mcp list:*)",
       "Bash(claude mcp remove:*)",
       "Bash(npx:*)",
-      "Bash(xcodebuild:*)"
+      "Bash(xcodebuild:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

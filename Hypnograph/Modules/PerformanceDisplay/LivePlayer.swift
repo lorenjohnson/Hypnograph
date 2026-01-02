@@ -1,8 +1,8 @@
 //
-//  PerformanceDisplay.swift
+//  LivePlayer.swift
 //  Hypnograph
 //
-//  A self-contained module for clean video output to an external monitor.
+//  Live player for performance output to an external monitor.
 //  Uses A/B player crossfading for smooth transitions between hypnograms.
 //
 
@@ -11,20 +11,17 @@ import AVFoundation
 import AppKit
 import Combine
 
-/// Performance display for clean output to external monitor with smooth crossfades
+/// Live player for clean output to external monitor with smooth crossfades
 @MainActor
-final class PerformanceDisplay: ObservableObject {
+final class LivePlayer: ObservableObject {
 
     // MARK: - Configuration
 
     /// Duration of crossfade between hypnograms (seconds)
     var crossfadeDuration: TimeInterval = 1.5
 
-    /// Aspect ratio for rendering
-    var aspectRatio: AspectRatio = .ratio16x9
-
-    /// Output resolution
-    var outputResolution: OutputResolution = .p1080
+    /// Per-player settings (aspect ratio, resolution, generation settings)
+    @Published var config: PlayerConfiguration
 
 
 
@@ -134,7 +131,8 @@ final class PerformanceDisplay: ObservableObject {
 
     // MARK: - Init
 
-    init(effectsFilename: String = "live-effects.json") {
+    init(settings: Settings, effectsFilename: String = "live-effects.json") {
+        self.config = PlayerConfiguration(from: settings)
         self.effectsSession = EffectsSession(filename: effectsFilename)
         setupEffectManager()
         setupEffectsSession()
@@ -393,8 +391,8 @@ final class PerformanceDisplay: ObservableObject {
         // Cancel any pending build
         pendingBuildTask?.cancel()
 
-        self.aspectRatio = aspectRatio
-        self.outputResolution = resolution
+        self.config.aspectRatio = aspectRatio
+        self.config.playerResolution = resolution
 
         // Store the recipe for live effect modifications
         self.currentRecipe = recipe
@@ -440,7 +438,7 @@ final class PerformanceDisplay: ObservableObject {
 
     private func buildAndTransition(content: PerformanceContentView, mode: DreamMode) async {
         guard let recipe = currentRecipe else { return }
-        let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: outputResolution.maxDimension)
+        let outputSize = renderSize(aspectRatio: config.aspectRatio, maxDimension: config.playerResolution.maxDimension)
 
         // Build composition using PerformanceDisplay's own EffectManager
         // This makes effects completely independent of the main preview
