@@ -21,5 +21,4 @@
 ## Data
 
 - **Settings**: JSON in `~/Library/Application Support/Hypnograph/`
-- **Recipes**: `.hypno` format (PNG with embedded JSON metadata)
-
+- **Recipes**: `.hypno|.hypnogram format (PNG with embedded JSON metadata)

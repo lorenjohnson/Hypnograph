@@ -4,7 +4,29 @@
       "Bash(cat:*)",
       "Bash(git rm:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(for spec in agent-os/specs/*/)",
+      "Bash(if [ -f \"$spectasks.md\" ])",
+      "Bash(then echo \"✓ Has tasks.md\")",
+      "Bash(else echo \"✗ No tasks.md\")",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(ls:*)",
+      "Bash(for spec in agent-os/specs/2024-*/)",
+      "Bash(if [ -f \"$specspec.md\" ])",
+      "Bash(then echo \"Has spec.md: ✓\")",
+      "Bash(else echo \"Has spec.md: ✗\")",
+      "Bash(if [ -f \"$specplanning/requirements.md\" ])",
+      "Bash(then echo \"Has requirements.md: ✓\")",
+      "Bash(else echo \"Has requirements.md: ✗\")",
+      "Skill(agent-os:create-tasks)",
+      "Skill(agent-os:create-tasks:*)",
+      "Bash(xcodebuild test:*)",
+      "Bash(swift test:*)",
+      "Bash(swift:*)",
+      "Bash(xcodebuild build:*)",
+      "Bash(xcodebuild clean:*)",
+      "Bash(grep:*)"
     ]
   }
 }

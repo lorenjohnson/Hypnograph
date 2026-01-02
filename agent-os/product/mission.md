@@ -1,21 +1,142 @@
-# Hypnograph Mission
+# Hypnograph — Mission
 
-## Vision
+## What this product is
 
-Hypnograph is a real-time video composition and effects tool for creating hypnotic, generative visual experiences from video clips and still images.
+Hypnograph is a macOS application for **virtual, real-time audiovisual composition and performance**.
 
-## Target Users
+At its core, Hypnograph is an **autonomous visual instrument**:
+- it opens,
+- is given access to a photo/video archive,
+- and immediately begins generating output.
 
-- **VJs and live visual performers** - Need real-time control during performances
-- **Video artists** - Creating experimental and glitch-art style compositions
-- **Musicians** - Generating visuals synchronized to their music
-- **Meditation/wellness creators** - Producing calming, hypnotic video content
+No setup, planning, or compositional intent is required to begin.
+Something happens by default.
 
-## Core Use Cases
+This “no-thinking” access to a personal archive is a primary entryway into the work.
 
-1. **Live Performance** - Real-time mixing of video sources with effects, controllable via keyboard and game controller
-2. **Composition Creation** - Building layered montages with blend modes and effect chains
-3. **Export** - Rendering compositions to video files for distribution
+---
+
+## Core experience arc
+
+1. **Immediate generation**
+   - On first launch, after permission is granted to Apple Photos or folders,
+     Hypnograph begins playing with the archive automatically.
+   - Selection is random by default.
+   - The user encounters their own past without having to choose it.
+
+2. **Deepening into composition**
+   - The user can gradually intervene:
+     - shaping timing,
+     - applying effects,
+     - constraining sources,
+     - saving evolving states (“hypnograms”).
+   - Composition emerges from interaction, not premeditation.
+
+3. **Performance and witnessing**
+   - The system supports live performance:
+     - external displays,
+     - real-time control,
+     - intentional presentation.
+   - Performance is not separate from the archive; it is a way of
+     **digesting, integrating, and re-seeing personal material**.
+
+4. **Sharing and aesthetic witnessing**
+   - Output may be rendered, shown live, or shared.
+   - The act of showing is considered part of the work:
+     witnessing, being witnessed, and recontextualizing memory.
+
+---
+
+## Core design principles
+
+- **Autonomous by default**
+  - The system acts first.
+  - The user responds.
+
+- **Archive as living material**
+  - Photos and videos are not static assets but an active, generative field.
+  - The app privileges encounter over curation.
+
+- **Performance-first**
+  - Real-time stability and low latency are non-negotiable.
+  - Input must never block rendering.
+
+- **Ritual, not productivity**
+  - The app is designed to support presence, digestion, and aesthetic attention,
+    not optimization or throughput.
+
+- **Single-author instrument**
+  - Built for one operator at a time.
+  - No collaboration, syncing, or background automation.
+
+---
+
+## High-level architecture
+
+- **Swift / SwiftUI + AppKit hybrid**
+  - SwiftUI for structure and state binding.
+  - AppKit for windowing, input, and performance-critical paths.
+
+- **Modular modes**
+  - Multiple modules share infrastructure but differ in behavior.
+  - Only one module is active at a time.
+
+- **Explicit state**
+  - Application state is centralized and observable.
+  - Rendering, input, persistence, and archive access are separated concerns.
+
+- **Real-time rendering pipeline**
+  - Frame-based, time-driven.
+  - Supports live preview, external display, and offline rendering.
+
+---
+
+## Input and interaction
+
+- Keyboard shortcuts are primary.
+- Game controllers may be used for expressive control.
+- Input handling must be:
+  - deterministic,
+  - low-latency,
+  - and never interrupt rendering.
+
+---
+
+## Persistence and files
+
+- Hypnograms are saved compositions (*.hypno or *.hypnogram files).
+- Settings and window state are persisted explicitly.
+- Files may be opened via:
+  - double-click,
+  - drag-and-drop,
+  - or menu actions.
+
+---
+
+## Non-goals
+
+- No collaborative editing.
+- No cloud services.
+- No AI-driven generative decision making.
+- No hidden background processes.
+- Generally no generative content, the point is to entropy one's own archive, to give the real experience of it aging, fading in the past
+
+---
+
+## Guidance for code generation
+
+When generating or modifying code:
+
+- Pay attention to the the core app architecture. Many of the components here are or will be shared by an ecosystem of products, and this is the primary one where we are developing these systems (the media library, the rendering engine, the effects system, the windowing and player systems, etc)
+- Preserve the autonomous, generative default behavior.
+- Do not require user intent before visible output.
+- Prefer explicit state over clever abstraction.
+- Avoid speculative features.
+- Ask before large refactors.
+- Treat performance regressions as critical bugs.
+
+The goal is **trustworthy, stable, expressive software**
+that helps users encounter and integrate their own material.
 
 ## Differentiators
 

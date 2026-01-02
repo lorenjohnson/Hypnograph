@@ -5,119 +5,85 @@
 //  Unified window visibility state with clean screen support.
 //  Tab toggles clean screen mode, hiding all windows temporarily.
 //
+//  Generic dictionary-based system: windows self-identify with string IDs.
+//
 
 import Foundation
 
-/// Which window/overlay to show or hide
-enum Window: CaseIterable {
-    case hud
-    case effectsEditor
-    case playerSettings
-    case hypnogramList
-    case performancePreview
-}
+/// Manages visibility state for all windows/overlays using generic string keys
+struct WindowState: Codable {
 
-/// Manages visibility state for all windows/overlays
-struct WindowState {
+    // MARK: - Storage
 
-    // MARK: - Window Visibility
-
-    /// Per-player window visibility states
-    var hud: Bool = false
-    var effectsEditor: Bool = false
-    var playerSettings: Bool = false
-
-    /// App-level window visibility states
-    var hypnogramList: Bool = false
-    var performancePreview: Bool = false
-
-    // MARK: - Clean Screen Mode
+    /// Generic dictionary-based storage for window visibility
+    /// Keys are whatever string IDs windows choose to use
+    private var windowVisibility: [String: Bool] = [:]
 
     /// When true, all windows are hidden regardless of their individual visibility states
     var isCleanScreen: Bool = false
 
-    // MARK: - Computed Properties
+    // MARK: - Window Registration
 
-    /// Whether any window is currently visible (ignoring clean screen)
-    var hasAnyWindowVisible: Bool {
-        hud || effectsEditor || playerSettings || hypnogramList || performancePreview
-    }
-
-    /// Check if a specific window should actually be shown right now
-    /// (respects clean screen mode)
-    func isVisible(_ window: Window) -> Bool {
-        if isCleanScreen { return false }
-        switch window {
-        case .hud: return hud
-        case .effectsEditor: return effectsEditor
-        case .playerSettings: return playerSettings
-        case .hypnogramList: return hypnogramList
-        case .performancePreview: return performancePreview
+    /// Register a window so it's known to the system
+    /// Windows should call this on first appearance (e.g., in view's onAppear)
+    mutating func register(_ windowID: String, defaultVisible: Bool = false) {
+        // Only register if not already known
+        if windowVisibility[windowID] == nil {
+            windowVisibility[windowID] = defaultVisible
         }
     }
 
-    // MARK: - Toggle Actions
+    // MARK: - Window Access
 
-    /// Toggle a specific window. If in clean screen mode, exits clean screen first
-    /// and consumes the keypress (doesn't toggle the window).
+    /// Check if a window is visible (respects clean screen)
+    func isVisible(_ windowID: String) -> Bool {
+        if isCleanScreen { return false }
+        return windowVisibility[windowID] ?? false
+    }
+
+    /// Toggle a window's visibility
     /// - Returns: true if the toggle was consumed by exiting clean screen
     @discardableResult
-    mutating func toggle(_ window: Window) -> Bool {
-        // If in clean screen, exit and consume the keypress
+    mutating func toggle(_ windowID: String) -> Bool {
         if isCleanScreen {
             isCleanScreen = false
             return true  // Consumed
         }
+        windowVisibility[windowID] = !(windowVisibility[windowID] ?? false)
+        return false
+    }
 
-        // Normal toggle
-        switch window {
-        case .hud:
-            hud.toggle()
-        case .effectsEditor:
-            effectsEditor.toggle()
-        case .playerSettings:
-            playerSettings.toggle()
-        case .hypnogramList:
-            hypnogramList.toggle()
-        case .performancePreview:
-            performancePreview.toggle()
+    /// Set a window's visibility directly
+    mutating func set(_ windowID: String, visible: Bool) {
+        if visible && isCleanScreen {
+            isCleanScreen = false
         }
-        return false  // Not consumed
+        windowVisibility[windowID] = visible
     }
 
     /// Toggle clean screen mode
-    /// - Does nothing if no windows are visible (can't enter clean screen with nothing to hide)
+    /// If exiting clean screen and no windows are visible, shows all registered windows
     mutating func toggleCleanScreen() {
         if isCleanScreen {
-            // Exit clean screen
+            // Exiting clean screen
             isCleanScreen = false
+
+            // If no windows are currently visible, show all registered windows as a "reset"
+            if !hasAnyWindowVisible {
+                for windowID in windowVisibility.keys {
+                    windowVisibility[windowID] = true
+                }
+            }
         } else {
-            // Enter clean screen only if something is visible
+            // Entering clean screen (only if something is visible)
             if hasAnyWindowVisible {
                 isCleanScreen = true
             }
         }
     }
 
-    /// Set a specific window's visibility directly (used for menu commands)
-    /// Exits clean screen mode if setting a window to visible
-    mutating func set(_ window: Window, visible: Bool) {
-        if visible && isCleanScreen {
-            isCleanScreen = false
-        }
-
-        switch window {
-        case .hud:
-            hud = visible
-        case .effectsEditor:
-            effectsEditor = visible
-        case .playerSettings:
-            playerSettings = visible
-        case .hypnogramList:
-            hypnogramList = visible
-        case .performancePreview:
-            performancePreview = visible
-        }
+    /// Whether any window is currently visible
+    var hasAnyWindowVisible: Bool {
+        windowVisibility.values.contains(true)
     }
 }
-

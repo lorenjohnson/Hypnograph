@@ -51,6 +51,9 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Callback to save all effect sessions (injected by app)
     var saveEffectSessions: (() -> Void)?
 
+
+    /// Callback to save window state (injected by app)
+    var saveWindowState: (() -> Void)?
     /// Event monitor for Tab key (workaround for SwiftUI menu shortcut not registering until menu opened)
     private var tabKeyMonitor: Any?
 
@@ -104,6 +107,9 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
             default:
                 break
             }
+
+            // Save window state before terminating
+            saveWindowState?()
         }
 
         // Check for active render jobs
@@ -251,6 +257,11 @@ struct HypnographApp: App {
                 }
                 appDelegate.isTypingActive = { [weak state] in
                     state?.isTyping ?? false
+                }
+
+                // Wire up window state persistence
+                appDelegate.saveWindowState = { [weak state] in
+                    state?.saveWindowStateToDisk()
                 }
 
                 // Wire up recipe file opening
@@ -429,22 +440,22 @@ struct AppCommands: Commands {
 
             Section("Overlays") {
                 Toggle("Info HUD", isOn: Binding(
-                    get: { state.windowState.isVisible(.hud) },
-                    set: { _ in state.windowState.toggle(.hud) }
+                    get: { state.windowState.isVisible("hud") },
+                    set: { _ in state.windowState.toggle("hud") }
                 ))
                 .keyboardShortcut("i", modifiers: [])
                 .disabled(isTyping)
 
                 Toggle("Effects Editor", isOn: Binding(
-                    get: { state.windowState.isVisible(.effectsEditor) },
-                    set: { _ in state.windowState.toggle(.effectsEditor) }
+                    get: { state.windowState.isVisible("effectsEditor") },
+                    set: { _ in state.windowState.toggle("effectsEditor") }
                 ))
                 .keyboardShortcut("e", modifiers: [])
                 .disabled(isTyping)
 
                 Toggle("Hypnogram List", isOn: Binding(
-                    get: { state.windowState.isVisible(.hypnogramList) },
-                    set: { _ in state.windowState.toggle(.hypnogramList) }
+                    get: { state.windowState.isVisible("hypnogramList") },
+                    set: { _ in state.windowState.toggle("hypnogramList") }
                 ))
                 .keyboardShortcut("h", modifiers: [])
                 .disabled(isTyping || state.currentModuleType != .dream)
@@ -461,8 +472,8 @@ struct AppCommands: Commands {
             // Player Settings - only for Dream module
             Section("Player") {
                 Toggle("Player Settings", isOn: Binding(
-                    get: { state.windowState.isVisible(.playerSettings) },
-                    set: { _ in state.windowState.toggle(.playerSettings) }
+                    get: { state.windowState.isVisible("playerSettings") },
+                    set: { _ in state.windowState.toggle("playerSettings") }
                 ))
                 .keyboardShortcut("p", modifiers: [])
                 .disabled(isTyping || state.currentModuleType != .dream)
@@ -472,8 +483,8 @@ struct AppCommands: Commands {
 
             Section("Performance Display") {
                 Toggle("Performance Preview", isOn: Binding(
-                    get: { state.windowState.isVisible(.performancePreview) },
-                    set: { _ in state.windowState.toggle(.performancePreview) }
+                    get: { state.windowState.isVisible("performancePreview") },
+                    set: { _ in state.windowState.toggle("performancePreview") }
                 ))
                 .keyboardShortcut("l", modifiers: [])
                 .disabled(isTyping)
