@@ -54,7 +54,7 @@ struct ContentView: View {
 
             // HUD and Hypnogram List - top left (below LIVE if visible)
             VStack(alignment: .leading, spacing: 8) {
-                if state.windowState.isVisible(.hud) {
+                if state.windowState.isVisible("hud") {
                     HUDView(
                         state: state,
                         dream: dream,
@@ -62,7 +62,7 @@ struct ContentView: View {
                     )
                 }
 
-                if state.windowState.isVisible(.hypnogramList) && state.currentModuleType == .dream {
+                if state.windowState.isVisible("hypnogramList") && state.currentModuleType == .dream {
                     HypnogramListView(
                         store: HypnogramStore.shared,
                         onLoad: { entry in
@@ -79,22 +79,22 @@ struct ContentView: View {
             }
             .padding(.top, dream.isLiveMode ? 56 : 12)
             .padding(.leading, 12)
-            .animation(.easeInOut(duration: 0.2), value: state.windowState.hypnogramList)
+            .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("hypnogramList"))
         }
         .overlay(alignment: .bottomLeading) {
             // Player Settings - bottom left, Dream module only
-            if state.currentModuleType == .dream && state.windowState.isVisible(.playerSettings) {
+            if state.currentModuleType == .dream && state.windowState.isVisible("playerSettings") {
                 PlayerSettingsView(
                     player: dream.activePlayer,
                     dream: dream,
                     onClose: {
-                        state.windowState.set(.playerSettings, visible: false)
+                        state.windowState.set("playerSettings", visible: false)
                     }
                 )
                 .padding(.leading, 12)
                 .padding(.bottom, 12)
                 .transition(.move(edge: .leading).combined(with: .opacity))
-                .animation(.easeInOut(duration: 0.2), value: state.windowState.playerSettings)
+                .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("playerSettings"))
             }
         }
         .overlay(alignment: .topTrailing) {
@@ -108,19 +108,19 @@ struct ContentView: View {
         .overlay(alignment: .topTrailing) {
             // Right-side panels: Effects editor (top-aligned) and Performance preview (bottom)
             VStack(spacing: 0) {
-                if state.windowState.isVisible(.effectsEditor) {
+                if state.windowState.isVisible("effectsEditor") {
                     EffectsEditorView(viewModel: effectsEditorViewModel, state: state, dream: dream)
-                        .padding(.bottom, state.windowState.isVisible(.performancePreview) ? 12 : 0)
+                        .padding(.bottom, state.windowState.isVisible("performancePreview") ? 12 : 0)
                         .transition(.move(edge: .trailing))
                 }
 
                 Spacer(minLength: 0)
 
-                if state.windowState.isVisible(.performancePreview) {
+                if state.windowState.isVisible("performancePreview") {
                     PerformancePreviewView(
                         performanceDisplay: dream.performanceDisplay,
                         onClose: {
-                            state.windowState.set(.performancePreview, visible: false)
+                            state.windowState.set("performancePreview", visible: false)
                         }
                     )
                     .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -129,8 +129,8 @@ struct ContentView: View {
             .padding(.top, 12)
             .padding(.trailing, 12)
             .padding(.bottom, 12)
-            .animation(.easeInOut(duration: 0.2), value: state.windowState.effectsEditor)
-            .animation(.easeInOut(duration: 0.2), value: state.windowState.performancePreview)
+            .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("effectsEditor"))
+            .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("performancePreview"))
         }
         .appNotifications()
         .background(Color.black)
@@ -154,4 +154,3 @@ struct ContentView: View {
         }
     }
 }
-

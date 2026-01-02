@@ -382,7 +382,7 @@ struct EffectsEditorView: View {
 
                 // Close button
                 Button(action: {
-                    state.windowState.set(.effectsEditor, visible: false)
+                    state.windowState.set("effectsEditor", visible: false)
                 }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .bold))

@@ -113,6 +113,9 @@ final class HypnographState: ObservableObject {
 
         // Load custom photo selection from disk
         loadCustomSelectionFromDisk()
+        
+        // Load window state from disk
+        loadWindowStateFromDisk()
     }
 
     // MARK: - UI Toggles
@@ -528,6 +531,40 @@ final class HypnographState: ObservableObject {
             print("✅ Saved settings to \(Environment.defaultSettingsURL.path)")
         } catch {
             print("⚠️ Failed to save settings: \(error)")
+        }
+    }
+
+    // MARK: - Window State Persistence
+
+    /// File URL for window state storage
+    private var windowStateFileURL: URL {
+        Environment.appSupportDirectory
+            .appendingPathComponent("window-state.json")
+    }
+
+    /// Load window state from disk
+    private func loadWindowStateFromDisk() {
+        guard FileManager.default.fileExists(atPath: windowStateFileURL.path) else { return }
+
+        do {
+            let data = try Data(contentsOf: windowStateFileURL)
+            windowState = try JSONDecoder().decode(WindowState.self, from: data)
+            print("HypnographState: Loaded window state from disk")
+        } catch {
+            print("HypnographState: Failed to load window state: \(error)")
+        }
+    }
+
+    /// Save window state to disk
+    func saveWindowStateToDisk() {
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(windowState)
+            try data.write(to: windowStateFileURL)
+            print("HypnographState: Saved window state to disk")
+        } catch {
+            print("HypnographState: Failed to save window state: \(error)")
         }
     }
 }
