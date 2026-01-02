@@ -659,6 +659,7 @@ final class Dream: ObservableObject {
         if isLiveMode {
             return AnyView(
                 LiveModePlayerView(livePlayer: livePlayer)
+                    .id("dream-live-\(livePlayer.config.viewID)")
             )
         }
 
@@ -690,7 +691,7 @@ final class Dream: ObservableObject {
                     volume: previewVolume,
                     audioDeviceUID: previewAudioDeviceUID
                 )
-                .id("dream-montage-\(player.config.aspectRatio.displayString)-\(player.config.playerResolution.rawValue)-\(player.config.targetDuration.seconds)-\(recipe.playRate)")
+                .id("dream-montage-\(player.config.viewID)-\(recipe.playRate)")
             )
 
         case .sequence:
@@ -713,7 +714,7 @@ final class Dream: ObservableObject {
                         self?.livePlayer.seekToSource(index: newIndex)
                     }
                 )
-                .id("dream-sequence-\(player.sources.count)-\(player.config.aspectRatio.displayString)-\(player.config.playerResolution.rawValue)-\(recipe.playRate)")
+                .id("dream-sequence-\(player.sources.count)-\(player.config.viewID)-\(recipe.playRate)")
             )
         }
     }
