@@ -206,7 +206,7 @@ struct HypnographApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup("Hypnograph", id: "main") {
             ContentView(
                 state: state,
                 renderQueue: renderQueue,
@@ -277,6 +277,7 @@ struct HypnographApp: App {
                 }
             }
         }
+        .handlesExternalEvents(matching: ["main"])
         .commands {
             AppCommands(
                 state: state,

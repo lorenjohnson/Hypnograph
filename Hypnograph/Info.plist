@@ -44,8 +44,6 @@
 			</array>
 			<key>LSHandlerRank</key>
 			<string>Owner</string>
-			<key>NSDocumentClass</key>
-			<string>$(PRODUCT_MODULE_NAME).HypnogramDocument</string>
 		</dict>
 	</array>
 </dict>
