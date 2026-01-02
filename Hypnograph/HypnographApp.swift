@@ -201,10 +201,10 @@ struct HypnographApp: App {
         }
     }
 
-    func sendToPerformanceDisplay() {
+    func sendToLivePlayer() {
         switch state.currentModuleType {
         case .dream:
-            dream.sendToPerformanceDisplay()
+            dream.sendToLivePlayer()
         case .divine:
             // Divine doesn't use recipes the same way, skip for now
             print("⚠️ Performance Display: Divine mode not supported yet")
@@ -241,14 +241,14 @@ struct HypnographApp: App {
                     // Check all sessions for unsaved changes
                     return dream.montagePlayer.effectsSession.hasUnsavedChanges ||
                            dream.sequencePlayer.effectsSession.hasUnsavedChanges ||
-                           dream.performanceDisplay.effectsSession.hasUnsavedChanges
+                           dream.livePlayer.effectsSession.hasUnsavedChanges
                 }
 
                 // Wire up session-based save
                 appDelegate.saveEffectSessions = { [weak dream] in
                     dream?.montagePlayer.effectsSession.save()
                     dream?.sequencePlayer.effectsSession.save()
-                    dream?.performanceDisplay.effectsSession.save()
+                    dream?.livePlayer.effectsSession.save()
                 }
 
                 // Wire up Tab key callbacks for clean screen toggle
@@ -491,13 +491,13 @@ struct AppCommands: Commands {
 
                 Toggle("Live Mode", isOn: Binding(
                     get: { dream.isLiveMode },
-                    set: { _ in dream.togglePerformanceMode() }
+                    set: { _ in dream.toggleLiveMode() }
                 ))
                 .keyboardShortcut("l", modifiers: [.command])
 
                 Toggle("External Monitor", isOn: Binding(
-                    get: { dream.performanceDisplay.isVisible },
-                    set: { _ in dream.performanceDisplay.toggle() }
+                    get: { dream.livePlayer.isVisible },
+                    set: { _ in dream.livePlayer.toggle() }
                 ))
                 .keyboardShortcut("l", modifiers: [.command, .shift])
 
@@ -506,7 +506,7 @@ struct AppCommands: Commands {
                     // (auto-shows performance display if not visible)
                     switch state.currentModuleType {
                     case .dream:
-                        dream.sendToPerformanceDisplay()
+                        dream.sendToLivePlayer()
                     case .divine:
                         print("⚠️ Performance Display: Divine mode not supported yet")
                     }
@@ -514,10 +514,10 @@ struct AppCommands: Commands {
                 .keyboardShortcut(.return, modifiers: [.command])
 
                 Button("Reset Performance Display") {
-                    dream.performanceDisplay.reset()
+                    dream.livePlayer.reset()
                 }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
-                .disabled(!dream.performanceDisplay.isVisible)
+                .disabled(!dream.livePlayer.isVisible)
             }
         }
 

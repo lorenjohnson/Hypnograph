@@ -44,7 +44,7 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol {
 
     /// The EffectManager to use for effects processing.
     /// - Preview: passes state.effectManager (mutable, changes affect playback)
-    /// - Performance Display: passes performanceDisplay.effectManager (isolated instance)
+    /// - Performance Display: passes livePlayer.effectManager (isolated instance)
     /// - Export: passes a freshly created manager from recipe.copyForExport()
     weak var effectManager: EffectManager?
 

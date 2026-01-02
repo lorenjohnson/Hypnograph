@@ -12,7 +12,7 @@ import AppKit
 
 /// Preview of performance display content, shown as panel in main window
 struct PerformancePreviewView: View {
-    @ObservedObject var performanceDisplay: PerformanceDisplay
+    @ObservedObject var livePlayer: LivePlayer
     let onClose: () -> Void
 
     /// Check if external monitors are available
@@ -22,7 +22,7 @@ struct PerformancePreviewView: View {
 
     /// Whether the separate window is currently shown
     private var isWindowVisible: Bool {
-        performanceDisplay.isVisible
+        livePlayer.isVisible
     }
 
     var body: some View {
@@ -38,7 +38,7 @@ struct PerformancePreviewView: View {
 
                 // Reset button
                 Button(action: {
-                    performanceDisplay.reset()
+                    livePlayer.reset()
                 }) {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.counterclockwise")
@@ -55,7 +55,7 @@ struct PerformancePreviewView: View {
 
                 // Toggle external/window button
                 Button(action: {
-                    performanceDisplay.toggle()
+                    livePlayer.toggle()
                 }) {
                     HStack(spacing: 4) {
                         Image(systemName: hasExternalMonitor ? "display" : "macwindow")
@@ -83,9 +83,9 @@ struct PerformancePreviewView: View {
             ZStack {
                 Color.black
 
-                if performanceDisplay.hasContent {
+                if livePlayer.hasContent {
                     // Show wrapped AVPlayerView from performance display
-                    PerformancePlayerWrapper(performanceDisplay: performanceDisplay)
+                    PerformancePlayerWrapper(livePlayer: livePlayer)
                         .aspectRatio(16/9, contentMode: .fit)
                 } else {
                     // Placeholder when no source assigned
@@ -108,14 +108,14 @@ struct PerformancePreviewView: View {
 
             // Status bar
             HStack {
-                if performanceDisplay.isTransitioning {
+                if livePlayer.isTransitioning {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .foregroundColor(.cyan)
                     Text("Transitioning...")
-                } else if !performanceDisplay.currentRecipeDescription.isEmpty {
+                } else if !livePlayer.currentRecipeDescription.isEmpty {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
-                    Text(performanceDisplay.currentRecipeDescription)
+                    Text(livePlayer.currentRecipeDescription)
                 } else {
                     Text("Ready")
                         .foregroundColor(.white.opacity(0.4))
@@ -142,7 +142,7 @@ struct PerformancePreviewView: View {
 
 /// NSViewRepresentable to show current performance player content
 struct PerformancePlayerWrapper: NSViewRepresentable {
-    @ObservedObject var performanceDisplay: PerformanceDisplay
+    @ObservedObject var livePlayer: LivePlayer
 
     func makeNSView(context: Context) -> AVPlayerView {
         // Use HitTransparentPlayerView so keyboard shortcuts still work
@@ -154,7 +154,7 @@ struct PerformancePlayerWrapper: NSViewRepresentable {
 
     func updateNSView(_ nsView: AVPlayerView, context: Context) {
         // Mirror the active player from performance display
-        nsView.player = performanceDisplay.activeAVPlayer
+        nsView.player = livePlayer.activeAVPlayer
     }
 
     /// AVPlayerView that forwards mouse/keyboard events so SwiftUI and menu shortcuts still work

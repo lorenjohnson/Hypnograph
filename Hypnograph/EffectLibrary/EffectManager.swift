@@ -89,7 +89,7 @@ final class EffectManager {
     // MARK: - Effects Session
 
     /// The effects session this manager uses for chain lookups
-    /// Set by the owner (HypnographState, PerformanceDisplay, etc.)
+    /// Set by the owner (HypnographState, LivePlayer, etc.)
     weak var session: EffectsSession?
 
     // MARK: - Flash Solo

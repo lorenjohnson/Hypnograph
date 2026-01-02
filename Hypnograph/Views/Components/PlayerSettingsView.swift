@@ -353,7 +353,7 @@ struct PlayerSettingsView: View {
                     label: "Montage",
                     isSelected: !dream.isLiveMode && dream.mode == .montage,
                     action: {
-                        if dream.isLiveMode { dream.togglePerformanceMode() }
+                        if dream.isLiveMode { dream.toggleLiveMode() }
                         if dream.mode != .montage { dream.toggleMode() }
                     }
                 )
@@ -364,18 +364,18 @@ struct PlayerSettingsView: View {
                     label: "Sequence",
                     isSelected: !dream.isLiveMode && dream.mode == .sequence,
                     action: {
-                        if dream.isLiveMode { dream.togglePerformanceMode() }
+                        if dream.isLiveMode { dream.toggleLiveMode() }
                         if dream.mode != .sequence { dream.toggleMode() }
                     }
                 )
 
-                // Performance mode button
+                // Live mode button
                 playerModeButton(
                     icon: "play.display",
-                    label: "Perf",
+                    label: "Live",
                     isSelected: dream.isLiveMode,
                     action: {
-                        if !dream.isLiveMode { dream.togglePerformanceMode() }
+                        if !dream.isLiveMode { dream.toggleLiveMode() }
                     }
                 )
             }
@@ -404,12 +404,12 @@ struct PlayerSettingsView: View {
 
                 Spacer()
 
-                Text("\(player.maxSourcesForNew)")
+                Text("\(player.config.maxSourcesForNew)")
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white)
                     .frame(minWidth: 30)
 
-                Stepper("", value: $player.maxSourcesForNew, in: 1...20)
+                Stepper("", value: $player.config.maxSourcesForNew, in: 1...20)
                     .labelsHidden()
             }
 
@@ -424,15 +424,15 @@ struct PlayerSettingsView: View {
 
                 Spacer()
 
-                let seconds = Int(player.targetDuration.seconds)
+                let seconds = Int(player.config.targetDuration.seconds)
                 Text(formatDuration(seconds))
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white)
                     .frame(minWidth: 50)
 
                 Stepper("", value: Binding(
-                    get: { Int(player.targetDuration.seconds) },
-                    set: { player.targetDuration = CMTime(seconds: Double($0), preferredTimescale: 600) }
+                    get: { Int(player.config.targetDuration.seconds) },
+                    set: { player.config.targetDuration = CMTime(seconds: Double($0), preferredTimescale: 600) }
                 ), in: 10...600, step: 10)
                 .labelsHidden()
             }
@@ -446,7 +446,7 @@ struct PlayerSettingsView: View {
 
                 Spacer()
 
-                Picker("", selection: $player.aspectRatio) {
+                Picker("", selection: $player.config.aspectRatio) {
                     ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
                         Text(ratio.menuLabel).tag(ratio)
                     }
@@ -470,11 +470,11 @@ struct PlayerSettingsView: View {
                 volume: $dream.previewVolume
             )
 
-            // Audio - Performance
+            // Audio - Live
             AudioDeviceRow(
-                label: "Performance",
-                selectedDevice: $dream.performanceAudioDevice,
-                volume: $dream.performanceVolume
+                label: "Live",
+                selectedDevice: $dream.liveAudioDevice,
+                volume: $dream.liveVolume
             )
         }
         .foregroundColor(.white)

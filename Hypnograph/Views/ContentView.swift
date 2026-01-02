@@ -118,7 +118,7 @@ struct ContentView: View {
 
                 if state.windowState.isVisible("performancePreview") {
                     PerformancePreviewView(
-                        performanceDisplay: dream.performanceDisplay,
+                        livePlayer: dream.livePlayer,
                         onClose: {
                             state.windowState.set("performancePreview", visible: false)
                         }
