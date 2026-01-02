@@ -1,6 +1,6 @@
 # Custom Blend Modes & Optical Flow
 
-Future enhancements to enable more sophisticated visual effects.
+Future enhancements to enable more sophisticated visual effects. This first iteration will be r&d, and experimental. We don't need to figure out the UI other than adding any custom blend modes to the list of options we can cycle over with the "m" key for a layer.
 
 ## 1. Custom Blend Modes via Metal Shaders
 

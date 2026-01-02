@@ -6,6 +6,9 @@
 
 - Move Divine into its own product, and focus it on ios usage possibly? It just looks at a single Apple Photos directory or file directory for simplicity
 
+- I want there to be a history of Hypnograms regardless of whether or not they were saved so we can always go back when one looked good. The history should be maybe 100 or so back or ? maybe configurable in settings.json with a default setting of 10
+
+- I am questioning whether effects chains ("Treatments")should be named or if they maybe are just a thumbnail and pressing on the Treatment thumbnail applies the treatment or maybe a small button on the thumbnail takes a snapshot of the current hypnogram to be the new thumbnail for that treatment.
 
 
 ## Known Issues (Bugs)

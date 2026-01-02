@@ -26,7 +26,11 @@
       "Bash(swift:*)",
       "Bash(xcodebuild build:*)",
       "Bash(xcodebuild clean:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp list:*)",
+      "Bash(claude mcp remove:*)",
+      "Bash(npx:*)"
     ]
   }
 }
