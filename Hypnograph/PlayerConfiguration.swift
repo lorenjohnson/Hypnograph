@@ -75,4 +75,12 @@ struct PlayerConfiguration: Codable {
         try container.encode(maxSourcesForNew, forKey: .maxSourcesForNew)
         try container.encode(targetDuration.seconds, forKey: .targetDurationSeconds)
     }
+
+    // MARK: - View Identity
+
+    /// Stable identity string for SwiftUI .id() - includes all config properties
+    /// so view rebuilds when any config changes
+    var viewID: String {
+        "\(aspectRatio.displayString)-\(playerResolution.rawValue)-\(maxSourcesForNew)-\(targetDuration.seconds)"
+    }
 }
