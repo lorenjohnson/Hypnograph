@@ -30,7 +30,8 @@
       "Bash(claude mcp add:*)",
       "Bash(claude mcp list:*)",
       "Bash(claude mcp remove:*)",
-      "Bash(npx:*)"
+      "Bash(npx:*)",
+      "Bash(xcodebuild:*)"
     ]
   }
 }
