@@ -1361,9 +1361,13 @@ struct EditableEffectNameHeader: View {
         HStack {
             if isEditing {
                 TextField("Effect Name", text: $editedName)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.plain)
                     .font(.system(.headline, design: .monospaced))
-                    .foregroundColor(.black)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
+                    .background(Color.white.opacity(0.15))
+                    .cornerRadius(6)
                     .focused(focusedField, equals: .effectName)
                     .onSubmit {
                         saveAndClose()
@@ -1407,6 +1411,12 @@ struct EditableEffectNameHeader: View {
             if !isEditing {
                 editedName = name
                 isEditing = true
+            }
+        }
+        .onChange(of: name) { _, _ in
+            if isEditing {
+                isEditing = false
+                focusedField.wrappedValue = nil
             }
         }
     }
