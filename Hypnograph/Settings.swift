@@ -139,8 +139,8 @@ struct Settings: Codable {
     /// Output resolution for disk rendering
     var outputResolution: OutputResolution
 
-    /// Display resolution for preview (no menu option)
-    var displayResolution: OutputResolution
+    /// Player resolution for preview (per-player setting, this is the global default)
+    var playerResolution: OutputResolution
 
     /// Which media types to include in sources: "photos", "videos", or both
     var sourceMediaTypes: Set<SourceMediaType>
@@ -156,11 +156,11 @@ struct Settings: Codable {
     /// Preview audio volume (0.0 to 1.0)
     var previewVolume: Float
 
-    /// Performance audio device UID (nil = None/muted)
-    var performanceAudioDeviceUID: String?
+    /// Live player audio device UID (nil = None/muted)
+    var liveAudioDeviceUID: String?
 
-    /// Performance audio volume (0.0 to 1.0)
-    var performanceVolume: Float
+    /// Live player audio volume (0.0 to 1.0)
+    var liveVolume: Float
 
     // Single source of truth for defaults
     private enum Defaults {
@@ -175,24 +175,24 @@ struct Settings: Codable {
         static let activeLibrariesPerMode: [String: [String]] = [:]
         static let aspectRatio: AspectRatio = .ratio16x9
         static let outputResolution: OutputResolution = .p1080
-        static let displayResolution: OutputResolution = .p1080
+        static let playerResolution: OutputResolution = .p1080
         static let sourceMediaTypes: Set<SourceMediaType> = [.images, .videos]
         static let effectsListCollapsed: Bool = false
         // Audio defaults: nil UID = system default, volume = 1.0
         static let previewAudioDeviceUID: String? = nil
         static let previewVolume: Float = 1.0
-        static let performanceAudioDeviceUID: String? = nil
-        static let performanceVolume: Float = 1.0
+        static let liveAudioDeviceUID: String? = nil
+        static let liveVolume: Float = 1.0
     }
 
     private enum CodingKeys: String, CodingKey {
         case outputFolder, sources
         case watch, maxSourcesForNew, outputSeconds, snapshotsFolder
         case activeLibrariesPerMode
-        case aspectRatio, outputResolution, displayResolution, sourceMediaTypes
+        case aspectRatio, outputResolution, playerResolution, sourceMediaTypes
         case effectsListCollapsed
         case previewAudioDeviceUID, previewVolume
-        case performanceAudioDeviceUID, performanceVolume
+        case liveAudioDeviceUID, liveVolume
     }
 
     init(
@@ -205,13 +205,13 @@ struct Settings: Codable {
         activeLibrariesPerMode: [String: [String]] = Defaults.activeLibrariesPerMode,
         aspectRatio: AspectRatio = Defaults.aspectRatio,
         outputResolution: OutputResolution = Defaults.outputResolution,
-        displayResolution: OutputResolution = Defaults.displayResolution,
+        playerResolution: OutputResolution = Defaults.playerResolution,
         sourceMediaTypes: Set<SourceMediaType> = Defaults.sourceMediaTypes,
         effectsListCollapsed: Bool = Defaults.effectsListCollapsed,
         previewAudioDeviceUID: String? = Defaults.previewAudioDeviceUID,
         previewVolume: Float = Defaults.previewVolume,
-        performanceAudioDeviceUID: String? = Defaults.performanceAudioDeviceUID,
-        performanceVolume: Float = Defaults.performanceVolume
+        liveAudioDeviceUID: String? = Defaults.liveAudioDeviceUID,
+        liveVolume: Float = Defaults.liveVolume
     ) {
         self.outputFolder = outputFolder
         self.sources = sources
@@ -222,13 +222,13 @@ struct Settings: Codable {
         self.activeLibrariesPerMode = activeLibrariesPerMode
         self.aspectRatio = aspectRatio
         self.outputResolution = outputResolution
-        self.displayResolution = displayResolution
+        self.playerResolution = playerResolution
         self.sourceMediaTypes = sourceMediaTypes
         self.effectsListCollapsed = effectsListCollapsed
         self.previewAudioDeviceUID = previewAudioDeviceUID
         self.previewVolume = previewVolume
-        self.performanceAudioDeviceUID = performanceAudioDeviceUID
-        self.performanceVolume = performanceVolume
+        self.liveAudioDeviceUID = liveAudioDeviceUID
+        self.liveVolume = liveVolume
     }
 
     init(from decoder: Decoder) throws {
@@ -252,8 +252,8 @@ struct Settings: Codable {
             ?? Defaults.aspectRatio
         outputResolution = try c.decodeIfPresent(OutputResolution.self, forKey: .outputResolution)
             ?? Defaults.outputResolution
-        displayResolution = try c.decodeIfPresent(OutputResolution.self, forKey: .displayResolution)
-            ?? Defaults.displayResolution
+        playerResolution = try c.decodeIfPresent(OutputResolution.self, forKey: .playerResolution)
+            ?? Defaults.playerResolution
         if let types = try c.decodeIfPresent([SourceMediaType].self, forKey: .sourceMediaTypes) {
             sourceMediaTypes = Set(types)
         } else {
@@ -265,10 +265,10 @@ struct Settings: Codable {
             ?? Defaults.previewAudioDeviceUID
         previewVolume = try c.decodeIfPresent(Float.self, forKey: .previewVolume)
             ?? Defaults.previewVolume
-        performanceAudioDeviceUID = try c.decodeIfPresent(String.self, forKey: .performanceAudioDeviceUID)
-            ?? Defaults.performanceAudioDeviceUID
-        performanceVolume = try c.decodeIfPresent(Float.self, forKey: .performanceVolume)
-            ?? Defaults.performanceVolume
+        liveAudioDeviceUID = try c.decodeIfPresent(String.self, forKey: .liveAudioDeviceUID)
+            ?? Defaults.liveAudioDeviceUID
+        liveVolume = try c.decodeIfPresent(Float.self, forKey: .liveVolume)
+            ?? Defaults.liveVolume
     }
 
     func encode(to encoder: Encoder) throws {
@@ -282,13 +282,13 @@ struct Settings: Codable {
         try c.encode(activeLibrariesPerMode, forKey: .activeLibrariesPerMode)
         try c.encode(aspectRatio, forKey: .aspectRatio)
         try c.encode(outputResolution, forKey: .outputResolution)
-        try c.encode(displayResolution, forKey: .displayResolution)
+        try c.encode(playerResolution, forKey: .playerResolution)
         try c.encode(Array(sourceMediaTypes), forKey: .sourceMediaTypes)
         try c.encode(effectsListCollapsed, forKey: .effectsListCollapsed)
         try c.encodeIfPresent(previewAudioDeviceUID, forKey: .previewAudioDeviceUID)
         try c.encode(previewVolume, forKey: .previewVolume)
-        try c.encodeIfPresent(performanceAudioDeviceUID, forKey: .performanceAudioDeviceUID)
-        try c.encode(performanceVolume, forKey: .performanceVolume)
+        try c.encodeIfPresent(liveAudioDeviceUID, forKey: .liveAudioDeviceUID)
+        try c.encode(liveVolume, forKey: .liveVolume)
     }
 
     // MARK: - Derived values

@@ -35,21 +35,10 @@ final class DreamPlayerState: ObservableObject {
     /// Incremented when effects change - triggers re-render when paused
     @Published var effectsChangeCounter: Int = 0
 
-    // MARK: - Display Settings
+    // MARK: - Player Configuration
 
-    /// Aspect ratio for this player
-    @Published var aspectRatio: AspectRatio
-
-    /// Output resolution
-    @Published var outputResolution: OutputResolution
-
-    // MARK: - Generation Settings (for "New" operations)
-
-    /// Max sources when generating new random hypnograms
-    @Published var maxSourcesForNew: Int
-
-    /// Target duration for new hypnograms
-    @Published var targetDuration: CMTime
+    /// Per-player settings (aspect ratio, resolution, generation settings)
+    @Published var config: PlayerConfiguration
 
     // MARK: - Effects Library
 
@@ -75,14 +64,11 @@ final class DreamPlayerState: ObservableObject {
     // MARK: - Init
 
     init(settings: Settings, effectsFilename: String) {
+        self.config = PlayerConfiguration(from: settings)
         self.recipe = HypnogramRecipe(
             sources: [],
             targetDuration: settings.outputDuration
         )
-        self.aspectRatio = settings.aspectRatio
-        self.outputResolution = settings.outputResolution
-        self.maxSourcesForNew = settings.maxSourcesForNew
-        self.targetDuration = settings.outputDuration
         self.effectsSession = EffectsSession(filename: effectsFilename)
 
         setupEffectManager()
