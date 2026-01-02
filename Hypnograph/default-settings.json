@@ -4,9 +4,20 @@
     "default": "~/Movies/Hypnograph/sources",
     "From Finder Helper": []
   },
-  "outputSeconds": 60,
-  "aspectRatio": "16:9",
-  "maxOutputDimension": 1080,
   "outputFolder": "~/Movies/Hypnograph/renders",
-  "snapshotsFolder": "~/Movies/Hypnograph/snapshots"
+  "snapshotsFolder": "~/Movies/Hypnograph/snapshots",
+  "montagePlayerConfig": {
+    "aspectRatio": "16:9",
+    "playerResolution": 1080,
+    "maxSourcesForNew": 5,
+    "targetDurationSeconds": 60.0,
+    "playRate": 1.0
+  },
+  "sequencePlayerConfig": {
+    "aspectRatio": "16:9",
+    "playerResolution": 1080,
+    "maxSourcesForNew": 5,
+    "targetDurationSeconds": 60.0,
+    "playRate": 1.0
+  }
 }

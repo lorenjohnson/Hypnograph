@@ -52,22 +52,24 @@ final class DreamPlayerState: ObservableObject {
 
     // MARK: - Computed Properties
 
-    /// Playback rate - stored in recipe so it's part of the hypnogram
+    /// Playback rate - synced between config (persistent) and recipe (per-hypnogram)
     var playRate: Float {
         get { recipe.playRate }
         set {
             recipe.playRate = newValue
+            config.playRate = newValue  // Also update config so it persists
             objectWillChange.send()
         }
     }
 
     // MARK: - Init
 
-    init(settings: Settings, effectsFilename: String) {
-        self.config = PlayerConfiguration(from: settings)
+    init(config: PlayerConfiguration, effectsFilename: String) {
+        self.config = config
         self.recipe = HypnogramRecipe(
             sources: [],
-            targetDuration: settings.outputDuration
+            targetDuration: config.targetDuration,
+            playRate: config.playRate
         )
         self.effectsSession = EffectsSession(filename: effectsFilename)
 
@@ -125,6 +127,7 @@ final class DreamPlayerState: ObservableObject {
     func setRecipe(_ newRecipe: HypnogramRecipe) {
         recipe = newRecipe
         config.targetDuration = newRecipe.targetDuration
+        config.playRate = newRecipe.playRate  // Restore playRate from saved recipe
     }
 
     /// Notify that recipe has changed (triggers re-render)

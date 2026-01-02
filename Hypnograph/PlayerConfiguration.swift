@@ -29,14 +29,14 @@ struct PlayerConfiguration: Codable {
     /// Target duration for new hypnograms
     var targetDuration: CMTime
 
+    /// Default playback rate for this player
+    var playRate: Float
+
     // MARK: - Initialization
 
-    /// Initialize with global defaults from Settings
+    /// Initialize with global defaults from Settings (uses montage config)
     init(from settings: Settings) {
-        self.aspectRatio = settings.aspectRatio
-        self.playerResolution = settings.playerResolution
-        self.maxSourcesForNew = settings.maxSourcesForNew
-        self.targetDuration = settings.outputDuration
+        self = settings.montagePlayerConfig
     }
 
     /// Initialize with explicit values
@@ -44,19 +44,21 @@ struct PlayerConfiguration: Codable {
         aspectRatio: AspectRatio,
         playerResolution: OutputResolution,
         maxSourcesForNew: Int,
-        targetDuration: CMTime
+        targetDuration: CMTime,
+        playRate: Float = 1.0
     ) {
         self.aspectRatio = aspectRatio
         self.playerResolution = playerResolution
         self.maxSourcesForNew = maxSourcesForNew
         self.targetDuration = targetDuration
+        self.playRate = playRate
     }
 
     // MARK: - Codable
 
     private enum CodingKeys: String, CodingKey {
         case aspectRatio, playerResolution, maxSourcesForNew
-        case targetDurationSeconds
+        case targetDurationSeconds, playRate
     }
 
     init(from decoder: Decoder) throws {
@@ -66,6 +68,7 @@ struct PlayerConfiguration: Codable {
         maxSourcesForNew = try container.decode(Int.self, forKey: .maxSourcesForNew)
         let seconds = try container.decode(Double.self, forKey: .targetDurationSeconds)
         targetDuration = CMTime(seconds: seconds, preferredTimescale: 600)
+        playRate = try container.decodeIfPresent(Float.self, forKey: .playRate) ?? 1.0
     }
 
     func encode(to encoder: Encoder) throws {
@@ -74,6 +77,7 @@ struct PlayerConfiguration: Codable {
         try container.encode(playerResolution, forKey: .playerResolution)
         try container.encode(maxSourcesForNew, forKey: .maxSourcesForNew)
         try container.encode(targetDuration.seconds, forKey: .targetDurationSeconds)
+        try container.encode(playRate, forKey: .playRate)
     }
 
     // MARK: - View Identity
@@ -81,6 +85,6 @@ struct PlayerConfiguration: Codable {
     /// Stable identity string for SwiftUI .id() - includes all config properties
     /// so view rebuilds when any config changes
     var viewID: String {
-        "\(aspectRatio.displayString)-\(playerResolution.rawValue)-\(maxSourcesForNew)-\(targetDuration.seconds)"
+        "\(aspectRatio.displayString)-\(playerResolution.rawValue)-\(maxSourcesForNew)-\(targetDuration.seconds)-\(playRate)"
     }
 }
