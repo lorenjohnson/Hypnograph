@@ -124,7 +124,7 @@ final class DreamPlayerState: ObservableObject {
     /// Replace the entire recipe (used when loading from file)
     func setRecipe(_ newRecipe: HypnogramRecipe) {
         recipe = newRecipe
-        targetDuration = newRecipe.targetDuration
+        config.targetDuration = newRecipe.targetDuration
     }
 
     /// Notify that recipe has changed (triggers re-render)

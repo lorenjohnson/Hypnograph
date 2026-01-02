@@ -32,7 +32,9 @@
       "Bash(claude mcp remove:*)",
       "Bash(npx:*)",
       "Bash(xcodebuild:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(find:*)",
+      "Bash(perl:*)"
     ]
   }
 }
