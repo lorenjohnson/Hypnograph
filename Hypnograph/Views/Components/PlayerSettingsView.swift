@@ -325,6 +325,11 @@ struct PlayerSettingsView: View {
         }
     }
 
+    /// Config to display - shows live player's config when in live mode, otherwise source player's config
+    private var displayedConfig: PlayerConfiguration {
+        dream.isLiveMode ? dream.livePlayer.config : player.config
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header row 1: Title and close button
@@ -400,17 +405,18 @@ struct PlayerSettingsView: View {
             HStack {
                 Text("Max Sources:")
                     .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.white.opacity(dream.isLiveMode ? 0.4 : 0.8))
 
                 Spacer()
 
-                Text("\(player.config.maxSourcesForNew)")
+                Text("\(displayedConfig.maxSourcesForNew)")
                     .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.white)
+                    .foregroundColor(.white.opacity(dream.isLiveMode ? 0.6 : 1.0))
                     .frame(minWidth: 30)
 
                 Stepper("", value: $player.config.maxSourcesForNew, in: 1...20)
                     .labelsHidden()
+                    .disabled(dream.isLiveMode)
             }
 
             Divider()
@@ -420,14 +426,14 @@ struct PlayerSettingsView: View {
             HStack {
                 Text("Duration:")
                     .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.white.opacity(dream.isLiveMode ? 0.4 : 0.8))
 
                 Spacer()
 
-                let seconds = Int(player.config.targetDuration.seconds)
+                let seconds = Int(displayedConfig.targetDuration.seconds)
                 Text(formatDuration(seconds))
                     .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.white)
+                    .foregroundColor(.white.opacity(dream.isLiveMode ? 0.6 : 1.0))
                     .frame(minWidth: 50)
 
                 Stepper("", value: Binding(
@@ -435,24 +441,28 @@ struct PlayerSettingsView: View {
                     set: { player.config.targetDuration = CMTime(seconds: Double($0), preferredTimescale: 600) }
                 ), in: 10...600, step: 10)
                 .labelsHidden()
+                .disabled(dream.isLiveMode)
             }
 
             PlayRateControl(playRate: $player.playRate)
+                .disabled(dream.isLiveMode)
+                .opacity(dream.isLiveMode ? 0.5 : 1.0)
 
             HStack {
                 Text("Aspect Ratio:")
                     .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.white.opacity(dream.isLiveMode ? 0.4 : 0.8))
 
                 Spacer()
 
-                Picker("", selection: $player.config.aspectRatio) {
+                Picker("", selection: dream.isLiveMode ? .constant(displayedConfig.aspectRatio) : $player.config.aspectRatio) {
                     ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
                         Text(ratio.menuLabel).tag(ratio)
                     }
                 }
                 .pickerStyle(.menu)
                 .frame(width: 120)
+                .disabled(dream.isLiveMode)
             }
 
             Divider()
@@ -500,11 +510,10 @@ struct PlayerSettingsView: View {
             .font(.system(size: 11, weight: .medium))
             .foregroundColor(isSelected ? .white : .white.opacity(0.6))
             .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(isSelected ? Color.blue.opacity(0.8) : Color.white.opacity(0.15))
+            .cornerRadius(6)
         }
         .buttonStyle(.plain)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity)
-        .background(isSelected ? Color.blue.opacity(0.8) : Color.white.opacity(0.15))
-        .cornerRadius(6)
     }
 }

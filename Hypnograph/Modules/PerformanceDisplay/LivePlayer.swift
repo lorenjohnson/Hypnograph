@@ -177,7 +177,7 @@ final class LivePlayer: ObservableObject {
             self?.effectManager.reapplyActiveEffects()
         }
     }
-    
+
     // MARK: - Public API
 
     /// Ensure content view exists for playback (without showing window)
@@ -371,10 +371,9 @@ final class LivePlayer: ObservableObject {
     /// Builds the composition asynchronously, then crossfades to it
     /// - Parameters:
     ///   - recipe: The hypnogram recipe to display
-    ///   - aspectRatio: Aspect ratio for rendering
-    ///   - resolution: Output resolution
+    ///   - config: Player configuration (aspect ratio, resolution, etc.)
     ///   - mode: Dream mode (montage or sequence)
-    func send(recipe: HypnogramRecipe, aspectRatio: AspectRatio, resolution: OutputResolution, mode: DreamMode = .montage) {
+    func send(recipe: HypnogramRecipe, config: PlayerConfiguration, mode: DreamMode = .montage) {
         // Ensure we have a content view for playback
         ensureContentView()
 
@@ -391,8 +390,8 @@ final class LivePlayer: ObservableObject {
         // Cancel any pending build
         pendingBuildTask?.cancel()
 
-        self.config.aspectRatio = aspectRatio
-        self.config.playerResolution = resolution
+        // Update config from the recipe being sent
+        self.config = config
 
         // Store the recipe for live effect modifications
         self.currentRecipe = recipe

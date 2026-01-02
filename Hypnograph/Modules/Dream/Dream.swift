@@ -113,9 +113,9 @@ final class Dream: ObservableObject {
         self.state = state
         self.renderQueue = renderQueue
 
-        // Create independent player states with mode-specific effects files
-        self.montagePlayer = DreamPlayerState(settings: state.settings, effectsFilename: "montage-effects.json")
-        self.sequencePlayer = DreamPlayerState(settings: state.settings, effectsFilename: "sequence-effects.json")
+        // Create independent player states with mode-specific effects files and configs
+        self.montagePlayer = DreamPlayerState(config: state.settings.montagePlayerConfig, effectsFilename: "montage-effects.json")
+        self.sequencePlayer = DreamPlayerState(config: state.settings.sequencePlayerConfig, effectsFilename: "sequence-effects.json")
         self.livePlayer = LivePlayer(settings: state.settings, effectsFilename: "live-effects.json")
 
         // Load audio settings from disk
@@ -127,6 +127,25 @@ final class Dream: ObservableObject {
             .store(in: &playerSubscriptions)
         sequencePlayer.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &playerSubscriptions)
+
+        // Sync player config changes back to settings
+        montagePlayer.$config
+            .dropFirst() // Skip initial value
+            .sink { [weak self] config in
+                guard let self = self else { return }
+                self.state.settings.montagePlayerConfig = config
+                self.state.saveSettings()
+            }
+            .store(in: &playerSubscriptions)
+
+        sequencePlayer.$config
+            .dropFirst() // Skip initial value
+            .sink { [weak self] config in
+                guard let self = self else { return }
+                self.state.settings.sequencePlayerConfig = config
+                self.state.saveSettings()
+            }
             .store(in: &playerSubscriptions)
 
         // Set up watch timer callback to respect current mode
@@ -596,9 +615,7 @@ final class Dream: ObservableObject {
 
     func setAspectRatio(_ ratio: AspectRatio) {
         activePlayer.config.aspectRatio = ratio
-        // Also update in settings for persistence
-        state.settings.aspectRatio = ratio
-        state.saveSettings()
+        // Config changes are auto-saved via $config subscription
         // Notify Dream to update menus
         objectWillChange.send()
     }
@@ -775,11 +792,10 @@ final class Dream: ObservableObject {
         // Generate a standalone recipe
         let recipe = generateRandomRecipe()
 
-        // Send directly to performance display
+        // Send directly to live display
         livePlayer.send(
             recipe: recipe,
-            aspectRatio: activePlayer.config.aspectRatio,
-            resolution: activePlayer.config.playerResolution,
+            config: activePlayer.config,
             mode: mode
         )
     }
@@ -816,8 +832,7 @@ final class Dream: ObservableObject {
     func sendToLivePlayer() {
         livePlayer.send(
             recipe: activePlayer.recipe,
-            aspectRatio: activePlayer.config.aspectRatio,
-            resolution: activePlayer.config.playerResolution,
+            config: activePlayer.config,
             mode: mode
         )
     }
@@ -832,11 +847,9 @@ final class Dream: ObservableObject {
 
     func reloadSettings() {
         state.reloadSettings(from: Environment.defaultSettingsURL)
-        // Also update player states with new settings
-        montagePlayer.config.targetDuration = state.settings.outputDuration
-        montagePlayer.config.maxSourcesForNew = state.settings.maxSourcesForNew
-        sequencePlayer.config.targetDuration = state.settings.outputDuration
-        sequencePlayer.config.maxSourcesForNew = state.settings.maxSourcesForNew
+        // Also update player states with reloaded configs
+        montagePlayer.config = state.settings.montagePlayerConfig
+        sequencePlayer.config = state.settings.sequencePlayerConfig
         if mode == .sequence {
             newRandomSequence()
         }

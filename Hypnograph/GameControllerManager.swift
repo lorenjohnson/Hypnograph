@@ -314,8 +314,7 @@ final class GameControllerManager {
         case .dream:
             dream.livePlayer.send(
                 recipe: dream.currentRecipe,
-                aspectRatio: dream.activePlayer.config.aspectRatio,
-                resolution: dream.activePlayer.config.playerResolution,
+                config: dream.activePlayer.config,
                 mode: dream.mode
             )
             print("🎮 Sent to Live Display")

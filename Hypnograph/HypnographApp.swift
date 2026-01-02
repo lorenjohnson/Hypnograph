@@ -175,8 +175,6 @@ struct HypnographApp: App {
                     "~/Movies/Hypnograph/sources"
                 ]),
                 watch: true,
-                maxSourcesForNew: 3,
-                outputSeconds: 30,
                 snapshotsFolder: "~/Movies/Hypnograph/snapshots",
                 activeLibrariesPerMode: [:]
             )

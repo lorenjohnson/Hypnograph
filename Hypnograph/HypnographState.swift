@@ -102,8 +102,8 @@ final class HypnographState: ObservableObject {
       allowedMediaTypes: settings.sourceMediaTypes
     )
 
-        // Initialize aspect ratio and resolution from settings
-        self.aspectRatio = settings.aspectRatio
+        // Initialize aspect ratio and resolution from settings (use montage player config as default)
+        self.aspectRatio = settings.montagePlayerConfig.aspectRatio
         self.outputResolution = settings.outputResolution
 
         // Start watch timer if enabled (modules will set onWatchTimerFired callback)
@@ -122,6 +122,7 @@ final class HypnographState: ObservableObject {
 
     func toggleWatchMode() {
         settings.watch.toggle()
+        saveSettingsToDisk()
         scheduleWatchTimer()
     }
 
@@ -480,8 +481,8 @@ final class HypnographState: ObservableObject {
             let newSettings = try SettingsLoader.load(from: url)
             self.settings = newSettings
 
-            // Sync aspect ratio and resolution
-            self.aspectRatio = newSettings.aspectRatio
+            // Sync aspect ratio and resolution (use montage player config as default)
+            self.aspectRatio = newSettings.montagePlayerConfig.aspectRatio
             self.outputResolution = newSettings.outputResolution
 
             Task {
