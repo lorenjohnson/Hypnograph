@@ -314,11 +314,11 @@ final class GameControllerManager {
         case .dream:
             dream.livePlayer.send(
                 recipe: dream.currentRecipe,
-                aspectRatio: dream.activePlayer.aspectRatio,
-                resolution: dream.activePlayer.outputResolution,
+                aspectRatio: dream.activePlayer.config.aspectRatio,
+                resolution: dream.activePlayer.config.playerResolution,
                 mode: dream.mode
             )
-            print("🎮 Sent to Performance Display")
+            print("🎮 Sent to Live Display")
         case .divine:
             print("🎮 Performance Display: Divine mode not supported yet")
         }
