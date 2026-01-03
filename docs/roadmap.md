@@ -16,12 +16,15 @@
 - [ ] Midi mapping, Mic input, MIDI Clock, OSC
 
 ## Known Issues / Bugs
+- [ ] Rendering/saving some Hypnograms results in an error
+  - [ ] "🔴 HypnogramRenderer: Export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn’t be completed. (Hypnograph.RenderError error 6.)"
 - [ ] **Effect name editing broken** - Opens edit mode but can't type. `isTyping` focus disconnect.
 - [ ] **Sequence mode saving** - Fails silently or incorrectly.
 - [ ] **Output height/width ignored** - Settings file values not applied.
 - [ ] **Finder action not installing** - Automator action fails.
 
 ## Minor Projects:
+- [ ] Put Render Video and Save on a hot keye and retitle the menu item to "Save and Rednder" (Opt-Cmd-S?)
 - [ ] Combine most of what is in HUD into Player Settings modal
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)
 - [ ] Game Controller mapping revamp back to essentials only
