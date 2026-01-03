@@ -845,16 +845,6 @@ final class Dream: ObservableObject {
         activePlayer.togglePause()
     }
 
-    func reloadSettings() {
-        state.reloadSettings(from: Environment.defaultSettingsURL)
-        // Also update player states with reloaded configs
-        montagePlayer.config = state.settings.montagePlayerConfig
-        sequencePlayer.config = state.settings.sequencePlayerConfig
-        if mode == .sequence {
-            newRandomSequence()
-        }
-    }
-
     // Override addSource to use appropriate length for sequence mode
     func addSource() {
         let length = preferredClipLength()
