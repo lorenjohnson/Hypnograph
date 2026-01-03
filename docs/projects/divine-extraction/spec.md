@@ -67,7 +67,7 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
 
 ## Next Actions (Staged Implementation Plan)
 1. **Stage 0 – Baseline capture & guardrails**  
-   - Document Divine's current UX flows (screen recordings, menu mappings) and add smoke tests around `DivineCardManager` (e.g., deterministic card creation via a stub `MediaSourcesLibrary`).  
+   - Document Divine's current UX flows (screen recordings, menu mappings) and add a minimal, deterministic `DivineCardManager` test (stubbed library, verifies card creation + uniqueness).  
    - Add unit tests for `HypnogramRecipe`, `MediaSourcesLibrary.randomClip`, and Quick Look JSON parsing so we can detect regressions while moving code.  
    - Remove unused `RenderQueue` wiring from `Divine` and its initialization in `HypnographApp`.  
    - Introduce a minimal `DivineState` class (no protocols yet) and update `Divine`/`DivineCardManager` to use it instead of `HypnographState` directly. In Stage 0 this can be a thin adapter that delegates to `HypnographState` so behavior stays stable while the dependency surface shrinks.  
