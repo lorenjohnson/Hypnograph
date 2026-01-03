@@ -74,21 +74,16 @@ final class Divine: ObservableObject {
         var items: [HUDItem] = []
 
         // Header
-        items.append(.text("Hypnograph", order: 10, font: .headline))
-        items.append(.text("Divine", order: 11, font: .subheadline))
-        items.append(.padding(8, order: 15))
-
-        // Card count
-        items.append(.text("Cards: \(cardManager.cards.count)", order: 20))
-        items.append(.padding(16, order: 24))
+        items.append(.text("Divine", order: 10, font: .headline))
+        items.append(.padding(8, order: 12))
 
         // Keyboard hints
-        items.append(.text("Shortcuts", order: 40, font: .subheadline))
-        items.append(.text("Cmd+N = Clear table | . = Add card", order: 41))
-        items.append(.text("Shift+N = New card | Delete = Remove card", order: 42))
-        items.append(.text("Left/Right = Navigate | 1-9 = Select card", order: 43))
-        items.append(.text("Cmd+=/-/0 = Zoom in/out/reset", order: 44))
-        items.append(.text("Drag cards to arrange", order: 45))
+        items.append(.text("Shortcuts", order: 20, font: .subheadline))
+        items.append(.text("Cmd+N = Clear table | . = Add card", order: 21))
+        items.append(.text("Shift+N = New card | Delete = Remove card", order: 22))
+        items.append(.text("Left/Right = Navigate | 1-9 = Select card", order: 23))
+        items.append(.text("Cmd+=/-/0 = Zoom in/out/reset", order: 24))
+        items.append(.text("Drag cards to arrange", order: 25))
 
         return items
     }

@@ -53,7 +53,7 @@ struct ContentView: View {
 
             // HUD and Hypnogram List - top left (below LIVE if visible)
             VStack(alignment: .leading, spacing: 8) {
-                if state.currentModuleType == .dream && state.windowState.isVisible("hud") {
+                if state.windowState.isVisible("hud") {
                     HUDView(
                         state: state,
                         dream: dream,

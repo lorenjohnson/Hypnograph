@@ -75,49 +75,51 @@ struct HUDView: View {
                     .id(index)
             }
 
-            // Source file list section
-            Spacer().frame(height: 12)
-
-            Text("Sources (\(formattedDuration))")
-                .font(.subheadline)
-                .foregroundColor(.white)
-
-            if dream.activePlayer.sources.isEmpty {
-                Text("No sources")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.7))
-            } else {
-                ForEach(Array(dream.activePlayer.sources.enumerated()), id: \.offset) { index, source in
-                    HStack(spacing: 4) {
-                        Text("\(index + 1):")
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundColor(index == dream.activePlayer.currentSourceIndex ? .cyan : .white.opacity(0.7))
-                        Text(shortenedPath(source))
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundColor(index == dream.activePlayer.currentSourceIndex ? .cyan : .white)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
-                }
-            }
-
-            // Tooltip display section
-            if let tooltip = tooltipManager.currentTooltip {
+            if state.currentModuleType == .dream {
+                // Source file list section
                 Spacer().frame(height: 12)
 
-                Divider()
-                    .background(Color.white.opacity(0.3))
+                Text("Sources (\(formattedDuration))")
+                    .font(.subheadline)
+                    .foregroundColor(.white)
 
-                HStack(spacing: 6) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 10))
-                        .foregroundColor(.cyan)
-                    Text(tooltip)
+                if dream.activePlayer.sources.isEmpty {
+                    Text("No sources")
                         .font(.caption)
-                        .foregroundColor(.cyan)
-                        .lineLimit(2)
+                        .foregroundColor(.white.opacity(0.7))
+                } else {
+                    ForEach(Array(dream.activePlayer.sources.enumerated()), id: \.offset) { index, source in
+                        HStack(spacing: 4) {
+                            Text("\(index + 1):")
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundColor(index == dream.activePlayer.currentSourceIndex ? .cyan : .white.opacity(0.7))
+                            Text(shortenedPath(source))
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundColor(index == dream.activePlayer.currentSourceIndex ? .cyan : .white)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                    }
                 }
-                .padding(.top, 4)
+
+                // Tooltip display section
+                if let tooltip = tooltipManager.currentTooltip {
+                    Spacer().frame(height: 12)
+
+                    Divider()
+                        .background(Color.white.opacity(0.3))
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 10))
+                            .foregroundColor(.cyan)
+                        Text(tooltip)
+                            .font(.caption)
+                            .foregroundColor(.cyan)
+                            .lineLimit(2)
+                    }
+                    .padding(.top, 4)
+                }
             }
         }
         .foregroundColor(.white)
@@ -164,4 +166,3 @@ struct HUDView: View {
         }
     }
 }
-
