@@ -47,7 +47,7 @@ folders and Apple Photos.
   originals directory on disk.
 
 ### Random Clip Selection
-- `randomClip(clipLength:)` samples from `sourceIndex` and validates on demand.
+- `randomClip(clipLength:)` samples from `sourceIndex` and validates on demand (nil clip length uses full video duration with a short default for images).
 - Failed sources are tracked in-memory to avoid repeated attempts.
 - Video sources get randomized clip start times within duration.
 - Image sources create a short-duration `VideoClip` with `startTime = .zero`.

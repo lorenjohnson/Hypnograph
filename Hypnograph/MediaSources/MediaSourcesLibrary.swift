@@ -294,7 +294,8 @@ final class MediaSourcesLibrary {
 
     // MARK: - Random clip selection (with lazy validation for video + image)
 
-    func randomClip(clipLength: Double) -> VideoClip? {
+    /// If `clipLength` is nil, videos use their full duration and images use `imageDuration`.
+    func randomClip(clipLength: Double? = nil, imageDuration: Double = 0.1) -> VideoClip? {
         // Consider *all* sources except those already marked bad.
         let candidates = sourceIndex.filter { !badSources.contains(sourceKey($0.source)) }
         guard !candidates.isEmpty else {
@@ -316,41 +317,8 @@ final class MediaSourcesLibrary {
                 return clip
 
             case .image:
-                guard let clip = validateImageSource(entry, clipLength: clipLength) else {
-                    badSources.insert(sourceKey(entry.source))
-                    continue
-                }
-                return clip
-            }
-        }
-
-        return nil
-    }
-
-    /// Return a random clip that spans the full video duration.
-    /// Images use a short, fixed duration to avoid giant still clips.
-    func randomFullClip(imageDuration: Double = 0.1) -> VideoClip? {
-        let candidates = sourceIndex.filter { !badSources.contains(sourceKey($0.source)) }
-        guard !candidates.isEmpty else {
-            print("⚠️ MediaSourcesLibrary.randomFullClip: No candidates (sourceIndex: \(sourceIndex.count), badSources: \(badSources.count))")
-            return nil
-        }
-
-        let maxAttempts = min(32, max(candidates.count * 2, 1))
-
-        for _ in 0..<maxAttempts {
-            guard let entry = candidates.randomElement() else { break }
-
-            switch entry.mediaKind {
-            case .video:
-                guard let clip = validateVideoSource(entry, clipLength: .greatestFiniteMagnitude) else {
-                    badSources.insert(sourceKey(entry.source))
-                    continue
-                }
-                return clip
-
-            case .image:
-                guard let clip = validateImageSource(entry, clipLength: imageDuration) else {
+                let effectiveLength = clipLength ?? imageDuration
+                guard let clip = validateImageSource(entry, clipLength: effectiveLength) else {
                     badSources.insert(sourceKey(entry.source))
                     continue
                 }
@@ -363,7 +331,7 @@ final class MediaSourcesLibrary {
 
     // MARK: - Source Validation
 
-    private func validateVideoSource(_ entry: SourceEntry, clipLength: Double) -> VideoClip? {
+    private func validateVideoSource(_ entry: SourceEntry, clipLength: Double?) -> VideoClip? {
         switch entry.source {
         case .url(let url):
             let asset = AVURLAsset(url: url)
@@ -375,7 +343,7 @@ final class MediaSourcesLibrary {
                 return nil
             }
 
-            let length = min(clipLength, totalSeconds)
+            let length = clipLength.map { min($0, totalSeconds) } ?? totalSeconds
             let maxStart = max(0.0, totalSeconds - length)
             let startSeconds = maxStart > 0 ? Double.random(in: 0...maxStart) : 0
 
@@ -398,7 +366,7 @@ final class MediaSourcesLibrary {
             let totalSeconds = phAsset.duration
             guard totalSeconds > 0 else { return nil }
 
-            let length = min(clipLength, totalSeconds)
+            let length = clipLength.map { min($0, totalSeconds) } ?? totalSeconds
             let maxStart = max(0.0, totalSeconds - length)
             let startSeconds = maxStart > 0 ? Double.random(in: 0...maxStart) : 0
 
