@@ -107,7 +107,7 @@ struct ContentView: View {
         .overlay(alignment: .topTrailing) {
             // Right-side panels: Effects editor (top-aligned) and Performance preview (bottom)
             VStack(spacing: 0) {
-                if state.windowState.isVisible("effectsEditor") {
+                if state.currentModuleType == .dream && state.windowState.isVisible("effectsEditor") {
                     EffectsEditorView(viewModel: effectsEditorViewModel, state: state, dream: dream)
                         .padding(.bottom, state.windowState.isVisible("performancePreview") ? 12 : 0)
                         .transition(.move(edge: .trailing))
@@ -115,7 +115,7 @@ struct ContentView: View {
 
                 Spacer(minLength: 0)
 
-                if state.windowState.isVisible("performancePreview") {
+                if state.currentModuleType == .dream && state.windowState.isVisible("performancePreview") {
                     PerformancePreviewView(
                         livePlayer: dream.livePlayer,
                         onClose: {
