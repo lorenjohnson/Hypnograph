@@ -5,9 +5,10 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
 
 ## Assumptions
 - Target platform remains macOS with the current AVFoundation/SwiftUI stack; iOS is out-of-scope for this extraction.
-- Both apps continue to read from the same source libraries (folders + Apple Photos via `MediaSourcesLibrary`) unless the user opts into separate libraries later.
+- Divine uses its own app support location and source libraries by default.
 - Rendering/export (Renderer/Core, EffectLibrary, AV export) stays owned by Hypnograph initially, but the extraction plan anticipates Divine eventually needing those capabilities.
 - Divine cards will keep the existing UX semantics (random clip selection, flip/reveal, drag, zoom) so we can validate parity.
+- Divine does not support watch mode; no auto-cycle behavior is required.
 - User data that currently lives under `~/Library/Application Support/Hypnograph` (settings, exclusions, recipes, Quick Look caches) can be migrated/aliased but must not be silently lost.
 - We can introduce Swift Package targets or static framework targets to house core code; both Hypnograph and the new Divine app will live in the same Xcode workspace initially.
 
@@ -38,7 +39,7 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
 ### Divine Product Architecture
 - **App Target**: new macOS target (e.g., `Divine.app`) that references the extracted packages plus the Divine-specific module.
   - Entry includes a thin `DivineApp` struct mirroring `HypnographApp` but only instantiating `DivineState`, `DivineMode`, and whichever shared managers it needs (render queue optional at first).
-  - `DivineState` wraps `HypnoCore` components: maintains active source libraries, exposes `MediaSourcesLibrary`, surfaces `watch` timers, tracks HUD/window visibility, and persists settings to a `~/Library/Application Support/Divine` folder (configurable so advanced users can point both apps at the same store if desired).
+- `DivineState` wraps `HypnoCore` components: owns its `MediaSourcesLibrary`, library selections, and exclusion/favorite stores, and persists settings to a `~/Library/Application Support/Divine` folder. No watch mode or HUD/window-state concerns live here.
   - `DivineCardManager` and `DivineView` stay largely unchanged but consume core services through protocols (`LibraryProviding`, `SnapshotGrabbing`, `NotificationRouting`) to remove direct references to Hypnograph-only singletons.
   - Optional export/render features plug into `HypnoRenderer` later; initial milestone only needs the player/still grabbing subset.
 - **Inter-app coordination**
@@ -53,13 +54,12 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
 
 ## Key Decisions
 - **Shared package boundaries vs. monolithic target**: adopt Swift Packages for the six libraries above so both apps (and Quick Look/tests) can link only what they need. Static frameworks would also work, but SPM keeps dependency graphs explicit and testable.
-- **Data location strategy**: keep a shared default (`~/Library/Application Support/Hypnograph`) but make `Environment.appFolderName` configurable so Divine can default to `~/Library/Application Support/Divine` while still being able to point at Hypnograph's store if the user wants shared recipes.
+- **Data location strategy**: Divine defaults to `~/Library/Application Support/Divine`.
 - **File format compatibility**: prefer extending the existing `.hypno/.hypnogram` recipe format with optional Divine-specific payload (e.g., card positions/orientation) to maximize interoperability and keep Quick Look simple.
 - **Testing posture**: build lightweight unit/UI tests around the new packages before relocating code. This ensures each migration step (e.g., moving `MediaSourcesLibrary`) can be validated without spinning up the whole app.
 - **Quick Look ownership**: treat Quick Look as a consumer of `HypnoCore` so schema changes only happen in one place, and extend it to optionally render Divine spreads (even if just metadata) to avoid shipping a second extension.
 
 ## Open Questions
-- Should Divine continue to share the exact same settings + source libraries as Dream by default, or should it fork its own configuration folder to keep card pulls independent?
 - Is Divine expected to export renders/video, or is it strictly a live experience? This affects how aggressively we prioritize moving `HypnoRenderer` over.
 - Do we need interoperability with Hypnograph's performance display/LivePlayer (e.g., sending a Divine spread to the external monitor), or is Divine strictly single-window?
 - What file extension/format should Divine spreads adopt so users can distinguish them from Dream hypnograms in Finder?
@@ -69,6 +69,10 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
 1. **Stage 0 – Baseline capture & guardrails**  
    - Document Divine's current UX flows (screen recordings, menu mappings) and add smoke tests around `DivineCardManager` (e.g., deterministic card creation via a stub `MediaSourcesLibrary`).  
    - Add unit tests for `HypnogramRecipe`, `MediaSourcesLibrary.randomClip`, and Quick Look JSON parsing so we can detect regressions while moving code.  
+   - Remove unused `RenderQueue` wiring from `Divine` and its initialization in `HypnographApp`.  
+   - Introduce a minimal `DivineState` class (no protocols yet) and update `Divine`/`DivineCardManager` to use it instead of `HypnographState` directly. In Stage 0 this can be a thin adapter that delegates to `HypnographState` so behavior stays stable while the dependency surface shrinks.  
+   - Disable HUD in Divine context and remove Divine no-op stubs (`toggleHUD`, `togglePause`).  
+   - Keep a TODO for `allowReversed` as a Divine setting flag (not yet implemented).  
    - *Verification*: CI job running the new tests plus manual smoke test of Dream + Divine in the shipping Hypnograph app.
 2. **Stage 1 – Extract HypnoCore**  
    - Create a Swift Package containing settings, recipe models, environment helpers, media source loaders, and asset caching/still grab helpers. Provide a thin API (`HypnoCoreContext`) that exposes library toggling and watch timers without referencing SwiftUI.  
@@ -84,7 +88,7 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
    - *Verification*: Manual UI test toggling HUD/Photos picker in Hypnograph and (if available) a rudimentary Divine test harness target.
 5. **Stage 4 – Stand up Divine.app target**  
    - Create a new macOS app target with its own bundle identifier and `DivineApp` entry point. Wire it to the shared packages plus the existing Divine module files (moved under `DivineApp/Sources` if desired).  
-   - Introduce `DivineState` that wraps `HypnoCore` services, re-implement menus/shortcuts locally, and ensure Divine no longer references Hypnograph-only constructs (e.g., GameControllerManager).  
+   - Introduce a full `DivineState` that owns its settings, library selection, and persistence (no `HypnographState` dependency), re-implement menus/shortcuts locally, and ensure Divine no longer references Hypnograph-only constructs (e.g., GameControllerManager).  
    - *Verification*: Build+run the new app, confirm you can open libraries, add cards, zoom/pan, and that Hypnograph.app still functions.
 6. **Stage 5 – Quick Look & packaging alignment**  
    - Point `HypnogramQuickLook` at the shared packages so it can parse both Dream hypnograms and Divine spreads. If a `.divine` extension is introduced, register it here.  
