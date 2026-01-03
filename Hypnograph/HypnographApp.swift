@@ -439,7 +439,7 @@ struct AppCommands: Commands {
                     set: { _ in state.windowState.toggle("effectsEditor") }
                 ))
                 .keyboardShortcut("e", modifiers: [])
-                .disabled(isTyping)
+                .disabled(isTyping || state.currentModuleType != .dream)
 
                 Toggle("Hypnogram List", isOn: Binding(
                     get: { state.windowState.isVisible("hypnogramList") },
@@ -475,7 +475,7 @@ struct AppCommands: Commands {
                     set: { _ in state.windowState.toggle("performancePreview") }
                 ))
                 .keyboardShortcut("l", modifiers: [])
-                .disabled(isTyping)
+                .disabled(isTyping || state.currentModuleType != .dream)
 
                 Toggle("Live Mode", isOn: Binding(
                     get: { dream.isLiveMode },

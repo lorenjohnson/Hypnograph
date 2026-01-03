@@ -24,11 +24,11 @@ Source of truth: `Hypnograph/HypnographApp.swift`, `Hypnograph/Modules/Dream/Dre
 | View | Cycle Module | `~` | Disabled while typing |
 | View | Watch | `W` | Disabled while typing |
 | Overlays | Info HUD | `I` | Disabled while typing |
-| Overlays | Effects Editor | `E` | Disabled while typing |
+| Overlays | Effects Editor | `E` | Dream only |
 | Overlays | Hypnogram List | `H` | Dream only |
 | Overlays | Clean Screen | `Tab` | Handled via NSEvent monitor |
 | Player | Player Settings | `P` | Dream only |
-| Performance | Performance Preview | `L` | Disabled while typing |
+| Performance | Performance Preview | `L` | Dream only |
 | Performance | Live Mode | `Cmd+L` | Dream only |
 | Performance | External Monitor | `Cmd+Shift+L` | Dream only |
 | Performance | Send to Performance Display | `Cmd+Return` | Dream only |
