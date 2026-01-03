@@ -327,6 +327,40 @@ final class MediaSourcesLibrary {
         return nil
     }
 
+    /// Return a random clip that spans the full video duration.
+    /// Images use a short, fixed duration to avoid giant still clips.
+    func randomFullClip(imageDuration: Double = 0.1) -> VideoClip? {
+        let candidates = sourceIndex.filter { !badSources.contains(sourceKey($0.source)) }
+        guard !candidates.isEmpty else {
+            print("⚠️ MediaSourcesLibrary.randomFullClip: No candidates (sourceIndex: \(sourceIndex.count), badSources: \(badSources.count))")
+            return nil
+        }
+
+        let maxAttempts = min(32, max(candidates.count * 2, 1))
+
+        for _ in 0..<maxAttempts {
+            guard let entry = candidates.randomElement() else { break }
+
+            switch entry.mediaKind {
+            case .video:
+                guard let clip = validateVideoSource(entry, clipLength: .greatestFiniteMagnitude) else {
+                    badSources.insert(sourceKey(entry.source))
+                    continue
+                }
+                return clip
+
+            case .image:
+                guard let clip = validateImageSource(entry, clipLength: imageDuration) else {
+                    badSources.insert(sourceKey(entry.source))
+                    continue
+                }
+                return clip
+            }
+        }
+
+        return nil
+    }
+
     // MARK: - Source Validation
 
     private func validateVideoSource(_ entry: SourceEntry, clipLength: Double) -> VideoClip? {

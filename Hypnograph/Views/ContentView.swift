@@ -5,7 +5,6 @@ import PhotosUI
 
 struct ContentView: View {
     @ObservedObject var state: HypnographState
-    var renderQueue: RenderQueue  // Not @ObservedObject - we don't want to trigger view updates
     @ObservedObject var dream: Dream
     @ObservedObject var divine: Divine
 
@@ -54,7 +53,7 @@ struct ContentView: View {
 
             // HUD and Hypnogram List - top left (below LIVE if visible)
             VStack(alignment: .leading, spacing: 8) {
-                if state.windowState.isVisible("hud") {
+                if state.currentModuleType == .dream && state.windowState.isVisible("hud") {
                     HUDView(
                         state: state,
                         dream: dream,

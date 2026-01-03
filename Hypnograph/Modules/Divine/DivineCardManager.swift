@@ -19,7 +19,7 @@ final class DivineCardManager: ObservableObject {
     @Published private(set) var cards: [DivineCard] = []
     @Published private(set) var currentIndex: Int = 0
 
-    private let state: HypnographState
+    private let state: DivineState
     private let playerManager = DivinePlayerManager()
     private var playerManagerSubscription: AnyCancellable?
 
@@ -33,7 +33,7 @@ final class DivineCardManager: ObservableObject {
     // Track long press to avoid tap firing on release
     private var lastLongPressTime: Date = .distantPast
 
-    init(state: HypnographState) {
+    init(state: DivineState) {
         self.state = state
         // Forward playerManager changes to trigger view updates
         playerManagerSubscription = playerManager.objectWillChange.sink { [weak self] _ in
@@ -318,8 +318,6 @@ final class DivineCardManager: ObservableObject {
     }
 
     private func makeCard(offset: CGSize) -> DivineCard? {
-        let clipLength = max(3.0, state.settings.outputDuration.seconds)
-
         // Get all source file IDs currently on the table
         let usedFileIDs = Set(cards.map { $0.clip.file.id })
 
@@ -328,7 +326,7 @@ final class DivineCardManager: ObservableObject {
         let maxAttempts = 100
 
         for _ in 0..<maxAttempts {
-            if let candidate = state.library.randomClip(clipLength: clipLength) {
+            if let candidate = state.randomClip() {
                 if !usedFileIDs.contains(candidate.file.id) {
                     clip = candidate
                     break
