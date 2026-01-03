@@ -187,7 +187,8 @@ struct HypnographApp: App {
 
         _state = StateObject(wrappedValue: state)
         _dream = StateObject(wrappedValue: Dream(state: state, renderQueue: renderQueue))
-        _divine = StateObject(wrappedValue: Divine(state: state, renderQueue: renderQueue))
+        let divineState = DivineState(state: state)
+        _divine = StateObject(wrappedValue: Divine(state: divineState))
     }
 
     func cycleModule() {
@@ -213,7 +214,6 @@ struct HypnographApp: App {
         WindowGroup("Hypnograph", id: "main") {
             ContentView(
                 state: state,
-                renderQueue: renderQueue,
                 dream: dream,
                 divine: divine
             )

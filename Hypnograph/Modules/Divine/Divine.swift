@@ -13,8 +13,7 @@ import CoreGraphics
 /// Tarot-style stills with drag-and-drop cards.
 @MainActor
 final class Divine: ObservableObject {
-    let state: HypnographState
-    let renderQueue: RenderQueue
+    let state: DivineState
 
     let cardManager: DivineCardManager
 
@@ -27,9 +26,8 @@ final class Divine: ObservableObject {
     private let maxZoom: CGFloat = 3.0
     private let zoomStep: CGFloat = 1.1
 
-    init(state: HypnographState, renderQueue: RenderQueue) {
+    init(state: DivineState) {
         self.state = state
-        self.renderQueue = renderQueue
         self.cardManager = DivineCardManager(state: state)
     }
 
@@ -97,35 +95,28 @@ final class Divine: ObservableObject {
 
     // MARK: - Menus
 
-    /// Whether a text field is being edited - disables single-key shortcuts
-    private var isTyping: Bool { state.isTyping }
-
     @ViewBuilder
     func compositionMenu() -> some View {
         Button("Add Card") { [self] in
             addCard()
         }
         .keyboardShortcut(".", modifiers: [])
-        .disabled(isTyping)
 
         Button("> Next Card") { [self] in
             nextCard()
         }
         .keyboardShortcut(.rightArrow, modifiers: [])
-        .disabled(isTyping)
 
         Button("< Previous Card") { [self] in
             previousCard()
         }
         .keyboardShortcut(.leftArrow, modifiers: [])
-        .disabled(isTyping)
 
         ForEach(0..<9, id: \.self) { [self] idx in
             Button("Select Card \(idx + 1)") {
                 selectCard(index: idx)
             }
             .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
-            .disabled(isTyping)
         }
 
         Divider()
@@ -166,7 +157,6 @@ final class Divine: ObservableObject {
             deleteCurrentCard()
         }
         .keyboardShortcut(.delete, modifiers: [])
-        .disabled(isTyping)
 
         Button("Add to Exclude List") { [self] in
             excludeCurrentCardSource()
@@ -188,14 +178,6 @@ final class Divine: ObservableObject {
 
     func save() {
         print("Divine: save/render not supported.")
-    }
-
-    func toggleHUD() {
-        // Divine doesn't currently have HUD support
-    }
-
-    func togglePause() {
-        // Divine doesn't have video playback - pause is a no-op
     }
 
     // MARK: - Card/Source Management
@@ -225,15 +207,13 @@ final class Divine: ObservableObject {
     }
 
     func excludeCurrentCardSource() {
-        state.noteUserInteraction()
         guard let card = cardManager.selectedCard else { return }
-        state.library.exclude(file: card.clip.file)
+        state.exclude(file: card.clip.file)
         // Replace with new random card
         cardManager.replaceCurrentCard()
     }
 
     func toggleCurrentCardFavorite() {
-        state.noteUserInteraction()
         guard let card = cardManager.selectedCard else { return }
         let isFavorited = FavoriteStore.shared.toggle(card.clip.file.source)
         let message = isFavorited ? "Added to favorites" : "Removed from favorites"
