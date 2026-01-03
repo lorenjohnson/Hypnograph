@@ -15,7 +15,6 @@ Source of truth: `Hypnograph/HypnographApp.swift`, `Hypnograph/Modules/Dream/Dre
 | Area | Command | Key | Notes |
 | --- | --- | --- | --- |
 | App | Play/Pause | `Space` | Toggles Dream playback only |
-| App | Restart Session (Reload Settings) | `Cmd+R` | Per current module |
 | File | New | `Cmd+N` | Per current module |
 | File | Save Hypnogram | `Cmd+S` | Divine save is a no-op |
 | File | Save Hypnogram As | `Cmd+Shift+S` | Dream only |

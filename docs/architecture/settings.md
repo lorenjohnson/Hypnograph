@@ -51,7 +51,7 @@ This document describes settings storage, defaults, and related persistent state
 - `HypnographState` loads settings on init and calls `saveSettingsToDisk()` when
   settings change.
 - Settings writes are JSON-encoded with stable ordering for diff readability.
-- `HypnographState.reloadSettings()` replaces settings and rebuilds the library.
+- Settings are loaded on init and saved via `saveSettingsToDisk()` when modified.
 
 ## Related Persistent State
 

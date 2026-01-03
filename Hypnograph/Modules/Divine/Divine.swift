@@ -198,12 +198,6 @@ final class Divine: ObservableObject {
         // Divine doesn't have video playback - pause is a no-op
     }
 
-    func reloadSettings() {
-        state.reloadSettings(from: Environment.defaultSettingsURL)
-        clearTable()
-        cardManager.addCardAtOffsetAtCenter()
-    }
-
     // MARK: - Card/Source Management
 
     func addCard() {

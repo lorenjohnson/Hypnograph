@@ -475,32 +475,6 @@ final class HypnographState: ObservableObject {
         saveSettingsToDisk()
     }
 
-    /// Reload settings from disk and reapply basic configuration.
-    func reloadSettings(from url: URL) {
-        do {
-            let newSettings = try SettingsLoader.load(from: url)
-            self.settings = newSettings
-
-            // Sync aspect ratio and resolution (use montage player config as default)
-            self.aspectRatio = newSettings.montagePlayerConfig.aspectRatio
-            self.outputResolution = newSettings.outputResolution
-
-            Task {
-                await applyActiveLibrariesUnified(activeLibraryKeys, saveToModule: false)
-            }
-
-            // Trigger the module to regenerate content
-            watchTimer?.invalidate()
-            watchTimer = nil
-            onWatchTimerFired?()
-            if newSettings.watch {
-                scheduleWatchTimer()
-            }
-        } catch {
-            print("⚠️ Failed to reload settings from \(url.path): \(error)")
-        }
-    }
-
     // MARK: - Aspect Ratio & Resolution
 
     /// Set the aspect ratio and save to settings (applies immediately)

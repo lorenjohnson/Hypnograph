@@ -344,16 +344,6 @@ struct AppCommands: Commands {
             .keyboardShortcut(.space, modifiers: [])
             .disabled(isTyping)
 
-            Button("Restart Session (Reload Settings)") {
-                switch state.currentModuleType {
-                case .dream: dream.reloadSettings()
-                case .divine: divine.reloadSettings()
-                }
-            }
-            .keyboardShortcut("r", modifiers: [.command])
-
-            Divider()
-
             Button("Show Settings Folder") {
                 Environment.showSettingsFolderInFinder()
             }
