@@ -474,12 +474,12 @@ final class Dream: ObservableObject {
 
         // Keyboard hints
         items.append(.text("Shortcuts", order: 40, font: .subheadline))
-        items.append(.text("R = Rotate | . = New clip | M = Blend", order: 41))
-        items.append(.text("E = Effects | 0 = Global | 1-9 = Source", order: 42))
-        items.append(.text("←/→ = Navigate | C = Clear | ⌃⇧C = Clear all", order: 43))
-        items.append(.text("N = New | ⇧N = Add source | S = Snapshot", order: 44))
-        items.append(.text("` = Toggle Montage/Sequence", order: 45))
-        items.append(.text("⇧F/X/D = Favorite/Exclude/Delete", order: 46))
+        items.append(.text(". = New clip | M = Blend | Delete = Remove source", order: 41))
+        items.append(.text("Cmd+E = Cycle effect | C = Clear layer | Ctrl+Shift+C = Clear all", order: 42))
+        items.append(.text("E = Effects editor | 0 = Global | 1-9 = Source", order: 43))
+        items.append(.text("Left/Right = Navigate | N = New | Shift+N = Add source", order: 44))
+        items.append(.text("Cmd+S = Save | Cmd+F = Favorite hypnogram", order: 45))
+        items.append(.text("` = Cycle Montage/Sequence/Live | Shift+F/X/D = Favorite/Exclude/Mark delete", order: 46))
 
         return items
     }

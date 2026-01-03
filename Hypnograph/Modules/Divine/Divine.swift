@@ -86,10 +86,10 @@ final class Divine: ObservableObject {
 
         // Keyboard hints
         items.append(.text("Shortcuts", order: 40, font: .subheadline))
-        items.append(.text("N = Clear table", order: 41))
-        items.append(.text(". = Add card | ⇧N = New card", order: 42))
-        items.append(.text("←/→ = Navigate | 1-9 = Select card", order: 43))
-        items.append(.text("Delete = Remove card", order: 44))
+        items.append(.text("Cmd+N = Clear table | . = Add card", order: 41))
+        items.append(.text("Shift+N = New card | Delete = Remove card", order: 42))
+        items.append(.text("Left/Right = Navigate | 1-9 = Select card", order: 43))
+        items.append(.text("Cmd+=/-/0 = Zoom in/out/reset", order: 44))
         items.append(.text("Drag cards to arrange", order: 45))
 
         return items

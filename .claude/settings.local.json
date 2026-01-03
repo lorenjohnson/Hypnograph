@@ -34,7 +34,12 @@
       "Bash(xcodebuild:*)",
       "Bash(git checkout:*)",
       "Bash(find:*)",
-      "Bash(perl:*)"
+      "Bash(perl:*)",
+      "Skill(codex)",
+      "mcp__code-index__get_settings_info",
+      "Bash(codex exec:*)",
+      "Bash(command -v:*)",
+      "mcp__code-index__set_project_path"
     ]
   }
 }
