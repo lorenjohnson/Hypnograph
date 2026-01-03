@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		04302B382F00E924001C0F60 /* Quartz.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04302B372F00E924001C0F60 /* Quartz.framework */; };
 		04302B442F00E924001C0F60 /* HypnogramQuickLook.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 04302B352F00E924001C0F60 /* HypnogramQuickLook.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		9F6E1C8D2A4B5C6D7E8F9012 /* Add to Hypnograph Sources.workflow in Resources */ = {isa = PBXBuildFile; fileRef = 9F6E1C8D2A4B5C6D7E8F9013 /* Add to Hypnograph Sources.workflow */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,10 +55,16 @@
 		042F991C2EC8990C006D4CDE /* HypnographUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnographUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		04302B352F00E924001C0F60 /* HypnogramQuickLook.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HypnogramQuickLook.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		04302B372F00E924001C0F60 /* Quartz.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Quartz.framework; path = System/Library/Frameworks/Quartz.framework; sourceTree = SDKROOT; };
-		9F6E1C8D2A4B5C6D7E8F9013 /* Add to Hypnograph Sources.workflow */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.workflow"; path = "Add to Hypnograph Sources.workflow"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		04302B482F00E924001C0F60 /* Exceptions for "HypnogramQuickLook" folder in "HypnogramQuickLook" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 04302B342F00E924001C0F60 /* HypnogramQuickLook */;
+		};
 		9F6E1C8D2A4B5C6D7E8F9014 /* Exceptions for "Hypnograph" folder in "Hypnograph" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -67,13 +72,6 @@
 				Info.plist,
 			);
 			target = 042F99002EC8990B006D4CDE /* Hypnograph */;
-		};
-		04302B482F00E924001C0F60 /* Exceptions for "HypnogramQuickLook" folder in "HypnogramQuickLook" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 04302B342F00E924001C0F60 /* HypnogramQuickLook */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -142,7 +140,6 @@
 		042F98F82EC8990A006D4CDE = {
 			isa = PBXGroup;
 			children = (
-				9F6E1C8D2A4B5C6D7E8F9013 /* Add to Hypnograph Sources.workflow */,
 				042F99032EC8990B006D4CDE /* Hypnograph */,
 				042F99152EC8990C006D4CDE /* HypnographTests */,
 				042F991F2EC8990C006D4CDE /* HypnographUITests */,
@@ -319,7 +316,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9F6E1C8D2A4B5C6D7E8F9012 /* Add to Hypnograph Sources.workflow in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
