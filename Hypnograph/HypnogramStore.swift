@@ -76,7 +76,7 @@ final class HypnogramStore: ObservableObject {
     /// - Returns: The created entry, or nil if save failed
     @discardableResult
     func add(recipe: HypnogramRecipe, snapshot: CGImage, name: String? = nil, isFavorite: Bool = false) -> HypnogramEntry? {
-        // Save recipe + snapshot as .hypno file (PNG with embedded recipe)
+        // Save recipe + snapshot as .hypno file (JPEG with embedded recipe)
         guard let recipeURL = RecipeStore.save(recipe, snapshot: snapshot) else {
             return nil
         }
