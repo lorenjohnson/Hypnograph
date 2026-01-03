@@ -7,7 +7,7 @@ final class DivineState {
 
     init(state: HypnographState) {
         self.randomClipProvider = {
-            state.library.randomFullClip()
+            state.library.randomClip()
         }
         self.excludeProvider = { file in
             state.library.exclude(file: file)
