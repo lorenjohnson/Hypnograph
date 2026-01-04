@@ -29,6 +29,37 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
       shouldAutocreateTestPlan = "YES">
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "042F99002EC8990B006D4CDE"
+            BuildableName = "Hypnograph.app"
+            BlueprintName = "Hypnograph"
+            ReferencedContainer = "container:Hypnograph.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
+      <Testables>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "042F99112EC8990C006D4CDE"
+               BuildableName = "HypnographTests.xctest"
+               BlueprintName = "HypnographTests"
+               ReferencedContainer = "container:Hypnograph.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "042F991B2EC8990C006D4CDE"
+               BuildableName = "HypnographUITests.xctest"
+               BlueprintName = "HypnographUITests"
+               ReferencedContainer = "container:Hypnograph.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
