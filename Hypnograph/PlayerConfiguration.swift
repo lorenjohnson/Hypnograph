@@ -8,6 +8,7 @@
 
 import Foundation
 import CoreMedia
+import HypnoRenderer
 
 /// Configuration for a player (montage, sequence, or live).
 /// Each player maintains its own independent configuration.

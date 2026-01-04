@@ -9,8 +9,8 @@ This document covers recipe data structures, save/load flows, and persistent
 storage for hypnograms.
 
 ## Sources
-- `Hypnograph/HypnogramRecipe.swift`
-- `Hypnograph/HypnogramSource.swift`
+- `HypnoEffects/Models/HypnogramRecipe.swift`
+- `HypnoEffects/Models/HypnogramSource.swift`
 - `Hypnograph/RecipeStore.swift`
 - `Hypnograph/RecipeFileActions.swift`
 - `Hypnograph/HypnogramStore.swift`

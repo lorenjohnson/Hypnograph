@@ -1,5 +1,5 @@
 ---
-last_reviewed: 2026-01-03T21:17:01Z
+last_reviewed: 2026-01-04T21:41:48Z
 ---
 
 # Rendering System Architecture
@@ -8,27 +8,34 @@ last_reviewed: 2026-01-03T21:17:01Z
 This document describes the preview, performance display, and export rendering pipeline.
 
 ## Sources
-- `Hypnograph/Renderer/Core/RenderEngine.swift`
-- `Hypnograph/Renderer/Core/CompositionBuilder.swift`
-- `Hypnograph/Renderer/Core/RenderInstruction.swift`
-- `Hypnograph/Renderer/Core/FrameCompositor.swift`
-- `Hypnograph/Renderer/Core/FrameBuffer.swift`
-- `Hypnograph/Renderer/Core/RenderContext.swift`
-- `Hypnograph/Renderer/Core/FrameBufferPreloader.swift`
-- `Hypnograph/Renderer/Core/RenderQueue.swift`
-- `Hypnograph/Renderer/Core/HypnogramRenderer.swift`
-- `Hypnograph/Renderer/Core/PhotoMontage.swift`
-- `Hypnograph/Renderer/Core/RenderSize.swift`
-- `Hypnograph/Renderer/Core/SharedRenderer.swift`
+- `HypnoRenderer/Core/RenderEngine.swift`
+- `HypnoRenderer/Core/CompositionBuilder.swift` (internal)
+- `HypnoRenderer/Core/RenderInstruction.swift` (internal)
+- `HypnoRenderer/Core/FrameCompositor.swift` (internal)
+- `HypnoEffects/Core/FrameBuffer.swift`
+- `HypnoEffects/Core/RenderContext.swift`
+- `HypnoEffects/Core/FrameBufferPreloader.swift`
+- `HypnoRenderer/Core/PhotoMontage.swift` (internal)
+- `HypnoRenderer/Core/RendererImageUtils.swift` (internal)
+- `HypnoRenderer/Models/AspectRatio.swift`
+- `HypnoRenderer/Models/RenderErrors.swift`
+- `HypnoRenderer/Models/RenderSize.swift`
+- `HypnoEffects/Core/SharedRenderer.swift`
 - `Hypnograph/Modules/PerformanceDisplay/LivePlayer.swift`
 
 ## Core Components
+
+### Public API (HypnoRenderer)
+- `RenderEngine` is the primary entry point for preview and export.
+- `RenderEngine.Timeline` defines montage vs sequence playback.
+- `RenderEngine.ExportQueue` handles async export jobs and progress callbacks.
+- Models: `AspectRatio`, `RenderError`, and `renderSize(...)` are public sizing/error helpers.
 
 ### RenderEngine
 - Entry point for preview and export.
 - `makePlayerItem()` builds an `AVPlayerItem` for montage or sequence preview.
 - `export()` builds a composition and runs `AVAssetExportSession` or a still-image montage.
-- `RenderEngine.Config.enableGlobalEffects` and `CompositionBuilder.enableEffects` gate effect usage.
+- `RenderEngine.Config.enableGlobalEffects` gates effect usage across the pipeline.
 
 ### CompositionBuilder
 - Builds `AVMutableComposition`, `AVMutableVideoComposition`, audio mix, and `RenderInstruction` objects.
@@ -58,9 +65,9 @@ This document describes the preview, performance display, and export rendering p
 - `FrameBufferPreloader` fills the buffer when temporal effects are active and
   `RendererConfig.prerollEnabled` is true.
 
-### RenderQueue and HypnogramRenderer
-- `HypnogramRenderer` wraps `RenderEngine.export()` to produce `.mov` files.
-- `RenderQueue` tracks active export jobs and posts notifications on completion.
+### RenderEngine.ExportQueue
+- Wraps `RenderEngine.export()` to produce `.mov` files.
+- Tracks active export jobs and posts status messages on completion.
 
 ### PhotoMontage (still-image export)
 - When montage output has no actual video segments, export uses `PhotoMontage` to
@@ -70,12 +77,8 @@ This document describes the preview, performance display, and export rendering p
 
 ### Preview
 1. Dream or LivePlayer constructs a `HypnogramRecipe`.
-2. `RenderEngine.makePlayerItem()` calls `CompositionBuilder.build()`.
-3. `CompositionBuilder` produces an `AVMutableComposition` and `RenderInstruction` list.
-4. `AVPlayerItem` + `AVMutableVideoComposition` are created, with
-   `FrameCompositor` as the compositor.
-5. `FrameCompositor` renders frames using the `EffectManager` passed through the
-   `RenderInstruction`.
+2. `RenderEngine.makePlayerItem()` builds an `AVPlayerItem` and configures the internal compositor.
+3. `FrameCompositor` renders frames using the `EffectManager` passed through internal instructions.
 
 ### Performance Display (LivePlayer)
 - LivePlayer owns its own `EffectManager` and `EffectsSession`.
@@ -83,7 +86,7 @@ This document describes the preview, performance display, and export rendering p
   internal players (A/B) for smooth transitions.
 
 ### Export
-1. `HypnogramRenderer` calls `RenderEngine.export()`.
+1. `RenderEngine.ExportQueue` calls `RenderEngine.export()`.
 2. The recipe is copied via `recipe.copyForExport()` and rendered with
    `EffectManager.forExport()` for isolated state.
 3. If montage output contains only still images, `PhotoMontage` exports a PNG.
@@ -95,12 +98,12 @@ This document describes the preview, performance display, and export rendering p
 - Each source gets its own video track.
 - Video clips loop to fill `targetDuration`.
 - Still images create empty time ranges and are passed as `stillImages` in
-  `RenderInstruction`.
+  internal render instructions.
 - Multiple audio tracks are mixed with normalized volume to reduce clipping.
 
 ### Sequence
 - Single video track and single audio track.
-- Each clip is inserted sequentially with its own `RenderInstruction`.
+- Each clip is inserted sequentially with its own internal render instruction.
 - Still images are represented as empty time ranges with `stillImages` provided.
 
 ## Output Sizing
@@ -114,12 +117,13 @@ This document describes the preview, performance display, and export rendering p
 
 ## Known Gaps and Risks
 - No frame dropping or throttling under load; AVFoundation will back-pressure when rendering exceeds frame time.
-- `FrameProcessor` largely duplicates `FrameCompositor` logic and is only used for still-image display paths.
+- The renderer maintains two pipelines (AVFoundation compositor for video and an app-level CI/Metal path for still images). This adds complexity but keeps still-image rendering responsive and effect-capable alongside video playback.
+- `FrameProcessor` (app-level) largely duplicates `FrameCompositor` logic and is only used for still-image display paths.
 - `FrameBuffer` can be large at full capacity (up to 120 frames); there is no memory pressure handling.
 - Some operations (blend normalization, recipe access) run per frame and rely on caching for performance.
 
 ## Notes and Constraints
 - Rendering uses a shared `CIContext` from `SharedRenderer` for GPU efficiency.
 - `FrameCompositor` runs on a `.userInitiated` queue to avoid starving audio.
-- `FrameProcessor` is a secondary CIImage pipeline used for non-AVFoundation paths
+- `FrameProcessor` is a secondary app-level CIImage pipeline used for non-AVFoundation paths
   (e.g., still image rendering); the core path is `FrameCompositor`.

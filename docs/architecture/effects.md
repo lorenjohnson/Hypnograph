@@ -9,15 +9,15 @@ This document describes the effect data model, effect library, runtime processin
 and how effects integrate into rendering.
 
 ## Sources
-- `Hypnograph/Renderer/Effects/Effect.swift`
-- `Hypnograph/Renderer/Effects/ParameterSpec.swift`
-- `Hypnograph/EffectLibrary/EffectConfigSchema.swift`
-- `Hypnograph/EffectLibrary/EffectConfigLoader.swift`
-- `Hypnograph/EffectLibrary/EffectRegistry.swift`
-- `Hypnograph/EffectLibrary/EffectsSession.swift`
-- `Hypnograph/EffectLibrary/EffectManager.swift`
-- `Hypnograph/Renderer/Core/FrameBuffer.swift`
-- `Hypnograph/Renderer/Core/RenderContext.swift`
+- `HypnoEffects/Effects/Effect.swift`
+- `HypnoEffects/Effects/ParameterSpec.swift`
+- `HypnoEffects/EffectLibrary/EffectConfigSchema.swift`
+- `HypnoEffects/EffectLibrary/EffectConfigLoader.swift`
+- `HypnoEffects/EffectLibrary/EffectRegistry.swift`
+- `HypnoEffects/EffectLibrary/EffectsSession.swift`
+- `HypnoEffects/EffectLibrary/EffectManager.swift`
+- `HypnoEffects/Core/FrameBuffer.swift`
+- `HypnoEffects/Core/RenderContext.swift`
 
 ## Data Model
 
@@ -93,7 +93,7 @@ metatypes and provides:
   avoid sharing mutable effect state.
 
 ## Persistence Locations
-- Bundled defaults: `Hypnograph/EffectLibrary/effects-default.json` (in app bundle).
+- Bundled defaults: `HypnoEffects/EffectLibrary/effects-default.json` (in HypnoEffects bundle).
 - Session files (per mode):
   - `montage-effects.json`
   - `sequence-effects.json`
@@ -102,4 +102,4 @@ metatypes and provides:
 ## Integration Points
 - `EffectsEditorView` edits `EffectsSession` and uses `EffectManager` to apply
   changes to the active recipe.
-- `FrameCompositor` reads the recipe and applies chains each frame.
+- The internal compositor reads the recipe and applies chains each frame.

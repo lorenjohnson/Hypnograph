@@ -9,6 +9,7 @@
 import Foundation
 import AppKit
 import UniformTypeIdentifiers
+import HypnoEffects
 
 /// Actions for saving and loading effect chain libraries
 @MainActor

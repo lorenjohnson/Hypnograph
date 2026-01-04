@@ -10,6 +10,9 @@ import Foundation
 import AVFoundation
 import AppKit
 import Combine
+import HypnoEffects
+import HypnoRenderer
+import HypnoAudio
 
 /// Live player for clean output to external monitor with smooth crossfades
 @MainActor
@@ -441,12 +444,12 @@ final class LivePlayer: ObservableObject {
 
         // Build composition using PerformanceDisplay's own EffectManager
         // This makes effects completely independent of the main preview
-        let strategy: CompositionBuilder.TimelineStrategy
+        let timeline: RenderEngine.Timeline
         switch mode {
         case .montage:
-            strategy = .montage(targetDuration: recipe.targetDuration)
+            timeline = .montage(targetDuration: recipe.targetDuration)
         case .sequence:
-            strategy = .sequence
+            timeline = .sequence
         }
         let config = RenderEngine.Config(
             outputSize: outputSize,
@@ -456,7 +459,7 @@ final class LivePlayer: ObservableObject {
 
         let result = await renderEngine.makePlayerItem(
             recipe: recipe,
-            strategy: strategy,
+            timeline: timeline,
             config: config,
             effectManager: effectManager  // Use PerformanceDisplay's own EffectManager
         )
@@ -572,4 +575,3 @@ final class LivePlayer: ObservableObject {
         }
     }
 }
-

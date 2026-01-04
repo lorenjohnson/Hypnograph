@@ -2,6 +2,8 @@ import SwiftUI
 import AVKit
 import AVFoundation
 import CoreMedia
+import HypnoEffects
+import HypnoRenderer
 
 /// Player view for Dream module montage style.
 /// All sources are composited together, looping at targetDuration.
@@ -90,7 +92,7 @@ struct MontagePlayerView: NSViewRepresentable {
 
             c.currentTask = Task {
                 let engine = RenderEngine()
-                let strategy: CompositionBuilder.TimelineStrategy = .montage(targetDuration: recipe.targetDuration)
+                let timeline: RenderEngine.Timeline = .montage(targetDuration: recipe.targetDuration)
                 let config = RenderEngine.Config(
                     outputSize: outputSize,
                     frameRate: 30,
@@ -99,7 +101,7 @@ struct MontagePlayerView: NSViewRepresentable {
 
                 let result = await engine.makePlayerItem(
                     recipe: recipe,
-                    strategy: strategy,
+                    timeline: timeline,
                     config: config,
                     effectManager: effectManager
                 )
@@ -325,4 +327,3 @@ struct MontagePlayerView: NSViewRepresentable {
         c.compositionID = nil
     }
 }
-

@@ -71,7 +71,7 @@ HypnographState (app-wide: settings, library, current module)
 ## Render Pipeline
 
 ```
-HypnogramRecipe -> RenderEngine -> CompositionBuilder -> FrameCompositor -> AVPlayer
+HypnogramRecipe -> RenderEngine -> (internal composition + compositor) -> AVPlayer
 ```
 
 Detailed render notes live in `docs/architecture/rendering.md`.

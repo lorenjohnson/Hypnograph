@@ -62,6 +62,7 @@ performance display pipeline.
 ## Integration Points
 - `Dream.makeDisplayView()` selects montage or sequence views using
   `RenderEngine.makePlayerItem()` results.
+- Dream export uses `RenderEngine.ExportQueue` with per-player sizing/timeline.
 - `HypnographState.onWatchTimerFired` is wired to `Dream.new()` for auto-generation.
 - `EffectsEditorView` edits the `EffectsSession` used by the active player or
   live mode.

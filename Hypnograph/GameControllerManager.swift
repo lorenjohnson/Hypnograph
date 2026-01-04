@@ -1,5 +1,6 @@
 import Foundation
 import GameController
+import HypnoEffects
 
 /// Manages Xbox/PlayStation/MFi game controller input and maps it to app actions.
 /// Designed for gallery installations and instrument-like control.
@@ -356,4 +357,3 @@ final class GameControllerManager {
     /// Tracks whether a panel switch has been triggered (prevents repeated switching)
     private var joystickPanelSwitchTriggered = false
 }
-

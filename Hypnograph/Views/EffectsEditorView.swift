@@ -8,6 +8,7 @@
 
 import SwiftUI
 import Combine
+import HypnoEffects
 
 /// Focus fields for the effects editor
 /// Uses SwiftUI's native focus system for tab/shift-tab navigation

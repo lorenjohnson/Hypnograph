@@ -10,13 +10,13 @@ folders and Apple Photos.
 
 ## Sources
 - `Hypnograph/MediaSources/MediaSourcesLibrary.swift`
-- `Hypnograph/MediaSources/SourceLoader.swift`
-- `Hypnograph/MediaSources/ApplePhotos.swift`
-- `Hypnograph/MediaSources/StillImageCache.swift`
+- `HypnoRenderer/Core/SourceLoader.swift`
+- `HypnoCore/MediaSources/ApplePhotos.swift`
+- `HypnoCore/MediaSources/StillImageCache.swift`
 - `Hypnograph/MediaSources/ExclusionStore.swift`
 - `Hypnograph/MediaSources/DeleteStore.swift`
 - `Hypnograph/MediaSources/FavoriteStore.swift`
-- `Hypnograph/HypnogramSource.swift`
+- `HypnoEffects/Models/HypnogramSource.swift`
 - `Hypnograph/HypnographState.swift`
 
 ## Core Data Types
@@ -63,7 +63,7 @@ folders and Apple Photos.
   - AVURLAsset for file URLs.
   - `ApplePhotos.requestAVAsset` for Photos video assets.
   - `ApplePhotos.requestCIImage` for Photos image assets.
-- Converts metadata transforms to CIImage space via `ImageUtils`.
+- Converts metadata transforms to CIImage space inside the renderer pipeline.
 
 ## ApplePhotos
 - Handles authorization and fetches PHAssets.
