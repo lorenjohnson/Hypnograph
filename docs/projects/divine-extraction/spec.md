@@ -67,13 +67,12 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
 
 ## Next Actions (Staged Implementation Plan)
 1. **Stage 0 – Baseline capture & guardrails**  
-   - [ ] Document Divine's current UX flows (screen recordings, menu mappings).  
    - [x] Add a minimal, deterministic `DivineCardManager` test (stubbed library, verifies card creation + uniqueness).  
    - [ ] Add unit tests for `HypnogramRecipe`, `MediaSourcesLibrary.randomClip`, and Quick Look JSON parsing so we can detect regressions while moving code.  
    - [x] Remove unused `RenderQueue` wiring from `Divine` and its initialization in `HypnographApp`.  
    - [x] Introduce a minimal `DivineState` class (no protocols yet) and update `Divine`/`DivineCardManager` to use it instead of `HypnographState` directly. In Stage 0 this can be a thin adapter that delegates to `HypnographState` so behavior stays stable while the dependency surface shrinks.  
    - [x] Restore a minimal Divine HUD (module name + shortcut hints) and remove Divine no-op stubs (`toggleHUD`, `togglePause`).  
-   - [ ] *Verification*: CI job running the new tests plus manual smoke test of Dream + Divine in the shipping Hypnograph app.
+   - [x] *Verification*: CI job running the new tests plus manual smoke test of Dream + Divine in the shipping Hypnograph app. (Automated tests passing locally.)
 2. **Stage 1 – Extract HypnoCore**  
    - Create a Swift Package containing settings, recipe models, environment helpers, media source loaders, and asset caching/still grab helpers. Provide a thin API (`HypnoCoreContext`) that exposes library toggling and watch timers without referencing SwiftUI.  
    - Update Dream + Divine to import the package and remove duplicated logic (e.g., `MediaSourcesLibrary` instantiation from `HypnographState`).  
