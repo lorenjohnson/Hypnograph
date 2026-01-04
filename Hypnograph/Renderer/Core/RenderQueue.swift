@@ -6,6 +6,7 @@
 ////
 
 import Foundation
+import HypnoCore
 
 /// Manages a queue of rendering jobs for Hypnogram.
 /// Keeps track of active jobs, but is agnostic about which renderer is used.

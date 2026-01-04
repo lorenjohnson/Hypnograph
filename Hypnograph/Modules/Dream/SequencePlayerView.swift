@@ -14,6 +14,7 @@ import AVKit
 import AVFoundation
 import CoreMedia
 import CoreImage
+import HypnoCore
 
 /// Sequence mode player with proper handling of videos and still images
 struct SequencePlayerView: NSViewRepresentable {
@@ -523,4 +524,3 @@ struct SequencePlayerView: NSViewRepresentable {
         return "\(recipe.sources.count)|\(pairs.joined(separator: ","))"
     }
 }
-

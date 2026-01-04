@@ -1,4 +1,5 @@
 import Foundation
+import HypnoCore
 
 @MainActor
 final class DivineState {

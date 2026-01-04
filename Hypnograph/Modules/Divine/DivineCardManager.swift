@@ -11,6 +11,7 @@ import Combine
 import CoreGraphics
 import CoreMedia
 import AVFoundation
+import HypnoCore
 
 @MainActor
 final class DivineCardManager: ObservableObject {

@@ -12,6 +12,7 @@ import Combine
 import SwiftUI
 import AVFoundation
 import AppKit
+import HypnoCore
 
 enum DreamMode: String, Codable {
     case montage

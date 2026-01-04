@@ -6,6 +6,7 @@
 import Foundation
 import CoreGraphics
 import CoreMedia
+import HypnoCore
 
 struct DivineCard: Identifiable {
     let id: UUID

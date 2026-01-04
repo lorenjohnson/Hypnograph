@@ -10,6 +10,7 @@ import AVFoundation
 import CoreImage
 import CoreGraphics
 import AppKit
+import HypnoCore
 
 /// Represents a successfully loaded source ready for composition
 struct LoadedSource {
@@ -186,4 +187,3 @@ final class SourceLoader {
         ))
     }
 }
-
