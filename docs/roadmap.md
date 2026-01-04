@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-01-04T22:36:32Z
+---
+
 # Roadmap
 
 - Change the default locaiton of stored Hypnograms to ~/Movies/Hypnograph ?
@@ -18,6 +22,7 @@
 ## Known Issues / Bugs
 - [ ] Rendering/saving some Hypnograms results in an error
   - [ ] "🔴 HypnogramRenderer: Export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn’t be completed. (Hypnograph.RenderError error 6.)"
+- [ ] Increase XcodeBuild MCP timeout to >60s (UI tests time out).
 - [ ] **Effect name editing broken** - Opens edit mode but can't type. `isTyping` focus disconnect.
 - [ ] **Sequence mode saving** - Fails silently or incorrectly.
 - [ ] **Output height/width ignored** - Settings file values not applied.
