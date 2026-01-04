@@ -53,6 +53,36 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A1B2C3D4E5F6A7B8C9D0E1F4"
+               BuildableName = "HypnoCoreTests.xctest"
+               BlueprintName = "HypnoCoreTests"
+               ReferencedContainer = "container:Hypnograph.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "B1C2D3E4F5A6B7C8D9E0F1A4"
+               BuildableName = "HypnoEffectsTests.xctest"
+               BlueprintName = "HypnoEffectsTests"
+               ReferencedContainer = "container:Hypnograph.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "C1D2E3F4A5B6C7D8E9F0A1B4"
+               BuildableName = "HypnoRendererTests.xctest"
+               BlueprintName = "HypnoRendererTests"
+               ReferencedContainer = "container:Hypnograph.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "042F991B2EC8990C006D4CDE"
                BuildableName = "HypnographUITests.xctest"
                BlueprintName = "HypnographUITests"
