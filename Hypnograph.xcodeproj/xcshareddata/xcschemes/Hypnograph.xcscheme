@@ -83,6 +83,16 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "D1E2F3A4B5C6D7E8F9A0B1C4"
+               BuildableName = "HypnogramQuickLookTests.xctest"
+               BlueprintName = "HypnogramQuickLookTests"
+               ReferencedContainer = "container:Hypnograph.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "042F991B2EC8990C006D4CDE"
                BuildableName = "HypnographUITests.xctest"
                BlueprintName = "HypnographUITests"
