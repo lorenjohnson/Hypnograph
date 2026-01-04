@@ -28,6 +28,7 @@
 - [ ] Combine most of what is in HUD into Player Settings modal
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)
 - [ ] Game Controller mapping revamp back to essentials only
+- [ ] Rename PerformanceDisplay module to align with LivePlayer (e.g. LiveDisplay)
 
 ## Project: Make Divine its own product
 - [ ] Make the core components needed by Divine mode modular and re-usable and get the app compiling with those as depednencies before moving Divine mode into its own product which will also require these dependencies.

@@ -7,6 +7,7 @@
 
 import Testing
 import CoreMedia
+import HypnoCore
 @testable import Hypnograph
 
 struct HypnographTests {

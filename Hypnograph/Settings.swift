@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import HypnoCore
 import AppKit
 import CoreGraphics
 import CoreMedia
@@ -395,5 +396,4 @@ enum SettingsLoader {
         return try JSONDecoder().decode(Settings.self, from: data)
     }
 }
-
 

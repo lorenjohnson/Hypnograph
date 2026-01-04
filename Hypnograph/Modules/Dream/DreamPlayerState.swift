@@ -9,6 +9,7 @@
 import Foundation
 import CoreMedia
 import Combine
+import HypnoCore
 
 /// Independent player state for a Dream deck (montage or sequence).
 /// Each player maintains its own recipe, playback state, and generation settings.
@@ -220,4 +221,3 @@ final class DreamPlayerState: ObservableObject {
         }
     }
 }
-

@@ -9,8 +9,8 @@ import Foundation
 
 /// Persistent list of favorited sources.
 /// Currently informational only - will be used for future features.
-final class FavoriteStore {
-    static let shared = FavoriteStore()
+public final class FavoriteStore {
+    public static let shared = FavoriteStore()
 
     private var favoritedIdentifiers: Set<String> = []
     private let queue = DispatchQueue(label: "FavoriteStore.queue")
@@ -20,14 +20,14 @@ final class FavoriteStore {
     }
 
     /// Check if a source is favorited
-    func isFavorited(_ source: MediaFile.Source) -> Bool {
+    public func isFavorited(_ source: MediaFile.Source) -> Bool {
         queue.sync {
             favoritedIdentifiers.contains(identifier(for: source))
         }
     }
 
     /// Add a source to favorites
-    func add(_ source: MediaFile.Source) {
+    public func add(_ source: MediaFile.Source) {
         queue.sync {
             favoritedIdentifiers.insert(identifier(for: source))
             save()
@@ -35,7 +35,7 @@ final class FavoriteStore {
     }
 
     /// Remove a source from favorites
-    func remove(_ source: MediaFile.Source) {
+    public func remove(_ source: MediaFile.Source) {
         queue.sync {
             favoritedIdentifiers.remove(identifier(for: source))
             save()
@@ -44,7 +44,7 @@ final class FavoriteStore {
 
     /// Toggle favorite status, returns new state
     @discardableResult
-    func toggle(_ source: MediaFile.Source) -> Bool {
+    public func toggle(_ source: MediaFile.Source) -> Bool {
         queue.sync {
             let id = identifier(for: source)
             if favoritedIdentifiers.contains(id) {
@@ -60,7 +60,7 @@ final class FavoriteStore {
     }
 
     /// Number of favorites
-    var count: Int {
+    public var count: Int {
         queue.sync { favoritedIdentifiers.count }
     }
 
@@ -76,7 +76,7 @@ final class FavoriteStore {
     }
 
     private func load() {
-        let url = Environment.favoritesURL
+        let url = HypnoCoreConfig.shared.favoritesURL
         guard let data = try? Data(contentsOf: url) else { return }
         if let list = try? JSONDecoder().decode([String].self, from: data) {
             favoritedIdentifiers = Set(list)
@@ -84,11 +84,10 @@ final class FavoriteStore {
     }
 
     private func save() {
-        let url = Environment.favoritesURL
+        let url = HypnoCoreConfig.shared.favoritesURL
         let list = Array(favoritedIdentifiers)
         if let data = try? JSONEncoder().encode(list) {
             try? data.write(to: url)
         }
     }
 }
-

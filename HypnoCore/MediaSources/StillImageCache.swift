@@ -12,7 +12,7 @@ import ImageIO
 /// Lightweight cache so we only ever try to decode a still image once per URL.
 /// This avoids repeated slow disk/decoder work and repeated CGImageSource errors.
 /// NOTE: Cache grows unbounded - call clear() periodically to free memory.
-enum StillImageCache {
+public enum StillImageCache {
     private static var ciCache: [URL: CIImage?] = [:]
     private static var cgCache: [URL: CGImage?] = [:]
     private static let lock = NSLock()
@@ -24,7 +24,7 @@ enum StillImageCache {
     ])
 
     /// Clear all cached images to free memory
-    static func clear() {
+    public static func clear() {
         lock.lock(); defer { lock.unlock() }
         ciCache.removeAll()
         cgCache.removeAll()
@@ -32,12 +32,12 @@ enum StillImageCache {
     }
 
     /// Get current cache size (number of cached images)
-    static func cacheSize() -> (ciImages: Int, cgImages: Int) {
+    public static func cacheSize() -> (ciImages: Int, cgImages: Int) {
         lock.lock(); defer { lock.unlock() }
         return (ciCache.count, cgCache.count)
     }
 
-    static func ciImage(for url: URL) -> CIImage? {
+    public static func ciImage(for url: URL) -> CIImage? {
         lock.lock(); defer { lock.unlock() }
 
         if let cached = ciCache[url] { return cached }
@@ -82,7 +82,7 @@ enum StillImageCache {
         return ci
     }
 
-    static func cgImage(for url: URL) -> CGImage? {
+    public static func cgImage(for url: URL) -> CGImage? {
         lock.lock(); defer { lock.unlock() }
 
         if let cached = cgCache[url] { return cached }

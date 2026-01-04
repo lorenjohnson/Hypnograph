@@ -2,8 +2,8 @@ import Foundation
 
 /// Simple persistent exclusion list for source media.
 /// Works with MediaFile.Source to support both file URLs and Photos identifiers.
-final class ExclusionStore {
-    static let shared = ExclusionStore()
+public final class ExclusionStore {
+    public static let shared = ExclusionStore()
 
     private var excludedIdentifiers: Set<String> = []
     private let queue = DispatchQueue(label: "ExclusionStore.queue")
@@ -12,13 +12,13 @@ final class ExclusionStore {
         load()
     }
 
-    func isExcluded(_ source: MediaFile.Source) -> Bool {
+    public func isExcluded(_ source: MediaFile.Source) -> Bool {
         queue.sync {
             excludedIdentifiers.contains(identifier(for: source))
         }
     }
 
-    func add(_ source: MediaFile.Source) {
+    public func add(_ source: MediaFile.Source) {
         queue.sync {
             excludedIdentifiers.insert(identifier(for: source))
             save()
@@ -36,7 +36,7 @@ final class ExclusionStore {
     }
 
     private func load() {
-        let url = Environment.exclusionsURL
+        let url = HypnoCoreConfig.shared.exclusionsURL
         guard let data = try? Data(contentsOf: url) else { return }
         if let list = try? JSONDecoder().decode([String].self, from: data) {
             excludedIdentifiers = Set(list)
@@ -44,7 +44,7 @@ final class ExclusionStore {
     }
 
     private func save() {
-        let url = Environment.exclusionsURL
+        let url = HypnoCoreConfig.shared.exclusionsURL
         let list = Array(excludedIdentifiers)
         if let data = try? JSONEncoder().encode(list) {
             try? data.write(to: url)

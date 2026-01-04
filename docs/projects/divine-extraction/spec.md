@@ -83,7 +83,9 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
    - Keep `HypnoCore`’s public API intentionally small (media models, `MediaSourcesLibrary`, stores, `HypnoCoreConfig`) so it can migrate to SPM without rethinking call sites.  
    - *Verification*: Unit tests for media models + `MediaSourcesLibrary.randomClip`, plus runtime validation that both modules still load libraries and respond to watch mode toggles.
 3. **Stage 2 – Extract HypnoRenderer, HypnoEffects, HypnoAudio**  
-   - Move `Renderer/Core/*`, `Renderer/Effects/*`, `EffectLibrary/*`, `Audio/AudioDeviceManager.swift`, and `Modules/PerformanceDisplay/LivePlayer.swift` into dedicated frameworks.  
+   - Move `Renderer/Core/*`, `Renderer/Effects/*`, `EffectLibrary/*`, and `Audio/AudioDeviceManager.swift` into dedicated frameworks.  
+   - Ensure new frameworks depend on `HypnoCore` for shared media models and Photos access.  
+   - Update renderer/effects resource loading to use framework bundles (avoid `Bundle.main` for Metal and effect JSON assets).  
    - Define one public entry point type per subsystem (rendering/effects/audio). If an existing type can serve as the entry point, make it the public API and keep internals `internal`; otherwise add a thin façade. This keeps one consistent access pattern while preserving a stable public API (frameworks now, SPM packages later). Divine keeps referencing these through protocols even if it only needs still-grab helpers today.  
    - *Verification*: Run existing render/export flows, confirm Hypnogram exports still succeed, and add focused tests for `RenderEngine.makePlayerItem` and `EffectManager`.
 4. **Stage 3 – Extract HypnoUI & utilities**  

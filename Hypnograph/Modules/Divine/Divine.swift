@@ -9,6 +9,7 @@ import SwiftUI
 import AVFoundation
 import CoreMedia
 import CoreGraphics
+import HypnoCore
 
 /// Tarot-style stills with drag-and-drop cards.
 @MainActor

@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import AVFoundation
+import HypnoCore
 
 extension NSWindow {
     func makeHypnographBorderless(on screen: NSScreen) {
@@ -159,6 +160,7 @@ struct HypnographApp: App {
     @StateObject private var divine: Divine
 
     init() {
+        HypnoCoreConfig.shared = HypnoCoreConfig(appSupportDirectory: Environment.appSupportDirectory)
         Environment.ensureDefaultSettingsFileExists()
 
         let settingsURL = Environment.defaultSettingsURL

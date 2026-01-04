@@ -6,14 +6,14 @@ import Photos
 
 // MARK: - Source Media Type
 
-enum SourceMediaType: String, Codable, CaseIterable {
+public enum SourceMediaType: String, Codable, CaseIterable {
     case images
     case videos
 }
 
 // MARK: - MediaSourcesLibrary
 
-final class MediaSourcesLibrary {
+public final class MediaSourcesLibrary {
     // MARK: - Lazy Loading Optimization
     // For large libraries (5000+ files), we use a two-tier approach:
     // 1. Lightweight index: just source + media kind (fast startup, low memory)
@@ -48,9 +48,9 @@ final class MediaSourcesLibrary {
     private var allowVideos: Bool { allowedMediaTypes.contains(.videos) }
 
     /// Total number of assets in this library
-    var assetCount: Int { sourceIndex.count }
+    public var assetCount: Int { sourceIndex.count }
 
-    init(sources: [String], allowedMediaTypes: Set<SourceMediaType> = [.images, .videos]) {
+    public init(sources: [String], allowedMediaTypes: Set<SourceMediaType> = [.images, .videos]) {
         self.allowedMediaTypes = allowedMediaTypes
         if sources.isEmpty {
             // No explicit sources → default to Photos library videos
@@ -63,7 +63,7 @@ final class MediaSourcesLibrary {
     }
 
     /// Initialize from a Photos album
-    init(photosAlbum: PHAssetCollection, allowedMediaTypes: Set<SourceMediaType> = [.images, .videos]) {
+    public init(photosAlbum: PHAssetCollection, allowedMediaTypes: Set<SourceMediaType> = [.images, .videos]) {
         self.allowedMediaTypes = allowedMediaTypes
         loadFromPhotosAlbum(photosAlbum)
         // No exclusions for Photos albums - they're curated
@@ -72,7 +72,7 @@ final class MediaSourcesLibrary {
     /// Initialize from both folder paths AND Photos albums (combined sources)
     /// Set `includeAllPhotos` to true to include all items from Photos library
     /// Use `customPhotosAssetIds` to include specific Photos assets by local identifier
-    init(
+    public init(
         sources: [String],
         photosAlbums: [PHAssetCollection] = [],
         includeAllPhotos: Bool = false,
@@ -295,7 +295,7 @@ final class MediaSourcesLibrary {
     // MARK: - Random clip selection (with lazy validation for video + image)
 
     /// If `clipLength` is nil, videos use their full duration and images use `imageDuration`.
-    func randomClip(clipLength: Double? = nil, imageDuration: Double = 0.1) -> VideoClip? {
+    public func randomClip(clipLength: Double? = nil, imageDuration: Double = 0.1) -> VideoClip? {
         // Consider *all* sources except those already marked bad.
         let candidates = sourceIndex.filter { !badSources.contains(sourceKey($0.source)) }
         guard !candidates.isEmpty else {
@@ -453,12 +453,12 @@ final class MediaSourcesLibrary {
 
     // MARK: - Exclusions & Deletions (user-driven)
 
-    func exclude(file: MediaFile) {
+    public func exclude(file: MediaFile) {
         ExclusionStore.shared.add(file.source)
         sourceIndex.removeAll { sourceKey($0.source) == sourceKey(file.source) }
     }
 
-    func markForDeletion(file: MediaFile) {
+    public func markForDeletion(file: MediaFile) {
         DeleteStore.shared.add(file.source)
         sourceIndex.removeAll { sourceKey($0.source) == sourceKey(file.source) }
     }

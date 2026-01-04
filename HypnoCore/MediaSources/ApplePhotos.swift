@@ -11,38 +11,36 @@ import Photos
 import AVFoundation
 
 /// Singleton interface to Apple Photos library
-final class ApplePhotos {
-    static let shared = ApplePhotos()
+public final class ApplePhotos {
+    public static let shared = ApplePhotos()
 
     // MARK: - Authorization
 
-    enum AuthorizationStatus {
+    public enum AuthorizationStatus {
         case notDetermined
         case authorized
         case limited
         case denied
         case restricted
 
-        var canRead: Bool {
+        public var canRead: Bool {
             self == .authorized || self == .limited
         }
 
-        var canWrite: Bool {
+        public var canWrite: Bool {
             self == .authorized
         }
     }
 
     /// Current authorization status (cached, call checkAuthorization() to refresh)
-    private(set) var status: AuthorizationStatus = .notDetermined
+    public private(set) var status: AuthorizationStatus = .notDetermined
 
     /// In-memory cache of hidden asset UUIDs (loaded from disk on init)
     private(set) var cachedHiddenUUIDs: Set<String> = []
 
     /// Path to cache file
     private var hiddenIdentifiersCacheURL: URL {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let hypnographDir = appSupport.appendingPathComponent("Hypnograph", isDirectory: true)
-        return hypnographDir.appendingPathComponent("apple-photos-hidden-local-identifiers.txt")
+        HypnoCoreConfig.shared.applePhotosHiddenIdentifiersCacheURL
     }
 
     private init() {
@@ -51,14 +49,14 @@ final class ApplePhotos {
     }
 
     /// Refresh cached status from system
-    func refreshStatus() {
+    public func refreshStatus() {
         let systemStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         status = mapStatus(systemStatus)
     }
 
     /// Request read/write authorization. Returns the new status.
     @discardableResult
-    func requestAuthorization() async -> AuthorizationStatus {
+    public func requestAuthorization() async -> AuthorizationStatus {
         let systemStatus = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
         status = mapStatus(systemStatus)
         print("PhotosLibrary: authorization status = \(status)")
@@ -99,7 +97,7 @@ final class ApplePhotos {
     /// Fetches all hidden assets, extracts UUIDs, writes to cache file, updates in-memory cache.
     /// Returns count of hidden assets found.
     @discardableResult
-    func refreshHiddenIdentifiersCache() -> Int {
+    public func refreshHiddenIdentifiersCache() -> Int {
         guard status.canRead else { return 0 }
 
         let assets = fetchHiddenAssets()
@@ -128,14 +126,14 @@ final class ApplePhotos {
     }
 
     /// Check if a filename (without extension) matches any cached hidden asset UUID
-    func isHiddenAsset(filenameBase: String) -> Bool {
+    public func isHiddenAsset(filenameBase: String) -> Bool {
         cachedHiddenUUIDs.contains(filenameBase)
     }
 
     // MARK: - Fetching Assets
 
     /// Fetch video assets from Photos library
-    func fetchVideos(limit: Int? = nil) -> [PHAsset] {
+    public func fetchVideos(limit: Int? = nil) -> [PHAsset] {
         guard status.canRead else { return [] }
 
         let options = PHFetchOptions()
@@ -150,7 +148,7 @@ final class ApplePhotos {
     }
 
     /// Fetch image assets from Photos library
-    func fetchImages(limit: Int? = nil) -> [PHAsset] {
+    public func fetchImages(limit: Int? = nil) -> [PHAsset] {
         guard status.canRead else { return [] }
 
         let options = PHFetchOptions()
@@ -165,13 +163,13 @@ final class ApplePhotos {
     }
 
     /// Fetch a specific asset by local identifier
-    func fetchAsset(localIdentifier: String) -> PHAsset? {
+    public func fetchAsset(localIdentifier: String) -> PHAsset? {
         let results = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
         return results.firstObject
     }
 
     /// Fetch all assets from the entire Photos library (photos and videos)
-    func fetchAllAssets(limit: Int? = nil) -> [PHAsset] {
+    public func fetchAllAssets(limit: Int? = nil) -> [PHAsset] {
         guard status.canRead else { return [] }
 
         let options = PHFetchOptions()
@@ -185,7 +183,7 @@ final class ApplePhotos {
     }
 
     /// Count all assets in the entire Photos library
-    func countAllAssets() -> Int {
+    public func countAllAssets() -> Int {
         guard status.canRead else { return 0 }
         return PHAsset.fetchAssets(with: nil).count
     }
@@ -193,20 +191,20 @@ final class ApplePhotos {
     // MARK: - Album Discovery
 
     /// Album info for menu display
-    struct AlbumInfo {
-        let localIdentifier: String
-        let title: String
-        let assetCount: Int
+    public struct AlbumInfo {
+        public let localIdentifier: String
+        public let title: String
+        public let assetCount: Int
 
         /// Key for use in library selection (consistent with existing convention)
-        var libraryKey: String {
+        public var libraryKey: String {
             "photos:\(localIdentifier)"
         }
     }
 
     /// Fetch all user-created albums (not smart albums)
     /// Returns array of AlbumInfo sorted alphabetically by title
-    func fetchUserAlbums() -> [AlbumInfo] {
+    public func fetchUserAlbums() -> [AlbumInfo] {
         guard status.canRead else { return [] }
 
         var albums: [AlbumInfo] = []
@@ -237,7 +235,7 @@ final class ApplePhotos {
     }
 
     /// Fetch an album by local identifier
-    func fetchAlbum(localIdentifier: String) -> PHAssetCollection? {
+    public func fetchAlbum(localIdentifier: String) -> PHAssetCollection? {
         let result = PHAssetCollection.fetchAssetCollections(
             withLocalIdentifiers: [localIdentifier],
             options: nil
@@ -248,7 +246,7 @@ final class ApplePhotos {
     // MARK: - AVAsset Loading
 
     /// Request AVAsset for a PHAsset (video)
-    func requestAVAsset(for asset: PHAsset) async -> AVAsset? {
+    public func requestAVAsset(for asset: PHAsset) async -> AVAsset? {
         guard status.canRead else { return nil }
         guard asset.mediaType == .video else { return nil }
 
@@ -267,7 +265,7 @@ final class ApplePhotos {
     // MARK: - Image Loading
 
     /// Request CIImage for a PHAsset (image)
-    func requestCIImage(for asset: PHAsset) async -> CIImage? {
+    public func requestCIImage(for asset: PHAsset) async -> CIImage? {
         guard status.canRead else { return nil }
         guard asset.mediaType == .image else { return nil }
 
@@ -303,7 +301,7 @@ final class ApplePhotos {
     /// Fetch all hidden assets from Photos library
     /// Returns array of PHAssets from the Hidden album
     /// Note: Requires "Use Touch ID for Hidden Album" to be disabled in Photos settings
-    func fetchHiddenAssets() -> [PHAsset] {
+    public func fetchHiddenAssets() -> [PHAsset] {
         guard status.canRead else { return [] }
 
         // Fetch the Hidden smart album
@@ -334,7 +332,7 @@ final class ApplePhotos {
     // MARK: - Debug / Inspection
 
     /// Log detailed info about a specific asset by local identifier (or UUID prefix)
-    func logAssetInfo(identifier: String) {
+    public func logAssetInfo(identifier: String) {
         // Try exact match first
         var asset = fetchAsset(localIdentifier: identifier)
 
@@ -375,7 +373,7 @@ final class ApplePhotos {
     }
 
     /// Set favorite status for an asset
-    func setFavorite(_ asset: PHAsset, isFavorite: Bool) async -> Bool {
+    public func setFavorite(_ asset: PHAsset, isFavorite: Bool) async -> Bool {
         guard status.canWrite else { return false }
 
         do {
@@ -404,7 +402,7 @@ final class ApplePhotos {
     }
 
     /// Find or create the Hypnograms album (top-level, not in a folder)
-    func findOrCreateHypnogramsAlbum() async -> PHAssetCollection? {
+    public func findOrCreateHypnogramsAlbum() async -> PHAssetCollection? {
         if let existing = findAlbum(named: Self.hypnogramsAlbumName) {
             return existing
         }
@@ -431,7 +429,7 @@ final class ApplePhotos {
     }
 
     /// Fetch assets from an album
-    func fetchAssets(from album: PHAssetCollection, limit: Int? = nil) -> [PHAsset] {
+    public func fetchAssets(from album: PHAssetCollection, limit: Int? = nil) -> [PHAsset] {
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         if let limit = limit {
@@ -445,7 +443,7 @@ final class ApplePhotos {
     // MARK: - Saving to Photos
 
     /// Save an image file to Photos and add to the Hypnograms album
-    func saveImage(at url: URL) async -> Bool {
+    public func saveImage(at url: URL) async -> Bool {
         guard status.canWrite else {
             print("ApplePhotos: cannot save image - no write access")
             return false
@@ -485,7 +483,7 @@ final class ApplePhotos {
     }
 
     /// Save a video file to Photos and add to the Hypnograms album
-    func saveVideo(at url: URL) async -> Bool {
+    public func saveVideo(at url: URL) async -> Bool {
         guard status.canWrite else {
             print("ApplePhotos: cannot save video - no write access")
             return false
@@ -524,4 +522,3 @@ final class ApplePhotos {
         }
     }
 }
-

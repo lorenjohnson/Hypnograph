@@ -13,6 +13,7 @@ import Combine
 import CoreMedia
 import CoreGraphics
 import Photos
+import HypnoCore
 
 /// Manages the current in-progress hypnogram.
 @MainActor
