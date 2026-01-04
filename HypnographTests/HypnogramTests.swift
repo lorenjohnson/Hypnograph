@@ -12,6 +12,7 @@ import CoreImage
 import CoreGraphics
 import ImageIO
 import UniformTypeIdentifiers
+import AppKit
 import HypnoCore
 import HypnoEffects
 import HypnoRenderer
@@ -219,6 +220,123 @@ struct HypnographTests {
         #expect(manager.usesFrameBuffer)
     }
 
+    @Test func hypnogramRecipeCodableRoundTrip() throws {
+        let duration = CMTime(seconds: 3, preferredTimescale: 600)
+        let file = MediaFile(source: .url(URL(fileURLWithPath: "/tmp/recipe.mov")), mediaKind: .video, duration: duration)
+        let clip = VideoClip(file: file, startTime: .zero, duration: duration)
+        let transform = CGAffineTransform(a: 1, b: 0.1, c: -0.1, d: 1, tx: 5, ty: -3)
+        let chain = EffectChain(name: "Global", effects: [EffectDefinition(type: "BasicEffect")])
+        let source = HypnogramSource(clip: clip, transforms: [transform], blendMode: BlendMode.sourceOver, effectChain: chain)
+        let recipe = HypnogramRecipe(sources: [source], targetDuration: duration, playRate: 0.8, effectChain: chain, mode: .sequence)
+
+        let data = try JSONEncoder().encode(recipe)
+        let decoded = try JSONDecoder().decode(HypnogramRecipe.self, from: data)
+
+        #expect(decoded.sources.count == 1)
+        #expect(decoded.targetDuration.seconds == recipe.targetDuration.seconds)
+        #expect(decoded.playRate == recipe.playRate)
+        #expect(decoded.mode == recipe.mode)
+
+        let decodedTransform = decoded.sources[0].transforms[0]
+        #expect(decodedTransform.a == transform.a)
+        #expect(decodedTransform.b == transform.b)
+        #expect(decodedTransform.c == transform.c)
+        #expect(decodedTransform.d == transform.d)
+        #expect(decodedTransform.tx == transform.tx)
+        #expect(decodedTransform.ty == transform.ty)
+    }
+
+    @Test func hypnogramRecipeEnsureEffectChainNames() {
+        let duration = CMTime(seconds: 1, preferredTimescale: 600)
+        let file = MediaFile(source: .url(URL(fileURLWithPath: "/tmp/ensure.mov")), mediaKind: .video, duration: duration)
+        let clip = VideoClip(file: file, startTime: .zero, duration: duration)
+        let sourceChain = EffectChain(name: nil, effects: [EffectDefinition(type: "BasicEffect")])
+        let source = HypnogramSource(clip: clip, effectChain: sourceChain)
+
+        var recipe = HypnogramRecipe(
+            sources: [source],
+            targetDuration: duration,
+            effectChain: EffectChain(name: nil, effects: [EffectDefinition(type: "BasicEffect")])
+        )
+
+        recipe.ensureEffectChainNames()
+
+        #expect(recipe.effectChain.name != nil)
+        #expect(recipe.sources[0].effectChain.name != nil)
+    }
+
+    @Test func mediaSourcesLibraryRandomClipForImage() async throws {
+        let tempDir = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        try await withTemporaryCoreConfig(tempDir.appendingPathComponent("core", isDirectory: true)) {
+            let imageURL = tempDir.appendingPathComponent("library-image.png")
+            try writeTestImage(to: imageURL, size: CGSize(width: 10, height: 10))
+
+            let library = MediaSourcesLibrary(sources: [tempDir.path], allowedMediaTypes: [.images])
+            guard let clip = library.randomClip(clipLength: 1.25) else {
+                #expect(Bool(false), "Expected image clip from library")
+                return
+            }
+
+            #expect(clip.file.mediaKind == .image)
+            #expect(abs(clip.duration.seconds - 1.25) < 0.01)
+        }
+    }
+
+    @Test func mediaSourcesLibraryRandomClipForVideo() async throws {
+        let tempDir = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        try await withTemporaryCoreConfig(tempDir.appendingPathComponent("core", isDirectory: true)) {
+            let videoURL = tempDir.appendingPathComponent("library-video.mov")
+            try await writeTestVideo(to: videoURL, size: CGSize(width: 12, height: 12), frameCount: 4, frameRate: 30)
+
+            let library = MediaSourcesLibrary(sources: [tempDir.path], allowedMediaTypes: [.videos])
+            guard let clip = library.randomClip(clipLength: 0.5) else {
+                #expect(Bool(false), "Expected video clip from library")
+                return
+            }
+
+            #expect(clip.file.mediaKind == .video)
+            #expect(clip.duration.seconds <= 0.5 + 0.01)
+            #expect(clip.startTime.seconds >= 0)
+        }
+    }
+
+    @Test func quickLookParsesRecipeJSON() throws {
+        let duration = CMTime(seconds: 2, preferredTimescale: 600)
+        let file = MediaFile(source: .url(URL(fileURLWithPath: "/tmp/quicklook.mov")), mediaKind: .video, duration: duration)
+        let clip = VideoClip(file: file, startTime: .zero, duration: duration)
+        let source = HypnogramSource(clip: clip)
+
+        let snapshotData = try makeSnapshotData(size: CGSize(width: 6, height: 6))
+        let snapshotBase64 = snapshotData.base64EncodedString()
+        var recipe = HypnogramRecipe(sources: [source], targetDuration: duration, mode: .montage)
+        recipe.snapshot = snapshotBase64
+        recipe.effectChain = EffectChain(name: "Global", effects: [
+            EffectDefinition(type: "BasicEffect"),
+            EffectDefinition(type: "FrameDifferenceEffect")
+        ])
+
+        let data = try JSONEncoder().encode(recipe)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            #expect(Bool(false), "Expected JSON object")
+            return
+        }
+
+        let sources = json["sources"] as? [[String: Any]]
+        let effectChain = json["effectChain"] as? [String: Any]
+        let effects = effectChain?["effects"] as? [[String: Any]]
+        let targetDuration = json["targetDuration"] as? [String: Any]
+        let seconds = targetDuration?["seconds"] as? Double
+
+        #expect(sources?.count == 1)
+        #expect(effects?.count == 2)
+        #expect(seconds == duration.seconds)
+        #expect((json["snapshot"] as? String)?.isEmpty == false)
+    }
+
     private func makeClips() -> [VideoClip] {
         [
             makeClip(name: "clip-a.mov"),
@@ -368,6 +486,31 @@ struct HypnographTests {
         ctx.fill(CGRect(origin: .zero, size: size))
 
         return pixelBuffer
+    }
+
+    private func withTemporaryCoreConfig(_ appSupportDirectory: URL, _ body: () async throws -> Void) async throws {
+        let previous = HypnoCoreConfig.shared
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: appSupportDirectory.path) {
+            try fm.createDirectory(at: appSupportDirectory, withIntermediateDirectories: true)
+        }
+        HypnoCoreConfig.shared = HypnoCoreConfig(appSupportDirectory: appSupportDirectory)
+        defer { HypnoCoreConfig.shared = previous }
+        try await body()
+    }
+
+    private func makeSnapshotData(size: CGSize) throws -> Data {
+        let image = CIImage(color: CIColor(red: 0, green: 1, blue: 0, alpha: 1))
+            .cropped(to: CGRect(origin: .zero, size: size))
+        let context = CIContext()
+        guard let cgImage = context.createCGImage(image, from: image.extent) else {
+            throw TestImageError.failedToCreateCGImage
+        }
+        let bitmap = NSBitmapImageRep(cgImage: cgImage)
+        guard let data = bitmap.representation(using: .png, properties: [:]) else {
+            throw TestImageError.failedToWriteImage
+        }
+        return data
     }
 
     private enum TestImageError: Error {
