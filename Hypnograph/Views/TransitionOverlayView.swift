@@ -79,4 +79,3 @@ class LayerBackedImageView: NSView {
         CATransaction.commit()
     }
 }
-

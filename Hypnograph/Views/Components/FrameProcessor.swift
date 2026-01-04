@@ -10,6 +10,7 @@
 import CoreImage
 import CoreMedia
 import CoreGraphics
+import HypnoEffects
 
 /// Input for a single layer in the processing pipeline
 struct LayerInput {
@@ -75,11 +76,10 @@ final class FrameProcessor {
         
         // Apply per-source effects if enabled
         if config.enableEffects, let manager = manager {
-            var context = RenderContext(
+            var context = manager.createContext(
                 frameIndex: 0,
                 time: config.time,
                 outputSize: config.outputSize,
-                frameBuffer: manager.frameBuffer,
                 sourceIndex: sourceIndex
             )
             img = manager.applyToSource(sourceIndex: sourceIndex, context: &context, image: img)
@@ -87,11 +87,10 @@ final class FrameProcessor {
 
         // Apply global effects
         if config.enableEffects, let manager = manager {
-            var context = RenderContext(
+            var context = manager.createContext(
                 frameIndex: 0,
                 time: config.time,
-                outputSize: config.outputSize,
-                frameBuffer: manager.frameBuffer
+                outputSize: config.outputSize
             )
             img = manager.applyGlobal(to: &context, image: img)
         }
@@ -132,11 +131,10 @@ final class FrameProcessor {
 
             // Apply per-source effects
             if config.enableEffects, let manager = manager {
-                var context = RenderContext(
+                var context = manager.createContext(
                     frameIndex: 0,
                     time: config.time,
                     outputSize: config.outputSize,
-                    frameBuffer: manager.frameBuffer,
                     sourceIndex: layer.sourceIndex
                 )
                 img = manager.applyToSource(sourceIndex: layer.sourceIndex, context: &context, image: img)
@@ -175,11 +173,10 @@ final class FrameProcessor {
 
         // Apply global effects
         if config.enableEffects, let manager = manager {
-            var context = RenderContext(
+            var context = manager.createContext(
                 frameIndex: 0,
                 time: config.time,
-                outputSize: config.outputSize,
-                frameBuffer: manager.frameBuffer
+                outputSize: config.outputSize
             )
             finalImage = manager.applyGlobal(to: &context, image: finalImage)
         }
@@ -199,4 +196,3 @@ final class FrameProcessor {
         ciContext.createCGImage(image, from: image.extent)
     }
 }
-

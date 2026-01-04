@@ -13,16 +13,14 @@ import SwiftUI
 import AVFoundation
 import AppKit
 import HypnoCore
-
-enum DreamMode: String, Codable {
-    case montage
-    case sequence
-}
+import HypnoEffects
+import HypnoRenderer
+import HypnoAudio
 
 @MainActor
 final class Dream: ObservableObject {
     let state: HypnographState
-    let renderQueue: RenderQueue
+    let renderQueue: RenderEngine.ExportQueue
 
     @Published var mode: DreamMode = .montage
 
@@ -110,7 +108,7 @@ final class Dream: ObservableObject {
 
     // MARK: - Init
 
-    init(state: HypnographState, renderQueue: RenderQueue) {
+    init(state: HypnographState, renderQueue: RenderEngine.ExportQueue) {
         self.state = state
         self.renderQueue = renderQueue
 
@@ -262,20 +260,16 @@ final class Dream: ObservableObject {
         }
     }
 
-    /// Create a renderer on-demand with current settings (aspect ratio + resolution)
-    private func makeRenderer(for mode: DreamMode) -> HypnogramRenderer {
+    /// Build export settings on-demand with current player config
+    private func exportSettings(for mode: DreamMode) -> (outputSize: CGSize, timeline: RenderEngine.Timeline) {
         let outputSize = renderSize(
             aspectRatio: activePlayer.config.aspectRatio,
             maxDimension: activePlayer.config.playerResolution.maxDimension
         )
-        let strategy: CompositionBuilder.TimelineStrategy = (mode == .montage)
+        let timeline: RenderEngine.Timeline = (mode == .montage)
             ? .montage(targetDuration: activePlayer.config.targetDuration)
             : .sequence
-        return HypnogramRenderer(
-            outputURL: state.settings.outputURL,
-            outputSize: outputSize,
-            strategy: strategy
-        )
+        return (outputSize, timeline)
     }
 
     // MARK: - Shared helpers
@@ -880,7 +874,7 @@ final class Dream: ObservableObject {
     /// This is the main save action (S / Cmd-S)
     func save() {
         // Grab the current frame from the frame buffer (which stores the fully composited frame)
-        guard let currentFrame = activePlayer.effectManager.frameBuffer.currentFrame else {
+        guard let currentFrame = activePlayer.effectManager.currentFrame else {
             print("Dream: no current frame available for save")
             return
         }
@@ -938,12 +932,17 @@ final class Dream: ObservableObject {
         }
 
         // Create renderer with current settings (aspect ratio + resolution)
-        let renderer = makeRenderer(for: mode)
+        let settings = exportSettings(for: mode)
 
         print("Dream[\(mode.rawValue)]: enqueueing recipe with \(renderRecipe.sources.count) source(s), duration: \(renderRecipe.targetDuration.seconds)s")
 
         // Enqueue immediately (don't defer - the renderer handles async internally)
-        renderQueue.enqueue(renderer: renderer, recipe: renderRecipe)
+        renderQueue.enqueue(
+            recipe: renderRecipe,
+            outputFolder: state.settings.outputURL,
+            outputSize: settings.outputSize,
+            timeline: settings.timeline
+        )
 
         AppNotifications.show("Rendering video...", flash: true)
 
@@ -964,7 +963,7 @@ final class Dream: ObservableObject {
     /// Save hypnogram to a specific location (with file picker)
     func saveAs() {
         // Grab the current frame from the frame buffer
-        guard let currentFrame = activePlayer.effectManager.frameBuffer.currentFrame else {
+        guard let currentFrame = activePlayer.effectManager.currentFrame else {
             print("Dream: no current frame available for save")
             return
         }
@@ -1029,7 +1028,7 @@ final class Dream: ObservableObject {
         }
 
         // Grab current frame for snapshot
-        guard let currentFrame = activePlayer.effectManager.frameBuffer.currentFrame else {
+        guard let currentFrame = activePlayer.effectManager.currentFrame else {
             print("Dream: no current frame available for favorite")
             return
         }

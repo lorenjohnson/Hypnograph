@@ -34,6 +34,8 @@ final class TransitionManager: ObservableObject {
 
     /// Capture the current screen content and begin a crossfade transition
     /// Call this BEFORE changing the hypnogram
+    init() {}
+
     func beginTransitionFromWindow() {
         guard let window = NSApplication.shared.mainWindow,
               let contentView = window.contentView else {
@@ -187,4 +189,3 @@ final class TransitionManager: ObservableObject {
         }
     }
 }
-

@@ -14,6 +14,7 @@ import CoreMedia
 import CoreGraphics
 import Photos
 import HypnoCore
+import HypnoRenderer
 
 /// Manages the current in-progress hypnogram.
 @MainActor

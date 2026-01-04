@@ -15,6 +15,8 @@ import AVFoundation
 import CoreMedia
 import CoreImage
 import HypnoCore
+import HypnoEffects
+import HypnoRenderer
 
 /// Sequence mode player with proper handling of videos and still images
 struct SequencePlayerView: NSViewRepresentable {
@@ -287,22 +289,13 @@ struct SequencePlayerView: NSViewRepresentable {
             ])
         }
 
-        // Build video composition with our custom compositor
+        // Build player item via RenderEngine (uses custom compositor internally)
         c.loadTask?.cancel()
         c.loadTask = Task {
             guard let asset = await source.clip.file.loadAsset() else {
                 print("❌ SequencePlayer: Failed to load asset")
                 return
             }
-
-            guard let videoTrack = try? await asset.loadTracks(withMediaType: .video).first else {
-                print("❌ SequencePlayer: No video track in asset")
-                return
-            }
-
-            let preferredTransform = try? await videoTrack.load(.preferredTransform)
-            let naturalSize = try? await videoTrack.load(.naturalSize)
-            let audioTrack = try? await asset.loadTracks(withMediaType: .audio).first
 
             guard !Task.isCancelled else { return }
 
@@ -311,108 +304,57 @@ struct SequencePlayerView: NSViewRepresentable {
 
             guard !Task.isCancelled else { return }
 
+            let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: displayResolution.maxDimension)
+            let engine = RenderEngine()
+            let result = await engine.makePlayerItemForSource(
+                source,
+                sourceIndex: index,
+                outputSize: outputSize,
+                frameRate: 30,
+                enableEffects: true,
+                effectManager: self.effectManager
+            )
+
+            guard !Task.isCancelled else { return }
+
             await MainActor.run {
-                // Convert AVFoundation transform to CIImage coordinate system
-                let avTransform = preferredTransform ?? .identity
-                let size = naturalSize ?? CGSize(width: 1920, height: 1080)
-                let ciTransform = ImageUtils.convertTransformForCIImage(avTransform, naturalSize: size)
-
-                // Compose with user transforms
-                let userTransform = source.transforms.reduce(CGAffineTransform.identity) { $0.concatenating($1) }
-                let composedTransform = ciTransform.concatenating(userTransform)
-
-                // Create composition for single clip
-                let composition = AVMutableComposition()
-                guard let compVideoTrack = composition.addMutableTrack(
-                    withMediaType: .video,
-                    preferredTrackID: kCMPersistentTrackID_Invalid
-                ) else {
-                    print("❌ SequencePlayer: Failed to create composition track")
-                    return
-                }
-
-                // Insert the video clip portion
-                let clipTimeRange = CMTimeRange(start: source.clip.startTime, duration: source.clip.duration)
-                do {
-                    try compVideoTrack.insertTimeRange(clipTimeRange, of: videoTrack, at: .zero)
-                } catch {
-                    print("❌ SequencePlayer: Failed to insert video time range: \(error)")
-                    return
-                }
-
-                // Insert audio track if present
-                if let audioTrack = audioTrack {
-                    if let compAudioTrack = composition.addMutableTrack(
-                        withMediaType: .audio,
-                        preferredTrackID: kCMPersistentTrackID_Invalid
-                    ) {
-                        do {
-                            try compAudioTrack.insertTimeRange(clipTimeRange, of: audioTrack, at: .zero)
-                        } catch {
-                            print("⚠️ SequencePlayer: Failed to insert audio time range: \(error)")
-                            // Continue without audio
-                        }
+                switch result {
+                case .success(let playerItem):
+                    let player: AVPlayer
+                    if let existingPlayer = playerView.player {
+                        existingPlayer.replaceCurrentItem(with: playerItem)
+                        player = existingPlayer
+                    } else {
+                        player = AVPlayer(playerItem: playerItem)
+                        playerView.player = player
                     }
-                }
 
-                // Create video composition with our compositor
-                // Use display resolution for preview - AVPlayerView handles fitting to view
-                let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: displayResolution.maxDimension)
+                    c.displayMode = .video(player)
 
-                let videoComposition = AVMutableVideoComposition()
-                videoComposition.renderSize = outputSize
-                videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
-                videoComposition.customVideoCompositorClass = FrameCompositor.self
+                    // Apply volume and audio device immediately, before playback starts.
+                    // This is necessary because player setup runs in an async Task that
+                    // completes after updateNSView() returns. SwiftUI won't call updateNSView
+                    // again until a binding changes, so the audio settings logic at the end of
+                    // updateNSView would miss the window before playImmediately() is called.
+                    // Note: muting is done via volume=0, not player.isMuted
+                    player.volume = self.volume
+                    player.audioOutputDeviceUniqueID = self.audioDeviceUID
+                    c.lastVolume = self.volume
+                    c.lastAudioDeviceUID = self.audioDeviceUID
+                    print("🔊 SequencePlayerView: Setup - Audio device = \(self.audioDeviceUID ?? "System Default"), volume=\(self.volume)")
 
-                // Create instruction for the entire clip
-                // Pass effectManager so FrameCompositor can apply effects
-                let instruction = RenderInstruction(
-                    timeRange: CMTimeRange(start: .zero, duration: source.clip.duration),
-                    layerTrackIDs: [compVideoTrack.trackID],
-                    blendModes: [BlendMode.sourceOver],
-                    transforms: [composedTransform],
-                    sourceIndices: [index],
-                    enableEffects: true,
-                    stillImages: [nil],
-                    effectManager: self.effectManager
-                )
-                videoComposition.instructions = [instruction]
+                    // Setup end observer for clip duration
+                    self.setupClipEndObserver(player: player, clipEndTime: source.clip.duration, coordinator: c)
 
-                // Create player item with composition
-                let playerItem = AVPlayerItem(asset: composition)
-                playerItem.videoComposition = videoComposition
+                    // Apply pause state
+                    if self.isPaused {
+                        player.pause()
+                    } else {
+                        player.playImmediately(atRate: self.recipe.playRate)
+                    }
 
-                let player: AVPlayer
-                if let existingPlayer = playerView.player {
-                    existingPlayer.replaceCurrentItem(with: playerItem)
-                    player = existingPlayer
-                } else {
-                    player = AVPlayer(playerItem: playerItem)
-                    playerView.player = player
-                }
-
-                c.displayMode = .video(player)
-
-                // Apply volume and audio device immediately, before playback starts.
-                // This is necessary because player setup runs in an async Task that
-                // completes after updateNSView() returns. SwiftUI won't call updateNSView
-                // again until a binding changes, so the audio settings logic at the end of
-                // updateNSView would miss the window before playImmediately() is called.
-                // Note: muting is done via volume=0, not player.isMuted
-                player.volume = self.volume
-                player.audioOutputDeviceUniqueID = self.audioDeviceUID
-                c.lastVolume = self.volume
-                c.lastAudioDeviceUID = self.audioDeviceUID
-                print("🔊 SequencePlayerView: Setup - Audio device = \(self.audioDeviceUID ?? "System Default"), volume=\(self.volume)")
-
-                // Setup end observer for clip duration
-                self.setupClipEndObserver(player: player, clipEndTime: source.clip.duration, coordinator: c)
-
-                // Apply pause state
-                if self.isPaused {
-                    player.pause()
-                } else {
-                    player.playImmediately(atRate: self.recipe.playRate)
+                case .failure(let error):
+                    print("❌ SequencePlayer: Failed to build player item: \(error)")
                 }
             }
         }

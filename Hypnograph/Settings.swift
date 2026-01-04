@@ -8,6 +8,7 @@ import HypnoCore
 import AppKit
 import CoreGraphics
 import CoreMedia
+import HypnoRenderer
 
 // MARK: - Source Library Info (for menu display)
 
@@ -396,4 +397,3 @@ enum SettingsLoader {
         return try JSONDecoder().decode(Settings.self, from: data)
     }
 }
-

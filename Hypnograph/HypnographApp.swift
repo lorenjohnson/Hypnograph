@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 import AVFoundation
 import HypnoCore
+import HypnoRenderer
 
 extension NSWindow {
     func makeHypnographBorderless(on screen: NSScreen) {
@@ -33,7 +34,7 @@ extension NSWindow {
 // MARK: - App Delegate
 
 final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
-    weak var renderQueue: RenderQueue?
+    weak var renderQueue: RenderEngine.ExportQueue?
     weak var mainWindow: NSWindow?
     var gameControllerManager: GameControllerManager?
 
@@ -155,7 +156,7 @@ struct HypnographApp: App {
 
     private let settings: Settings
     @StateObject private var state: HypnographState
-    private let renderQueue: RenderQueue  // Not @StateObject - we don't want to trigger view updates
+    private let renderQueue: RenderEngine.ExportQueue  // Not @StateObject - we don't want to trigger view updates
     @StateObject private var dream: Dream
     @StateObject private var divine: Divine
 
@@ -184,7 +185,11 @@ struct HypnographApp: App {
 
         self.settings = settings
         let state = HypnographState(settings: settings)
-        let renderQueue = RenderQueue()
+        let renderQueue = RenderEngine.ExportQueue()
+        renderQueue.onStatusMessage = { message in
+            let duration: TimeInterval = (message == "Rendering started") ? 1.0 : 2.0
+            AppNotifications.show(message, flash: true, duration: duration)
+        }
         self.renderQueue = renderQueue
 
         _state = StateObject(wrappedValue: state)

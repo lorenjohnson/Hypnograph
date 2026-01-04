@@ -8,6 +8,8 @@
 
 import SwiftUI
 import CoreMedia
+import HypnoAudio
+import HypnoRenderer
 
 // MARK: - Dark Mode Toggle Styles
 

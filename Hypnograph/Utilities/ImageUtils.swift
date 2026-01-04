@@ -2,8 +2,8 @@
 //  ImageUtils.swift
 //  Hypnograph
 //
-//  Shared image processing utilities used by FrameCompositor and FrameProcessor.
-//  Centralized here to ensure consistent behavior across Montage and Sequence modes.
+//  Shared image processing utilities used by app-level image pipelines.
+//  Centralized here to keep MetalImageView/FrameProcessor behavior consistent.
 //
 
 import CoreImage
@@ -121,4 +121,3 @@ enum ImageUtils {
         return composite.outputImage ?? foreground
     }
 }
-
