@@ -13,7 +13,7 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
 - Rendering/export (Renderer/Core, EffectLibrary, AV export) stays owned by Hypnograph initially, but the extraction plan anticipates Divine eventually needing those capabilities.
 - Divine cards will keep the existing UX semantics (random clip selection, flip/reveal, drag, zoom) so we can validate parity.
 - Divine does not support watch mode; no auto-cycle behavior is required.
-- User data that currently lives under `~/Library/Application Support/Hypnograph` (settings, exclusions, recipes, Quick Look caches) can be migrated/aliased but must not be silently lost.
+- User data that currently lives under `~/Library/Application Support/Hypnograph` (settings, exclusions, recipes) can be migrated/aliased but must not be silently lost.
 - We can introduce Swift Package targets or static framework targets to house core code; both Hypnograph and the new Divine app will live in the same Xcode workspace initially.
 
 ## Proposed Structure
@@ -29,16 +29,16 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
 - **Shared infrastructure**
   - Data + persistence: `HypnographState.swift`, `Settings.swift`, `HypnogramSource.swift`, `HypnogramRecipe.swift`, `RecipeStore.swift`, `HypnogramStore.swift`, `Environment.swift`, `MediaSources/*`, `WindowState.swift`, `WindowRegistration.swift`.
   - UI utilities: `HUDView.swift`, `AppNotifications.swift`, `PhotosPickerSheet.swift`, `EffectsEditorViewModel`, `TooltipManager`, `TextFieldFocusMonitor`.
-  - Quick Look target (`HypnogramQuickLook/PreviewViewController.swift`) currently hand-parses `.hypno/.hypnogram` files instead of sharing model types.
+    - Note: `PhotosPickerSheet.swift` is deprecated for now and should not be treated as a required shared surface for Divine extraction.
 
 ### Core Library Extraction Targets
 | Library | Responsibilities | Key sources today | Notes |
 | --- | --- | --- | --- |
-| **HypnoCore** | Settings, recipes, media models, environment paths, exclusion/favorite stores, window state, asset loading/caching/still grabs | `Settings.swift`, `HypnogramState.swift` (split out module-neutral parts), `HypnogramSource.swift`, `HypnogramRecipe.swift`, `RecipeStore.swift`, `HypnogramStore.swift`, `Environment.swift`, `MediaSourcesLibrary.swift`, `ApplePhotos.swift`, `StillImageCache.swift`, `FavoriteStore.swift`, `ExclusionStore.swift`, video thumbnail helpers inside `DivineCardManager`/`Renderer` | Provide mode-agnostic APIs (`LibraryCoordinator`, `WatchTimer`, `WindowStateStore`) so both apps avoid touching Hypnograph-only logic. |
+| **HypnoCore** | Settings, recipes, media models, environment paths, exclusion/favorite stores, asset loading/caching/still grabs | `Settings.swift`, `HypnogramState.swift` (split out module-neutral parts), `HypnogramSource.swift`, `HypnogramRecipe.swift`, `RecipeStore.swift`, `HypnogramStore.swift`, `Environment.swift`, `MediaSourcesLibrary.swift`, `ApplePhotos.swift`, `StillImageCache.swift`, `FavoriteStore.swift`, `ExclusionStore.swift`, video thumbnail helpers inside `DivineCardManager`/`Renderer` | Provide mode-agnostic APIs (`LibraryCoordinator`, `WatchTimer`) so both apps avoid touching Hypnograph-only logic. |
 | **HypnoRenderer** | Composition building, frame compositing, export queue, AVPlayer creation, transition helpers | `Renderer/Core/*`, `Renderer/FrameInterpolation`, `Renderer/Effects/*` (metal kernels stay in a Resources bundle), `RenderEngine.ExportQueue` | LivePlayer stays in the app (AppKit/windowing); Divine does not need export immediately but should compile against the same module so it can add rendering later. |
 | **HypnoEffects** | Effect registry/session/editor plumbing shared by Dream preview, Performance display, and future Divine editing | `EffectLibrary/*.swift`, `Renderer/Effects/*.swift`, effect JSON templates under `EffectLibrary` | Keep effect metadata + shader management encapsulated; exposes safe APIs for UI to mutate chains. |
 | **HypnoAudio** | Audio routing + monitoring | `Audio/AudioDeviceManager.swift`, audio helpers in `LivePlayer` | Divine currently just plays through default device; factoring this allows future per-card audio output options without reimplementing. |
-| **HypnoUI** | Shared SwiftUI components, HUD, AppNotifications, Photos picker sheet, tooltip/text-field utilities, menu wiring | `Views/HUDView.swift`, `Views/AppNotifications.swift`, `Utilities/*.swift`, `Views/PhotosPickerSheet.swift`, `WindowState.swift`, `WindowRegistration.swift` | Expose small composable views plus service objects; Divine app can opt into HUD + notifications without dragging along Dream-only panels. |
+| **HypnoAppShell** (name TBD) | App-agnostic shell services and non-visual utilities shared by multiple products | `Views/AppNotifications.swift`, `Utilities/TextFieldFocusMonitor.swift`, `WindowState.swift` | Keep this intentionally small and non-opinionated about UI. A richer shared `HypnoUI` view library (sliders, panels, HUD variants) can come later once Divine.app exists and shared widgets are proven. |
 
 ### Divine Product Architecture
 - **App Target**: new macOS target (e.g., `Divine.app`) that references the extracted packages plus the Divine-specific module.
@@ -48,20 +48,17 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
   - Optional export/render features plug into `HypnoRenderer` later; initial milestone only needs the player/still grabbing subset.
 - **Inter-app coordination**
   - Shared packages mean Dream and Divine compile against the same `HypnogramSource`, `EffectChain`, and `MediaFile` representations, enabling recipe import/export between products.
-  - Controller/menu inputs (`GameControllerManager`, keyboard shortcuts) move behind `HypnoUI` so the new app does not depend on Hypnograph's `GameControllerManager` unless explicitly enabled.
+  - Keep controller/menu inputs (`GameControllerManager`, keyboard shortcuts) app-owned for now; once Divine.app exists we can decide whether any input abstractions belong in a shared shell layer.
   - Watching/automation features (Apple Watch timer, `state.onWatchTimerFired`) become part of `HypnoCore.WatchService` to keep Divine's auto-new behavior consistent.
 
-### Quick Look + Supporting Targets
-- Refactor `HypnogramQuickLook` to depend on `HypnoCore` instead of manually decoding JSON. This avoids drift when recipe schemas evolve and ensures Divine + Dream generated files preview identically.
-- Determine whether Divine spreads will reuse the `.hypno` extension (storing card layout metadata alongside the existing recipe fields) or introduce a `.divine` file. Either way, Quick Look should read shared model types and display card-count/clip summaries accordingly.
+### Supporting Targets
 - Consider a reusable command-line helper target (today's `Scripts/` + `Add to Hypnograph Sources.workflow`) that both apps can ship for ingesting sources; host it inside a shared `Tools` bundle so we don't ship duplicates.
 
 ## Key Decisions
-- **Shared package boundaries vs. monolithic target**: adopt Swift Packages for the six libraries above so both apps (and Quick Look/tests) can link only what they need. Static frameworks would also work, but SPM keeps dependency graphs explicit and testable.
+- **Shared package boundaries vs. monolithic target**: adopt Swift Packages for the libraries above so both apps (and tests) can link only what they need. Static frameworks would also work, but SPM keeps dependency graphs explicit and testable.
 - **Data location strategy**: Divine defaults to `~/Library/Application Support/Divine`.
-- **File format compatibility**: prefer extending the existing `.hypno/.hypnogram` recipe format with optional Divine-specific payload (e.g., card positions/orientation) to maximize interoperability and keep Quick Look simple.
+- **File format compatibility**: keep Divine’s future spread format flexible; avoid committing to a storage format until Divine.app behavior stabilizes.
 - **Testing posture**: build lightweight unit/UI tests around the new packages before relocating code. This ensures each migration step (e.g., moving `MediaSourcesLibrary`) can be validated without spinning up the whole app.
-- **Quick Look ownership**: treat Quick Look as a consumer of `HypnoCore` so schema changes only happen in one place, and extend it to optionally render Divine spreads (even if just metadata) to avoid shipping a second extension.
 
 ## Open Questions
 - Is Divine expected to export renders/video, or is it strictly a live experience? This affects how aggressively we prioritize moving `HypnoRenderer` over.
@@ -73,7 +70,7 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
 1. **Stage 0 – Baseline capture & guardrails**  
    - **Status: Complete**  
    - [x] Add a minimal, deterministic `DivineCardManager` test (stubbed library, verifies card creation + uniqueness).  
-   - [x] Add unit tests for `HypnogramRecipe`, `MediaSourcesLibrary.randomClip`, and Quick Look JSON parsing so we can detect regressions while moving code.  
+   - [x] Add unit tests for `HypnogramRecipe`, `MediaSourcesLibrary.randomClip`, and hypnogram JSON parsing so we can detect regressions while moving code.  
    - [x] Remove unused `RenderQueue` wiring from `Divine` and its initialization in `HypnographApp`.  
    - [x] Introduce a minimal `DivineState` class (no protocols yet) and update `Divine`/`DivineCardManager` to use it instead of `HypnographState` directly. In Stage 0 this can be a thin adapter that delegates to `HypnographState` so behavior stays stable while the dependency surface shrinks.  
    - [x] Restore a minimal Divine HUD (module name + shortcut hints) and remove Divine no-op stubs (`toggleHUD`, `togglePause`).  
@@ -102,26 +99,36 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
    - Replace `RenderQueue`/`HypnogramRenderer` with `RenderEngine.ExportQueue`.  
    - Add `RenderEngine.Timeline` and a single-source player-item API for sequence playback.  
    - *Verification*: macOS build + unit tests for render pipeline entry points; manual playback smoke test pending.
-5. **Stage 3 – Extract HypnoUI & utilities**  
-   - Relocate HUD, AppNotifications, tooltip/text-field helpers, Photos picker, and window-state logic into a dedicated framework that produces composable SwiftUI views/services.  
-   - Expose a small, stable public API (views + service protocols) so the UI layer can migrate to SPM later without rewriting call sites.  
-   - Ensure both Dream and Divine adopt the package, allowing the new app to reuse HUD toggles, notifications, and Photos selection without referencing Hypnograph-specific state.  
-   - *Verification*: Manual UI test toggling HUD/Photos picker in Hypnograph and (if available) a rudimentary Divine test harness target.
-6. **Stage 4 – Stand up Divine.app target**  
+5. **Stage 2.8 – Parameterize core stores (remove singleton + global config ordering hazards)**  
+   - Replace `FavoriteStore.shared`, `ExclusionStore.shared`, and `DeleteStore.shared` with explicit instances owned by app state (`HypnographState`, `DivineState`).  
+   - Avoid disk IO at singleton init time; store instances should be constructed with explicit URLs/config so they cannot accidentally read/write to the wrong app support directory.  
+   - Keep `HypnoCoreConfig` for shared path calculation, but treat it as an input when creating store instances rather than global mutable state that stores implicitly depend on.  
+   - *Verification*: Unit tests can point stores at a temporary directory; Hypnograph runtime behavior unchanged.
+
+6. **Stage 3 – Extract HypnoAppShell (notifications + window state + input gating)**  
+   - Extract **AppNotifications** into a small shared framework, but remove Hypnograph-specific branding (e.g., inject notification title/app identity from each app target).  
+   - Extract **WindowState** as a pure model (Codable) so both apps can share the clean-screen / visibility semantics without sharing specific overlays or panels.  
+   - Extract **TextFieldFocusMonitor** (macOS) or an equivalent “is typing” gate so both apps can reliably disable single-key shortcuts while editing text.  
+   - Remove Divine’s dependency on the Hypnograph HUD pipeline (`HUDItem` / `hudItems()`); explicitly allow Divine to have *no HUD* until Divine.app’s table UX is designed.  
+   - Keep **HUDView** and **TooltipManager** app-owned for now (Hypnograph-only); do not attempt to standardize a shared overlay aesthetic in this stage.  
+   - Treat `PhotosPickerSheet.swift` as deprecated/out-of-scope for this extraction; do not pull it into shared frameworks at this stage.  
+   - *Verification*: Manual test (Hypnograph) for notifications + clean screen + typing/shortcut gating; no Divine UI parity requirements at this stage.
+
+7. **Stage 4 – Stand up Divine.app target**  
    - Create a new macOS app target with its own bundle identifier and `DivineApp` entry point. Wire it to the shared packages plus the existing Divine module files (moved under `DivineApp/Sources` if desired).  
    - Introduce a full `DivineState` that owns its settings, library selection, and persistence (no `HypnographState` dependency), re-implement menus/shortcuts locally, and ensure Divine no longer references Hypnograph-only constructs (e.g., GameControllerManager).  
    - *Verification*: Build+run the new app, confirm you can open libraries, add cards, zoom/pan, and that Hypnograph.app still functions.
-7. **Stage 5 – Quick Look & packaging alignment**  
-   - Point `HypnogramQuickLook` at the shared frameworks so it can parse both Dream hypnograms and Divine spreads. If a `.divine` extension is introduced, register it here.  
-   - Keep the Quick Look extension consuming only public APIs so packaging changes (framework → SPM) do not ripple into its implementation.  
-   - Update installer assets/scripts so both apps share optional helpers (CLI, Automator workflows) without duplication.  
-   - *Verification*: Quick Look previews still work for `.hypno` files and, if applicable, new `.divine` documents; both app bundles code-sign and notarize cleanly.
-8. **Stage 6 – Cleanup & optional renderer enablement**  
+8. **Stage 5 – Cleanup & optional renderer enablement**  
    - Once Divine is stable, remove Divine-specific UI/menus from Hypnograph (or keep them behind a build flag) and decide whether Divine should optionally link `HypnoRenderer` for export features.  
    - *Verification*: Regression pass on Hypnograph (Dream only) and final smoke test on Divine with whichever optional renderer features are enabled.
-9. **Stage 7 – Packaging audit (frameworks → SPM)**  
-   - Review framework boundaries, resource handling, and test isolation to determine whether migrating to Swift Package Manager is worth the maintenance cost.  
-   - If migration is favorable, plan a staged move that preserves bundle identifiers, resource access (`Bundle.module`), and build/test parity.  
-   - *Verification*: Both apps + Quick Look build cleanly against the packages; no resource lookup regressions.
+9. **Stage 6 (Optional) – Packaging audit (frameworks → SPM)**  
+   - Evaluate whether staying on Xcode frameworks is “good enough” for the expected ecosystem (Divine + 1–3 sibling apps in the same workspace) or whether SwiftPM materially improves your day-to-day.  
+   - Criteria to decide:
+     - **Repository boundary**: do you expect these libraries to be reused outside this repo/workspace (or by external contributors/CI tooling)? If yes, SwiftPM is usually worth it.
+     - **Resource model**: would moving resource lookups from framework bundles to `Bundle.module` be straightforward for effect JSON/LUT/text assets, and is Metal shader compilation supported in your desired build workflow (Xcode-only vs `swift build`)?
+     - **Build ergonomics**: do you need `swift test` / command-line builds to be first-class, or is Xcode-centric development fine?
+     - **Xcode integration**: do you rely on framework-specific behaviors (e.g., asset catalogs, build phases, embedding/signing) that are simpler as frameworks?
+   - If migration is favorable, plan a staged move that preserves public API shape and build/test parity.  
+   - *Verification*: Both apps build cleanly after the packaging decision; no resource lookup regressions.
 
 Each stage is independently shippable and testable; we can pause after any step if risk or schedule demands.

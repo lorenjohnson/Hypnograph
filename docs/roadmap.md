@@ -18,6 +18,8 @@ last_reviewed: 2026-01-04T22:36:32Z
 - [ ] Custom Metal blends modes for better destructive shaders/effects
 - [ ] Auto blend mode sensing (like based on the relative brightiness of the source images)
 - [ ] Midi mapping, Mic input, MIDI Clock, OSC
+- [ ] Randomize blend modes and effects for all sources in current Hypnogram (wheel of fortune)
+- [ ] Bring back randomized effect / blend mode as options for randomized hypnogram generation
 
 ## Known Issues / Bugs
 - [ ] Rendering/saving some Hypnograms results in an error
@@ -27,6 +29,7 @@ last_reviewed: 2026-01-04T22:36:32Z
 - [ ] **Sequence mode saving** - Fails silently or incorrectly.
 - [ ] **Output height/width ignored** - Settings file values not applied.
 - [ ] **Finder action not installing** - Automator action fails.
+- [ ] Save last used Global Effect as setting so the app comes back to the last used effect applied to the global layer
 
 ## Minor Projects:
 - [ ] Put Render Video and Save on a hot keye and retitle the menu item to "Save and Rednder" (Opt-Cmd-S?)
@@ -34,6 +37,7 @@ last_reviewed: 2026-01-04T22:36:32Z
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)
 - [ ] Game Controller mapping revamp back to essentials only
 - [ ] Rename PerformanceDisplay module to align with LivePlayer (e.g. LiveDisplay)
+- [ ] Remove deprecated `PhotosPickerSheet.swift` / custom Photos selection UI and revisit later with a Divine-first approach
 
 ## Project: Make Divine its own product
 - [ ] Make the core components needed by Divine mode modular and re-usable and get the app compiling with those as depednencies before moving Divine mode into its own product which will also require these dependencies.
