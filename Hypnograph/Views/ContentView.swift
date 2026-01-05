@@ -2,6 +2,7 @@ import SwiftUI
 import AVFoundation
 import Combine
 import PhotosUI
+import HypnoAppShell
 
 struct ContentView: View {
     @ObservedObject var state: HypnographState
@@ -53,11 +54,10 @@ struct ContentView: View {
 
             // HUD and Hypnogram List - top left (below LIVE if visible)
             VStack(alignment: .leading, spacing: 8) {
-                if state.windowState.isVisible("hud") {
+                if state.windowState.isVisible("hud") && state.currentModuleType == .dream {
                     HUDView(
                         state: state,
-                        dream: dream,
-                        divine: divine
+                        dream: dream
                     )
                 }
 

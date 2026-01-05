@@ -16,6 +16,7 @@ import HypnoCore
 import HypnoEffects
 import HypnoRenderer
 import HypnoAudio
+import HypnoAppShell
 
 @MainActor
 final class Dream: ObservableObject {

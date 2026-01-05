@@ -65,7 +65,6 @@ struct HUDItem {
 struct HUDView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var dream: Dream
-    @ObservedObject var divine: Divine
     @ObservedObject private var tooltipManager = TooltipManager.shared
 
     var body: some View {
@@ -133,12 +132,8 @@ struct HUDView: View {
     }
 
     private func hudItems() -> [HUDItem] {
-        switch state.currentModuleType {
-        case .dream:
-            return dream.hudItems().sorted { $0.order < $1.order }
-        case .divine:
-            return divine.hudItems().sorted { $0.order < $1.order }
-        }
+        guard state.currentModuleType == .dream else { return [] }
+        return dream.hudItems().sorted { $0.order < $1.order }
     }
 
     /// Shorten path by replacing home directory with ~/

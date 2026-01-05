@@ -1,11 +1,12 @@
 //
 //  AppNotifications.swift
-//  Hypnograph
+//  HypnoAppShell
 //
 //  Unified notification system - in-app overlay + optional system notifications.
 //  Works on both macOS and iOS via UserNotifications framework.
 //
 
+import Foundation
 import SwiftUI
 import UserNotifications
 #if os(macOS)
@@ -22,14 +23,33 @@ struct NotificationItem: Identifiable {
     let flash: Bool
 }
 
+// MARK: - AppNotificationIdentity
+
+public struct AppNotificationIdentity: Sendable {
+    public let displayName: String
+
+    public init(displayName: String) {
+        self.displayName = displayName
+    }
+
+    public static func fromBundle(_ bundle: Bundle = .main) -> AppNotificationIdentity {
+        let displayName = (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
+            ?? (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String)
+            ?? ProcessInfo.processInfo.processName
+        return AppNotificationIdentity(displayName: displayName)
+    }
+}
+
 // MARK: - AppNotifications
 
 /// Unified notification manager for in-app and system notifications.
 /// - Foreground: shows in-app overlay (stacked, with dismiss button)
 /// - Background: sends system notification (if authorized)
 @MainActor
-final class AppNotifications: ObservableObject {
-    static let shared = AppNotifications()
+public final class AppNotifications: ObservableObject {
+    public static let shared = AppNotifications()
+
+    private var identity: AppNotificationIdentity = .fromBundle()
 
     // MARK: - In-app overlay state
 
@@ -39,10 +59,14 @@ final class AppNotifications: ObservableObject {
 
     // MARK: - System notification state
 
-    private(set) var systemNotificationsAuthorized: Bool = false
+    public private(set) var systemNotificationsAuthorized: Bool = false
 
     private init() {
         checkSystemNotificationAuthorization()
+    }
+
+    public func updateIdentity(_ identity: AppNotificationIdentity) {
+        self.identity = identity
     }
 
     // MARK: - App state
@@ -64,7 +88,7 @@ final class AppNotifications: ObservableObject {
     ///   - message: The message to display
     ///   - flash: If true, auto-dismiss after duration. If false (default), requires manual dismiss.
     ///   - duration: How long to show if flash is true (default 2 seconds)
-    func show(_ message: String, flash: Bool = false, duration: TimeInterval = 2.0) {
+    public func show(_ message: String, flash: Bool = false, duration: TimeInterval = 2.0) {
         if isAppActive {
             showInApp(message, flash: flash, duration: duration)
         } else {
@@ -92,7 +116,7 @@ final class AppNotifications: ObservableObject {
     }
 
     /// Dismiss a specific notification by ID.
-    func dismiss(id: UUID) {
+    public func dismiss(id: UUID) {
         dismissTasks[id]?.cancel()
         dismissTasks.removeValue(forKey: id)
 
@@ -102,7 +126,7 @@ final class AppNotifications: ObservableObject {
     }
 
     /// Dismiss all notifications.
-    func dismissAll() {
+    public func dismissAll() {
         for (id, task) in dismissTasks {
             task.cancel()
             dismissTasks.removeValue(forKey: id)
@@ -115,7 +139,7 @@ final class AppNotifications: ObservableObject {
     // MARK: - System notifications
 
     /// Request authorization for system notifications.
-    func requestSystemNotificationAuthorization() {
+    public func requestSystemNotificationAuthorization() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { [weak self] granted, error in
             Task { @MainActor in
                 self?.systemNotificationsAuthorized = granted
@@ -143,7 +167,7 @@ final class AppNotifications: ObservableObject {
         }
 
         let content = UNMutableNotificationContent()
-        content.title = "Hypnograph"
+        content.title = identity.displayName
         content.body = message
         content.sound = .default
 
@@ -162,16 +186,26 @@ final class AppNotifications: ObservableObject {
 
     // MARK: - Static convenience (nonisolated so they can be called from anywhere)
 
-    nonisolated static func show(_ message: String, flash: Bool = false, duration: TimeInterval = 2.0) {
+    nonisolated public static func show(_ message: String, flash: Bool = false, duration: TimeInterval = 2.0) {
         Task { @MainActor in
             shared.show(message, flash: flash, duration: duration)
         }
     }
 
-    nonisolated static func requestAuthorization() {
+    nonisolated public static func requestAuthorization() {
         Task { @MainActor in
             shared.requestSystemNotificationAuthorization()
         }
+    }
+
+    nonisolated public static func configure(identity: AppNotificationIdentity) {
+        Task { @MainActor in
+            shared.updateIdentity(identity)
+        }
+    }
+
+    nonisolated public static func configure(appName: String) {
+        configure(identity: AppNotificationIdentity(displayName: appName))
     }
 }
 
@@ -224,7 +258,7 @@ private struct NotificationBubble: View {
 
 // MARK: - View Extension
 
-extension View {
+public extension View {
     /// Adds the app notification overlay to the view (bottom right corner).
     func appNotifications(manager: AppNotifications = .shared) -> some View {
         self.overlay(alignment: .bottomTrailing) {
@@ -234,4 +268,3 @@ extension View {
         }
     }
 }
-

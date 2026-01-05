@@ -3,6 +3,7 @@ import AppKit
 import AVFoundation
 import HypnoCore
 import HypnoRenderer
+import HypnoAppShell
 
 extension NSWindow {
     func makeHypnographBorderless(on screen: NSScreen) {
@@ -61,6 +62,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Request notification authorization
+        AppNotifications.configure(identity: .fromBundle())
         AppNotifications.requestAuthorization()
 
         // Install Tab key monitor to work around SwiftUI menu shortcut bug

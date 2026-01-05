@@ -1,6 +1,6 @@
 //
 //  WindowState.swift
-//  Hypnograph
+//  HypnoAppShell
 //
 //  Unified window visibility state with clean screen support.
 //  Tab toggles clean screen mode, hiding all windows temporarily.
@@ -11,7 +11,7 @@
 import Foundation
 
 /// Manages visibility state for all windows/overlays using generic string keys
-struct WindowState: Codable {
+public struct WindowState: Codable {
 
     // MARK: - Storage
 
@@ -20,13 +20,15 @@ struct WindowState: Codable {
     private var windowVisibility: [String: Bool] = [:]
 
     /// When true, all windows are hidden regardless of their individual visibility states
-    var isCleanScreen: Bool = false
+    public var isCleanScreen: Bool = false
+
+    public init() {}
 
     // MARK: - Window Registration
 
     /// Register a window so it's known to the system
     /// Windows should call this on first appearance (e.g., in view's onAppear)
-    mutating func register(_ windowID: String, defaultVisible: Bool = false) {
+    public mutating func register(_ windowID: String, defaultVisible: Bool = false) {
         // Only register if not already known
         if windowVisibility[windowID] == nil {
             windowVisibility[windowID] = defaultVisible
@@ -36,7 +38,7 @@ struct WindowState: Codable {
     // MARK: - Window Access
 
     /// Check if a window is visible (respects clean screen)
-    func isVisible(_ windowID: String) -> Bool {
+    public func isVisible(_ windowID: String) -> Bool {
         if isCleanScreen { return false }
         return windowVisibility[windowID] ?? false
     }
@@ -44,7 +46,7 @@ struct WindowState: Codable {
     /// Toggle a window's visibility
     /// - Returns: true if the toggle was consumed by exiting clean screen
     @discardableResult
-    mutating func toggle(_ windowID: String) -> Bool {
+    public mutating func toggle(_ windowID: String) -> Bool {
         if isCleanScreen {
             isCleanScreen = false
             return true  // Consumed
@@ -54,7 +56,7 @@ struct WindowState: Codable {
     }
 
     /// Set a window's visibility directly
-    mutating func set(_ windowID: String, visible: Bool) {
+    public mutating func set(_ windowID: String, visible: Bool) {
         if visible && isCleanScreen {
             isCleanScreen = false
         }
@@ -63,7 +65,7 @@ struct WindowState: Codable {
 
     /// Toggle clean screen mode
     /// If exiting clean screen and no windows are visible, shows all registered windows
-    mutating func toggleCleanScreen() {
+    public mutating func toggleCleanScreen() {
         if isCleanScreen {
             // Exiting clean screen
             isCleanScreen = false
@@ -83,7 +85,7 @@ struct WindowState: Codable {
     }
 
     /// Whether any window is currently visible
-    var hasAnyWindowVisible: Bool {
+    public var hasAnyWindowVisible: Bool {
         windowVisibility.values.contains(true)
     }
 }

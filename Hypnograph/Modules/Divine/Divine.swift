@@ -10,6 +10,7 @@ import AVFoundation
 import CoreMedia
 import CoreGraphics
 import HypnoCore
+import HypnoAppShell
 
 /// Tarot-style stills with drag-and-drop cards.
 @MainActor
@@ -69,24 +70,6 @@ final class Divine: ObservableObject {
                 maxZoom: maxZoom
             )
         )
-    }
-
-    func hudItems() -> [HUDItem] {
-        var items: [HUDItem] = []
-
-        // Header
-        items.append(.text("Divine", order: 10, font: .headline))
-        items.append(.padding(8, order: 12))
-
-        // Keyboard hints
-        items.append(.text("Shortcuts", order: 20, font: .subheadline))
-        items.append(.text("Cmd+N = Clear table | . = Add card", order: 21))
-        items.append(.text("Shift+N = New card | Delete = Remove card", order: 22))
-        items.append(.text("Left/Right = Navigate | 1-9 = Select card", order: 23))
-        items.append(.text("Cmd+=/-/0 = Zoom in/out/reset", order: 24))
-        items.append(.text("Drag cards to arrange", order: 25))
-
-        return items
     }
 
     // MARK: - Menus
