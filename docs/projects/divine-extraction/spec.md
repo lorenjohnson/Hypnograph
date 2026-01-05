@@ -100,6 +100,7 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
    - Add `RenderEngine.Timeline` and a single-source player-item API for sequence playback.  
    - *Verification*: macOS build + unit tests for render pipeline entry points; manual playback smoke test pending.
 5. **Stage 2.8 – Parameterize core stores (remove singleton + global config ordering hazards)**  
+   - **Status: Complete**  
    - Replace `FavoriteStore.shared`, `ExclusionStore.shared`, and `DeleteStore.shared` with explicit instances owned by app state (`HypnographState`, `DivineState`).  
    - Avoid disk IO at singleton init time; store instances should be constructed with explicit URLs/config so they cannot accidentally read/write to the wrong app support directory.  
    - Keep `HypnoCoreConfig` for shared path calculation, but treat it as an input when creating store instances rather than global mutable state that stores implicitly depend on.  

@@ -25,6 +25,10 @@ final class HypnographState: ObservableObject {
     /// App settings - publicly settable for UI state changes, call saveSettings() to persist
     @Published var settings: Settings
 
+    let exclusionStore: ExclusionStore
+    let deleteStore: DeleteStore
+    let favoriteStore: FavoriteStore
+
     // Per-module library state
     private var perModuleLibraryKeys: [ModuleType: Set<String>] = [:]
 
@@ -71,8 +75,15 @@ final class HypnographState: ObservableObject {
 
     // MARK: - Init
 
-    init(settings: Settings) {
+    init(settings: Settings, coreConfig: HypnoCoreConfig) {
+        let exclusionStore = ExclusionStore(url: coreConfig.exclusionsURL)
+        let deleteStore = DeleteStore(url: coreConfig.deletionsURL)
+        let favoriteStore = FavoriteStore(url: coreConfig.favoritesURL)
+
         self.settings = settings
+        self.exclusionStore = exclusionStore
+        self.deleteStore = deleteStore
+        self.favoriteStore = favoriteStore
 
         // Default to "Apple Photos: All Items" if available, otherwise folder sources
         let defaultKey: String
@@ -100,9 +111,11 @@ final class HypnographState: ObservableObject {
         self.currentLibraryKey = defaultKey
         self.activeLibraryKeys = activeKeys
         self.library = MediaSourcesLibrary(
-      sources: settings.folders(forLibraries: activeKeys),
-      allowedMediaTypes: settings.sourceMediaTypes
-    )
+            sources: settings.folders(forLibraries: activeKeys),
+            allowedMediaTypes: settings.sourceMediaTypes,
+            exclusionStore: exclusionStore,
+            deleteStore: deleteStore
+        )
 
         // Initialize aspect ratio and resolution from settings (use montage player config as default)
         self.aspectRatio = settings.montagePlayerConfig.aspectRatio
@@ -239,11 +252,13 @@ final class HypnographState: ObservableObject {
 
         // Create combined library
         library = MediaSourcesLibrary(
-      sources: folderPaths,
-      photosAlbums: photosAlbums,
-      includeAllPhotos: includeAllPhotos,
+            sources: folderPaths,
+            photosAlbums: photosAlbums,
+            includeAllPhotos: includeAllPhotos,
             customPhotosAssetIds: includeCustomSelection ? customPhotosAssetIds : [],
-            allowedMediaTypes: settings.sourceMediaTypes
+            allowedMediaTypes: settings.sourceMediaTypes,
+            exclusionStore: exclusionStore,
+            deleteStore: deleteStore
         )
 
         // Save to current module's library state if requested
@@ -332,9 +347,11 @@ final class HypnographState: ObservableObject {
 
             // Count assets by creating a temporary library
             let tempLibrary = MediaSourcesLibrary(
-      sources: paths,
-      allowedMediaTypes: settings.sourceMediaTypes
-    )
+                sources: paths,
+                allowedMediaTypes: settings.sourceMediaTypes,
+                exclusionStore: exclusionStore,
+                deleteStore: deleteStore
+            )
             let count = tempLibrary.assetCount
 
             // Only include non-empty libraries
