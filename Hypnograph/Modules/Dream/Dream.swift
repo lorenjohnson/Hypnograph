@@ -460,7 +460,7 @@ final class Dream: ObservableObject {
 
             // Favorite status
             if let source = activePlayer.currentSource?.clip.file.source,
-               FavoriteStore.shared.isFavorited(source) {
+               state.favoriteStore.isFavorited(source) {
                 items.append(.text("★ Favorite", order: 29))
             }
         }
@@ -1137,8 +1137,7 @@ final class Dream: ObservableObject {
         let idx = activePlayer.currentSourceIndex
         guard idx >= 0, idx < activePlayer.sources.count else { return }
         let mediaSource = activePlayer.sources[idx].clip.file.source
-        FavoriteStore.shared.toggle(mediaSource)
-        let isFav = FavoriteStore.shared.isFavorited(mediaSource)
+        let isFav = state.favoriteStore.toggle(mediaSource)
         AppNotifications.show(isFav ? "★ Added to favorites" : "Removed from favorites", flash: true)
     }
 }

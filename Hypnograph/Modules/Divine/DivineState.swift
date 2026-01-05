@@ -5,6 +5,7 @@ import HypnoCore
 final class DivineState {
     private let randomClipProvider: () -> VideoClip?
     private let excludeProvider: (MediaFile) -> Void
+    private let favoriteStore: FavoriteStore
 
     init(state: HypnographState) {
         self.randomClipProvider = {
@@ -13,14 +14,17 @@ final class DivineState {
         self.excludeProvider = { file in
             state.library.exclude(file: file)
         }
+        self.favoriteStore = state.favoriteStore
     }
 
     init(
         randomClip: @escaping () -> VideoClip?,
-        exclude: @escaping (MediaFile) -> Void
+        exclude: @escaping (MediaFile) -> Void,
+        favoriteStore: FavoriteStore
     ) {
         self.randomClipProvider = randomClip
         self.excludeProvider = exclude
+        self.favoriteStore = favoriteStore
     }
 
     func randomClip() -> VideoClip? {
@@ -29,5 +33,10 @@ final class DivineState {
 
     func exclude(file: MediaFile) {
         excludeProvider(file)
+    }
+
+    @discardableResult
+    func toggleFavorite(_ source: MediaFile.Source) -> Bool {
+        favoriteStore.toggle(source)
     }
 }

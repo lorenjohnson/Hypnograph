@@ -211,7 +211,7 @@ final class Divine: ObservableObject {
 
     func toggleCurrentCardFavorite() {
         guard let card = cardManager.selectedCard else { return }
-        let isFavorited = FavoriteStore.shared.toggle(card.clip.file.source)
+        let isFavorited = state.toggleFavorite(card.clip.file.source)
         let message = isFavorited ? "Added to favorites" : "Removed from favorites"
         AppNotifications.shared.show(message, flash: true)
     }

@@ -16,12 +16,18 @@ struct HypnographTests {
     @MainActor
     @Test func divineCardManagerCreatesUniqueCards() async throws {
         var clips = makeClips()
+        let favoriteStore = FavoriteStore(
+            url: FileManager.default.temporaryDirectory.appendingPathComponent(
+                "favorites-\(UUID().uuidString).json"
+            )
+        )
         let state = DivineState(
             randomClip: {
                 guard !clips.isEmpty else { return nil }
                 return clips.removeFirst()
             },
-            exclude: { _ in }
+            exclude: { _ in },
+            favoriteStore: favoriteStore
         )
 
         let manager = DivineCardManager(state: state)

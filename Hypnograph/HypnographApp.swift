@@ -161,7 +161,8 @@ struct HypnographApp: App {
     @StateObject private var divine: Divine
 
     init() {
-        HypnoCoreConfig.shared = HypnoCoreConfig(appSupportDirectory: Environment.appSupportDirectory)
+        let coreConfig = HypnoCoreConfig(appSupportDirectory: Environment.appSupportDirectory)
+        HypnoCoreConfig.shared = coreConfig
         Environment.ensureDefaultSettingsFileExists()
 
         let settingsURL = Environment.defaultSettingsURL
@@ -184,7 +185,7 @@ struct HypnographApp: App {
         }
 
         self.settings = settings
-        let state = HypnographState(settings: settings)
+        let state = HypnographState(settings: settings, coreConfig: coreConfig)
         let renderQueue = RenderEngine.ExportQueue()
         renderQueue.onStatusMessage = { message in
             let duration: TimeInterval = (message == "Rendering started") ? 1.0 : 2.0
