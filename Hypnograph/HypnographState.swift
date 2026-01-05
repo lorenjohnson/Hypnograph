@@ -15,6 +15,7 @@ import CoreGraphics
 import Photos
 import HypnoCore
 import HypnoRenderer
+import HypnoAppShell
 
 /// Manages the current in-progress hypnogram.
 @MainActor
@@ -50,10 +51,10 @@ final class HypnographState: ObservableObject {
     // MARK: - Global UI State
 
     /// Monitors text field editing - used to disable single-key shortcuts while typing
-    let textFieldFocusMonitor = TextFieldFocusMonitor()
+    private let textFieldFocusMonitor = TextFieldFocusMonitor()
 
     /// Whether a text field is currently being edited (convenience for disabling shortcuts)
-    var isTyping: Bool { textFieldFocusMonitor.isEditing }
+    @Published private(set) var isTyping: Bool = false
 
     /// Unified window visibility state with clean screen support
     @Published var windowState = WindowState()
@@ -69,6 +70,8 @@ final class HypnographState: ObservableObject {
 
     // Watch timer - generates new hypnograms at intervals when watch mode is enabled
     private var watchTimer: Timer?
+
+    private var cancellables: Set<AnyCancellable> = []
 
     // Callback to trigger mode-specific new() when watch timer fires
     var onWatchTimerFired: (() -> Void)?
@@ -120,6 +123,14 @@ final class HypnographState: ObservableObject {
         // Initialize aspect ratio and resolution from settings (use montage player config as default)
         self.aspectRatio = settings.montagePlayerConfig.aspectRatio
         self.outputResolution = settings.outputResolution
+
+        self.isTyping = textFieldFocusMonitor.isEditing
+        textFieldFocusMonitor.$isEditing
+            .removeDuplicates()
+            .sink { [weak self] isEditing in
+                self?.isTyping = isEditing
+            }
+            .store(in: &cancellables)
 
         // Start watch timer if enabled (modules will set onWatchTimerFired callback)
         if settings.watch {

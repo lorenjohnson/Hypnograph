@@ -16,11 +16,12 @@
 		A1B2C3D4E5F6A7B8C9D0E1F8 /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
 		B1C2D3E4F5A6B7C8D9E0F1A8 /* HypnoEffects.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 47725DF3F68B3D6B186A128C /* HypnoEffects.framework */; };
 		B1C2D3E4F5A6B7C8D9E0F1A9 /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
-		C29DD884B84036A4B39F88C0 /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
-		C3CCD1E98138443DC926E3A1 /* HypnoAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9FD6423DC2D907F78E5D2211 /* HypnoAudio.framework */; };
 		C1D2E3F4A5B6C7D8E9F0A1B8 /* HypnoRenderer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1149E69F07261327FF893152 /* HypnoRenderer.framework */; };
 		C1D2E3F4A5B6C7D8E9F0A1B9 /* HypnoEffects.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 47725DF3F68B3D6B186A128C /* HypnoEffects.framework */; };
 		C1D2E3F4A5B6C7D8E9F0A1BA /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
+		C29DD884B84036A4B39F88C0 /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
+		C3CCD1E98138443DC926E3A1 /* HypnoAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9FD6423DC2D907F78E5D2211 /* HypnoAudio.framework */; };
+		8C9F3A1B2C3D4E5F6A7B8C9D /* HypnoAppShell.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C5 /* HypnoAppShell.framework */; };
 		D1E2F3A4B5C6D7E8F9A0B1D1 /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
 		D1E2F3A4B5C6D7E8F9A0B1D2 /* HypnoEffects.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 47725DF3F68B3D6B186A128C /* HypnoEffects.framework */; };
 		DAC641758148027F910CB677 /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
@@ -91,20 +92,6 @@
 			remoteGlobalIDString = B64DECC20CE5570FAEAE4AEF;
 			remoteInfo = HypnoEffects;
 		};
-		BFD4EC401A0E2E4E81040668 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 042F98F92EC8990A006D4CDE /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = E308118CE40F75DAAC8AFFAB;
-			remoteInfo = HypnoCore;
-		};
-		F6998A651CE7C3DB43E98E0D /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 042F98F92EC8990A006D4CDE /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = E308118CE40F75DAAC8AFFAB;
-			remoteInfo = HypnoCore;
-		};
 		A1B2C3D4E5F6A7B8C9D0E1F9 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 042F98F92EC8990A006D4CDE /* Project object */;
@@ -125,6 +112,20 @@
 			proxyType = 1;
 			remoteGlobalIDString = E308118CE40F75DAAC8AFFAB;
 			remoteInfo = HypnoCore;
+		};
+		BFD4EC401A0E2E4E81040668 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 042F98F92EC8990A006D4CDE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E308118CE40F75DAAC8AFFAB;
+			remoteInfo = HypnoCore;
+		};
+		2B3C4D5E6F708192A3B4C5D6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 042F98F92EC8990A006D4CDE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5E6F708192A3B4C5D6E7F809;
+			remoteInfo = HypnoAppShell;
 		};
 		C1D2E3F4A5B6C7D8E9F0A1BB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -168,6 +169,13 @@
 			remoteGlobalIDString = 04302B342F00E924001C0F60;
 			remoteInfo = HypnogramQuickLook;
 		};
+		F6998A651CE7C3DB43E98E0D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 042F98F92EC8990A006D4CDE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E308118CE40F75DAAC8AFFAB;
+			remoteInfo = HypnoCore;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -188,16 +196,17 @@
 		042F99012EC8990B006D4CDE /* Hypnograph.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hypnograph.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		042F99122EC8990C006D4CDE /* HypnographTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnographTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		042F991C2EC8990C006D4CDE /* HypnographUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnographUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		A1B2C3D4E5F6A7B8C9D0E1F2 /* HypnoCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnoCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		B1C2D3E4F5A6B7C8D9E0F1A2 /* HypnoEffectsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnoEffectsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		C1D2E3F4A5B6C7D8E9F0A1B2 /* HypnoRendererTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnoRendererTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		D1E2F3A4B5C6D7E8F9A0B1C2 /* HypnogramQuickLookTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnogramQuickLookTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		04302B352F00E924001C0F60 /* HypnogramQuickLook.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HypnogramQuickLook.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		04302B372F00E924001C0F60 /* Quartz.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Quartz.framework; path = System/Library/Frameworks/Quartz.framework; sourceTree = SDKROOT; };
 		1149E69F07261327FF893152 /* HypnoRenderer.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = HypnoRenderer.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		47725DF3F68B3D6B186A128C /* HypnoEffects.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = HypnoEffects.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		764AADFE87DF1064AD85DF6E /* HypnoCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = HypnoCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		9FD6423DC2D907F78E5D2211 /* HypnoAudio.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = HypnoAudio.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		1A2B3C4D5E6F708192A3B4C5 /* HypnoAppShell.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = HypnoAppShell.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* HypnoCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnoCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1C2D3E4F5A6B7C8D9E0F1A2 /* HypnoEffectsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnoEffectsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C1D2E3F4A5B6C7D8E9F0A1B2 /* HypnoRendererTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnoRendererTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1E2F3A4B5C6D7E8F9A0B1C2 /* HypnogramQuickLookTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnogramQuickLookTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -237,9 +246,17 @@
 			path = HypnographUITests;
 			sourceTree = "<group>";
 		};
-		D1E2F3A4B5C6D7E8F9A0B1C3 /* HypnogramQuickLookTests */ = {
+		04302B392F00E924001C0F60 /* HypnogramQuickLook */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = HypnogramQuickLookTests;
+			exceptions = (
+				04302B482F00E924001C0F60 /* Exceptions for "HypnogramQuickLook" folder in "HypnogramQuickLook" target */,
+			);
+			path = HypnogramQuickLook;
+			sourceTree = "<group>";
+		};
+		07C36D44918AEE20D3DEE18D /* HypnoRenderer */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = HypnoRenderer;
 			sourceTree = "<group>";
 		};
 		A1B2C3D4E5F6A7B8C9D0E1F3 /* HypnoCoreTests */ = {
@@ -257,22 +274,19 @@
 			path = HypnoRendererTests;
 			sourceTree = "<group>";
 		};
-		04302B392F00E924001C0F60 /* HypnogramQuickLook */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				04302B482F00E924001C0F60 /* Exceptions for "HypnogramQuickLook" folder in "HypnogramQuickLook" target */,
-			);
-			path = HypnogramQuickLook;
-			sourceTree = "<group>";
-		};
-		07C36D44918AEE20D3DEE18D /* HypnoRenderer */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = HypnoRenderer;
-			sourceTree = "<group>";
-		};
 		C6856B6A25F48D475236ADAE /* HypnoAudio */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = HypnoAudio;
+			sourceTree = "<group>";
+		};
+		4D5E6F708192A3B4C5D6E7F8 /* HypnoAppShell */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = HypnoAppShell;
+			sourceTree = "<group>";
+		};
+		D1E2F3A4B5C6D7E8F9A0B1C3 /* HypnogramQuickLookTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = HypnogramQuickLookTests;
 			sourceTree = "<group>";
 		};
 		F50B765E3CAB7CFD665F71DC /* HypnoCore */ = {
@@ -296,6 +310,7 @@
 				7BDDE75EF15010AEB21AF589 /* HypnoRenderer.framework in Frameworks */,
 				E956ED65978524961CC1C19A /* HypnoEffects.framework in Frameworks */,
 				C3CCD1E98138443DC926E3A1 /* HypnoAudio.framework in Frameworks */,
+				8C9F3A1B2C3D4E5F6A7B8C9D /* HypnoAppShell.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -329,6 +344,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		708192A3B4C5D6E7F8091A2B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		407DC1ED597763C16767A434 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -341,15 +363,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				037329BD4109FC5233F8DBDE /* HypnoCore.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		C79953EEDC0D76DBE17DB680 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				5E0D9D424BBE6DC0131D3E9E /* HypnoEffects.framework in Frameworks */,
-				DAC641758148027F910CB677 /* HypnoCore.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -380,6 +393,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C79953EEDC0D76DBE17DB680 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5E0D9D424BBE6DC0131D3E9E /* HypnoEffects.framework in Frameworks */,
+				DAC641758148027F910CB677 /* HypnoCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D1E2F3A4B5C6D7E8F9A0B1C6 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -400,6 +422,7 @@
 				07C36D44918AEE20D3DEE18D /* HypnoRenderer */,
 				FE7D9E10D41D9885EDE1F7D4 /* HypnoEffects */,
 				C6856B6A25F48D475236ADAE /* HypnoAudio */,
+				4D5E6F708192A3B4C5D6E7F8 /* HypnoAppShell */,
 				A1B2C3D4E5F6A7B8C9D0E1F3 /* HypnoCoreTests */,
 				B1C2D3E4F5A6B7C8D9E0F1A3 /* HypnoEffectsTests */,
 				C1D2E3F4A5B6C7D8E9F0A1B3 /* HypnoRendererTests */,
@@ -420,6 +443,7 @@
 				1149E69F07261327FF893152 /* HypnoRenderer.framework */,
 				47725DF3F68B3D6B186A128C /* HypnoEffects.framework */,
 				9FD6423DC2D907F78E5D2211 /* HypnoAudio.framework */,
+				1A2B3C4D5E6F708192A3B4C5 /* HypnoAppShell.framework */,
 				042F99122EC8990C006D4CDE /* HypnographTests.xctest */,
 				A1B2C3D4E5F6A7B8C9D0E1F2 /* HypnoCoreTests.xctest */,
 				B1C2D3E4F5A6B7C8D9E0F1A2 /* HypnoEffectsTests.xctest */,
@@ -459,6 +483,7 @@
 				EFBCEC702CC9E27967FF4CB5 /* PBXTargetDependency */,
 				CC1FAEBC4EAC69E6D711C9E1 /* PBXTargetDependency */,
 				4A4AA0F5AA14207D40D0849B /* PBXTargetDependency */,
+				3C4D5E6F708192A3B4C5D6E7 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				042F99032EC8990B006D4CDE /* Hypnograph */,
@@ -493,6 +518,75 @@
 			productName = HypnographTests;
 			productReference = 042F99122EC8990C006D4CDE /* HypnographTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		042F991B2EC8990C006D4CDE /* HypnographUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 042F992C2EC8990C006D4CDE /* Build configuration list for PBXNativeTarget "HypnographUITests" */;
+			buildPhases = (
+				042F99182EC8990C006D4CDE /* Sources */,
+				042F99192EC8990C006D4CDE /* Frameworks */,
+				042F991A2EC8990C006D4CDE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				042F991E2EC8990C006D4CDE /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				042F991F2EC8990C006D4CDE /* HypnographUITests */,
+			);
+			name = HypnographUITests;
+			packageProductDependencies = (
+			);
+			productName = HypnographUITests;
+			productReference = 042F991C2EC8990C006D4CDE /* HypnographUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		04302B342F00E924001C0F60 /* HypnogramQuickLook */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 04302B492F00E924001C0F60 /* Build configuration list for PBXNativeTarget "HypnogramQuickLook" */;
+			buildPhases = (
+				04302B312F00E924001C0F60 /* Sources */,
+				04302B322F00E924001C0F60 /* Frameworks */,
+				04302B332F00E924001C0F60 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				04302B392F00E924001C0F60 /* HypnogramQuickLook */,
+			);
+			name = HypnogramQuickLook;
+			packageProductDependencies = (
+			);
+			productName = HypnogramQuickLook;
+			productReference = 04302B352F00E924001C0F60 /* HypnogramQuickLook.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		42FBE3931A16A0254C875DC3 /* HypnoRenderer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3A8E814DA439B26C48805CF0 /* Build configuration list for PBXNativeTarget "HypnoRenderer" */;
+			buildPhases = (
+				21B8E48B963ED7B92E8F5A52 /* Sources */,
+				C79953EEDC0D76DBE17DB680 /* Frameworks */,
+				F4C554CC9D766B6A9B238FDE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CA6531BEF842B85B77973A00 /* PBXTargetDependency */,
+				31077EDB25D245A84A3E00A8 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				07C36D44918AEE20D3DEE18D /* HypnoRenderer */,
+			);
+			name = HypnoRenderer;
+			packageProductDependencies = (
+			);
+			productName = HypnoRenderer;
+			productReference = 1149E69F07261327FF893152 /* HypnoRenderer.framework */;
+			productType = "com.apple.product-type.framework";
 		};
 		A1B2C3D4E5F6A7B8C9D0E1F4 /* HypnoCoreTests */ = {
 			isa = PBXNativeTarget;
@@ -541,125 +635,6 @@
 			productReference = B1C2D3E4F5A6B7C8D9E0F1A2 /* HypnoEffectsTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		C1D2E3F4A5B6C7D8E9F0A1B4 /* HypnoRendererTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = C1D2E3F4A5B6C7D8E9F0A1C3 /* Build configuration list for PBXNativeTarget "HypnoRendererTests" */;
-			buildPhases = (
-				C1D2E3F4A5B6C7D8E9F0A1B5 /* Sources */,
-				C1D2E3F4A5B6C7D8E9F0A1B6 /* Frameworks */,
-				C1D2E3F4A5B6C7D8E9F0A1B7 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				C1D2E3F4A5B6C7D8E9F0A1BE /* PBXTargetDependency */,
-				C1D2E3F4A5B6C7D8E9F0A1BF /* PBXTargetDependency */,
-				C1D2E3F4A5B6C7D8E9F0A1C0 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				C1D2E3F4A5B6C7D8E9F0A1B3 /* HypnoRendererTests */,
-			);
-			name = HypnoRendererTests;
-			packageProductDependencies = (
-			);
-			productName = HypnoRendererTests;
-			productReference = C1D2E3F4A5B6C7D8E9F0A1B2 /* HypnoRendererTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
-		042F991B2EC8990C006D4CDE /* HypnographUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 042F992C2EC8990C006D4CDE /* Build configuration list for PBXNativeTarget "HypnographUITests" */;
-			buildPhases = (
-				042F99182EC8990C006D4CDE /* Sources */,
-				042F99192EC8990C006D4CDE /* Frameworks */,
-				042F991A2EC8990C006D4CDE /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				042F991E2EC8990C006D4CDE /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				042F991F2EC8990C006D4CDE /* HypnographUITests */,
-			);
-			name = HypnographUITests;
-			packageProductDependencies = (
-			);
-			productName = HypnographUITests;
-			productReference = 042F991C2EC8990C006D4CDE /* HypnographUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
-		D1E2F3A4B5C6D7E8F9A0B1C4 /* HypnogramQuickLookTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = D1E2F3A4B5C6D7E8F9A0B1C8 /* Build configuration list for PBXNativeTarget "HypnogramQuickLookTests" */;
-			buildPhases = (
-				D1E2F3A4B5C6D7E8F9A0B1C5 /* Sources */,
-				D1E2F3A4B5C6D7E8F9A0B1C6 /* Frameworks */,
-				D1E2F3A4B5C6D7E8F9A0B1C7 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				D1E2F3A4B5C6D7E8F9A0B1CE /* PBXTargetDependency */,
-				D1E2F3A4B5C6D7E8F9A0B1CF /* PBXTargetDependency */,
-				D1E2F3A4B5C6D7E8F9A0B1D0 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				D1E2F3A4B5C6D7E8F9A0B1C3 /* HypnogramQuickLookTests */,
-			);
-			name = HypnogramQuickLookTests;
-			packageProductDependencies = (
-			);
-			productName = HypnogramQuickLookTests;
-			productReference = D1E2F3A4B5C6D7E8F9A0B1C2 /* HypnogramQuickLookTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
-		04302B342F00E924001C0F60 /* HypnogramQuickLook */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 04302B492F00E924001C0F60 /* Build configuration list for PBXNativeTarget "HypnogramQuickLook" */;
-			buildPhases = (
-				04302B312F00E924001C0F60 /* Sources */,
-				04302B322F00E924001C0F60 /* Frameworks */,
-				04302B332F00E924001C0F60 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				04302B392F00E924001C0F60 /* HypnogramQuickLook */,
-			);
-			name = HypnogramQuickLook;
-			packageProductDependencies = (
-			);
-			productName = HypnogramQuickLook;
-			productReference = 04302B352F00E924001C0F60 /* HypnogramQuickLook.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
-		42FBE3931A16A0254C875DC3 /* HypnoRenderer */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 3A8E814DA439B26C48805CF0 /* Build configuration list for PBXNativeTarget "HypnoRenderer" */;
-			buildPhases = (
-				21B8E48B963ED7B92E8F5A52 /* Sources */,
-				C79953EEDC0D76DBE17DB680 /* Frameworks */,
-				F4C554CC9D766B6A9B238FDE /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				CA6531BEF842B85B77973A00 /* PBXTargetDependency */,
-				31077EDB25D245A84A3E00A8 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				07C36D44918AEE20D3DEE18D /* HypnoRenderer */,
-			);
-			name = HypnoRenderer;
-			packageProductDependencies = (
-			);
-			productName = HypnoRenderer;
-			productReference = 1149E69F07261327FF893152 /* HypnoRenderer.framework */;
-			productType = "com.apple.product-type.framework";
-		};
 		B64DECC20CE5570FAEAE4AEF /* HypnoEffects */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = D6E6BFAD3B2D775478586DA0 /* Build configuration list for PBXNativeTarget "HypnoEffects" */;
@@ -704,6 +679,78 @@
 			productName = HypnoAudio;
 			productReference = 9FD6423DC2D907F78E5D2211 /* HypnoAudio.framework */;
 			productType = "com.apple.product-type.framework";
+		};
+		5E6F708192A3B4C5D6E7F809 /* HypnoAppShell */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 92A3B4C5D6E7F8091A2B3C4D /* Build configuration list for PBXNativeTarget "HypnoAppShell" */;
+			buildPhases = (
+				6F708192A3B4C5D6E7F8091A /* Sources */,
+				708192A3B4C5D6E7F8091A2B /* Frameworks */,
+				8192A3B4C5D6E7F8091A2B3C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4D5E6F708192A3B4C5D6E7F8 /* HypnoAppShell */,
+			);
+			name = HypnoAppShell;
+			packageProductDependencies = (
+			);
+			productName = HypnoAppShell;
+			productReference = 1A2B3C4D5E6F708192A3B4C5 /* HypnoAppShell.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		C1D2E3F4A5B6C7D8E9F0A1B4 /* HypnoRendererTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C1D2E3F4A5B6C7D8E9F0A1C3 /* Build configuration list for PBXNativeTarget "HypnoRendererTests" */;
+			buildPhases = (
+				C1D2E3F4A5B6C7D8E9F0A1B5 /* Sources */,
+				C1D2E3F4A5B6C7D8E9F0A1B6 /* Frameworks */,
+				C1D2E3F4A5B6C7D8E9F0A1B7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C1D2E3F4A5B6C7D8E9F0A1BE /* PBXTargetDependency */,
+				C1D2E3F4A5B6C7D8E9F0A1BF /* PBXTargetDependency */,
+				C1D2E3F4A5B6C7D8E9F0A1C0 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C1D2E3F4A5B6C7D8E9F0A1B3 /* HypnoRendererTests */,
+			);
+			name = HypnoRendererTests;
+			packageProductDependencies = (
+			);
+			productName = HypnoRendererTests;
+			productReference = C1D2E3F4A5B6C7D8E9F0A1B2 /* HypnoRendererTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D1E2F3A4B5C6D7E8F9A0B1C4 /* HypnogramQuickLookTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D1E2F3A4B5C6D7E8F9A0B1C8 /* Build configuration list for PBXNativeTarget "HypnogramQuickLookTests" */;
+			buildPhases = (
+				D1E2F3A4B5C6D7E8F9A0B1C5 /* Sources */,
+				D1E2F3A4B5C6D7E8F9A0B1C6 /* Frameworks */,
+				D1E2F3A4B5C6D7E8F9A0B1C7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D1E2F3A4B5C6D7E8F9A0B1CE /* PBXTargetDependency */,
+				D1E2F3A4B5C6D7E8F9A0B1CF /* PBXTargetDependency */,
+				D1E2F3A4B5C6D7E8F9A0B1D0 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D1E2F3A4B5C6D7E8F9A0B1C3 /* HypnogramQuickLookTests */,
+			);
+			name = HypnogramQuickLookTests;
+			packageProductDependencies = (
+			);
+			productName = HypnogramQuickLookTests;
+			productReference = D1E2F3A4B5C6D7E8F9A0B1C2 /* HypnogramQuickLookTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		E308118CE40F75DAAC8AFFAB /* HypnoCore */ = {
 			isa = PBXNativeTarget;
@@ -751,6 +798,9 @@
 					04302B342F00E924001C0F60 = {
 						CreatedOnToolsVersion = 26.2;
 					};
+					42FBE3931A16A0254C875DC3 = {
+						CreatedOnToolsVersion = 16.2;
+					};
 					A1B2C3D4E5F6A7B8C9D0E1F4 = {
 						CreatedOnToolsVersion = 16.2;
 						TestTargetID = E308118CE40F75DAAC8AFFAB;
@@ -759,6 +809,15 @@
 						CreatedOnToolsVersion = 16.2;
 						TestTargetID = B64DECC20CE5570FAEAE4AEF;
 					};
+					B64DECC20CE5570FAEAE4AEF = {
+						CreatedOnToolsVersion = 16.2;
+					};
+					B855500309A64B9B8AD41B86 = {
+						CreatedOnToolsVersion = 16.2;
+					};
+					5E6F708192A3B4C5D6E7F809 = {
+						CreatedOnToolsVersion = 16.2;
+					};
 					C1D2E3F4A5B6C7D8E9F0A1B4 = {
 						CreatedOnToolsVersion = 16.2;
 						TestTargetID = 42FBE3931A16A0254C875DC3;
@@ -766,15 +825,6 @@
 					D1E2F3A4B5C6D7E8F9A0B1C4 = {
 						CreatedOnToolsVersion = 16.2;
 						TestTargetID = 04302B342F00E924001C0F60;
-					};
-					42FBE3931A16A0254C875DC3 = {
-						CreatedOnToolsVersion = 16.2;
-					};
-					B64DECC20CE5570FAEAE4AEF = {
-						CreatedOnToolsVersion = 16.2;
-					};
-					B855500309A64B9B8AD41B86 = {
-						CreatedOnToolsVersion = 16.2;
 					};
 					E308118CE40F75DAAC8AFFAB = {
 						CreatedOnToolsVersion = 16.2;
@@ -800,6 +850,7 @@
 				42FBE3931A16A0254C875DC3 /* HypnoRenderer */,
 				B64DECC20CE5570FAEAE4AEF /* HypnoEffects */,
 				B855500309A64B9B8AD41B86 /* HypnoAudio */,
+				5E6F708192A3B4C5D6E7F809 /* HypnoAppShell */,
 				042F99112EC8990C006D4CDE /* HypnographTests */,
 				A1B2C3D4E5F6A7B8C9D0E1F4 /* HypnoCoreTests */,
 				B1C2D3E4F5A6B7C8D9E0F1A4 /* HypnoEffectsTests */,
@@ -847,6 +898,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8192A3B4C5D6E7F8091A2B3C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		3A2F64193354A6BE695FA5CA /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -855,13 +913,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		658C5DE6A2FD73E0A929AA76 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F4C554CC9D766B6A9B238FDE /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -890,6 +941,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		D1E2F3A4B5C6D7E8F9A0B1C7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F4C554CC9D766B6A9B238FDE /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -942,6 +1000,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		22DCD1D9364794502AC3E706 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6F708192A3B4C5D6E7F8091A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -1021,30 +1086,20 @@
 			target = B855500309A64B9B8AD41B86 /* HypnoAudio */;
 			targetProxy = 450720A9DCC8BA1FDAF8E4C3 /* PBXContainerItemProxy */;
 		};
-		B03AFD12E053E628259C04A8 /* PBXTargetDependency */ = {
+		3C4D5E6F708192A3B4C5D6E7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = E308118CE40F75DAAC8AFFAB /* HypnoCore */;
-			targetProxy = F6998A651CE7C3DB43E98E0D /* PBXContainerItemProxy */;
-		};
-		CA6531BEF842B85B77973A00 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = B64DECC20CE5570FAEAE4AEF /* HypnoEffects */;
-			targetProxy = 5D5CE70E3BC6FE176A447AC4 /* PBXContainerItemProxy */;
-		};
-		CC1FAEBC4EAC69E6D711C9E1 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = B64DECC20CE5570FAEAE4AEF /* HypnoEffects */;
-			targetProxy = 84A04B8B750349B78DB52554 /* PBXContainerItemProxy */;
-		};
-		EFBCEC702CC9E27967FF4CB5 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 42FBE3931A16A0254C875DC3 /* HypnoRenderer */;
-			targetProxy = 78358489CCA27174E82A5677 /* PBXContainerItemProxy */;
+			target = 5E6F708192A3B4C5D6E7F809 /* HypnoAppShell */;
+			targetProxy = 2B3C4D5E6F708192A3B4C5D6 /* PBXContainerItemProxy */;
 		};
 		A1B2C3D4E5F6A7B8C9D0E1FA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = E308118CE40F75DAAC8AFFAB /* HypnoCore */;
 			targetProxy = A1B2C3D4E5F6A7B8C9D0E1F9 /* PBXContainerItemProxy */;
+		};
+		B03AFD12E053E628259C04A8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E308118CE40F75DAAC8AFFAB /* HypnoCore */;
+			targetProxy = F6998A651CE7C3DB43E98E0D /* PBXContainerItemProxy */;
 		};
 		B1C2D3E4F5A6B7C8D9E0F1AC /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -1071,6 +1126,16 @@
 			target = E308118CE40F75DAAC8AFFAB /* HypnoCore */;
 			targetProxy = C1D2E3F4A5B6C7D8E9F0A1BD /* PBXContainerItemProxy */;
 		};
+		CA6531BEF842B85B77973A00 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B64DECC20CE5570FAEAE4AEF /* HypnoEffects */;
+			targetProxy = 5D5CE70E3BC6FE176A447AC4 /* PBXContainerItemProxy */;
+		};
+		CC1FAEBC4EAC69E6D711C9E1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B64DECC20CE5570FAEAE4AEF /* HypnoEffects */;
+			targetProxy = 84A04B8B750349B78DB52554 /* PBXContainerItemProxy */;
+		};
 		D1E2F3A4B5C6D7E8F9A0B1CE /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = E308118CE40F75DAAC8AFFAB /* HypnoCore */;
@@ -1085,6 +1150,11 @@
 			isa = PBXTargetDependency;
 			target = 04302B342F00E924001C0F60 /* HypnogramQuickLook */;
 			targetProxy = D1E2F3A4B5C6D7E8F9A0B1CD /* PBXContainerItemProxy */;
+		};
+		EFBCEC702CC9E27967FF4CB5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 42FBE3931A16A0254C875DC3 /* HypnoRenderer */;
+			targetProxy = 78358489CCA27174E82A5677 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1484,57 +1554,6 @@
 			};
 			name = Release;
 		};
-		B3DEDE98A9F6E414EF392594 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
-				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 6A74MR47VX;
-				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 0.2;
-				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.HypnoCore;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-			};
-			name = Debug;
-		};
-		DC9D17A9D106434B7A6AF551 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
-				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 6A74MR47VX;
-				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 0.2;
-				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.HypnoRenderer;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-			};
-			name = Release;
-		};
-		E9178C654687FA2D11BAEC92 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
-				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 6A74MR47VX;
-				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 0.2;
-				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.HypnoAudio;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-			};
-			name = Debug;
-		};
 		A1B2C3D4E5F6A7B8C9D0E1FB /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1598,6 +1617,23 @@
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
+		};
+		B3DEDE98A9F6E414EF392594 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = 6A74MR47VX;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.HypnoCore;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
 		};
 		C1D2E3F4A5B6C7D8E9F0A1C1 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -1663,6 +1699,74 @@
 			};
 			name = Release;
 		};
+		DC9D17A9D106434B7A6AF551 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = 6A74MR47VX;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.HypnoRenderer;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		E9178C654687FA2D11BAEC92 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = 6A74MR47VX;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.HypnoAudio;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A3B4C5D6E7F8091A2B3C4D5E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = 6A74MR47VX;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.HypnoAppShell;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B4C5D6E7F8091A2B3C4D5E6F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = 6A74MR47VX;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.HypnoAppShell;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1689,42 +1793,6 @@
 			buildConfigurations = (
 				042F992A2EC8990C006D4CDE /* Debug */,
 				042F992B2EC8990C006D4CDE /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		A1B2C3D4E5F6A7B8C9D0E1FD /* Build configuration list for PBXNativeTarget "HypnoCoreTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				A1B2C3D4E5F6A7B8C9D0E1FB /* Debug */,
-				A1B2C3D4E5F6A7B8C9D0E1FC /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		B1C2D3E4F5A6B7C8D9E0F1B0 /* Build configuration list for PBXNativeTarget "HypnoEffectsTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				B1C2D3E4F5A6B7C8D9E0F1AE /* Debug */,
-				B1C2D3E4F5A6B7C8D9E0F1AF /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		C1D2E3F4A5B6C7D8E9F0A1C3 /* Build configuration list for PBXNativeTarget "HypnoRendererTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				C1D2E3F4A5B6C7D8E9F0A1C1 /* Debug */,
-				C1D2E3F4A5B6C7D8E9F0A1C2 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		D1E2F3A4B5C6D7E8F9A0B1C8 /* Build configuration list for PBXNativeTarget "HypnogramQuickLookTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				D1E2F3A4B5C6D7E8F9A0B1C9 /* Debug */,
-				D1E2F3A4B5C6D7E8F9A0B1CA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -1761,6 +1829,51 @@
 			buildConfigurations = (
 				E9178C654687FA2D11BAEC92 /* Debug */,
 				621A9E5C42911142A2741A0C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		92A3B4C5D6E7F8091A2B3C4D /* Build configuration list for PBXNativeTarget "HypnoAppShell" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A3B4C5D6E7F8091A2B3C4D5E /* Debug */,
+				B4C5D6E7F8091A2B3C4D5E6F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1B2C3D4E5F6A7B8C9D0E1FD /* Build configuration list for PBXNativeTarget "HypnoCoreTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B2C3D4E5F6A7B8C9D0E1FB /* Debug */,
+				A1B2C3D4E5F6A7B8C9D0E1FC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B1C2D3E4F5A6B7C8D9E0F1B0 /* Build configuration list for PBXNativeTarget "HypnoEffectsTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B1C2D3E4F5A6B7C8D9E0F1AE /* Debug */,
+				B1C2D3E4F5A6B7C8D9E0F1AF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C1D2E3F4A5B6C7D8E9F0A1C3 /* Build configuration list for PBXNativeTarget "HypnoRendererTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C1D2E3F4A5B6C7D8E9F0A1C1 /* Debug */,
+				C1D2E3F4A5B6C7D8E9F0A1C2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D1E2F3A4B5C6D7E8F9A0B1C8 /* Build configuration list for PBXNativeTarget "HypnogramQuickLookTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D1E2F3A4B5C6D7E8F9A0B1C9 /* Debug */,
+				D1E2F3A4B5C6D7E8F9A0B1CA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
