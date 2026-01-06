@@ -8,7 +8,7 @@
 
 import Foundation
 import CoreMedia
-import HypnoCore
+import HypnoEffects
 
 // MARK: - Hypnogram recipe
 

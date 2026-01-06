@@ -459,11 +459,6 @@ final class Dream: ObservableObject {
                 }
             }
 
-            // Favorite status
-            if let source = activePlayer.currentSource?.clip.file.source,
-               state.favoriteStore.isFavorited(source) {
-                items.append(.text("★ Favorite", order: 29))
-            }
         }
 
         items.append(.padding(16, order: 39))
@@ -475,7 +470,7 @@ final class Dream: ObservableObject {
         items.append(.text("E = Effects editor | 0 = Global | 1-9 = Source", order: 43))
         items.append(.text("Left/Right = Navigate | N = New | Shift+N = Add source", order: 44))
         items.append(.text("Cmd+S = Save | Cmd+F = Favorite hypnogram", order: 45))
-        items.append(.text("` = Cycle Montage/Sequence/Live | Shift+F/X/D = Favorite/Exclude/Mark delete", order: 46))
+        items.append(.text("` = Cycle Montage/Sequence/Live | Shift+X/D = Exclude/Mark delete", order: 46))
 
         return items
     }
@@ -658,11 +653,6 @@ final class Dream: ObservableObject {
             markCurrentSourceForDeletion()
         }
         .keyboardShortcut("d", modifiers: [.shift])
-
-        Button("Toggle Favorite") { [self] in
-            toggleCurrentSourceFavorite()
-        }
-        .keyboardShortcut("f", modifiers: [.shift])
     }
 
     // MARK: - Display
@@ -1133,14 +1123,6 @@ final class Dream: ObservableObject {
         AppNotifications.show("Marked for deletion", flash: true)
     }
 
-    /// Toggle favorite status for current source
-    func toggleCurrentSourceFavorite() {
-        let idx = activePlayer.currentSourceIndex
-        guard idx >= 0, idx < activePlayer.sources.count else { return }
-        let mediaSource = activePlayer.sources[idx].clip.file.source
-        let isFav = state.favoriteStore.toggle(mediaSource)
-        AppNotifications.show(isFav ? "★ Added to favorites" : "Removed from favorites", flash: true)
-    }
 }
 
 // Keep indices positive when wrapping.

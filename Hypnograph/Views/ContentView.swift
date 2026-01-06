@@ -2,12 +2,12 @@ import SwiftUI
 import AVFoundation
 import Combine
 import PhotosUI
+import HypnoCore
 import HypnoAppShell
 
 struct ContentView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var dream: Dream
-    @ObservedObject var divine: Divine
 
     /// Use shared view model from state for controller/keyboard navigation
     private var effectsEditorViewModel: EffectsEditorViewModel {
@@ -17,7 +17,6 @@ struct ContentView: View {
     private var soloIndicatorText: String? {
         // Only show during flash solo (when navigating sources in montage mode)
         guard dream.activePlayer.effectManager.flashSoloIndex != nil,
-              state.currentModuleType == .dream,
               !dream.activePlayer.sources.isEmpty else {
             return nil
         }
@@ -30,15 +29,9 @@ struct ContentView: View {
             Color.black
                 .ignoresSafeArea()
 
-            // Module-specific display
-            switch state.currentModuleType {
-            case .dream:
-                dream.makeDisplayView()
-                    .ignoresSafeArea()
-            case .divine:
-                divine.makeDisplayView()
-                    .ignoresSafeArea()
-            }
+            // Dream display
+            dream.makeDisplayView()
+                .ignoresSafeArea()
 
             // LIVE indicator - top left, only in Live mode
             if dream.isLiveMode {
@@ -54,14 +47,14 @@ struct ContentView: View {
 
             // HUD and Hypnogram List - top left (below LIVE if visible)
             VStack(alignment: .leading, spacing: 8) {
-                if state.windowState.isVisible("hud") && state.currentModuleType == .dream {
+                if state.windowState.isVisible("hud") {
                     HUDView(
                         state: state,
                         dream: dream
                     )
                 }
 
-                if state.windowState.isVisible("hypnogramList") && state.currentModuleType == .dream {
+                if state.windowState.isVisible("hypnogramList") {
                     HypnogramListView(
                         store: HypnogramStore.shared,
                         onLoad: { entry in
@@ -81,8 +74,8 @@ struct ContentView: View {
             .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("hypnogramList"))
         }
         .overlay(alignment: .bottomLeading) {
-            // Player Settings - bottom left, Dream module only
-            if state.currentModuleType == .dream && state.windowState.isVisible("playerSettings") {
+            // Player Settings - bottom left
+            if state.windowState.isVisible("playerSettings") {
                 PlayerSettingsView(
                     player: dream.activePlayer,
                     dream: dream,
@@ -107,7 +100,7 @@ struct ContentView: View {
         .overlay(alignment: .topTrailing) {
             // Right-side panels: Effects editor (top-aligned) and Performance preview (bottom)
             VStack(spacing: 0) {
-                if state.currentModuleType == .dream && state.windowState.isVisible("effectsEditor") {
+                if state.windowState.isVisible("effectsEditor") {
                     EffectsEditorView(viewModel: effectsEditorViewModel, state: state, dream: dream)
                         .padding(.bottom, state.windowState.isVisible("performancePreview") ? 12 : 0)
                         .transition(.move(edge: .trailing))
@@ -115,7 +108,7 @@ struct ContentView: View {
 
                 Spacer(minLength: 0)
 
-                if state.currentModuleType == .dream && state.windowState.isVisible("performancePreview") {
+                if state.windowState.isVisible("performancePreview") {
                     PerformancePreviewView(
                         livePlayer: dream.livePlayer,
                         onClose: {
@@ -142,9 +135,8 @@ struct ContentView: View {
                     if identifiers.isEmpty {
                         AppNotifications.shared.show("Custom Selection cleared", flash: true)
                     } else {
-                        // Activate the custom selection library if it has items
-                        if !state.isLibraryActive(key: HypnographState.photosCustomKey) {
-                            state.toggleLibrary(key: HypnographState.photosCustomKey)
+                        if !state.isLibraryActive(key: ApplePhotosLibraryKeys.photosCustom) {
+                            state.toggleLibrary(key: ApplePhotosLibraryKeys.photosCustom)
                         }
                         AppNotifications.shared.show("Custom Selection: \(identifiers.count) items", flash: true)
                     }

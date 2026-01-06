@@ -9,13 +9,12 @@ This document covers how media sources are indexed, filtered, and loaded from
 folders and Apple Photos.
 
 ## Sources
-- `Hypnograph/MediaSources/MediaSourcesLibrary.swift`
+- `HypnoCore/Media/MediaLibrary.swift`
+- `HypnoCore/Media/MediaLibraryBuilder.swift`
+- `HypnoCore/PersistentIdentifierStore.swift` (ExclusionStore, DeleteStore)
 - `HypnoRenderer/Core/SourceLoader.swift`
-- `HypnoCore/MediaSources/ApplePhotos.swift`
-- `HypnoCore/MediaSources/StillImageCache.swift`
-- `Hypnograph/MediaSources/ExclusionStore.swift`
-- `Hypnograph/MediaSources/DeleteStore.swift`
-- `Hypnograph/MediaSources/FavoriteStore.swift`
+- `HypnoCore/Media/ApplePhotos.swift`
+- `HypnoCore/Media/StillImageCache.swift`
 - `HypnoEffects/Models/HypnogramSource.swift`
 - `Hypnograph/HypnographState.swift`
 
@@ -32,7 +31,7 @@ folders and Apple Photos.
 ### HypnogramSource
 - A recipe source: clip + transforms + blend mode + effect chain.
 
-## MediaSourcesLibrary
+## MediaLibrary
 
 ### Indexing Model
 - Builds a lightweight `sourceIndex` of `(source, mediaKind)` entries.
@@ -82,7 +81,6 @@ folders and Apple Photos.
 ## Persistence
 - Exclusions: `Environment.exclusionsURL`.
 - Deletions: `Environment.deletionsURL`.
-- Favorites: `Environment.favoritesURL`.
 
 ## HypnographState Integration
 - Tracks per-module library selections (`activeLibraryKeys`).

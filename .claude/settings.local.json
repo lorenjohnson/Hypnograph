@@ -39,7 +39,10 @@
       "mcp__code-index__get_settings_info",
       "Bash(codex exec:*)",
       "Bash(command -v:*)",
-      "mcp__code-index__set_project_path"
+      "mcp__code-index__set_project_path",
+      "Bash(xargs:*)",
+      "Bash(for fw in HypnoCore HypnoEffects HypnoRenderer HypnoAudio HypnoAppShell)",
+      "Bash(do echo \"=== $fw ===\" ls /Users/lorenjohnson/dev/artdev/Hypnograph/$fw/*.swift)"
     ]
   }
 }

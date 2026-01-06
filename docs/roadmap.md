@@ -32,7 +32,6 @@ last_reviewed: 2026-01-04T22:36:32Z
 - [ ] Save last used Global Effect as setting so the app comes back to the last used effect applied to the global layer
 
 ## Minor Projects:
-- [ ] Put Render Video and Save on a hot keye and retitle the menu item to "Save and Rednder" (Opt-Cmd-S?)
 - [ ] Combine most of what is in HUD into Player Settings modal
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)
 - [ ] Game Controller mapping revamp back to essentials only

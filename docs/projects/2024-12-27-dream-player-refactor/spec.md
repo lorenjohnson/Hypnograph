@@ -24,7 +24,7 @@ Dream (module)
 
 HypnographState (leaner)
 ├── settings: Settings (persisted config)
-├── library: MediaSourcesLibrary
+├── library: MediaLibrary
 ├── currentModuleType: ModuleType
 ├── activeLibraryKeys, currentLibraryKey
 └── (no more recipe, isPaused, effectManager, UI visibility)

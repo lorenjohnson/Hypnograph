@@ -1,3 +1,9 @@
+---
+name: theory-bridge
+description: Connects technical systems to conceptual, artistic, or political frameworks. Use for surfacing implicit values in technical choices.
+tools: Read, Grep, Glob
+---
+
 # Agent: Theory Bridge
 
 ## Role
