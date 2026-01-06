@@ -16,7 +16,7 @@ import HypnoEffects
 /// - **LB** (Left Bumper) - Cycle blend mode (M) - current layer
 /// - **RB** (Right Bumper) - Cycle source effect backward (F) - current layer
 /// - **LT** (Left Trigger) - Clear all effects and reset blend modes
-/// - **RT** (Right Trigger) - Toggle style (Montage/Sequence) - Dream mode
+/// - **RT** (Right Trigger) - Toggle style (Montage/Sequence)
 /// - **Start/Menu** - Pause/Play (P)
 /// - **Back/Options** - Toggle HUD (H)
 /// - **Left Stick Click** - Toggle watch mode (W)
@@ -29,21 +29,15 @@ final class GameControllerManager {
     // Weak references to avoid retain cycles
     private weak var state: HypnographState?
     private weak var dream: Dream?
-    private weak var divine: Divine?
-    private var cycleModuleHandler: (() -> Void)?
 
     private var connectedController: GCController?
 
     init(
         state: HypnographState,
-        dream: Dream,
-        divine: Divine,
-        cycleModule: @escaping () -> Void
+        dream: Dream
     ) {
         self.state = state
         self.dream = dream
-        self.divine = divine
-        self.cycleModuleHandler = cycleModule
 
         setupControllerObservers()
 
@@ -108,28 +102,20 @@ final class GameControllerManager {
     private var effectsViewModel: EffectsEditorViewModel? {
         state?.effectsEditorViewModel
     }
-    
+
     // MARK: - Button Handlers
 
     private func setupButtonHandlers(_ gamepad: GCExtendedGamepad) {
         // A Button (bottom) - New composition (Space)
         gamepad.buttonA.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard pressed, let self = self else { return }
-            switch self.state?.currentModuleType {
-            case .dream: self.dream?.new()
-            case .divine: self.divine?.new()
-            case .none: break
-            }
+            guard pressed else { return }
+            self?.dream?.new()
         }
 
         // B Button (right) - Save (Cmd+S)
         gamepad.buttonB.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard pressed, let self = self else { return }
-            switch self.state?.currentModuleType {
-            case .dream: self.dream?.save()
-            case .divine: self.divine?.save()
-            case .none: break
-            }
+            guard pressed else { return }
+            self?.dream?.save()
         }
 
         // X Button (left) - Cycle effect (E) for current layer
@@ -155,11 +141,7 @@ final class GameControllerManager {
                 return
             }
             // Normal mode: previous source
-            switch self.state?.currentModuleType {
-            case .dream: self.dream?.previousSource()
-            case .divine: self.divine?.previousCard()
-            case .none: break
-            }
+            self.dream?.previousSource()
         }
 
         // D-Pad Right - Next source (parameter adjustment uses native SwiftUI focus)
@@ -171,11 +153,7 @@ final class GameControllerManager {
                 return
             }
             // Normal mode: next source
-            switch self.state?.currentModuleType {
-            case .dream: self.dream?.nextSource()
-            case .divine: self.divine?.nextCard()
-            case .none: break
-            }
+            self.dream?.nextSource()
         }
 
         // D-Pad Up - Navigate up in effects/parameters
@@ -186,11 +164,7 @@ final class GameControllerManager {
                 self.navigateEffectsEditor(delta: -1)
             } else {
                 // Normal mode: add source
-                switch self.state?.currentModuleType {
-                case .dream: self.dream?.addSource()
-                case .divine: self.divine?.addCard()
-                case .none: break
-                }
+                self.dream?.addSource()
             }
         }
 
@@ -202,11 +176,7 @@ final class GameControllerManager {
                 self.navigateEffectsEditor(delta: 1)
             } else {
                 // Normal mode: delete source
-                switch self.state?.currentModuleType {
-                case .dream: self.dream?.deleteCurrentSource()
-                case .divine: self.divine?.deleteCurrentCard()
-                case .none: break
-                }
+                self.dream?.deleteCurrentSource()
             }
         }
     }
@@ -260,7 +230,7 @@ final class GameControllerManager {
             self?.dream?.clearAllEffects()
         }
 
-        // Right Trigger - Toggle mode (Montage/Sequence) - Dream only
+        // Right Trigger - Toggle mode (Montage/Sequence)
         gamepad.rightTrigger.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed else { return }
             self?.dream?.toggleMode()
@@ -310,18 +280,12 @@ final class GameControllerManager {
             return
         }
 
-        guard let state = state else { return }
-        switch state.currentModuleType {
-        case .dream:
-            dream.livePlayer.send(
-                recipe: dream.currentRecipe,
-                config: dream.activePlayer.config,
-                mode: dream.mode
-            )
-            print("🎮 Sent to Live Display")
-        case .divine:
-            print("🎮 Performance Display: Divine mode not supported yet")
-        }
+        dream.livePlayer.send(
+            recipe: dream.currentRecipe,
+            config: dream.activePlayer.config,
+            mode: dream.mode
+        )
+        print("🎮 Sent to Live Display")
     }
 
     // MARK: - Left Thumbstick for Panel Switching

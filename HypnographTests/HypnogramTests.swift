@@ -9,26 +9,33 @@ import Testing
 import CoreMedia
 import HypnoCore
 import HypnoEffects
+import Foundation
 @testable import Hypnograph
 
 struct HypnographTests {
 
     @MainActor
     @Test func divineCardManagerCreatesUniqueCards() async throws {
-        var clips = makeClips()
-        let favoriteStore = FavoriteStore(
-            url: FileManager.default.temporaryDirectory.appendingPathComponent(
-                "favorites-\(UUID().uuidString).json"
-            )
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        let imageAURL = tempDir.appendingPathComponent("clip-a.png")
+        let imageBURL = tempDir.appendingPathComponent("clip-b.png")
+        try writeTestImage(at: imageAURL)
+        try writeTestImage(at: imageBURL)
+
+        let settingsURL = tempDir.appendingPathComponent("divine-settings.json")
+        let settings = DivineSettings(
+            sources: .array([tempDir.path]),
+            sourceMediaTypes: [.images],
+            activeLibraryKeys: ["default"]
         )
-        let state = DivineState(
-            randomClip: {
-                guard !clips.isEmpty else { return nil }
-                return clips.removeFirst()
-            },
-            exclude: { _ in },
-            favoriteStore: favoriteStore
-        )
+        let settingsData = try JSONEncoder().encode(settings)
+        try settingsData.write(to: settingsURL)
+
+        let coreConfig = HypnoCoreConfig(appSupportDirectory: tempDir)
+        HypnoCoreConfig.shared = coreConfig
+        let state = DivineState(coreConfig: coreConfig, settingsURL: settingsURL)
 
         let manager = DivineCardManager(state: state)
         manager.addCardAtOffsetAtCenter()
@@ -39,18 +46,12 @@ struct HypnographTests {
         #expect(ids.count == 2)
     }
 
-    private func makeClips() -> [VideoClip] {
-        [
-            makeClip(name: "clip-a.mov"),
-            makeClip(name: "clip-b.mov")
-        ]
-    }
-
-    private func makeClip(name: String) -> VideoClip {
-        let url = URL(fileURLWithPath: "/tmp/\(name)")
-        let duration = CMTime(seconds: 5, preferredTimescale: 600)
-        let file = MediaFile(source: .url(url), mediaKind: .video, duration: duration)
-        return VideoClip(file: file, startTime: .zero, duration: duration)
+    private func writeTestImage(at url: URL) throws {
+        let pngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5bVx8AAAAASUVORK5CYII="
+        guard let data = Data(base64Encoded: pngBase64) else {
+            throw NSError(domain: "HypnographTests", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to decode PNG"])
+        }
+        try data.write(to: url)
     }
 
 }

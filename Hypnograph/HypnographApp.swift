@@ -54,6 +54,8 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Callback to save all effect sessions (injected by app)
     var saveEffectSessions: (() -> Void)?
 
+    /// Callback after Photos authorization completes (injected by app)
+    var onPhotosAuthorization: (() -> Void)?
 
     /// Callback to save window state (injected by app)
     var saveWindowState: (() -> Void)?
@@ -88,6 +90,9 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
                 if count > 0 {
                     print("ApplePhotos: Cached \(count) hidden asset identifiers")
                 }
+            }
+            await MainActor.run { [weak self] in
+                self?.onPhotosAuthorization?()
             }
         }
     }
@@ -160,7 +165,6 @@ struct HypnographApp: App {
     @StateObject private var state: HypnographState
     private let renderQueue: RenderEngine.ExportQueue  // Not @StateObject - we don't want to trigger view updates
     @StateObject private var dream: Dream
-    @StateObject private var divine: Divine
 
     init() {
         let coreConfig = HypnoCoreConfig(appSupportDirectory: Environment.appSupportDirectory)
@@ -197,35 +201,13 @@ struct HypnographApp: App {
 
         _state = StateObject(wrappedValue: state)
         _dream = StateObject(wrappedValue: Dream(state: state, renderQueue: renderQueue))
-        let divineState = DivineState(state: state)
-        _divine = StateObject(wrappedValue: Divine(state: divineState))
-    }
-
-    func cycleModule() {
-        switch state.currentModuleType {
-        case .dream:
-            state.currentModuleType = .divine
-        case .divine:
-            state.currentModuleType = .dream
-        }
-    }
-
-    func sendToLivePlayer() {
-        switch state.currentModuleType {
-        case .dream:
-            dream.sendToLivePlayer()
-        case .divine:
-            // Divine doesn't use recipes the same way, skip for now
-            print("⚠️ Performance Display: Divine mode not supported yet")
-        }
     }
 
     var body: some Scene {
         WindowGroup("Hypnograph", id: "main") {
             ContentView(
                 state: state,
-                dream: dream,
-                divine: divine
+                dream: dream
             )
             .tint(.blue)
             .preferredColorScheme(.dark)
@@ -242,6 +224,13 @@ struct HypnographApp: App {
                 }
 
                 appDelegate.renderQueue = renderQueue
+
+                appDelegate.onPhotosAuthorization = { [weak state] in
+                    Task { @MainActor in
+                        await state?.activatePhotosAllIfAvailable()
+                        await state?.refreshAvailableLibraries()
+                    }
+                }
 
                 // Wire up session-based unsaved changes check
                 appDelegate.hasUnsavedEffectChanges = { [weak dream] in
@@ -285,9 +274,7 @@ struct HypnographApp: App {
                 // Initialize game controller support
                 appDelegate.gameControllerManager = GameControllerManager(
                     state: state,
-                    dream: dream,
-                    divine: divine,
-                    cycleModule: cycleModule
+                    dream: dream
                 )
 
                 // Refresh available libraries (includes asset counts for menu)
@@ -301,9 +288,7 @@ struct HypnographApp: App {
             AppCommands(
                 state: state,
                 dream: dream,
-                divine: divine,
-                appDelegate: appDelegate,
-                cycleModule: cycleModule
+                appDelegate: appDelegate
             )
         }
     }
@@ -314,9 +299,7 @@ struct HypnographApp: App {
 struct AppCommands: Commands {
     @ObservedObject private var state: HypnographState
     @ObservedObject private var dream: Dream
-    @ObservedObject private var divine: Divine
     private weak var appDelegate: HypnographAppDelegate?
-    private let cycleModuleHandler: () -> Void
 
     /// Whether a text field is currently being edited
     private var isTyping: Bool { state.isTyping }
@@ -324,15 +307,11 @@ struct AppCommands: Commands {
     init(
         state: HypnographState,
         dream: Dream,
-        divine: Divine,
-        appDelegate: HypnographAppDelegate?,
-        cycleModule: @escaping () -> Void
+        appDelegate: HypnographAppDelegate?
     ) {
         _state = ObservedObject(initialValue: state)
         _dream = ObservedObject(initialValue: dream)
-        _divine = ObservedObject(initialValue: divine)
         self.appDelegate = appDelegate
-        self.cycleModuleHandler = cycleModule
     }
 
 
@@ -368,20 +347,14 @@ struct AppCommands: Commands {
 
         CommandGroup(after: .newItem) {
             Button("New") {
-                switch state.currentModuleType {
-                case .dream: dream.new()
-                case .divine: divine.new()
-                }
+                dream.new()
             }
             .keyboardShortcut("n", modifiers: [.command])
         }
 
         CommandGroup(replacing: .saveItem) {
             Button("Save Hypnogram") {
-                switch state.currentModuleType {
-                case .dream: dream.save()
-                case .divine: divine.save()
-                }
+                dream.save()
             }
             .keyboardShortcut("s", modifiers: [.command])
 
@@ -390,9 +363,10 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
 
-            Button("Render Video and Save") {
+            Button("Save and Render") {
                 dream.renderAndSaveVideo()
             }
+            .keyboardShortcut("s", modifiers: [.option, .command])
 
             Divider()
 
@@ -403,30 +377,6 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(after: .sidebar) {
-            Divider()
-
-            Toggle("Dream", isOn: Binding(
-                get: { state.currentModuleType == .dream },
-                set: { if $0 { state.currentModuleType = .dream } }
-            ))
-            .keyboardShortcut("1", modifiers: [.command, .shift])
-
-            Toggle("Divine", isOn: Binding(
-                get: { state.currentModuleType == .divine },
-                set: { if $0 { state.currentModuleType = .divine } }
-            ))
-            .keyboardShortcut("2", modifiers: [.command, .shift])
-
-            Divider()
-
-            Button("Cycle Module") {
-                cycleModuleHandler()
-            }
-            .keyboardShortcut("~", modifiers: [])
-            .disabled(isTyping)
-
-            Divider()
-
             Toggle("Watch", isOn: Binding(
                 get: { state.settings.watch },
                 set: { _ in state.toggleWatchMode() }
@@ -449,14 +399,14 @@ struct AppCommands: Commands {
                     set: { _ in state.windowState.toggle("effectsEditor") }
                 ))
                 .keyboardShortcut("e", modifiers: [])
-                .disabled(isTyping || state.currentModuleType != .dream)
+                .disabled(isTyping)
 
                 Toggle("Hypnogram List", isOn: Binding(
                     get: { state.windowState.isVisible("hypnogramList") },
                     set: { _ in state.windowState.toggle("hypnogramList") }
                 ))
                 .keyboardShortcut("h", modifiers: [])
-                .disabled(isTyping || state.currentModuleType != .dream)
+                .disabled(isTyping)
 
                 // Clean Screen: Tab key handled via NSEvent monitor in app delegate
                 // (workaround for SwiftUI menu shortcut not registering until menu opened)
@@ -467,14 +417,13 @@ struct AppCommands: Commands {
 
             Divider()
 
-            // Player Settings - only for Dream module
             Section("Player") {
                 Toggle("Player Settings", isOn: Binding(
                     get: { state.windowState.isVisible("playerSettings") },
                     set: { _ in state.windowState.toggle("playerSettings") }
                 ))
                 .keyboardShortcut("p", modifiers: [])
-                .disabled(isTyping || state.currentModuleType != .dream)
+                .disabled(isTyping)
             }
 
             Divider()
@@ -485,7 +434,7 @@ struct AppCommands: Commands {
                     set: { _ in state.windowState.toggle("performancePreview") }
                 ))
                 .keyboardShortcut("l", modifiers: [])
-                .disabled(isTyping || state.currentModuleType != .dream)
+                .disabled(isTyping)
 
                 Toggle("Live Mode", isOn: Binding(
                     get: { dream.isLiveMode },
@@ -500,14 +449,7 @@ struct AppCommands: Commands {
                 .keyboardShortcut("l", modifiers: [.command, .shift])
 
                 Button("Send to Performance Display") {
-                    // Get recipe from current module and send to performance display
-                    // (auto-shows performance display if not visible)
-                    switch state.currentModuleType {
-                    case .dream:
-                        dream.sendToLivePlayer()
-                    case .divine:
-                        print("⚠️ Performance Display: Divine mode not supported yet")
-                    }
+                    dream.sendToLivePlayer()
                 }
                 .keyboardShortcut(.return, modifiers: [.command])
 
@@ -520,100 +462,85 @@ struct AppCommands: Commands {
         }
 
         CommandMenu("Sources") {
-            // Media type filters
-            Toggle("Images", isOn: Binding(
-                get: { state.isMediaTypeActive(.images) },
-                set: { _ in state.toggleMediaType(.images) }
-            ))
-
-            Toggle("Videos", isOn: Binding(
-                get: { state.isMediaTypeActive(.videos) },
-                set: { _ in state.toggleMediaType(.videos) }
-            ))
-
-            Divider()
-
-            let photosLibraries = state.availableLibraries.filter { $0.type == .applePhotos }
-            let folderLibraries = state.availableLibraries.filter { $0.type == .folders }
-
-            if photosLibraries.isEmpty && folderLibraries.isEmpty {
-                Text("No libraries configured")
-                    .disabled(true)
-            } else {
-                // Apple Photos section
-                if !photosLibraries.isEmpty {
-                    Section("Apple Photos") {
-                        // Filter out Custom Selection from regular library list (handled separately)
-                        let regularPhotosLibraries = photosLibraries.filter { $0.id != HypnographState.photosCustomKey }
-
-                        // "All Items" first (if present)
-                        if let allItems = regularPhotosLibraries.first(where: { $0.id == "photos:all" }) {
-                            Toggle(allItems.displayName, isOn: Binding(
-                                get: { state.isLibraryActive(key: allItems.id) },
-                                set: { _ in state.toggleLibrary(key: allItems.id) }
-                            ))
-                        }
-
-                        // Custom Selection right after All Items
-                        let customCount = state.customPhotosAssetIds.count
-                        let isCustomActive = state.isLibraryActive(key: HypnographState.photosCustomKey)
-                        let customLabel = customCount > 0 ? "Custom Selection (\(customCount))" : "Custom Selection"
-
-                        Toggle(customLabel, isOn: Binding(
-                            get: { isCustomActive },
-                            set: { newValue in
-                                if newValue {
-                                    // Turning ON: show picker first
-                                    state.showPhotosPicker = true
-                                } else {
-                                    // Turning OFF: just deactivate
-                                    state.toggleLibrary(key: HypnographState.photosCustomKey)
-                                }
-                            }
-                        ))
-                        .keyboardShortcut("o", modifiers: [.command, .shift])
-
-                        // Rest of the albums (excluding "All Items" which is already shown)
-                        ForEach(regularPhotosLibraries.filter { $0.id != "photos:all" }) { lib in
-                            Toggle(lib.displayName, isOn: Binding(
-                                get: { state.isLibraryActive(key: lib.id) },
-                                set: { _ in state.toggleLibrary(key: lib.id) }
-                            ))
-                        }
-                    }
-                }
-
-                // Folder-based libraries section
-                if !folderLibraries.isEmpty {
-                    Section("Folders") {
-                        ForEach(folderLibraries) { lib in
-                            Toggle(lib.displayName, isOn: Binding(
-                                get: { state.isLibraryActive(key: lib.id) },
-                                set: { _ in state.toggleLibrary(key: lib.id) }
-                            ))
-                        }
-                    }
-                }
-            }
+            sourcesMenu()
         }
 
         CommandMenu("Composition") {
-            switch state.currentModuleType {
-            case .dream:
-                dream.compositionMenu()
-            case .divine:
-                divine.compositionMenu()
-            }
+            dream.compositionMenu()
         }
 
         CommandMenu("Source") {
-            switch state.currentModuleType {
-            case .dream:
-                dream.sourceMenu()
-            case .divine:
-                divine.sourceMenu()
+            dream.sourceMenu()
+        }
+    }
+
+    @ViewBuilder
+    private func sourcesMenu() -> some View {
+        Toggle("Images", isOn: Binding(
+            get: { state.isMediaTypeActive(.images) },
+            set: { _ in state.toggleMediaType(.images) }
+        ))
+
+        Toggle("Videos", isOn: Binding(
+            get: { state.isMediaTypeActive(.videos) },
+            set: { _ in state.toggleMediaType(.videos) }
+        ))
+
+        Divider()
+
+        let photosLibraries = state.availableLibraries.filter { $0.type == .applePhotos }
+        let folderLibraries = state.availableLibraries.filter { $0.type == .folders }
+
+        if photosLibraries.isEmpty && folderLibraries.isEmpty {
+            Text("No libraries configured")
+                .disabled(true)
+        } else {
+            if !photosLibraries.isEmpty {
+                Section("Apple Photos") {
+                    let regularPhotosLibraries = photosLibraries.filter { $0.id != ApplePhotosLibraryKeys.photosCustom }
+
+                    if let allItems = regularPhotosLibraries.first(where: { $0.id == "photos:all" }) {
+                        Toggle(allItems.displayName, isOn: Binding(
+                            get: { state.isLibraryActive(key: allItems.id) },
+                            set: { _ in state.toggleLibrary(key: allItems.id) }
+                        ))
+                    }
+
+                    let customCount = state.customPhotosAssetIds.count
+                    let isCustomActive = state.isLibraryActive(key: ApplePhotosLibraryKeys.photosCustom)
+                    let customLabel = customCount > 0 ? "Custom Selection (\(customCount))" : "Custom Selection"
+
+                    Toggle(customLabel, isOn: Binding(
+                        get: { isCustomActive },
+                        set: { newValue in
+                            if newValue {
+                                state.showPhotosPicker = true
+                            } else {
+                                state.toggleLibrary(key: ApplePhotosLibraryKeys.photosCustom)
+                            }
+                        }
+                    ))
+                    .keyboardShortcut("o", modifiers: [.command, .shift])
+
+                    ForEach(regularPhotosLibraries.filter { $0.id != "photos:all" }) { lib in
+                        Toggle(lib.displayName, isOn: Binding(
+                            get: { state.isLibraryActive(key: lib.id) },
+                            set: { _ in state.toggleLibrary(key: lib.id) }
+                        ))
+                    }
+                }
+            }
+
+            if !folderLibraries.isEmpty {
+                Section("Folders") {
+                    ForEach(folderLibraries) { lib in
+                        Toggle(lib.displayName, isOn: Binding(
+                            get: { state.isLibraryActive(key: lib.id) },
+                            set: { _ in state.toggleLibrary(key: lib.id) }
+                        ))
+                    }
+                }
             }
         }
-
     }
 }

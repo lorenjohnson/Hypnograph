@@ -10,92 +10,7 @@ import CoreGraphics
 import CoreMedia
 import HypnoRenderer
 
-// MARK: - Source Library Info (for menu display)
-
-/// Information about a source library for menu display
-struct SourceLibraryInfo: Identifiable {
-    enum LibraryType {
-        case folders
-        case applePhotos
-    }
-
-    let id: String           // Unique key for this library
-    let name: String         // Display name
-    let type: LibraryType    // Folder-based or Apple Photos
-    var assetCount: Int      // Number of assets (0 = hidden from menu)
-
-    /// Display name with asset count, e.g. "Archive (587)"
-    var displayName: String {
-        "\(name) (\(assetCount))"
-    }
-}
-
-// MARK: - Polymorphic sources
-
-enum SourcesParam: Codable {
-    case array([String])
-    case dictionary([String: [String]])
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.singleValueContainer()
-
-        if let dictArray = try? c.decode([String: [String]].self) {
-            self = .dictionary(dictArray)
-            return
-        }
-
-        if let dictString = try? c.decode([String: String].self) {
-            self = .dictionary(dictString.mapValues { [$0] })
-            return
-        }
-
-        if let arr = try? c.decode([String].self) {
-            self = .array(arr)
-            return
-        }
-
-        throw DecodingError.typeMismatch(
-            SourcesParam.self,
-            .init(codingPath: decoder.codingPath,
-                  debugDescription: "Expected [String], [String: String], or [String: [String]]")
-        )
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var c = encoder.singleValueContainer()
-        switch self {
-        case .array(let arr):
-            try c.encode(arr)
-        case .dictionary(let dict):
-            try c.encode(dict)
-        }
-    }
-
-    var libraries: [String: [String]] {
-        switch self {
-        case .array(let arr):
-            return ["default": arr]
-        case .dictionary(let dict):
-            return dict
-        }
-    }
-
-    var libraryOrder: [String] {
-        switch self {
-        case .array:
-            return ["default"]
-        case .dictionary(let dict):
-            return Array(dict.keys)
-        }
-    }
-
-    var defaultKey: String {
-        let libs = libraries
-        if libs.keys.contains("default") { return "default" }
-        if let k = libs.keys.first(where: { $0.lowercased() == "default" }) { return k }
-        return libraryOrder.first ?? "default"
-    }
-}
+// SourceLibraryInfo and SourcesParam are now provided by HypnoCore
 
 // MARK: - Output Resolution
 
@@ -123,7 +38,7 @@ enum OutputResolution: Int, Codable, CaseIterable {
 
 // MARK: - Settings
 
-struct Settings: Codable {
+struct Settings: Codable, MediaLibrarySettings {
     // Required in JSON
     var outputFolder: String
     var sources: SourcesParam
