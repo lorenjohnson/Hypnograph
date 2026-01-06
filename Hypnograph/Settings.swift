@@ -8,7 +8,6 @@ import HypnoCore
 import AppKit
 import CoreGraphics
 import CoreMedia
-import HypnoRenderer
 
 // SourceLibraryInfo and SourcesParam are now provided by HypnoCore
 

@@ -2,7 +2,7 @@
 //  LivePlayer.swift
 //  Hypnograph
 //
-//  Live player for performance output to an external monitor.
+//  Live player for live output to an external monitor.
 //  Uses A/B player crossfading for smooth transitions between hypnograms.
 //
 
@@ -10,9 +10,7 @@ import Foundation
 import AVFoundation
 import AppKit
 import Combine
-import HypnoEffects
-import HypnoRenderer
-import HypnoAudio
+import HypnoCore
 
 /// Live player for clean output to external monitor with smooth crossfades
 @MainActor
@@ -48,47 +46,47 @@ final class LivePlayer: ObservableObject {
 
     // MARK: - Audio
 
-    /// Set volume level for performance audio (0.0 = muted, 1.0 = full volume)
+    /// Set volume level for live audio (0.0 = muted, 1.0 = full volume)
     func setVolume(_ volume: Float) {
         currentVolume = volume
         applyVolumeToActivePlayer()
-        print("🔊 PerformanceDisplay: Volume = \(volume)")
+        print("🔊 LiveDisplay: Volume = \(volume)")
     }
 
-    /// Set the audio output device for performance display
+    /// Set the audio output device for live display
     /// - Parameter deviceUID: The Core Audio device UID, or nil for system default
     func setAudioDevice(_ deviceUID: String?) {
         currentAudioDeviceUID = deviceUID
         applyAudioDeviceToAllPlayers()
-        print("🔊 PerformanceDisplay: Audio device = \(deviceUID ?? "System Default")")
+        print("🔊 LiveDisplay: Audio device = \(deviceUID ?? "System Default")")
     }
 
     /// Apply volume to the currently active player only (not the fading-out player)
     private func applyVolumeToActivePlayer() {
         guard let content = contentView else {
-            print("⚠️ PerformanceDisplay: No contentView for volume")
+            print("⚠️ LiveDisplay: No contentView for volume")
             return
         }
         let activePlayerView = activePlayer == .a ? content.playerA : content.playerB
         activePlayerView.player?.volume = currentVolume
-        print("🔊 PerformanceDisplay: Applied volume \(currentVolume) to player \(activePlayer)")
+        print("🔊 LiveDisplay: Applied volume \(currentVolume) to player \(activePlayer)")
     }
 
     /// Apply audio device to all players (so new player during crossfade gets correct device)
     private func applyAudioDeviceToAllPlayers() {
         guard let content = contentView else {
-            print("⚠️ PerformanceDisplay: No contentView for audio device")
+            print("⚠️ LiveDisplay: No contentView for audio device")
             return
         }
         content.playerA.player?.audioOutputDeviceUniqueID = currentAudioDeviceUID
         content.playerB.player?.audioOutputDeviceUniqueID = currentAudioDeviceUID
-        print("🔊 PerformanceDisplay: Applied device to both players")
+        print("🔊 LiveDisplay: Applied device to both players")
     }
 
     // MARK: - Private
 
-    private var window: PerformanceWindow?
-    private var contentView: PerformanceContentView?
+    private var window: LiveWindow?
+    private var contentView: LiveContentView?
 
     /// Current volume level (0.0 to 1.0)
     private var currentVolume: Float = 1.0
@@ -153,7 +151,7 @@ final class LivePlayer: ObservableObject {
         // Wire up global effect chain setter
         effectManager.globalEffectChainSetter = { [weak self] chain in
             guard let self = self, var recipe = self.currentRecipe else { return }
-            print("🎬 PerformanceDisplay: globalEffectChainSetter - setting chain: \(chain.name ?? "unnamed")")
+            print("🎬 LiveDisplay: globalEffectChainSetter - setting chain: \(chain.name ?? "unnamed")")
             recipe.effectChain = chain
             self.currentRecipe = recipe
         }
@@ -163,7 +161,7 @@ final class LivePlayer: ObservableObject {
             guard let self = self,
                   var recipe = self.currentRecipe,
                   sourceIndex < recipe.sources.count else { return }
-            print("🎬 PerformanceDisplay: sourceEffectChainSetter - setting source[\(sourceIndex)] chain: \(chain.name ?? "unnamed")")
+            print("🎬 LiveDisplay: sourceEffectChainSetter - setting source[\(sourceIndex)] chain: \(chain.name ?? "unnamed")")
             recipe.sources[sourceIndex].effectChain = chain
             self.currentRecipe = recipe
         }
@@ -189,14 +187,14 @@ final class LivePlayer: ObservableObject {
 
         // Create content view at a reasonable default size
         let contentFrame = NSRect(origin: .zero, size: NSSize(width: 1920, height: 1080))
-        let content = PerformanceContentView(frame: contentFrame)
+        let content = LiveContentView(frame: contentFrame)
         content.autoresizingMask = [.width, .height]
         contentView = content
 
-        print("🎬 PerformanceDisplay: Created content view (no window)")
+        print("🎬 LiveDisplay: Created content view (no window)")
     }
 
-    /// Show the performance display window
+    /// Show the live display window
     /// - Automatically uses windowed mode on primary screen, fullscreen on external monitors
     /// - Parameter screen: Target screen (nil = auto-select external or primary)
     func show(on screen: NSScreen? = nil) {
@@ -222,7 +220,7 @@ final class LivePlayer: ObservableObject {
             hasExternalMonitor = false
         }
 
-        let win: PerformanceWindow
+        let win: LiveWindow
         let contentFrame: NSRect
 
         if hasExternalMonitor {
@@ -230,21 +228,21 @@ final class LivePlayer: ObservableObject {
             let frame = targetScreen.frame
             contentFrame = NSRect(origin: .zero, size: frame.size)
 
-            win = PerformanceWindow(
+            win = LiveWindow(
                 contentRect: frame,
                 styleMask: [.borderless],
                 backing: .buffered,
                 defer: false,
                 screen: targetScreen
             )
-            win.configureForPerformance()
+            win.configureForLive()
             win.level = .normal
             win.isOpaque = true
             win.isReleasedWhenClosed = false
             win.collectionBehavior = [.stationary, .canJoinAllSpaces, .fullScreenAuxiliary]
             win.setFrame(frame, display: true)
 
-            print("🎬 PerformanceDisplay: Fullscreen on \(targetScreen.localizedName)")
+            print("🎬 LiveDisplay: Fullscreen on \(targetScreen.localizedName)")
         } else {
             // Single monitor: resizable floating window
             let windowSize = NSSize(width: 960, height: 540)  // 16:9
@@ -256,14 +254,14 @@ final class LivePlayer: ObservableObject {
             )
             contentFrame = NSRect(origin: .zero, size: windowSize)
 
-            win = PerformanceWindow(
+            win = LiveWindow(
                 contentRect: windowFrame,
                 styleMask: [.titled, .closable, .resizable, .miniaturizable],
                 backing: .buffered,
                 defer: false,
                 screen: targetScreen
             )
-            win.title = "Performance Display"
+            win.title = "Live Display"
             win.level = .modalPanel  // Float above fullscreen main window
             win.backgroundColor = .black
             win.isOpaque = true
@@ -272,16 +270,16 @@ final class LivePlayer: ObservableObject {
             win.contentAspectRatio = NSSize(width: 16, height: 9)
             win.hidesOnDeactivate = false
 
-            print("🎬 PerformanceDisplay: Windowed mode (single monitor)")
+            print("🎬 LiveDisplay: Windowed mode (single monitor)")
         }
 
         // Reuse existing content view if available, otherwise create new one
-        let content: PerformanceContentView
+        let content: LiveContentView
         if let existingContent = contentView {
             content = existingContent
             content.frame = contentFrame
         } else {
-            content = PerformanceContentView(frame: contentFrame)
+            content = LiveContentView(frame: contentFrame)
             content.autoresizingMask = [.width, .height]
             contentView = content
         }
@@ -294,11 +292,11 @@ final class LivePlayer: ObservableObject {
         isVisible = true
     }
     
-    /// Hide the performance display window (keeps content/players running for preview)
+    /// Hide the live display window (keeps content/players running for preview)
     func hide() {
         guard window != nil else { return }
 
-        print("🎬 PerformanceDisplay: Hiding window...")
+        print("🎬 LiveDisplay: Hiding window...")
 
         // Close window but keep content view and players
         if let win = window {
@@ -309,12 +307,12 @@ final class LivePlayer: ObservableObject {
         window = nil
         isVisible = false
 
-        print("🎬 PerformanceDisplay: Window hidden (playback continues)")
+        print("🎬 LiveDisplay: Window hidden (playback continues)")
     }
 
     /// Stop playback and reset all state
     func stop() {
-        print("🎬 PerformanceDisplay: Stopping...")
+        print("🎬 LiveDisplay: Stopping...")
 
         // Cancel any pending build
         pendingBuildTask?.cancel()
@@ -345,7 +343,7 @@ final class LivePlayer: ObservableObject {
         activeSourceCount = 0
         currentRecipe = nil
 
-        print("🎬 PerformanceDisplay: Stopped and reset")
+        print("🎬 LiveDisplay: Stopped and reset")
     }
 
     /// Toggle visibility (also serves as reset if stuck)
@@ -359,7 +357,7 @@ final class LivePlayer: ObservableObject {
 
     /// Force reset - stops everything and optionally reopens
     func reset() {
-        print("🎬 PerformanceDisplay: Force reset")
+        print("🎬 LiveDisplay: Force reset")
         let wasVisible = isVisible
         stop()
         if wasVisible {
@@ -370,7 +368,7 @@ final class LivePlayer: ObservableObject {
         }
     }
     
-    /// Send a recipe to the performance display
+    /// Send a recipe to the live display
     /// Builds the composition asynchronously, then crossfades to it
     /// - Parameters:
     ///   - recipe: The hypnogram recipe to display
@@ -381,7 +379,7 @@ final class LivePlayer: ObservableObject {
         ensureContentView()
 
         guard let content = contentView else {
-            print("⚠️ PerformanceDisplay: No content view, ignoring send")
+            print("⚠️ LiveDisplay: No content view, ignoring send")
             return
         }
 
@@ -404,7 +402,7 @@ final class LivePlayer: ObservableObject {
         let modeLabel = mode == .sequence ? "sequence" : "montage"
         currentRecipeDescription = "\(sourceCount) source\(sourceCount == 1 ? "" : "s") (\(modeLabel))"
 
-        print("🎬 PerformanceDisplay: Building \(modeLabel) with \(sourceCount) sources...")
+        print("🎬 LiveDisplay: Building \(modeLabel) with \(sourceCount) sources...")
 
         // Store the mode for sequence seeking
         self.currentMode = mode
@@ -438,11 +436,11 @@ final class LivePlayer: ObservableObject {
 
     // MARK: - Private Methods
 
-    private func buildAndTransition(content: PerformanceContentView, mode: DreamMode) async {
+    private func buildAndTransition(content: LiveContentView, mode: DreamMode) async {
         guard let recipe = currentRecipe else { return }
         let outputSize = renderSize(aspectRatio: config.aspectRatio, maxDimension: config.playerResolution.maxDimension)
 
-        // Build composition using PerformanceDisplay's own EffectManager
+        // Build composition using LiveDisplay's own EffectManager
         // This makes effects completely independent of the main preview
         let timeline: RenderEngine.Timeline
         switch mode {
@@ -461,11 +459,11 @@ final class LivePlayer: ObservableObject {
             recipe: recipe,
             timeline: timeline,
             config: config,
-            effectManager: effectManager  // Use PerformanceDisplay's own EffectManager
+            effectManager: effectManager  // Use LiveDisplay's own EffectManager
         )
 
         guard !Task.isCancelled else {
-            print("🎬 PerformanceDisplay: Build cancelled")
+            print("🎬 LiveDisplay: Build cancelled")
             return
         }
 
@@ -477,13 +475,13 @@ final class LivePlayer: ObservableObject {
             )
 
         case .failure(let error):
-            print("🔴 PerformanceDisplay: Build failed - \(error)")
+            print("🔴 LiveDisplay: Build failed - \(error)")
         }
     }
 
     private func performCrossfade(
         to buildResult: RenderEngine.PlayerItemResult,
-        content: PerformanceContentView
+        content: LiveContentView
     ) async {
         isTransitioning = true
 
@@ -539,10 +537,10 @@ final class LivePlayer: ObservableObject {
             self.activePlayer = nextSlot
             self.isTransitioning = false
 
-            print("✅ PerformanceDisplay: Crossfade complete")
+            print("✅ LiveDisplay: Crossfade complete")
         }
 
-        print("🎬 PerformanceDisplay: Crossfading over \(duration)s")
+        print("🎬 LiveDisplay: Crossfading over \(duration)s")
     }
 
     /// Setup notification-based looping for a player (same approach as preview)

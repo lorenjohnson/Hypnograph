@@ -13,10 +13,7 @@ import SwiftUI
 import AVFoundation
 import AppKit
 import HypnoCore
-import HypnoEffects
-import HypnoRenderer
-import HypnoAudio
-import HypnoAppShell
+import HypnoUI
 
 @MainActor
 final class Dream: ObservableObject {
@@ -36,7 +33,7 @@ final class Dream: ObservableObject {
     /// Sequence player - plays sources back-to-back
     let sequencePlayer: DreamPlayerState
 
-    /// Performance display - external monitor output (moved from HypnographState)
+    /// Live display - external monitor output (moved from HypnographState)
     let livePlayer: LivePlayer
 
     /// Subscriptions to forward player state changes to Dream's objectWillChange
@@ -47,15 +44,15 @@ final class Dream: ObservableObject {
         mode == .montage ? montagePlayer : sequencePlayer
     }
 
-    /// Performance mode: Edit (local preview) vs Live (mirror performance display)
-    enum PerformanceMode {
+    /// Live mode: Edit (local preview) vs Live (mirror live display)
+    enum LiveMode {
         case edit
         case live
     }
 
-    @Published var performanceMode: PerformanceMode = .edit
+    @Published var liveMode: LiveMode = .edit
 
-    var isLiveMode: Bool { performanceMode == .live }
+    var isLiveMode: Bool { liveMode == .live }
 
     // MARK: - Audio Output
 
@@ -65,13 +62,13 @@ final class Dream: ObservableObject {
     /// Selected audio output device for Preview player (nil = system default)
     @Published var previewAudioDevice: AudioOutputDevice? = nil
 
-    /// Selected audio output device for Performance player (nil = system default)
+    /// Selected audio output device for Live player (nil = system default)
     @Published var liveAudioDevice: AudioOutputDevice? = nil
 
     /// Volume level for Preview audio (0.0 to 1.0)
     @Published var previewVolume: Float = 1.0
 
-    /// Volume level for Performance audio (0.0 to 1.0)
+    /// Volume level for Live audio (0.0 to 1.0)
     @Published var liveVolume: Float = 1.0
 
     /// Get the device UID for preview audio routing (nil = system default)
@@ -79,7 +76,7 @@ final class Dream: ObservableObject {
         previewAudioDevice?.uid
     }
 
-    /// Get the device UID for performance audio routing (nil = system default)
+    /// Get the device UID for live audio routing (nil = system default)
     var liveAudioDeviceUID: String? {
         liveAudioDevice?.uid
     }
@@ -90,21 +87,21 @@ final class Dream: ObservableObject {
         return audioManager.outputDevices.first { $0.uid == uid } ?? audioManager.systemDefault
     }
 
-    /// Returns the active EffectManager based on performance mode
-    /// In live mode, effects go to the performance display; in edit mode, to the active player
+    /// Returns the active EffectManager based on live mode
+    /// In live mode, effects go to the live display; in edit mode, to the active player
     var activeEffectManager: EffectManager {
         isLiveMode ? livePlayer.effectManager : activePlayer.effectManager
     }
 
-    /// Returns the active EffectsSession based on performance mode
-    /// In live mode, uses performance display's session; in edit mode, uses the active player's session
+    /// Returns the active EffectsSession based on live mode
+    /// In live mode, uses live display's session; in edit mode, uses the active player's session
     var effectsSession: EffectsSession {
         isLiveMode ? livePlayer.effectsSession : activePlayer.effectsSession
     }
 
     func toggleLiveMode() {
-        performanceMode = (performanceMode == .edit) ? .live : .edit
-        print("🎬 Performance Mode: \(performanceMode == .live ? "LIVE" : "Edit")")
+        liveMode = (liveMode == .edit) ? .live : .edit
+        print("🎬 Live Mode: \(liveMode == .live ? "LIVE" : "Edit")")
     }
 
     // MARK: - Init
@@ -164,7 +161,7 @@ final class Dream: ObservableObject {
             }
             .store(in: &playerSubscriptions)
 
-        // Performance audio subscriptions
+        // Live audio subscriptions
         // Use .receive(on: RunLoop.main) to ensure sink runs AFTER property is updated
         $liveVolume
             .receive(on: RunLoop.main)
@@ -223,12 +220,12 @@ final class Dream: ObservableObject {
         previewAudioDevice = findAudioDevice(byUID: settings.previewAudioDeviceUID)
         liveAudioDevice = findAudioDevice(byUID: settings.liveAudioDeviceUID)
 
-        // Apply initial performance audio settings to LivePlayer
+        // Apply initial live audio settings to LivePlayer
         // (subscriptions use .dropFirst() so initial values aren't applied via Combine)
         livePlayer.setVolume(liveVolume)
         livePlayer.setAudioDevice(liveAudioDevice?.uid)
 
-        print("🔊 Dream: Loaded audio settings - preview: \(previewAudioDevice?.name ?? "System Default") @ \(previewVolume), performance: \(liveAudioDevice?.name ?? "System Default") @ \(liveVolume)")
+        print("🔊 Dream: Loaded audio settings - preview: \(previewAudioDevice?.name ?? "System Default") @ \(previewVolume), live: \(liveAudioDevice?.name ?? "System Default") @ \(liveVolume)")
     }
 
     /// Save audio device and volume settings to Settings
@@ -252,11 +249,11 @@ final class Dream: ObservableObject {
             previewAudioDevice = audioManager.systemDefault
         }
 
-        // Check performance device
-        if let performance = liveAudioDevice,
-           !performance.isSystemDefault,
-           !devices.contains(where: { $0.uid == performance.uid }) {
-            print("🔊 Dream: Performance audio device '\(performance.name)' disconnected, switching to System Default")
+        // Check live device
+        if let live = liveAudioDevice,
+           !live.isSystemDefault,
+           !devices.contains(where: { $0.uid == live.uid }) {
+            print("🔊 Dream: Live audio device '\(live.name)' disconnected, switching to System Default")
             liveAudioDevice = audioManager.systemDefault
         }
     }
@@ -336,19 +333,19 @@ final class Dream: ObservableObject {
         mode = (mode == .montage) ? .sequence : .montage
     }
 
-    /// Cycle through all three modes: Montage → Sequence → Performance → Montage
+    /// Cycle through all three modes: Montage → Sequence → Live → Montage
     func cycleMode() {
         state.noteUserInteraction()
         if isLiveMode {
             // Live → Montage (exit live mode)
-            performanceMode = .edit
+            liveMode = .edit
             mode = .montage
         } else if mode == .montage {
             // Montage → Sequence
             mode = .sequence
         } else {
             // Sequence → Live
-            performanceMode = .live
+            liveMode = .live
         }
     }
 
@@ -390,7 +387,7 @@ final class Dream: ObservableObject {
         }
     }
 
-    /// Sync Performance Display to current source when in sequence mode
+    /// Sync Live Display to current source when in sequence mode
     private func syncLivePlayerIfSequence() {
         guard mode == .sequence else { return }
         livePlayer.seekToSource(index: activePlayer.currentSourceIndex)
@@ -482,7 +479,7 @@ final class Dream: ObservableObject {
 
     @ViewBuilder
     func compositionMenu() -> some View {
-        Button("Cycle Mode (Montage/Sequence/Performance)") { [self] in
+        Button("Cycle Mode (Montage/Sequence/Live)") { [self] in
             cycleMode()
         }
         .keyboardShortcut("`", modifiers: [])
@@ -658,10 +655,10 @@ final class Dream: ObservableObject {
     // MARK: - Display
 
     func makeDisplayView() -> AnyView {
-        // In Live mode, mirror the Performance Display player instead of local preview
+        // In Live mode, mirror the Live Display player instead of local preview
         if isLiveMode {
             return AnyView(
-                LiveModePlayerView(livePlayer: livePlayer)
+                LivePlayerView(livePlayer: livePlayer)
                     .id("dream-live-\(livePlayer.config.viewID)")
             )
         }
@@ -713,7 +710,7 @@ final class Dream: ObservableObject {
                     volume: previewVolume,
                     audioDeviceUID: previewAudioDeviceUID,
                     onSourceIndexChanged: { [weak self] newIndex in
-                        // Sync Performance Display when auto-advancing in sequence mode
+                        // Sync Live Display when auto-advancing in sequence mode
                         self?.livePlayer.seekToSource(index: newIndex)
                     }
                 )
@@ -746,7 +743,7 @@ final class Dream: ObservableObject {
     // MARK: - Lifecycle
 
     func new() {
-        // In Live mode, generate directly for performance display without changing edit state
+        // In Live mode, generate directly for live display without changing edit state
         if isLiveMode {
             newForLivePlayer()
             return
@@ -769,10 +766,10 @@ final class Dream: ObservableObject {
         }
     }
 
-    /// Generate a new random recipe and send directly to performance display
+    /// Generate a new random recipe and send directly to live display
     /// Does NOT modify the edit state
     private func newForLivePlayer() {
-        // Clear performance display's frame buffer
+        // Clear live display's frame buffer
         livePlayer.effectManager.clearFrameBuffer()
 
         // Generate a standalone recipe
@@ -786,7 +783,7 @@ final class Dream: ObservableObject {
         )
     }
 
-    /// Generate a random recipe without modifying state (for performance display)
+    /// Generate a random recipe without modifying state (for live display)
     /// Preserves the current effect chain from the active player
     private func generateRandomRecipe() -> HypnogramRecipe {
         var sources: [HypnogramSource] = []
@@ -814,7 +811,7 @@ final class Dream: ObservableObject {
         )
     }
 
-    /// Send current hypnogram to performance display
+    /// Send current hypnogram to live display
     func sendToLivePlayer() {
         livePlayer.send(
             recipe: activePlayer.recipe,

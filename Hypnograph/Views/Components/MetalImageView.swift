@@ -10,8 +10,7 @@ import MetalKit
 import CoreImage
 import CoreMedia
 import AppKit
-import HypnoEffects
-import HypnoRenderer
+import HypnoCore
 
 /// NSView wrapper for MTKView that displays CIImages with effects
 final class MetalImageView: NSView {

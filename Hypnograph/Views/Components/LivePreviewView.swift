@@ -1,8 +1,8 @@
 //
-//  PerformancePreviewView.swift
+//  LivePreviewView.swift
 //  Hypnograph
 //
-//  Preview panel for performance display shown in sidebar.
+//  Preview panel for live display shown in sidebar.
 //  Shows current hypnogram playback with button to toggle external window.
 //
 
@@ -10,8 +10,8 @@ import SwiftUI
 import AVKit
 import AppKit
 
-/// Preview of performance display content, shown as panel in main window
-struct PerformancePreviewView: View {
+/// Preview of live display content, shown as panel in main window
+struct LivePreviewView: View {
     @ObservedObject var livePlayer: LivePlayer
     let onClose: () -> Void
 
@@ -84,8 +84,8 @@ struct PerformancePreviewView: View {
                 Color.black
 
                 if livePlayer.hasContent {
-                    // Show wrapped AVPlayerView from performance display
-                    PerformancePlayerWrapper(livePlayer: livePlayer)
+                    // Show wrapped AVPlayerView from live display
+                    LivePlayerWrapper(livePlayer: livePlayer)
                         .aspectRatio(16/9, contentMode: .fit)
                 } else {
                     // Placeholder when no source assigned
@@ -140,8 +140,8 @@ struct PerformancePreviewView: View {
     }
 }
 
-/// NSViewRepresentable to show current performance player content
-struct PerformancePlayerWrapper: NSViewRepresentable {
+/// NSViewRepresentable to show current live player content
+struct LivePlayerWrapper: NSViewRepresentable {
     @ObservedObject var livePlayer: LivePlayer
 
     func makeNSView(context: Context) -> AVPlayerView {
@@ -153,7 +153,7 @@ struct PerformancePlayerWrapper: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: AVPlayerView, context: Context) {
-        // Mirror the active player from performance display
+        // Mirror the active player from live display
         nsView.player = livePlayer.activeAVPlayer
     }
 

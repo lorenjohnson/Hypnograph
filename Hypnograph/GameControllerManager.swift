@@ -1,6 +1,6 @@
 import Foundation
 import GameController
-import HypnoEffects
+import HypnoCore
 
 /// Manages Xbox/PlayStation/MFi game controller input and maps it to app actions.
 /// Designed for gallery installations and instrument-like control.
@@ -20,7 +20,7 @@ import HypnoEffects
 /// - **Start/Menu** - Pause/Play (P)
 /// - **Back/Options** - Toggle HUD (H)
 /// - **Left Stick Click** - Toggle watch mode (W)
-/// - **Right Stick Click** - Send to Performance Display (Cmd+Return)
+/// - **Right Stick Click** - Send to Live Display (Cmd+Return)
 ///
 /// Automatically detects and connects to controllers when they're paired via Bluetooth.
 @MainActor
@@ -260,7 +260,7 @@ final class GameControllerManager {
             }
         }
 
-        // Right Stick Click - Send to Performance Display (Cmd+Return) (if available)
+        // Right Stick Click - Send to Live Display (Cmd+Return) (if available)
         if let rightThumbButton = gamepad.rightThumbstickButton {
             rightThumbButton.pressedChangedHandler = { [weak self] _, _, pressed in
                 guard pressed else { return }
@@ -269,14 +269,14 @@ final class GameControllerManager {
         }
     }
 
-    // MARK: - Performance Display
+    // MARK: - Live Display
 
     private func sendToLivePlayer() {
         guard let dream = dream else { return }
 
-        // Only works when performance display is visible
+        // Only works when live display is visible
         guard dream.livePlayer.isVisible else {
-            print("🎮 Performance Display not visible, ignoring send")
+            print("🎮 Live Display not visible, ignoring send")
             return
         }
 

@@ -13,8 +13,7 @@ import Combine
 import CoreMedia
 import CoreGraphics
 import HypnoCore
-import HypnoRenderer
-import HypnoAppShell
+import HypnoUI
 
 /// Manages the current in-progress hypnogram.
 @MainActor

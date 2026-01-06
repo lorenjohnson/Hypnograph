@@ -11,7 +11,6 @@ import CoreGraphics
 import CoreImage
 import AppKit
 import HypnoCore
-import HypnoEffects
 
 struct QuickLookParsingTests {
 

@@ -66,11 +66,6 @@ enum Environment {
         appSupportDirectory.appendingPathComponent("deletions.json")
     }
 
-    /// ~/Library/Application Support/Hypnograph/favorites.json
-    static var favoritesURL: URL {
-        appSupportDirectory.appendingPathComponent("favorites.json")
-    }
-
     /// ~/Library/Application Support/Hypnograph/luts/
     static var lutsDirectory: URL {
         let url = appSupportDirectory.appendingPathComponent("luts", isDirectory: true)

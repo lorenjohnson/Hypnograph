@@ -11,7 +11,7 @@ import Combine
 import CoreImage
 import AppKit
 import UniformTypeIdentifiers
-import HypnoEffects
+import HypnoCore
 
 /// Metadata for a saved hypnogram
 struct HypnogramEntry: Identifiable, Codable {

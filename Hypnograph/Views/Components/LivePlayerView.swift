@@ -1,18 +1,18 @@
 //
-//  LiveModePlayerView.swift
+//  LivePlayerView.swift
 //  Hypnograph
 //
-//  Full-screen player view for Live mode - mirrors the Performance Display player.
-//  Used as the main preview when in Live performance mode.
+//  Full-screen player view for Live mode - mirrors the Live Display player.
+//  Used as the main preview when in Live live mode.
 //
 
 import SwiftUI
 import AVKit
 import AppKit
 
-/// Full-screen player view that mirrors Performance Display content
+/// Full-screen player view that mirrors Live Display content
 /// Used as the main preview when in Live mode (Cmd-P)
-struct LiveModePlayerView: View {
+struct LivePlayerView: View {
     @ObservedObject var livePlayer: LivePlayer
 
     var body: some View {
@@ -29,7 +29,7 @@ struct LiveModePlayerView: View {
                     Image(systemName: "play.display")
                         .font(.system(size: 48))
                         .foregroundColor(.white.opacity(0.3))
-                    Text("No Performance Content")
+                    Text("No Live Content")
                         .font(.system(size: 14, design: .monospaced))
                         .foregroundColor(.white.opacity(0.4))
                     Text("Send content with ⌘Return")
@@ -41,7 +41,7 @@ struct LiveModePlayerView: View {
     }
 }
 
-/// NSViewRepresentable wrapper for AVPlayerView that mirrors Performance Display
+/// NSViewRepresentable wrapper for AVPlayerView that mirrors Live Display
 struct LiveModeAVPlayerView: NSViewRepresentable {
     @ObservedObject var livePlayer: LivePlayer
 
@@ -55,7 +55,7 @@ struct LiveModeAVPlayerView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: AVPlayerView, context: Context) {
-        // Mirror the active player from performance display
+        // Mirror the active player from live display
         nsView.player = livePlayer.activeAVPlayer
     }
 

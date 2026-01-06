@@ -1,23 +1,23 @@
 //
-//  PerformanceWindow.swift
+//  LiveWindow.swift
 //  Hypnograph
 //
-//  Custom NSWindow for the performance display.
+//  Custom NSWindow for the live display.
 //  Borderless, fullscreen-capable, designed for external monitor output.
 //
 
 import AppKit
 import AVKit
 
-/// Borderless window for clean performance output
+/// Borderless window for clean live output
 /// Does not steal focus from the main window
-final class PerformanceWindow: NSWindow {
+final class LiveWindow: NSWindow {
 
     // Don't steal keyboard focus from main window
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
-    func configureForPerformance() {
+    func configureForLive() {
         // Hide title bar
         titlebarAppearsTransparent = true
         titleVisibility = .hidden
@@ -28,7 +28,7 @@ final class PerformanceWindow: NSWindow {
 }
 
 /// Content view containing the A/B player views for crossfading
-final class PerformanceContentView: NSView {
+final class LiveContentView: NSView {
     
     /// Player view A
     let playerA: AVPlayerView
@@ -81,7 +81,7 @@ final class PerformanceContentView: NSView {
         NSScreen.screens.filter { $0 != NSScreen.main }
     }
     
-    /// Get the best screen for performance display (prefers external)
+    /// Get the best screen for live display (prefers external)
     static var preferredScreen: NSScreen {
         externalScreens.first ?? NSScreen.main ?? NSScreen.screens[0]
     }
