@@ -88,7 +88,7 @@ metatypes and provides:
 
 ## Isolation and Mode Separation
 - Preview uses the active player's `EffectManager` and `EffectsSession`.
-- Performance display uses its own `EffectManager` and `EffectsSession`.
+- Live display uses its own `EffectManager` and `EffectsSession`.
 - Export uses `EffectManager.forExport(recipe:)` and `recipe.copyForExport()` to
   avoid sharing mutable effect state.
 

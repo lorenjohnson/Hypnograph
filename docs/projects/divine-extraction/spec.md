@@ -22,7 +22,7 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
   - Depends directly on `HypnographState`, `Settings`, `MediaLibrary`, `HypnogramSource`/`VideoClip` models, `AppNotifications`, HUD plumbing (`HUDItem`, `HUDView`), gesture utilities, and AVFoundation.
   - Owns UI (`DivineView`), state managers (`DivineCardManager`, `DivinePlayerManager`), and simple audio playback via ad-hoc `AVPlayer` instances.
   - Uses state callbacks (e.g., `state.onWatchTimerFired`) and shared menus defined in `HypnographApp.swift`.
-- **Dream** (`Hypnograph/Modules/Dream/*.swift` + `Renderer/`, `EffectLibrary/`, `Audio/`, `Modules/PerformanceDisplay/`)
+- **Dream** (`Hypnograph/Modules/Dream/*.swift` + `Renderer/`, `EffectLibrary/`, `Audio/`, `Modules/LiveDisplay/`)
   - Coupled to renderer entry points such as `RenderEngine` and `RenderEngine.ExportQueue`.
   - Relies on the effect system (`EffectManager`, `EffectsSession`, metal effect kernels in `Renderer/Effects`), audio routing via `AudioDeviceManager`, and external monitor playback (`LivePlayer`).
   - Shares HUD/menu components and the unified state container.
@@ -34,16 +34,16 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
 ### Core Library Extraction Targets
 | Library | Responsibilities | Key sources today | Notes |
 | --- | --- | --- | --- |
-| **HypnoCore** | Media models, media sourcing, Photos integration, exclusion/favorite/deletion stores, shared path config, asset loading/caching/still grabs | `MediaLibrary.swift`, `MediaLibraryBuilder.swift`, `ApplePhotos.swift`, `StillImageCache.swift`, `PersistentIdentifierStore.swift` (ExclusionStore, DeleteStore, FavoriteStore), `HypnoCoreConfig.swift`, video thumbnail helpers inside `DivineCardManager`/`Renderer` | Stage 1 keeps this intentionally focused on media + stores; recipes/settings can remain app-owned until needed. |
+| **HypnoCore** | Media models, media sourcing, Photos integration, exclusion/deletion stores, shared path config, asset loading/caching/still grabs | `MediaLibrary.swift`, `MediaLibraryBuilder.swift`, `ApplePhotos.swift`, `StillImageCache.swift`, `PersistentIdentifierStore.swift` (ExclusionStore, DeleteStore, FavoriteStore), `HypnoCoreConfig.swift`, video thumbnail helpers inside `DivineCardManager`/`Renderer` | Stage 1 keeps this intentionally focused on media + stores; recipes/settings can remain app-owned until needed. |
 | **HypnoRenderer** | Composition building, frame compositing, export queue, AVPlayer creation, transition helpers | `Renderer/Core/*`, `Renderer/FrameInterpolation`, `Renderer/Effects/*` (metal kernels stay in a Resources bundle), `RenderEngine.ExportQueue` | LivePlayer stays in the app (AppKit/windowing); Divine does not need export immediately but should compile against the same module so it can add rendering later. |
-| **HypnoEffects** | Effect registry/session/editor plumbing shared by Dream preview, Performance display, and future Divine editing | `EffectLibrary/*.swift`, `Renderer/Effects/*.swift`, effect JSON templates under `EffectLibrary` | Keep effect metadata + shader management encapsulated; exposes safe APIs for UI to mutate chains. |
+| **HypnoEffects** | Effect registry/session/editor plumbing shared by Dream preview, Live display, and future Divine editing | `EffectLibrary/*.swift`, `Renderer/Effects/*.swift`, effect JSON templates under `EffectLibrary` | Keep effect metadata + shader management encapsulated; exposes safe APIs for UI to mutate chains. |
 | **HypnoAudio** | Audio routing + monitoring | `Audio/AudioDeviceManager.swift`, audio helpers in `LivePlayer` | Divine currently just plays through default device; factoring this allows future per-card audio output options without reimplementing. |
 | **HypnoAppShell** (name TBD) | App-agnostic shell services and non-visual utilities shared by multiple products | `Views/AppNotifications.swift`, `Utilities/TextFieldFocusMonitor.swift`, `WindowState.swift` | Keep this intentionally small and non-opinionated about UI. A richer shared `HypnoUI` view library (sliders, panels, HUD variants) can come later once Divine.app exists and shared widgets are proven. |
 
 ### Divine Product Architecture
 - **App Target**: new macOS target (e.g., `Divine.app`) that references the extracted packages plus the Divine-specific module.
   - Entry includes a thin `DivineApp` struct mirroring `HypnographApp` but only instantiating `DivineState`, `DivineMode`, and whichever shared managers it needs (render queue optional at first).
-- `DivineState` wraps `HypnoCore` components: owns its `MediaLibrary`, library selections, and exclusion/favorite stores, and persists settings to a `~/Library/Application Support/Divine` folder. No watch mode or HUD/window-state concerns live here.
+- `DivineState` wraps `HypnoCore` components: owns its `MediaLibrary`, library selections, and exclusion stores, and persists settings to a `~/Library/Application Support/Divine` folder. No watch mode or HUD/window-state concerns live here.
   - `DivineCardManager` and `DivineView` stay largely unchanged but consume core services through protocols (`LibraryProviding`, `SnapshotGrabbing`, `NotificationRouting`) to remove direct references to Hypnograph-only singletons.
   - Optional export/render features plug into `HypnoRenderer` later; initial milestone only needs the player/still grabbing subset.
 - **Inter-app coordination**
@@ -62,7 +62,7 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
 
 ## Open Questions
 - Is Divine expected to export renders/video, or is it strictly a live experience? This affects how aggressively we prioritize moving `HypnoRenderer` over.
-- Do we need interoperability with Hypnograph's performance display/LivePlayer (e.g., sending a Divine spread to the external monitor), or is Divine strictly single-window?
+- Do we need interoperability with Hypnograph's Live display (e.g., sending a Divine spread to the external monitor), or is Divine strictly single-window?
 - What file extension/format should Divine spreads adopt so users can distinguish them from Dream hypnograms in Finder?
 - Are there branding/licensing constraints that require separate bundle identifiers, signing profiles, or installer flows for Divine?
 
@@ -128,6 +128,7 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
    - *Verification*: Regression pass on Hypnograph (Dream only) and final smoke test on Divine with whichever optional renderer features are enabled.
 
 9. **Stage 5.5 – Framework consolidation**
+   - **Status: Complete**
    - Consolidate HypnoEffects, HypnoRenderer, HypnoAudio into HypnoCore. Rename HypnoAppShell to HypnoUI.
    - **Goal**: Two frameworks total—HypnoCore (no UI deps) and HypnoUI (SwiftUI/AppKit utilities).
 

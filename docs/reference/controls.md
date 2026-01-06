@@ -28,18 +28,18 @@ Source of truth: `Hypnograph/HypnographApp.swift`, `Hypnograph/Modules/Dream/Dre
 | Overlays | Hypnogram List | `H` | Dream only |
 | Overlays | Clean Screen | `Tab` | Handled via NSEvent monitor |
 | Player | Player Settings | `P` | Dream only |
-| Performance | Performance Preview | `L` | Dream only |
-| Performance | Live Mode | `Cmd+L` | Dream only |
-| Performance | External Monitor | `Cmd+Shift+L` | Dream only |
-| Performance | Send to Performance Display | `Cmd+Return` | Dream only |
-| Performance | Reset Performance Display | `Cmd+Shift+R` | Dream only |
+| Live | Live Preview | `L` | Dream only |
+| Live | Live Mode | `Cmd+L` | Dream only |
+| Live | External Monitor | `Cmd+Shift+L` | Dream only |
+| Live | Send to Live Display | `Cmd+Return` | Dream only |
+| Live | Reset Live Display | `Cmd+Shift+R` | Dream only |
 | Sources | Custom Photos Selection | `Cmd+Shift+O` | Opens picker |
 
 ### Dream Mode (Composition menu, `Hypnograph/Modules/Dream/Dream.swift`)
 
 | Command | Key | Notes |
 | --- | --- | --- |
-| Cycle Mode (Montage/Sequence/Performance) | `` ` `` | Disabled while typing |
+| Cycle Mode (Montage/Sequence/Live) | `` ` `` | Disabled while typing |
 | Cycle Effect Forward | `Cmd+E` | Current layer |
 | Cycle Effect Backward | `Cmd+Shift+E` | Current layer |
 | Add Source | `Shift+N` | Disabled while typing |
@@ -124,7 +124,7 @@ Source: `Hypnograph/GameControllerManager.swift`.
 - **Start/Menu**: Pause/Play (Dream only)
 - **Back/Options**: Toggle HUD (Dream only)
 - **L3**: Toggle Watch mode
-- **R3**: Send to Performance Display (Dream only; requires performance display visible)
+- **R3**: Send to Live Display (Dream only; requires performance display visible)
 
 ### Effects Editor Behaviors
 
@@ -158,7 +158,7 @@ When the Effects Editor is open:
     |   [Back/Options]              [Start/Menu]                 |
     |    Toggle HUD                  Pause/Play                  |
     |                                                           |
-    |   L3: Toggle Watch             R3: Send to Performance      |
+    |   L3: Toggle Watch             R3: Send to Live      |
     |                                                           |
     +-----------------------------------------------------------+
 ```

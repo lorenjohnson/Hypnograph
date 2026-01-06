@@ -12,7 +12,7 @@ performance display pipeline.
 - `Hypnograph/Modules/Dream/Dream.swift`
 - `Hypnograph/Modules/Dream/DreamPlayerState.swift`
 - `Hypnograph/PlayerConfiguration.swift`
-- `Hypnograph/Modules/PerformanceDisplay/LivePlayer.swift`
+- `Hypnograph/Modules/LiveDisplay/LivePlayer.swift`
 - `Hypnograph/HypnographState.swift`
 
 ## Module Overview
@@ -48,7 +48,7 @@ performance display pipeline.
 - Montage mode assigns a base layer plus randomized blend modes.
 - Sequence mode uses variable clip lengths for per-source timing.
 
-## Performance Display (LivePlayer)
+## Live Display (LivePlayer)
 - Owns its own `EffectManager` and `EffectsSession` (`live-effects.json`).
 - Uses two internal `AVPlayer` instances (A/B) with crossfade transitions.
 - Can render to a fullscreen external monitor or a windowed preview.

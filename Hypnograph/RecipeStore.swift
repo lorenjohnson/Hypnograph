@@ -8,7 +8,7 @@
 
 import Foundation
 import AppKit
-import HypnoEffects
+import HypnoCore
 
 /// Handles saving and loading HypnogramRecipe files (.hypno/.hypnogram = JSON with embedded snapshot)
 enum RecipeStore {

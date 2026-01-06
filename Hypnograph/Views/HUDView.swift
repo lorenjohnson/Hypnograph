@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import HypnoEffects
+import HypnoCore
 
 // MARK: - HUDItem
 

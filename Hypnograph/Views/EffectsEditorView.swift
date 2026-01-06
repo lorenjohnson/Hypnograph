@@ -8,7 +8,7 @@
 
 import SwiftUI
 import Combine
-import HypnoEffects
+import HypnoCore
 
 /// Focus fields for the effects editor
 /// Uses SwiftUI's native focus system for tab/shift-tab navigation
@@ -330,7 +330,7 @@ struct EffectsEditorView: View {
             : nil
 
         // Defer the recipe update to next run loop to allow UI to update first
-        // Use activeEffectManager so effects go to performance display in live mode
+        // Use activeEffectManager so effects go to live display in live mode
         let layer = currentLayer
         let effectManager = dream.activeEffectManager
         let isLive = dream.isLiveMode
@@ -454,7 +454,7 @@ struct EffectsEditorView: View {
             viewModel.activeSection = .effectList
         }
         .onChange(of: dream.isLiveMode) { _, _ in
-            // Update session when performance mode changes (Edit ↔ Live)
+            // Update session when live mode changes (Edit ↔ Live)
             viewModel.session = dream.effectsSession
         }
         .onChange(of: dream.mode) { _, _ in

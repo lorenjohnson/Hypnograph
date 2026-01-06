@@ -63,26 +63,6 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "B1C2D3E4F5A6B7C8D9E0F1A4"
-               BuildableName = "HypnoEffectsTests.xctest"
-               BlueprintName = "HypnoEffectsTests"
-               ReferencedContainer = "container:Hypnograph.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "C1D2E3F4A5B6C7D8E9F0A1B4"
-               BuildableName = "HypnoRendererTests.xctest"
-               BlueprintName = "HypnoRendererTests"
-               ReferencedContainer = "container:Hypnograph.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
                BlueprintIdentifier = "D1E2F3A4B5C6D7E8F9A0B1C4"
                BuildableName = "HypnogramQuickLookTests.xctest"
                BlueprintName = "HypnogramQuickLookTests"

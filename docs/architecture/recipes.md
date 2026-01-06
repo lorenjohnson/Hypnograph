@@ -55,7 +55,7 @@ storage for hypnograms.
   merged or replaced by `EffectChainLibraryActions`.
 
 ## HypnogramStore
-- Stores a list of saved entries and favorites.
+- Stores a list of saved entries.
 - File location: `~/Library/Application Support/Hypnograph/hypnogram-store.json`.
 - Each entry tracks `recipeURL`, name, date, and optional thumbnail.
 

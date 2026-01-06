@@ -3,7 +3,7 @@ import AVFoundation
 import Combine
 import PhotosUI
 import HypnoCore
-import HypnoAppShell
+import HypnoUI
 
 struct ContentView: View {
     @ObservedObject var state: HypnographState
@@ -98,21 +98,21 @@ struct ContentView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            // Right-side panels: Effects editor (top-aligned) and Performance preview (bottom)
+            // Right-side panels: Effects editor (top-aligned) and Live preview (bottom)
             VStack(spacing: 0) {
                 if state.windowState.isVisible("effectsEditor") {
                     EffectsEditorView(viewModel: effectsEditorViewModel, state: state, dream: dream)
-                        .padding(.bottom, state.windowState.isVisible("performancePreview") ? 12 : 0)
+                        .padding(.bottom, state.windowState.isVisible("livePreview") ? 12 : 0)
                         .transition(.move(edge: .trailing))
                 }
 
                 Spacer(minLength: 0)
 
-                if state.windowState.isVisible("performancePreview") {
-                    PerformancePreviewView(
+                if state.windowState.isVisible("livePreview") {
+                    LivePreviewView(
                         livePlayer: dream.livePlayer,
                         onClose: {
-                            state.windowState.set("performancePreview", visible: false)
+                            state.windowState.set("livePreview", visible: false)
                         }
                     )
                     .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -122,7 +122,7 @@ struct ContentView: View {
             .padding(.trailing, 12)
             .padding(.bottom, 12)
             .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("effectsEditor"))
-            .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("performancePreview"))
+            .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("livePreview"))
         }
         .appNotifications()
         .background(Color.black)

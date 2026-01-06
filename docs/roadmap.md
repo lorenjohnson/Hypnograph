@@ -35,7 +35,7 @@ last_reviewed: 2026-01-04T22:36:32Z
 - [ ] Combine most of what is in HUD into Player Settings modal
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)
 - [ ] Game Controller mapping revamp back to essentials only
-- [ ] Rename PerformanceDisplay module to align with LivePlayer (e.g. LiveDisplay)
+- [ ] Rename LiveDisplay module to align with LivePlayer (e.g. LiveDisplay)
 - [ ] Remove deprecated `PhotosPickerSheet.swift` / custom Photos selection UI and revisit later with a Divine-first approach
 
 ## Project: Make Divine its own product

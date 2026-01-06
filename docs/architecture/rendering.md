@@ -21,7 +21,7 @@ This document describes the preview, performance display, and export rendering p
 - `HypnoRenderer/Models/RenderErrors.swift`
 - `HypnoRenderer/Models/RenderSize.swift`
 - `HypnoEffects/Core/SharedRenderer.swift`
-- `Hypnograph/Modules/PerformanceDisplay/LivePlayer.swift`
+- `Hypnograph/Modules/LiveDisplay/LivePlayer.swift`
 
 ## Core Components
 
@@ -80,7 +80,7 @@ This document describes the preview, performance display, and export rendering p
 2. `RenderEngine.makePlayerItem()` builds an `AVPlayerItem` and configures the internal compositor.
 3. `FrameCompositor` renders frames using the `EffectManager` passed through internal instructions.
 
-### Performance Display (LivePlayer)
+### Live Display (LivePlayer)
 - LivePlayer owns its own `EffectManager` and `EffectsSession`.
 - It builds `AVPlayerItem` objects via `RenderEngine` and crossfades between two
   internal players (A/B) for smooth transitions.

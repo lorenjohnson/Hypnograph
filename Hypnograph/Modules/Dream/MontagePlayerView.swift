@@ -2,8 +2,7 @@ import SwiftUI
 import AVKit
 import AVFoundation
 import CoreMedia
-import HypnoEffects
-import HypnoRenderer
+import HypnoCore
 
 /// Player view for Dream module montage style.
 /// All sources are composited together, looping at targetDuration.

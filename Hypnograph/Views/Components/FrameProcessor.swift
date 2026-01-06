@@ -10,7 +10,7 @@
 import CoreImage
 import CoreMedia
 import CoreGraphics
-import HypnoEffects
+import HypnoCore
 
 /// Input for a single layer in the processing pipeline
 struct LayerInput {

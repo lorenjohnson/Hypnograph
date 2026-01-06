@@ -31,12 +31,12 @@ This “no-thinking” access to a personal archive is a primary entryway into t
      - saving evolving states (“hypnograms”).
    - Composition emerges from interaction, not premeditation.
 
-3. **Performance and witnessing**
+3. **Live and witnessing**
    - The system supports live performance:
      - external displays,
      - real-time control,
      - intentional presentation.
-   - Performance is not separate from the archive; it is a way of
+   - Live is not separate from the archive; it is a way of
      **digesting, integrating, and re-seeing personal material**.
 
 4. **Sharing and aesthetic witnessing**
@@ -56,7 +56,7 @@ This “no-thinking” access to a personal archive is a primary entryway into t
   - Photos and videos are not static assets but an active, generative field.
   - The app privileges encounter over curation.
 
-- **Performance-first**
+- **Live-first**
   - Real-time stability and low latency are non-negotiable.
   - Input must never block rendering.
 
@@ -141,7 +141,7 @@ that helps users encounter and integrate their own material.
 
 - **Effect-first workflow** - Unique effects (datamosh, pixel sort, block propagation) not available in mainstream tools
 - **Hypnogram format** - Recipes saved as PNG with embedded metadata, shareable and resumable
-- **Performance-oriented** - Designed for live use with quick keyboard/controller shortcuts
+- **Live-oriented** - Designed for live use with quick keyboard/controller shortcuts
 - **Apple-native** - Pure Swift/Metal, no external dependencies, leverages macOS capabilities
 
 ## Modules
@@ -150,7 +150,7 @@ that helps users encounter and integrate their own material.
 |--------|---------|
 | **Dream** | Primary composition mode with Montage and Sequence sub-modes |
 | **Divine** | Card-based visual oracle / exploration interface |
-| **Performance Display** | Secondary window for live output during performances |
+| **Live Display** | Secondary window for live output during performances |
 
 ## Success Metrics
 

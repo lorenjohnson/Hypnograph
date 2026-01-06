@@ -65,7 +65,6 @@ This document describes settings storage, defaults, and related persistent state
 
 ### Exclusions, Favorites, Deletions
 - `exclusions.json` via `ExclusionStore`.
-- `favorites.json` via `FavoriteStore`.
 - `deletions.json` via `DeleteStore`.
 
 ### Effects Libraries

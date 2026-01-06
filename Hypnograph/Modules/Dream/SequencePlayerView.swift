@@ -15,8 +15,6 @@ import AVFoundation
 import CoreMedia
 import CoreImage
 import HypnoCore
-import HypnoEffects
-import HypnoRenderer
 
 /// Sequence mode player with proper handling of videos and still images
 struct SequencePlayerView: NSViewRepresentable {
@@ -32,7 +30,7 @@ struct SequencePlayerView: NSViewRepresentable {
     /// Audio output device UID (nil = system default)
     var audioDeviceUID: String? = nil
 
-    /// Optional callback when source index changes (for syncing Performance Display)
+    /// Optional callback when source index changes (for syncing Live Display)
     var onSourceIndexChanged: ((Int) -> Void)?
 
     class Coordinator: NSObject {
@@ -391,7 +389,7 @@ struct SequencePlayerView: NSViewRepresentable {
 
         DispatchQueue.main.async {
             self.currentSourceIndex = targetIndex
-            // Notify callback for Performance Display sync
+            // Notify callback for Live Display sync
             self.onSourceIndexChanged?(targetIndex)
         }
     }

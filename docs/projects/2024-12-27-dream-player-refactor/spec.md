@@ -4,7 +4,7 @@
 Separate Dream module into three independent "decks", each with its own recipe and state:
 - **Montage Player** - blends all sources together, loops
 - **Sequence Player** - plays sources back-to-back  
-- **Performance Display** - external monitor output (Live mode)
+- **Live Display** - external monitor output (Live mode)
 
 ## Why
 - `HypnographState` became a god object mixing app config, playback state, UI state
@@ -18,7 +18,7 @@ Separate Dream module into three independent "decks", each with its own recipe a
 Dream (module)
 ├── montagePlayer: DreamPlayerState
 ├── sequencePlayer: DreamPlayerState
-├── performanceDisplay: PerformanceDisplay  (moved from HypnographState)
+├── performanceDisplay: LiveDisplay  (moved from HypnographState)
 ├── activePlayer: DreamPlayerState (computed, based on mode)
 └── state: HypnographState (for libraries, settings only)
 
@@ -75,7 +75,7 @@ final class DreamPlayerState: ObservableObject {
 - Added `montagePlayer`, `sequencePlayer` as DreamPlayerState instances
 - Added `performanceDisplay` directly on Dream (not from HypnographState)
 - Added `activePlayer` computed property based on current mode
-- Added `isLiveMode` and `togglePerformanceMode()` directly on Dream
+- Added `isLiveMode` and `toggleLiveMode()` directly on Dream
 - Init creates player states from settings
 
 ### 3. Update Dream.swift references ✅
@@ -93,7 +93,7 @@ Added new methods to Dream:
 - `generateNewHypnogram(for:)` - generates random content for a player
 - `addSourceToPlayer(_:length:)` - adds source to specific player
 - `replaceClipForCurrentSource()` - replaces current clip
-- Source management (exclude, delete, favorite)
+- Source management (exclude, delete)
 
 ### 4. HypnographState - DEFERRED
 Keep all properties for now:

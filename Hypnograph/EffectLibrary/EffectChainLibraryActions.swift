@@ -9,8 +9,8 @@
 import Foundation
 import AppKit
 import UniformTypeIdentifiers
-import HypnoEffects
-import HypnoAppShell
+import HypnoCore
+import HypnoUI
 
 /// Actions for saving and loading effect chain libraries
 @MainActor

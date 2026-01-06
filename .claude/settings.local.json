@@ -42,7 +42,10 @@
       "mcp__code-index__set_project_path",
       "Bash(xargs:*)",
       "Bash(for fw in HypnoCore HypnoEffects HypnoRenderer HypnoAudio HypnoAppShell)",
-      "Bash(do echo \"=== $fw ===\" ls /Users/lorenjohnson/dev/artdev/Hypnograph/$fw/*.swift)"
+      "Bash(do echo \"=== $fw ===\" ls /Users/lorenjohnson/dev/artdev/Hypnograph/$fw/*.swift)",
+      "Bash(mkdir:*)",
+      "Bash(# Verify HypnoRenderer is now empty find /Users/lorenjohnson/dev/artdev/Hypnograph/HypnoRenderer -type f)",
+      "Bash(git ls-tree:*)"
     ]
   }
 }

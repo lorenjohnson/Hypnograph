@@ -8,7 +8,7 @@
 import AppKit
 import Foundation
 import UniformTypeIdentifiers
-import HypnoEffects
+import HypnoCore
 
 @MainActor
 enum RecipeFileActions {

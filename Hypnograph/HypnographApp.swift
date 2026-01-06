@@ -2,8 +2,7 @@ import SwiftUI
 import AppKit
 import AVFoundation
 import HypnoCore
-import HypnoRenderer
-import HypnoAppShell
+import HypnoUI
 
 extension NSWindow {
     func makeHypnographBorderless(on screen: NSScreen) {
@@ -216,7 +215,7 @@ struct HypnographApp: App {
                     guard let window = NSApp.windows.first else { return }
 
                     let screens = NSScreen.screens
-                    // Main window stays on primary screen; performance display uses external
+                    // Main window stays on primary screen; live display uses external
                     let targetScreen = screens[0]
 
                     window.makeHypnographBorderless(on: targetScreen)
@@ -428,10 +427,10 @@ struct AppCommands: Commands {
 
             Divider()
 
-            Section("Performance Display") {
-                Toggle("Performance Preview", isOn: Binding(
-                    get: { state.windowState.isVisible("performancePreview") },
-                    set: { _ in state.windowState.toggle("performancePreview") }
+            Section("Live Display") {
+                Toggle("Live Preview", isOn: Binding(
+                    get: { state.windowState.isVisible("livePreview") },
+                    set: { _ in state.windowState.toggle("livePreview") }
                 ))
                 .keyboardShortcut("l", modifiers: [])
                 .disabled(isTyping)
@@ -448,12 +447,12 @@ struct AppCommands: Commands {
                 ))
                 .keyboardShortcut("l", modifiers: [.command, .shift])
 
-                Button("Send to Performance Display") {
+                Button("Send to Live Display") {
                     dream.sendToLivePlayer()
                 }
                 .keyboardShortcut(.return, modifiers: [.command])
 
-                Button("Reset Performance Display") {
+                Button("Reset Live Display") {
                     dream.livePlayer.reset()
                 }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
