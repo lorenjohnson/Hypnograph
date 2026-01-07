@@ -50,7 +50,7 @@ final class LivePlayer: ObservableObject {
     func setVolume(_ volume: Float) {
         currentVolume = volume
         applyVolumeToActivePlayer()
-        print("🔊 LiveDisplay: Volume = \(volume)")
+        print("🔊 LivePlayer: Volume = \(volume)")
     }
 
     /// Set the audio output device for live display
@@ -58,29 +58,29 @@ final class LivePlayer: ObservableObject {
     func setAudioDevice(_ deviceUID: String?) {
         currentAudioDeviceUID = deviceUID
         applyAudioDeviceToAllPlayers()
-        print("🔊 LiveDisplay: Audio device = \(deviceUID ?? "System Default")")
+        print("🔊 LivePlayer: Audio device = \(deviceUID ?? "System Default")")
     }
 
     /// Apply volume to the currently active player only (not the fading-out player)
     private func applyVolumeToActivePlayer() {
         guard let content = contentView else {
-            print("⚠️ LiveDisplay: No contentView for volume")
+            print("⚠️ LivePlayer: No contentView for volume")
             return
         }
         let activePlayerView = activePlayer == .a ? content.playerA : content.playerB
         activePlayerView.player?.volume = currentVolume
-        print("🔊 LiveDisplay: Applied volume \(currentVolume) to player \(activePlayer)")
+        print("🔊 LivePlayer: Applied volume \(currentVolume) to player \(activePlayer)")
     }
 
     /// Apply audio device to all players (so new player during crossfade gets correct device)
     private func applyAudioDeviceToAllPlayers() {
         guard let content = contentView else {
-            print("⚠️ LiveDisplay: No contentView for audio device")
+            print("⚠️ LivePlayer: No contentView for audio device")
             return
         }
         content.playerA.player?.audioOutputDeviceUniqueID = currentAudioDeviceUID
         content.playerB.player?.audioOutputDeviceUniqueID = currentAudioDeviceUID
-        print("🔊 LiveDisplay: Applied device to both players")
+        print("🔊 LivePlayer: Applied device to both players")
     }
 
     // MARK: - Private
@@ -151,7 +151,7 @@ final class LivePlayer: ObservableObject {
         // Wire up global effect chain setter
         effectManager.globalEffectChainSetter = { [weak self] chain in
             guard let self = self, var recipe = self.currentRecipe else { return }
-            print("🎬 LiveDisplay: globalEffectChainSetter - setting chain: \(chain.name ?? "unnamed")")
+            print("🎬 LivePlayer: globalEffectChainSetter - setting chain: \(chain.name ?? "unnamed")")
             recipe.effectChain = chain
             self.currentRecipe = recipe
         }
@@ -161,7 +161,7 @@ final class LivePlayer: ObservableObject {
             guard let self = self,
                   var recipe = self.currentRecipe,
                   sourceIndex < recipe.sources.count else { return }
-            print("🎬 LiveDisplay: sourceEffectChainSetter - setting source[\(sourceIndex)] chain: \(chain.name ?? "unnamed")")
+            print("🎬 LivePlayer: sourceEffectChainSetter - setting source[\(sourceIndex)] chain: \(chain.name ?? "unnamed")")
             recipe.sources[sourceIndex].effectChain = chain
             self.currentRecipe = recipe
         }
@@ -191,7 +191,7 @@ final class LivePlayer: ObservableObject {
         content.autoresizingMask = [.width, .height]
         contentView = content
 
-        print("🎬 LiveDisplay: Created content view (no window)")
+        print("🎬 LivePlayer: Created content view (no window)")
     }
 
     /// Show the live display window
@@ -242,7 +242,7 @@ final class LivePlayer: ObservableObject {
             win.collectionBehavior = [.stationary, .canJoinAllSpaces, .fullScreenAuxiliary]
             win.setFrame(frame, display: true)
 
-            print("🎬 LiveDisplay: Fullscreen on \(targetScreen.localizedName)")
+            print("🎬 LivePlayer: Fullscreen on \(targetScreen.localizedName)")
         } else {
             // Single monitor: resizable floating window
             let windowSize = NSSize(width: 960, height: 540)  // 16:9
@@ -270,7 +270,7 @@ final class LivePlayer: ObservableObject {
             win.contentAspectRatio = NSSize(width: 16, height: 9)
             win.hidesOnDeactivate = false
 
-            print("🎬 LiveDisplay: Windowed mode (single monitor)")
+            print("🎬 LivePlayer: Windowed mode (single monitor)")
         }
 
         // Reuse existing content view if available, otherwise create new one
@@ -296,7 +296,7 @@ final class LivePlayer: ObservableObject {
     func hide() {
         guard window != nil else { return }
 
-        print("🎬 LiveDisplay: Hiding window...")
+        print("🎬 LivePlayer: Hiding window...")
 
         // Close window but keep content view and players
         if let win = window {
@@ -307,12 +307,12 @@ final class LivePlayer: ObservableObject {
         window = nil
         isVisible = false
 
-        print("🎬 LiveDisplay: Window hidden (playback continues)")
+        print("🎬 LivePlayer: Window hidden (playback continues)")
     }
 
     /// Stop playback and reset all state
     func stop() {
-        print("🎬 LiveDisplay: Stopping...")
+        print("🎬 LivePlayer: Stopping...")
 
         // Cancel any pending build
         pendingBuildTask?.cancel()
@@ -343,7 +343,7 @@ final class LivePlayer: ObservableObject {
         activeSourceCount = 0
         currentRecipe = nil
 
-        print("🎬 LiveDisplay: Stopped and reset")
+        print("🎬 LivePlayer: Stopped and reset")
     }
 
     /// Toggle visibility (also serves as reset if stuck)
@@ -357,7 +357,7 @@ final class LivePlayer: ObservableObject {
 
     /// Force reset - stops everything and optionally reopens
     func reset() {
-        print("🎬 LiveDisplay: Force reset")
+        print("🎬 LivePlayer: Force reset")
         let wasVisible = isVisible
         stop()
         if wasVisible {
@@ -379,7 +379,7 @@ final class LivePlayer: ObservableObject {
         ensureContentView()
 
         guard let content = contentView else {
-            print("⚠️ LiveDisplay: No content view, ignoring send")
+            print("⚠️ LivePlayer: No content view, ignoring send")
             return
         }
 
@@ -402,7 +402,7 @@ final class LivePlayer: ObservableObject {
         let modeLabel = mode == .sequence ? "sequence" : "montage"
         currentRecipeDescription = "\(sourceCount) source\(sourceCount == 1 ? "" : "s") (\(modeLabel))"
 
-        print("🎬 LiveDisplay: Building \(modeLabel) with \(sourceCount) sources...")
+        print("🎬 LivePlayer: Building \(modeLabel) with \(sourceCount) sources...")
 
         // Store the mode for sequence seeking
         self.currentMode = mode
@@ -440,7 +440,7 @@ final class LivePlayer: ObservableObject {
         guard let recipe = currentRecipe else { return }
         let outputSize = renderSize(aspectRatio: config.aspectRatio, maxDimension: config.playerResolution.maxDimension)
 
-        // Build composition using LiveDisplay's own EffectManager
+        // Build composition using LivePlayer's own EffectManager
         // This makes effects completely independent of the main preview
         let timeline: RenderEngine.Timeline
         switch mode {
@@ -459,11 +459,11 @@ final class LivePlayer: ObservableObject {
             recipe: recipe,
             timeline: timeline,
             config: config,
-            effectManager: effectManager  // Use LiveDisplay's own EffectManager
+            effectManager: effectManager  // Use LivePlayer's own EffectManager
         )
 
         guard !Task.isCancelled else {
-            print("🎬 LiveDisplay: Build cancelled")
+            print("🎬 LivePlayer: Build cancelled")
             return
         }
 
@@ -475,7 +475,7 @@ final class LivePlayer: ObservableObject {
             )
 
         case .failure(let error):
-            print("🔴 LiveDisplay: Build failed - \(error)")
+            print("🔴 LivePlayer: Build failed - \(error)")
         }
     }
 
@@ -537,10 +537,10 @@ final class LivePlayer: ObservableObject {
             self.activePlayer = nextSlot
             self.isTransitioning = false
 
-            print("✅ LiveDisplay: Crossfade complete")
+            print("✅ LivePlayer: Crossfade complete")
         }
 
-        print("🎬 LiveDisplay: Crossfading over \(duration)s")
+        print("🎬 LivePlayer: Crossfading over \(duration)s")
     }
 
     /// Setup notification-based looping for a player (same approach as preview)
