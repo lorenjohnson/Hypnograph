@@ -32,6 +32,7 @@ last_reviewed: 2026-01-04T22:36:32Z
 - [ ] **Finder action not installing** - Automator action fails.
 
 ## Minor Projects:
+- [ ] Make SourceMediaType be just MediaType, and SourcesParam be MediaSourcesParam
 - [ ] Divine: Save layouts somehow (Snapshots are a good start), but saving a recipe for restore would be a better first step probably
 - [ ] Combine most of what is in HUD into Player Settings modal
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)

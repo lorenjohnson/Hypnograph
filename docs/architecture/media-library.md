@@ -1,29 +1,41 @@
 ---
-last_reviewed: 2026-01-03T21:17:01Z
+last_reviewed: 2026-01-07T00:00:00Z
 ---
 
 # Media Library Architecture
 
 ## Scope
 This document covers how media sources are indexed, filtered, and loaded from
-folders and Apple Photos.
+folders and external sources (e.g., Apple Photos).
 
 ## Sources
+
+- `HypnoCore/Media/MediaModels.swift` (MediaSource, MediaFile, VideoClip)
 - `HypnoCore/Media/MediaLibrary.swift`
 - `HypnoCore/Media/MediaLibraryBuilder.swift`
-- `HypnoCore/PersistentIdentifierStore.swift` (ExclusionStore, DeleteStore)
-- `HypnoRenderer/Core/SourceLoader.swift`
+- `HypnoCore/Cache/PersistentIdentifierStore.swift` (ExclusionStore, DeleteStore)
+- `HypnoCore/Renderer/Core/SourceLoader.swift`
+- `HypnoCore/Media/HypnoCoreHooks.swift`
+- `HypnoCore/Media/ApplePhotosHooks.swift`
 - `HypnoCore/Media/ApplePhotos.swift`
 - `HypnoCore/Media/StillImageCache.swift`
-- `HypnoEffects/Models/HypnogramSource.swift`
+- `HypnoCore/Recipes/HypnogramSource.swift`
 - `Hypnograph/HypnographState.swift`
 
 ## Core Data Types
 
+### MediaSource
+
+- Top-level enum representing where media comes from.
+- Cases: `.url(URL)` for local files, `.external(identifier: String)` for external sources.
+- External sources use opaque identifiers resolved via `HypnoCoreHooks`.
+- Backwards-compatible decoding supports legacy `.photos` format.
+
 ### MediaFile
-- Abstracts over file URLs and Photos asset identifiers.
-- `MediaFile.Source` is either `.url(URL)` or `.photos(localIdentifier)`.
-- Provides async loading helpers (`loadAsset`, `loadImage`, `loadCGImage`).
+- Abstracts over file URLs and external asset identifiers.
+- Contains `source: MediaSource`, `mediaKind`, `duration`, and `id`.
+- Provides async loading helpers (`loadAsset`, `loadImage`, `loadCGImage`) that
+  use `HypnoCoreHooks` to resolve external sources.
 
 ### VideoClip
 - A clip is a `MediaFile` plus `startTime` and `duration`.
@@ -56,13 +68,29 @@ folders and Apple Photos.
 - Photos hidden assets are filtered via `ApplePhotos.cachedHiddenUUIDs`.
 
 ## SourceLoader
+
 - Loads `HypnogramSource` into `LoadedSource` for the renderer.
 - Caches `LoadedSource` by file ID to avoid repeated AVAsset loads.
 - Supports:
   - AVURLAsset for file URLs.
-  - `ApplePhotos.requestAVAsset` for Photos video assets.
-  - `ApplePhotos.requestCIImage` for Photos image assets.
+  - External sources via `HypnoCoreHooks.resolveExternalVideo` and `resolveExternalImage`.
 - Converts metadata transforms to CIImage space inside the renderer pipeline.
+
+## HypnoCoreHooks
+
+- Generic hook system for decoupling HypnoCore from external source implementations.
+- Apps configure `HypnoCoreHooks.shared` at startup to provide:
+  - `resolveExternalVideo`: Resolves external identifier to AVAsset.
+  - `resolveExternalImage`: Resolves external identifier to CIImage.
+  - `onVideoExportCompleted`: Called when video export finishes (e.g., save to Photos).
+  - `onImageExportCompleted`: Called when image export finishes.
+- External identifiers are opaque strings - apps can encode routing info as needed.
+
+## ApplePhotosHooks
+
+- Convenience installer that wires `HypnoCoreHooks` to `ApplePhotos.shared`.
+- Call `ApplePhotosHooks.install()` at app startup to enable Photos integration.
+- Handles video/image resolution and auto-save to Photos on export.
 
 ## ApplePhotos
 - Handles authorization and fetches PHAssets.

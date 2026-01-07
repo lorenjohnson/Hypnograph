@@ -1,5 +1,5 @@
 ---
-last_reviewed: 2026-01-03T21:17:01Z
+last_reviewed: 2026-01-07T00:00:00Z
 ---
 
 # Effects System Architecture
@@ -9,15 +9,17 @@ This document describes the effect data model, effect library, runtime processin
 and how effects integrate into rendering.
 
 ## Sources
-- `HypnoEffects/Effects/Effect.swift`
-- `HypnoEffects/Effects/ParameterSpec.swift`
-- `HypnoEffects/EffectLibrary/EffectConfigSchema.swift`
-- `HypnoEffects/EffectLibrary/EffectConfigLoader.swift`
-- `HypnoEffects/EffectLibrary/EffectRegistry.swift`
-- `HypnoEffects/EffectLibrary/EffectsSession.swift`
-- `HypnoEffects/EffectLibrary/EffectManager.swift`
-- `HypnoEffects/Core/FrameBuffer.swift`
-- `HypnoEffects/Core/RenderContext.swift`
+
+- `HypnoCore/Renderer/Effects/Core/Effect.swift`
+- `HypnoCore/Renderer/Effects/Core/MetalEffect.swift`
+- `HypnoCore/Renderer/Effects/Implementations/ParameterSpec.swift`
+- `HypnoCore/Renderer/Effects/Library/EffectConfigSchema.swift`
+- `HypnoCore/Renderer/Effects/Library/EffectConfigLoader.swift`
+- `HypnoCore/Renderer/Effects/Library/EffectRegistry.swift`
+- `HypnoCore/Renderer/Effects/Library/EffectsSession.swift`
+- `HypnoCore/Renderer/Effects/Library/EffectManager.swift`
+- `HypnoCore/Renderer/Core/FrameBuffer.swift`
+- `HypnoCore/Renderer/Core/RenderContext.swift`
 
 ## Data Model
 
@@ -39,12 +41,25 @@ and how effects integrate into rendering.
 - Type-erased parameter value that supports `int`, `double`, `bool`, and `string`.
 
 ## Effect Protocol
+
 `Effect` is a pure transform over `(context, image) -> image`:
+
 - `requiredLookback` declares temporal history needs.
 - `parameterSpecs` defines parameter metadata and defaults.
 - `apply(to:context:)` performs the transform.
 - `reset()` clears internal state.
 - `copy()` returns a fresh instance for export isolation.
+
+## MetalEffect Base Class
+
+`MetalEffect` provides shared infrastructure for Metal compute shader effects:
+
+- Handles device, command queue, and texture cache setup.
+- Manages CVPixelBuffer pools for multi-pass effects.
+- Provides helpers: `ensureBuffers()`, `texture(from:)`, `render(_:to:)`, `threadgroupConfig()`.
+- Subclasses override `shaderFunctionName` and implement `apply(to:context:)`.
+- Used by: BlockFreezeMetalEffect, GlitchBlocksMetalEffect, ColorEchoMetalEffect,
+  PixelDriftMetalEffect, TimeShuffleMetalEffect, GaussianBlurMetalEffect, PixelateMetalEffect.
 
 ## Parameter Metadata
 - `ParameterSpec` encodes parameter type, range, and defaults.

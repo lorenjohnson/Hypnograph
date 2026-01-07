@@ -22,6 +22,7 @@ struct DivineApp: App {
     init() {
         let coreConfig = HypnoCoreConfig(appSupportDirectory: DivineEnvironment.appSupportDirectory)
         HypnoCoreConfig.shared = coreConfig
+        ApplePhotosHooks.install()
 
         let settingsStore = SettingsStore()
         self.settingsStore = settingsStore

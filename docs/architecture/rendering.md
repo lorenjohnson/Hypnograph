@@ -1,5 +1,5 @@
 ---
-last_reviewed: 2026-01-04T21:41:48Z
+last_reviewed: 2026-01-07T00:00:00Z
 ---
 
 # Rendering System Architecture
@@ -66,8 +66,10 @@ This document describes the preview, performance display, and export rendering p
   `RendererConfig.prerollEnabled` is true.
 
 ### RenderEngine.ExportQueue
+
 - Wraps `RenderEngine.export()` to produce `.mov` files.
 - Tracks active export jobs and posts status messages on completion.
+- Calls `HypnoCoreHooks.onVideoExportCompleted` on success for external destinations.
 
 ### PhotoMontage (still-image export)
 - When montage output has no actual video segments, export uses `PhotoMontage` to
