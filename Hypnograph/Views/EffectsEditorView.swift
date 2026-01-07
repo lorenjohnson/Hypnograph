@@ -67,9 +67,9 @@ final class EffectsEditorViewModel: ObservableObject {
             return
         }
 
-        // Subscribe to session's $chains publisher to sync AFTER chains change
+        // Subscribe to session's chainsPublisher to sync AFTER chains change
         // (Not objectWillChange which fires BEFORE the change)
-        sessionCancellable = session.$chains
+        sessionCancellable = session.chainsPublisher
             .dropFirst() // Skip initial value (we already synced in didSet)
             .receive(on: RunLoop.main)
             .sink { [weak self] newChains in

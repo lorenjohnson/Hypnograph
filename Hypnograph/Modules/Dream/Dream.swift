@@ -161,6 +161,9 @@ final class Dream: ObservableObject {
             }
             .store(in: &playerSubscriptions)
 
+        // Restore last used global effect from settings
+        restoreGlobalEffect()
+
         // Live audio subscriptions
         // Use .receive(on: RunLoop.main) to ensure sink runs AFTER property is updated
         $liveVolume
@@ -256,6 +259,35 @@ final class Dream: ObservableObject {
             print("🔊 Dream: Live audio device '\(live.name)' disconnected, switching to System Default")
             liveAudioDevice = audioManager.systemDefault
         }
+    }
+
+    // MARK: - Global Effect Persistence
+
+    /// Restore last used global effect to both players, and wire up save-on-change
+    private func restoreGlobalEffect() {
+        if let effectName = state.settings.lastGlobalEffectName {
+            if let chain = montagePlayer.effectsSession.chain(named: effectName) {
+                montagePlayer.effectManager.setGlobalEffect(from: chain)
+            }
+            if let chain = sequencePlayer.effectsSession.chain(named: effectName) {
+                sequencePlayer.effectManager.setGlobalEffect(from: chain)
+            }
+        }
+
+        // Save global effect name whenever it changes (catches all paths: cycling, clicking, clearing)
+        let wrapCallback = { [weak self] (original: (() -> Void)?, player: DreamPlayerState) -> () -> Void in
+            return {
+                original?()
+                guard let self, player.currentSourceIndex == -1 else { return }
+                let name = player.effectManager.globalEffectName
+                let newValue = (name == "None") ? nil : name
+                guard self.state.settings.lastGlobalEffectName != newValue else { return }
+                self.state.settings.lastGlobalEffectName = newValue
+                self.state.saveSettings()
+            }
+        }
+        montagePlayer.effectManager.onEffectChanged = wrapCallback(montagePlayer.effectManager.onEffectChanged, montagePlayer)
+        sequencePlayer.effectManager.onEffectChanged = wrapCallback(sequencePlayer.effectManager.onEffectChanged, sequencePlayer)
     }
 
     /// Build export settings on-demand with current player config
