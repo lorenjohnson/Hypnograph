@@ -160,7 +160,7 @@ struct HypnographApp: App {
     @NSApplicationDelegateAdaptor(HypnographAppDelegate.self)
     private var appDelegate
 
-    private let settings: Settings
+    private let settingsStore: SettingsStore
     @StateObject private var state: HypnographState
     private let renderQueue: RenderEngine.ExportQueue  // Not @StateObject - we don't want to trigger view updates
     @StateObject private var dream: Dream
@@ -170,27 +170,10 @@ struct HypnographApp: App {
         HypnoCoreConfig.shared = coreConfig
         Environment.ensureDefaultSettingsFileExists()
 
-        let settingsURL = Environment.defaultSettingsURL
+        let settingsStore = SettingsStore()
+        self.settingsStore = settingsStore
 
-        let settings: Settings
-        do {
-            settings = try SettingsLoader.load(from: settingsURL)
-            print("Loaded settings from \(settingsURL.path)")
-        } catch {
-            print("⚠️ Failed to load settings, using emergency fallback: \(error)")
-            settings = Settings(
-                outputFolder: "~/Movies/Hypnograph/Renders",
-                sources: SourcesParam.array([
-                    "~/Movies/Hypnograph/sources"
-                ]),
-                watch: true,
-                snapshotsFolder: "~/Movies/Hypnograph/snapshots",
-                activeLibrariesPerMode: [:]
-            )
-        }
-
-        self.settings = settings
-        let state = HypnographState(settings: settings, coreConfig: coreConfig)
+        let state = HypnographState(settingsStore: settingsStore, coreConfig: coreConfig)
         let renderQueue = RenderEngine.ExportQueue()
         renderQueue.onStatusMessage = { message in
             let duration: TimeInterval = (message == "Rendering started") ? 1.0 : 2.0

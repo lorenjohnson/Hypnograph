@@ -131,8 +131,7 @@ final class Dream: ObservableObject {
             .dropFirst() // Skip initial value
             .sink { [weak self] config in
                 guard let self = self else { return }
-                self.state.settings.montagePlayerConfig = config
-                self.state.saveSettings()
+                self.state.settingsStore.update { $0.montagePlayerConfig = config }
             }
             .store(in: &playerSubscriptions)
 
@@ -140,8 +139,7 @@ final class Dream: ObservableObject {
             .dropFirst() // Skip initial value
             .sink { [weak self] config in
                 guard let self = self else { return }
-                self.state.settings.sequencePlayerConfig = config
-                self.state.saveSettings()
+                self.state.settingsStore.update { $0.sequencePlayerConfig = config }
             }
             .store(in: &playerSubscriptions)
 
@@ -234,12 +232,12 @@ final class Dream: ObservableObject {
     /// Save audio device and volume settings to Settings
     private func saveAudioSettings() {
         // device.uid is nil for system default, which maps to nil in storage
-        state.settings.previewAudioDeviceUID = previewAudioDevice?.uid
-        state.settings.previewVolume = previewVolume
-        state.settings.liveAudioDeviceUID = liveAudioDevice?.uid
-        state.settings.liveVolume = liveVolume
-
-        state.saveSettings()
+        state.settingsStore.update { settings in
+            settings.previewAudioDeviceUID = previewAudioDevice?.uid
+            settings.previewVolume = previewVolume
+            settings.liveAudioDeviceUID = liveAudioDevice?.uid
+            settings.liveVolume = liveVolume
+        }
     }
 
     /// Handle device list changes - switch to system default if current device is no longer available
@@ -282,8 +280,7 @@ final class Dream: ObservableObject {
                 let name = player.effectManager.globalEffectName
                 let newValue = (name == "None") ? nil : name
                 guard self.state.settings.lastGlobalEffectName != newValue else { return }
-                self.state.settings.lastGlobalEffectName = newValue
-                self.state.saveSettings()
+                self.state.settingsStore.update { $0.lastGlobalEffectName = newValue }
             }
         }
         montagePlayer.effectManager.onEffectChanged = wrapCallback(montagePlayer.effectManager.onEffectChanged, montagePlayer)
@@ -643,8 +640,7 @@ final class Dream: ObservableObject {
     func setOutputResolution(_ resolution: OutputResolution) {
         activePlayer.config.playerResolution = resolution
         // Also update in settings for persistence
-        state.settings.outputResolution = resolution
-        state.saveSettings()
+        state.settingsStore.update { $0.outputResolution = resolution }
         // Notify Dream to update menus
         objectWillChange.send()
     }

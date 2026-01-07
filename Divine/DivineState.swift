@@ -8,7 +8,11 @@ final class DivineState: ObservableObject {
 
     // MARK: - Settings
 
-    @Published var settings: DivineSettings
+    /// App settings backed by PersistentStore for automatic persistence
+    let settingsStore: DivineSettingsStore
+
+    /// Convenience accessor for current settings value
+    var settings: DivineSettings { settingsStore.value }
 
     // MARK: - Library Management
 
@@ -28,16 +32,10 @@ final class DivineState: ObservableObject {
 
     @Published private(set) var availableLibraries: [SourceLibraryInfo] = []
 
-    private let settingsURL: URL
-
     // MARK: - Init
 
-    init(coreConfig: HypnoCoreConfig, settingsURL: URL) {
-        self.settingsURL = settingsURL
-
-        // Load settings from disk or use defaults
-        let loadedSettings = DivineSettings.load(from: settingsURL)
-        self.settings = loadedSettings
+    init(settingsStore: DivineSettingsStore, coreConfig: HypnoCoreConfig) {
+        self.settingsStore = settingsStore
 
         // Initialize stores
         let exclusionStore = ExclusionStore(url: coreConfig.exclusionsURL)
@@ -45,19 +43,22 @@ final class DivineState: ObservableObject {
         self.exclusionStore = exclusionStore
         self.deleteStore = deleteStore
 
+        // Local alias for init (self.settings is a computed property that can't be used yet)
+        let settings = settingsStore.value
+
         // Default to "Apple Photos: All Items" if available, otherwise folder sources
         let defaultKey: String
         if ApplePhotos.shared.status.canRead && ApplePhotos.shared.countAllAssets() > 0 {
             defaultKey = ApplePhotosLibraryKeys.photosAll
         } else {
-            defaultKey = loadedSettings.defaultSourceLibraryKey
+            defaultKey = settings.defaultSourceLibraryKey
         }
         let initialKeys: Set<String> = [defaultKey]
 
         // Load saved library keys or use defaults
         let activeKeys: Set<String>
-        if !loadedSettings.activeLibraryKeys.isEmpty {
-            activeKeys = Set(loadedSettings.activeLibraryKeys)
+        if !settings.activeLibraryKeys.isEmpty {
+            activeKeys = Set(settings.activeLibraryKeys)
         } else {
             activeKeys = initialKeys
         }
@@ -68,7 +69,7 @@ final class DivineState: ObservableObject {
         // Build initial library
         self.library = MediaLibraryBuilder.buildLibrary(
             keys: activeKeys,
-            settings: loadedSettings,
+            settings: settings,
             customPhotosAssetIds: [],
             exclusionStore: exclusionStore,
             deleteStore: deleteStore
@@ -111,8 +112,7 @@ final class DivineState: ObservableObject {
         )
 
         // Save to settings
-        settings.activeLibraryKeys = Array(keys)
-        saveSettingsToDisk()
+        settingsStore.update { $0.activeLibraryKeys = Array(keys) }
     }
 
     // MARK: - Source Media Types
@@ -134,8 +134,7 @@ final class DivineState: ObservableObject {
                     types.insert(type)
                 }
 
-                settings.sourceMediaTypes = types
-                saveSettingsToDisk()
+                settingsStore.update { $0.sourceMediaTypes = types }
 
                 // Rebuild library with new filter
                 await applyActiveLibraries(activeLibraryKeys)
@@ -194,12 +193,6 @@ final class DivineState: ObservableObject {
         }
     }
 
-    // MARK: - Settings Persistence
-
-    func saveSettingsToDisk() {
-        settings.save(to: settingsURL)
-    }
-
     // MARK: - Library Rebuild
 
     /// Rebuild the active library (e.g., after Photos authorization changes)
@@ -250,29 +243,4 @@ struct DivineSettings: Codable, MediaLibrarySettings {
     var sourceLibraries: [String: [String]] = [:]
     var sourceLibraryOrder: [String] = []
     var defaultSourceLibraryKey: String = ApplePhotosLibraryKeys.photosAll
-
-    static func load(from url: URL) -> DivineSettings {
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            return DivineSettings()
-        }
-
-        do {
-            let data = try Data(contentsOf: url)
-            return try JSONDecoder().decode(DivineSettings.self, from: data)
-        } catch {
-            print("DivineSettings: Failed to load: \(error)")
-            return DivineSettings()
-        }
-    }
-
-    func save(to url: URL) {
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(self)
-            try data.write(to: url)
-        } catch {
-            print("DivineSettings: Failed to save: \(error)")
-        }
-    }
 }

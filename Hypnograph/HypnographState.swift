@@ -21,8 +21,11 @@ final class HypnographState: ObservableObject {
 
     // MARK: - Core configuration
 
-    /// App settings - publicly settable for UI state changes, call saveSettings() to persist
-    @Published var settings: Settings
+    /// App settings backed by PersistentStore for automatic persistence
+    let settingsStore: SettingsStore
+
+    /// Convenience accessor for current settings value
+    var settings: Settings { settingsStore.value }
 
     let exclusionStore: ExclusionStore
     let deleteStore: DeleteStore
@@ -75,13 +78,16 @@ final class HypnographState: ObservableObject {
 
     // MARK: - Init
 
-    init(settings: Settings, coreConfig: HypnoCoreConfig) {
+    init(settingsStore: SettingsStore, coreConfig: HypnoCoreConfig) {
         let exclusionStore = ExclusionStore(url: coreConfig.exclusionsURL)
         let deleteStore = DeleteStore(url: coreConfig.deletionsURL)
 
-        self.settings = settings
+        self.settingsStore = settingsStore
         self.exclusionStore = exclusionStore
         self.deleteStore = deleteStore
+
+        // Local alias for init (self.settings is a computed property that can't be used yet)
+        let settings = settingsStore.value
 
         // Default to "Apple Photos: All Items" if available, otherwise folder sources
         let defaultKey: String
@@ -134,7 +140,7 @@ final class HypnographState: ObservableObject {
 
         // Load custom photo selection from disk
         loadCustomSelectionFromDisk()
-        
+
         // Load window state from disk
         loadWindowStateFromDisk()
     }
@@ -142,8 +148,7 @@ final class HypnographState: ObservableObject {
     // MARK: - UI Toggles
 
     func toggleWatchMode() {
-        settings.watch.toggle()
-        saveSettingsToDisk()
+        settingsStore.update { $0.watch.toggle() }
         scheduleWatchTimer()
     }
 
@@ -259,8 +264,7 @@ final class HypnographState: ObservableObject {
                     types.insert(type)
                 }
 
-                settings.sourceMediaTypes = types
-                saveSettingsToDisk()
+                settingsStore.update { $0.sourceMediaTypes = types }
                 // Rebuild library with new filter - reapply current libraries
                 await applyActiveLibrariesUnified(activeLibraryKeys, saveToModule: false)
                 AppNotifications.show("Takes effect on next Hypnogram", flash: true, duration: 1.5)
@@ -362,8 +366,7 @@ final class HypnographState: ObservableObject {
             librariesDict[module.rawValue] = Array(keys)
         }
 
-        settings.activeLibrariesPerMode = librariesDict
-        saveSettingsToDisk()
+        settingsStore.update { $0.activeLibrariesPerMode = librariesDict }
     }
 
     // MARK: - Aspect Ratio & Resolution
@@ -371,33 +374,18 @@ final class HypnographState: ObservableObject {
     /// Set the aspect ratio and save to settings (applies immediately)
     func setAspectRatio(_ ratio: AspectRatio) {
         aspectRatio = ratio
-        settings.aspectRatio = ratio
-        saveSettingsToDisk()
+        settingsStore.update { $0.aspectRatio = ratio }
     }
 
     /// Set the output resolution and save to settings (applies immediately)
     func setOutputResolution(_ resolution: OutputResolution) {
         outputResolution = resolution
-        settings.outputResolution = resolution
-        saveSettingsToDisk()
+        settingsStore.update { $0.outputResolution = resolution }
     }
 
-    /// Save settings to disk (public - call after modifying state.settings)
+    /// Save settings to disk (public - call after modifying state.settings via settingsStore.update)
     func saveSettings() {
-        saveSettingsToDisk()
-    }
-
-    /// Save settings to disk
-    private func saveSettingsToDisk() {
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-            let data = try encoder.encode(settings)
-            try data.write(to: Environment.defaultSettingsURL)
-            print("✅ Saved settings to \(Environment.defaultSettingsURL.path)")
-        } catch {
-            print("⚠️ Failed to save settings: \(error)")
-        }
+        settingsStore.save()
     }
 
     // MARK: - Window State Persistence

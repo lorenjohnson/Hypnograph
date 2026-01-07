@@ -360,8 +360,7 @@ struct EffectsEditorView: View {
                 // Toggle effects list sidebar button (icon only with tooltip)
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        state.settings.effectsListCollapsed.toggle()
-                        state.saveSettings()
+                        state.settingsStore.update { $0.effectsListCollapsed.toggle() }
                     }
                 }) {
                     Image(systemName: "sidebar.left")
@@ -446,8 +445,7 @@ struct EffectsEditorView: View {
 
             // Auto-expand list when no effect is selected (None)
             if selectedEffectIndex == -1 && state.settings.effectsListCollapsed {
-                state.settings.effectsListCollapsed = false
-                state.saveSettings()
+                state.settingsStore.update { $0.effectsListCollapsed = false }
             }
             // Set initial focus to effect list immediately
             focusedField = .effectList
