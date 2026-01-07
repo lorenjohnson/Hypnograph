@@ -45,7 +45,11 @@
       "Bash(do echo \"=== $fw ===\" ls /Users/lorenjohnson/dev/artdev/Hypnograph/$fw/*.swift)",
       "Bash(mkdir:*)",
       "Bash(# Verify HypnoRenderer is now empty find /Users/lorenjohnson/dev/artdev/Hypnograph/HypnoRenderer -type f)",
-      "Bash(git ls-tree:*)"
+      "Bash(git ls-tree:*)",
+      "Bash(for dir in HypnoCoreTests HypnographTests HypnographUITests HypnogramQuickLookTests)",
+      "Bash(do if [ -d \"$dir\" ])",
+      "Bash(then echo \"=== $dir ===\" find \"$dir\" -name \"*.swift\" -type f -exec cat {} +)",
+      "Bash(wc:*)"
     ]
   }
 }
