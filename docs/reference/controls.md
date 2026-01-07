@@ -1,12 +1,12 @@
 ---
-last_reviewed: 2026-01-03T21:17:01Z
+last_reviewed: 2026-01-07
 ---
 
 # Controls Reference
 
 This is the canonical reference for keyboard shortcuts and controller mappings.
-Source of truth: `Hypnograph/HypnographApp.swift`, `Hypnograph/Modules/Dream/Dream.swift`,
-`Hypnograph/Modules/Divine/Divine.swift`, `Hypnograph/GameControllerManager.swift`.
+Source of truth: `Hypnograph/HypnographApp.swift`, `Hypnograph/Dream/Dream.swift`,
+`Divine/Divine.swift`, `Hypnograph/GameControllerManager.swift`.
 
 ## Keyboard Shortcuts
 
@@ -45,8 +45,8 @@ Source of truth: `Hypnograph/HypnographApp.swift`, `Hypnograph/Modules/Dream/Dre
 | Add Source | `Shift+N` | Disabled while typing |
 | Next Source | `Right` | Disabled while typing; omitted when Effects Editor is open |
 | Previous Source | `Left` | Disabled while typing; omitted when Effects Editor is open |
-| Select Source 1-9 | `1-9` | Disabled while typing |
-| Select Global Layer | `0` | Disabled while typing |
+| Select Source 1-9 | `1-9` | Disabled while typing; **hold** to solo source (see Key Hold Behaviors) |
+| Select Global Layer | `0` | Disabled while typing; **hold** to suspend global effects (see Key Hold Behaviors) |
 | Clear Current Layer Effect | `C` | Disabled while typing |
 | Clear All Effects | `Ctrl+Shift+C` | Not disabled |
 | New Hypnogram | `N` | Disabled while typing |
@@ -97,6 +97,20 @@ Source of truth: `Hypnograph/HypnographApp.swift`, `Hypnograph/Modules/Dream/Dre
 Effects Editor navigation:
 - `Up`/`Down` arrows move selection when not in text fields.
 - Left/Right and Tab/Shift-Tab are handled by SwiftUI focus.
+
+## Key Hold Behaviors (Montage Mode Only)
+
+These behaviors use NSEvent monitors in `HypnographApp.swift` to detect keyDown/keyUp
+events for true hold detection (not key repeat).
+
+| Key | Hold Behavior | Notes |
+| --- | --- | --- |
+| `0` | Suspend global effects | Shows all layers with their source effects but bypasses the global effect chain |
+| `1-9` | Solo source + suspend global effects | Shows only that source with its effect applied, bypasses global effects for effect preview |
+
+**Use case**: When applying effects to individual sources, hold the source number key to
+preview just that layer with its effect, without the global effect chain interfering.
+This makes it easy to see exactly what an effect is doing to a specific source.
 
 ## HUD Notes
 

@@ -69,8 +69,21 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
 
     /// Callback to save window state (injected by app)
     var saveWindowState: (() -> Void)?
+
+    /// Callback to suspend/resume global effects (injected by app)
+    var setGlobalEffectSuspended: ((Bool) -> Void)?
+
+    /// Callback to set flash solo (injected by app). Pass source index or nil to clear.
+    var setFlashSolo: ((Int?) -> Void)?
+
     /// Event monitor for Tab key (workaround for SwiftUI menu shortcut not registering until menu opened)
     private var tabKeyMonitor: Any?
+
+    /// Event monitor for 0 key hold to suspend global effects
+    private var zeroKeyMonitor: Any?
+
+    /// Event monitor for 1-9 keys hold to suspend source effects
+    private var sourceKeyMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Request notification authorization
@@ -90,6 +103,44 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
                 return nil  // Consume the event
             }
             return event
+        }
+
+        // Install 0 key monitor for hold-to-suspend global effects
+        // keyCode 29 = "0" key on macOS
+        zeroKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+            // Only handle 0 key with no modifiers
+            guard event.keyCode == 29,
+                  event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty else {
+                return event
+            }
+            // Don't intercept if user is typing
+            if self?.isTypingActive?() == true {
+                return event
+            }
+            // Suspend on keyDown, resume on keyUp
+            self?.setGlobalEffectSuspended?(event.type == .keyDown)
+            return event  // Don't consume - let SwiftUI handle the key press for layer selection
+        }
+
+        // Install 1-9 key monitor for hold-to-solo source (bypasses global effects, keeps source effect)
+        // keyCodes: 18=1, 19=2, 20=3, 21=4, 23=5, 22=6, 26=7, 28=8, 25=9
+        let sourceKeyCodes: [UInt16: Int] = [18: 0, 19: 1, 20: 2, 21: 3, 23: 4, 22: 5, 26: 6, 28: 7, 25: 8]
+        sourceKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+            // Only handle 1-9 keys with no modifiers
+            guard let sourceIndex = sourceKeyCodes[event.keyCode],
+                  event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty else {
+                return event
+            }
+            // Don't intercept if user is typing
+            if self?.isTypingActive?() == true {
+                return event
+            }
+            // On keyDown: solo this source and suspend global effects (keep source effect for preview)
+            // On keyUp: clear solo and resume global effects
+            let isDown = event.type == .keyDown
+            self?.setFlashSolo?(isDown ? sourceIndex : nil)
+            self?.setGlobalEffectSuspended?(isDown)
+            return event  // Don't consume - let SwiftUI handle the key press for source selection
         }
 
         // Request Photos library authorization and refresh hidden assets cache
@@ -258,6 +309,19 @@ struct HypnographApp: App {
                 // Wire up window state persistence
                 appDelegate.saveWindowState = { [weak state] in
                     state?.saveWindowStateToDisk()
+                }
+
+                // Wire up global effect suspend (0 key hold in Montage mode)
+                appDelegate.setGlobalEffectSuspended = { [weak dream] suspended in
+                    guard let dream = dream, dream.mode == .montage else { return }
+                    dream.montagePlayer.isGlobalEffectSuspended = suspended
+                    dream.montagePlayer.effectManager.isGlobalEffectSuspended = suspended
+                }
+
+                // Wire up flash solo (1-9 key hold in Montage mode)
+                appDelegate.setFlashSolo = { [weak dream] sourceIndex in
+                    guard let dream = dream, dream.mode == .montage else { return }
+                    dream.montagePlayer.effectManager.setFlashSolo(sourceIndex)
                 }
 
                 // Wire up recipe file opening
