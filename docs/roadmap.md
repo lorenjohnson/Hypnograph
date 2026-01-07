@@ -1,8 +1,13 @@
 ---
-last_reviewed: 2026-01-04T22:36:32Z
+last_reviewed: 2026-01-07
 ---
 
 # Roadmap
+
+## Recently Completed
+
+- [x] Hold `0` in Montage mode to temporarily suspend global effect chain
+- [x] Hold `1-9` in Montage mode to solo source and suspend global effects (keeps source effect for preview)
 
 - Change the default locaiton of stored Hypnograms to ~/Movies/Hypnograph ?
 - I would like the window state to restore including whether clean screen is currently enabled
@@ -36,12 +41,14 @@ last_reviewed: 2026-01-04T22:36:32Z
 
 ## Minor Projects:
 - [ ] Watch mode to be more watchable...
+  - [ ] Blend between subsequent Hypnograms like by overlapping sources... R&D but so curious.
+  - [ ] Looping: Make it optional such that when it is off and you're in watch mode a new Hypnogram is generated when the previous one ends, unless the clip was shorter than a predetermined minimum length (2s?) in which case it will either be skipped or looped. The play length of a recipe is the length of the  longest running clip in the sources (up to the max duration of course). I guess this should be a player setting in the Watch toggle area.
   - [ ] Flash of image before processed in Player should be avoided/eliminated. A transition to black before the next image is shown would be better. A fade out and fade in would extra nice with a new Player Setting for "Transition Style" (none, fade, punk)
   - [ ] Volume leveling (optional)
 - [ ] Bring back Favorites store for saving favorites (by file path or Apple Photos ID?. Pressing F when viewing an Apple Photos asset it should be added to the FavoritesStore as well as to the HypnogramFavorites album in Apple Photos. This keystroke only works when in Sequence mode on any curently playing asset or when in Montage mone on a particular source (not global). Otherwse it gives a short flash message notice "Select a source to favorite" (we should add a basic style for notice vs warning flash messages and this is a warning). Maybe just use an emoji for the warnings and the rest stay the same. In Divine mode this also works for the active card and adds to DivineFavorites in Apple Photos if it is a Photos asset.
 - [ ] The DeleteStore functionality should also put the photo or video in the HypnogramDeletions album in Apple Photos if it is an ApplePhotos aset.
+- [ ] Double-tap 1-9 to lock solo mode until any number key is pressed again
 - [ ] Add "Player Settings" style control panel for Divine with settings: Allow Reversed toggle, Max Card (int)
-- [ ] Holding 0 in Montage tempoarily suspends the global effectchain
 - [ ] Put a "New Hypnogram" button on the player view
 - [ ] Tweaks to the IFrame Compress effect, because I like it:
   - [ ] Make the period between iframe freezes more jittery by default and maybe add a setitng after trying it out
