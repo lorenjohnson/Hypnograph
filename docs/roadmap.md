@@ -22,6 +22,7 @@ last_reviewed: 2026-01-04T22:36:32Z
 - [ ] Bring back randomized effect / blend mode as options for randomized hypnogram generation
 
 ## Known Issues / Bugs
+- [ ] Window state not saved in Hypnograph
 - [ ] Rendering/saving some Hypnograms results in an error
   - [ ] "🔴 HypnogramRenderer: Export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn’t be completed. (Hypnograph.RenderError error 6.)"
 - [ ] Increase XcodeBuild MCP timeout to >60s (UI tests time out).
@@ -31,6 +32,7 @@ last_reviewed: 2026-01-04T22:36:32Z
 - [ ] **Finder action not installing** - Automator action fails.
 
 ## Minor Projects:
+- [ ] Divine: Save layouts somehow (Snapshots are a good start), but saving a recipe for restore would be a better first step probably
 - [ ] Combine most of what is in HUD into Player Settings modal
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)
 - [ ] Game Controller mapping revamp back to essentials only
