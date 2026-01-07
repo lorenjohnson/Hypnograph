@@ -36,6 +36,9 @@ final class DreamPlayerState: ObservableObject {
     /// Incremented when effects change - triggers re-render when paused
     @Published var effectsChangeCounter: Int = 0
 
+    /// When true, global effect chain is temporarily bypassed (e.g., while holding 0 key)
+    @Published var isGlobalEffectSuspended: Bool = false
+
     // MARK: - Player Configuration
 
     /// Per-player settings (aspect ratio, resolution, generation settings)

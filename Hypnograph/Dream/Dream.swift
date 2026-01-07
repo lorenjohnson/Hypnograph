@@ -334,42 +334,22 @@ final class Dream: ObservableObject {
         }
     }
 
-    // MARK: - Source Navigation (with flash solo in montage mode, sequence sync)
-
-    private var flashSoloTimer: Timer?
+    // MARK: - Source Navigation (sequence sync)
+    // Note: Flash solo is now handled by NSEvent key hold detection in HypnographAppDelegate
 
     func nextSource() {
         activePlayer.nextSource()
-        triggerFlashSoloIfNeeded()
         syncLivePlayerIfSequence()
     }
 
     func previousSource() {
         activePlayer.previousSource()
-        triggerFlashSoloIfNeeded()
         syncLivePlayerIfSequence()
     }
 
     func selectSource(index: Int) {
         activePlayer.selectSource(index)
-        triggerFlashSoloIfNeeded()
         syncLivePlayerIfSequence()
-    }
-
-    private func triggerFlashSoloIfNeeded() {
-        // Only flash solo in montage mode and if setting is enabled
-        guard mode == .montage else { return }
-
-        // Cancel any existing timer
-        flashSoloTimer?.invalidate()
-
-        // Set flash solo to current source
-        activePlayer.effectManager.setFlashSolo(activePlayer.currentSourceIndex)
-
-        // Clear after delay
-        flashSoloTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
-            self?.activePlayer.effectManager.setFlashSolo(nil)
-        }
     }
 
     /// Sync Live Display to current source when in sequence mode
