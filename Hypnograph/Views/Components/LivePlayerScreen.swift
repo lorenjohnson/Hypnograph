@@ -1,18 +1,18 @@
 //
-//  LivePlayerView.swift
+//  LivePlayerScreen.swift
 //  Hypnograph
 //
-//  Full-screen player view for Live mode - mirrors the Live Display player.
-//  Used as the main preview when in Live live mode.
+//  Full-screen player screen for Live mode - mirrors the Live Display player.
+//  Used as the main preview when in Live mode.
 //
 
 import SwiftUI
 import AVKit
 import AppKit
 
-/// Full-screen player view that mirrors Live Display content
+/// Full-screen player screen that mirrors Live Display content
 /// Used as the main preview when in Live mode (Cmd-P)
-struct LivePlayerView: View {
+struct LivePlayerScreen: View {
     @ObservedObject var livePlayer: LivePlayer
 
     var body: some View {

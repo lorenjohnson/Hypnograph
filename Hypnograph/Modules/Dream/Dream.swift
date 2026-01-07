@@ -745,7 +745,7 @@ final class Dream: ObservableObject {
         // In Live mode, mirror the Live Display player instead of local preview
         if isLiveMode {
             return AnyView(
-                LivePlayerView(livePlayer: livePlayer)
+                LivePlayerScreen(livePlayer: livePlayer)
                     .id("dream-live-\(livePlayer.config.viewID)")
             )
         }
