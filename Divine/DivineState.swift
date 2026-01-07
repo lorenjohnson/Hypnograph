@@ -9,10 +9,10 @@ final class DivineState: ObservableObject {
     // MARK: - Settings
 
     /// App settings backed by PersistentStore for automatic persistence
-    let settingsStore: DivineSettingsStore
+    let settingsStore: SettingsStore
 
     /// Convenience accessor for current settings value
-    var settings: DivineSettings { settingsStore.value }
+    var settings: Settings { settingsStore.value }
 
     // MARK: - Library Management
 
@@ -34,7 +34,7 @@ final class DivineState: ObservableObject {
 
     // MARK: - Init
 
-    init(settingsStore: DivineSettingsStore, coreConfig: HypnoCoreConfig) {
+    init(settingsStore: SettingsStore, coreConfig: HypnoCoreConfig) {
         self.settingsStore = settingsStore
 
         // Initialize stores
@@ -233,9 +233,9 @@ final class DivineState: ObservableObject {
 
 }
 
-// MARK: - Divine Settings
+// MARK: - Settings
 
-struct DivineSettings: Codable, MediaLibrarySettings {
+struct Settings: Codable, MediaLibrarySettings {
     var sourceMediaTypes: Set<SourceMediaType> = [.images, .videos]
     var activeLibraryKeys: [String] = []
 

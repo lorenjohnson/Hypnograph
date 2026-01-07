@@ -15,7 +15,7 @@ struct DivineApp: App {
     @NSApplicationDelegateAdaptor(DivineAppDelegate.self)
     private var appDelegate
 
-    private let settingsStore: DivineSettingsStore
+    private let settingsStore: SettingsStore
     @StateObject private var state: DivineState
     @StateObject private var divine: Divine
 
@@ -23,7 +23,7 @@ struct DivineApp: App {
         let coreConfig = HypnoCoreConfig(appSupportDirectory: DivineEnvironment.appSupportDirectory)
         HypnoCoreConfig.shared = coreConfig
 
-        let settingsStore = DivineSettingsStore()
+        let settingsStore = SettingsStore()
         self.settingsStore = settingsStore
 
         let state = DivineState(settingsStore: settingsStore, coreConfig: coreConfig)
