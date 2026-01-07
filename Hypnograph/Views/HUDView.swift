@@ -143,8 +143,8 @@ struct HUDView: View {
                 return "~" + path.dropFirst(homeDir.count)
             }
             return path
-        case .photos(let identifier):
-            return "photos:\(identifier)"
+        case .external(let identifier):
+            return "external:\(identifier)"
         }
     }
 

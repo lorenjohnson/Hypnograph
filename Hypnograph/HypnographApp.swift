@@ -168,6 +168,7 @@ struct HypnographApp: App {
     init() {
         let coreConfig = HypnoCoreConfig(appSupportDirectory: Environment.appSupportDirectory)
         HypnoCoreConfig.shared = coreConfig
+        ApplePhotosHooks.install()
         Environment.ensureDefaultSettingsFileExists()
 
         let settingsStore = SettingsStore()
