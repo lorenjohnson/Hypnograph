@@ -74,7 +74,8 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     var setGlobalEffectSuspended: ((Bool) -> Void)?
 
     /// Callback to set flash solo (injected by app). Pass source index or nil to clear.
-    var setFlashSolo: ((Int?) -> Void)?
+    /// Returns true if the source exists (or nil was passed), false if source index is out of range.
+    var setFlashSolo: ((Int?) -> Bool)?
 
     /// Event monitor for Tab key (workaround for SwiftUI menu shortcut not registering until menu opened)
     private var tabKeyMonitor: Any?
@@ -84,6 +85,11 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
 
     /// Event monitor for 1-9 keys hold to suspend source effects
     private var sourceKeyMonitor: Any?
+
+    /// State for double-tap solo latch detection
+    private var lastSourceKeyDownTime: TimeInterval = 0
+    private var lastSourceKeyIndex: Int = -1
+    private var isSoloLatched: Bool = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Request notification authorization
@@ -123,23 +129,72 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Install 1-9 key monitor for hold-to-solo source (bypasses global effects, keeps source effect)
+        // Double-tap to latch solo mode; any subsequent 1-9 key clears latch
         // keyCodes: 18=1, 19=2, 20=3, 21=4, 23=5, 22=6, 26=7, 28=8, 25=9
         let sourceKeyCodes: [UInt16: Int] = [18: 0, 19: 1, 20: 2, 21: 3, 23: 4, 22: 5, 26: 6, 28: 7, 25: 8]
         sourceKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+            guard let self = self else { return event }
             // Only handle 1-9 keys with no modifiers
             guard let sourceIndex = sourceKeyCodes[event.keyCode],
                   event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty else {
                 return event
             }
             // Don't intercept if user is typing
-            if self?.isTypingActive?() == true {
+            if self.isTypingActive?() == true {
                 return event
             }
-            // On keyDown: solo this source and suspend global effects (keep source effect for preview)
-            // On keyUp: clear solo and resume global effects
+            // Skip key repeats for double-tap detection
+            if event.isARepeat {
+                return event
+            }
+
             let isDown = event.type == .keyDown
-            self?.setFlashSolo?(isDown ? sourceIndex : nil)
-            self?.setGlobalEffectSuspended?(isDown)
+            let now = event.timestamp
+            let doubleTapThreshold: TimeInterval = 0.3
+
+            if isDown {
+                // Check for double-tap on same key
+                let isDoubleTap = (sourceIndex == self.lastSourceKeyIndex) &&
+                                  (now - self.lastSourceKeyDownTime < doubleTapThreshold)
+
+                if isDoubleTap {
+                    // Toggle latch state
+                    self.isSoloLatched.toggle()
+                    if self.isSoloLatched {
+                        // Latch on: keep solo active (only if source exists)
+                        if self.setFlashSolo?(sourceIndex) == true {
+                            self.setGlobalEffectSuspended?(true)
+                        } else {
+                            self.isSoloLatched = false  // Source doesn't exist, cancel latch
+                        }
+                    } else {
+                        // Latch off: clear solo
+                        _ = self.setFlashSolo?(nil)
+                        self.setGlobalEffectSuspended?(false)
+                    }
+                } else {
+                    // Single tap or different key - if latched, any key clears latch
+                    if self.isSoloLatched {
+                        self.isSoloLatched = false
+                        _ = self.setFlashSolo?(nil)
+                        self.setGlobalEffectSuspended?(false)
+                    } else {
+                        // Normal hold behavior (only if source exists)
+                        if self.setFlashSolo?(sourceIndex) == true {
+                            self.setGlobalEffectSuspended?(true)
+                        }
+                    }
+                }
+                // Update tracking for next double-tap check
+                self.lastSourceKeyDownTime = now
+                self.lastSourceKeyIndex = sourceIndex
+            } else {
+                // keyUp: only clear if not latched
+                if !self.isSoloLatched {
+                    _ = self.setFlashSolo?(nil)
+                    self.setGlobalEffectSuspended?(false)
+                }
+            }
             return event  // Don't consume - let SwiftUI handle the key press for source selection
         }
 
@@ -320,8 +375,13 @@ struct HypnographApp: App {
 
                 // Wire up flash solo (1-9 key hold in Montage mode)
                 appDelegate.setFlashSolo = { [weak dream] sourceIndex in
-                    guard let dream = dream, dream.mode == .montage else { return }
+                    guard let dream = dream, dream.mode == .montage else { return false }
+                    // Only set flash solo if the source exists, otherwise ignore
+                    if let index = sourceIndex {
+                        guard index < dream.montagePlayer.sources.count else { return false }
+                    }
                     dream.montagePlayer.effectManager.setFlashSolo(sourceIndex)
+                    return true
                 }
 
                 // Wire up recipe file opening

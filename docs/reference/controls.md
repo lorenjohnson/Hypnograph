@@ -107,10 +107,11 @@ events for true hold detection (not key repeat).
 | --- | --- | --- |
 | `0` | Suspend global effects | Shows all layers with their source effects but bypasses the global effect chain |
 | `1-9` | Solo source + suspend global effects | Shows only that source with its effect applied, bypasses global effects for effect preview |
+| `1-9` (double-tap) | Latch solo mode | Solo stays active until any number key is pressed again |
 
 **Use case**: When applying effects to individual sources, hold the source number key to
 preview just that layer with its effect, without the global effect chain interfering.
-This makes it easy to see exactly what an effect is doing to a specific source.
+Double-tap to lock the solo so you can work hands-free. Any subsequent 1-9 key press clears the latch.
 
 ## HUD Notes
 

@@ -47,12 +47,13 @@ last_reviewed: 2026-01-07
   - [ ] Volume leveling (optional)
 - [ ] Bring back Favorites store for saving favorites (by file path or Apple Photos ID?. Pressing F when viewing an Apple Photos asset it should be added to the FavoritesStore as well as to the HypnogramFavorites album in Apple Photos. This keystroke only works when in Sequence mode on any curently playing asset or when in Montage mone on a particular source (not global). Otherwse it gives a short flash message notice "Select a source to favorite" (we should add a basic style for notice vs warning flash messages and this is a warning). Maybe just use an emoji for the warnings and the rest stay the same. In Divine mode this also works for the active card and adds to DivineFavorites in Apple Photos if it is a Photos asset.
 - [ ] The DeleteStore functionality should also put the photo or video in the HypnogramDeletions album in Apple Photos if it is an ApplePhotos aset.
-- [ ] Double-tap 1-9 to lock solo mode until any number key is pressed again
+- [x] Double-tap 1-9 to lock solo mode until any number key is pressed again
 - [ ] Add "Player Settings" style control panel for Divine with settings: Allow Reversed toggle, Max Card (int)
 - [ ] Put a "New Hypnogram" button on the player view
 - [ ] Tweaks to the IFrame Compress effect, because I like it:
   - [ ] Make the period between iframe freezes more jittery by default and maybe add a setitng after trying it out
   - [ ] Same with the other params, more jitter by default but with anticipation of adding a param
+  - [ ] When it is done sticking to a mask or whatever you'd call it, it releases seemingly suddenly. Make it more of a fade or erosion.
 - [ ] Divine: Save layouts somehow (Snapshots are a good start), but saving a recipe for restore would be a better first step probably
 - [ ] Hypnograph: Combine more of what is in HUD into Player Settings modal
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)
