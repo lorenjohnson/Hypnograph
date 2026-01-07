@@ -174,7 +174,7 @@ final class LivePlayer: ObservableObject {
         }
 
         // When session is reloaded, reapply active effects
-        effectsSession.onSessionReloaded = { [weak self] in
+        effectsSession.onReloaded = { [weak self] in
             self?.effectManager.reapplyActiveEffects()
         }
     }
