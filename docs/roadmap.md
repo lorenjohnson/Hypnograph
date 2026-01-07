@@ -16,42 +16,40 @@ last_reviewed: 2026-01-04T22:36:32Z
 
 ## Research & Development
 - [ ] Custom Metal blends modes for better destructive shaders/effects
-- [ ] Auto blend mode sensing (like based on the relative brightiness of the source images)
-- [ ] Volume leveling on play back (optional)
+- [ ] Auto blend mode sensing (like based on the relative brightiness of the source images). I think I am already doing something like that.
+- [ ] How to integrate our own Metal shaders as Blend Mode options.
 - [ ] Midi mapping, Mic input, MIDI Clock, OSC
 - [ ] Randomize blend modes and effects for all sources in current Hypnogram (wheel of fortune)
 - [ ] Bring back randomized effect / blend mode as options for randomized hypnogram generation
+- [ ] Live Mode is a bit confusing in this product
 
 ## Known Issues / Bugs
-- [ ] Window state not saved in Hypnograph
 - [ ] Rendering/saving some Hypnograms results in an error
   - [ ] "🔴 HypnogramRenderer: Export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn’t be completed. (Hypnograph.RenderError error 6.)"
+- [ ] Window state not saved in Hypnograph
 - [ ] Increase XcodeBuild MCP timeout to >60s (UI tests time out).
-- [ ] **Effect name editing broken** - Opens edit mode but can't type. `isTyping` focus disconnect.
+- [ ] **Effect name editing broken** - Opens edit mode but can't type. `isTyping` focus disconnect once any effects load operation were done first
 - [ ] **Sequence mode saving** - Fails silently or incorrectly.
 - [ ] **Output height/width ignored** - Settings file values not applied.
 - [ ] **Finder action not installing** - Automator action fails.
 - [ ] First load of app seemed to not connect to apple photos but relauches were fine, in both apps
 
 ## Minor Projects:
+- [ ] Watch mode to be more watchable...
+  - [ ] Flash of image before processed in Player should be avoided/eliminated. A transition to black before the next image is shown would be better. A fade out and fade in would extra nice with a new Player Setting for "Transition Style" (none, fade, punk)
+  - [ ] Volume leveling (optional)
 - [ ] Bring back Favorites store for saving favorites (by file path or Apple Photos ID?. Pressing F when viewing an Apple Photos asset it should be added to the FavoritesStore as well as to the HypnogramFavorites album in Apple Photos. This keystroke only works when in Sequence mode on any curently playing asset or when in Montage mone on a particular source (not global). Otherwse it gives a short flash message notice "Select a source to favorite" (we should add a basic style for notice vs warning flash messages and this is a warning). Maybe just use an emoji for the warnings and the rest stay the same. In Divine mode this also works for the active card and adds to DivineFavorites in Apple Photos if it is a Photos asset.
 - [ ] The DeleteStore functionality should also put the photo or video in the HypnogramDeletions album in Apple Photos if it is an ApplePhotos aset.
+- [ ] Add "Player Settings" style control panel for Divine with settings: Allow Reversed toggle, Max Card (int)
 - [ ] Holding 0 in Montage tempoarily suspends the global effectchain
-- [ ] Live Mode is a bit confusing
-- [ ] Put a New Hypnogram button on the player view
-- [ ] Re-re
+- [ ] Put a "New Hypnogram" button on the player view
 - [ ] Tweaks to the IFrame Compress effect, because I like it:
   - [ ] Make the period between iframe freezes more jittery by default and maybe add a setitng after trying it out
   - [ ] Same with the other params, more jitter by default but with anticipation of adding a param
 - [ ] Divine: Save layouts somehow (Snapshots are a good start), but saving a recipe for restore would be a better first step probably
-- [ ] Hypnograph:Combine most of what is in HUD into Player Settings modal
+- [ ] Hypnograph: Combine more of what is in HUD into Player Settings modal
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)
 - [ ] Game Controller mapping revamp back to essentials only
-- [ ] Rename LivePlayer module to align with LivePlayer (e.g. LivePlayer)
-- [ ] Remove deprecated `PhotosPickerSheet.swift` / custom Photos selection UI and revisit later with a Divine-first approach
-
-## Project: Make Divine its own product
-- [ ] Make the core components needed by Divine mode modular and re-usable and get the app compiling with those as depednencies before moving Divine mode into its own product which will also require these dependencies.
 
 ## Project: Basic Library Manager view for managing sets of items (for use by and modeld after current Effects Manager)
 - [ ] Abstract for use by both the Effects Chains Library and Hypnogram Sets
