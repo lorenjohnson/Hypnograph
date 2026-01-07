@@ -17,6 +17,7 @@ last_reviewed: 2026-01-04T22:36:32Z
 ## Research & Development
 - [ ] Custom Metal blends modes for better destructive shaders/effects
 - [ ] Auto blend mode sensing (like based on the relative brightiness of the source images)
+- [ ] Volume leveling on play back (optional)
 - [ ] Midi mapping, Mic input, MIDI Clock, OSC
 - [ ] Randomize blend modes and effects for all sources in current Hypnogram (wheel of fortune)
 - [ ] Bring back randomized effect / blend mode as options for randomized hypnogram generation
@@ -30,8 +31,18 @@ last_reviewed: 2026-01-04T22:36:32Z
 - [ ] **Sequence mode saving** - Fails silently or incorrectly.
 - [ ] **Output height/width ignored** - Settings file values not applied.
 - [ ] **Finder action not installing** - Automator action fails.
+- [ ] First load of app seemed to not connect to apple photos but relauches were fine, in both apps
 
 ## Minor Projects:
+- [ ] Bring back Favorites store for saving favorites (by file path or Apple Photos ID?. Pressing F when viewing an Apple Photos asset it should be added to the FavoritesStore as well as to the HypnogramFavorites album in Apple Photos. This keystroke only works when in Sequence mode on any curently playing asset or when in Montage mone on a particular source (not global). Otherwse it gives a short flash message notice "Select a source to favorite" (we should add a basic style for notice vs warning flash messages and this is a warning). Maybe just use an emoji for the warnings and the rest stay the same. In Divine mode this also works for the active card and adds to DivineFavorites in Apple Photos if it is a Photos asset.
+- [ ] The DeleteStore functionality should also put the photo or video in the HypnogramDeletions album in Apple Photos if it is an ApplePhotos aset.
+- [ ] Holding 0 in Montage tempoarily suspends the global effectchain
+- [ ] Live Mode is a bit confusing
+- [ ] Put a New Hypnogram button on the player view
+- [ ] Re-re
+- [ ] Tweaks to the IFrame Compress effect, because I like it:
+  - [ ] Make the period between iframe freezes more jittery by default and maybe add a setitng after trying it out
+  - [ ] Same with the other params, more jitter by default but with anticipation of adding a param
 - [ ] Divine: Save layouts somehow (Snapshots are a good start), but saving a recipe for restore would be a better first step probably
 - [ ] Hypnograph:Combine most of what is in HUD into Player Settings modal
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)
