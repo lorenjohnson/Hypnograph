@@ -130,6 +130,11 @@ final class Divine: ObservableObject {
         }
         .keyboardShortcut("n", modifiers: [.shift])
 
+        Button("Flip Card") { [self] in
+            flipCurrentCard()
+        }
+        .keyboardShortcut(.space, modifiers: [])
+
         Divider()
 
         Button("Delete Card") { [self] in
@@ -171,6 +176,10 @@ final class Divine: ObservableObject {
 
     func selectCard(index: Int) {
         cardManager.selectSource(index: index)
+    }
+
+    func flipCurrentCard() {
+        cardManager.flipCurrentCard()
     }
 
     func deleteCurrentCard() {

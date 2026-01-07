@@ -88,9 +88,16 @@ final class HypnographState: ObservableObject {
 
         self.currentLibraryKey = defaultKey
         self.activeLibraryKeys = activeKeys
-        self.library = MediaLibrary(
-            sources: settings.folders(forLibraries: activeKeys),
-            allowedMediaTypes: settings.sourceMediaTypes,
+
+        // Load custom photo selection BEFORE building library so it's included
+        let loadedCustomIds = Self.loadCustomSelectionFromDisk()
+        self.customPhotosAssetIds = loadedCustomIds
+
+        // Build initial library with custom selection
+        self.library = MediaLibraryBuilder.buildLibrary(
+            keys: activeKeys,
+            settings: settings,
+            customPhotosAssetIds: loadedCustomIds,
             exclusionStore: exclusionStore,
             deleteStore: deleteStore
         )
@@ -107,9 +114,6 @@ final class HypnographState: ObservableObject {
         if settings.watch {
             scheduleWatchTimer()
         }
-
-        // Load custom photo selection from disk
-        loadCustomSelectionFromDisk()
 
         // Load window state from disk
         loadWindowStateFromDisk()
@@ -272,9 +276,14 @@ final class HypnographState: ObservableObject {
         // Save to disk
         saveCustomSelectionToDisk()
 
-        // Refresh available libraries to update count
-        Task {
+        // Refresh available libraries to update count and rebuild library if custom is active
+        Task { @MainActor in
             await refreshAvailableLibraries()
+
+            // If custom selection is currently active, rebuild the library with new assets
+            if activeLibraryKeys.contains(ApplePhotosLibraryKeys.photosCustom) {
+                await applyActiveLibrariesUnified(activeLibraryKeys, save: false)
+            }
         }
 
         print("HypnographState: Set custom selection to \(customPhotosAssetIds.count) assets")
@@ -286,21 +295,24 @@ final class HypnographState: ObservableObject {
     }
 
     /// File URL for custom selection storage
-    private var customSelectionFileURL: URL {
+    private static var customSelectionFileURL: URL {
         Environment.appSupportDirectory
             .appendingPathComponent("custom-photos-selection.json")
     }
 
-    /// Load custom selection from disk
-    private func loadCustomSelectionFromDisk() {
-        guard FileManager.default.fileExists(atPath: customSelectionFileURL.path) else { return }
+    /// Load custom selection from disk (static for use in init)
+    private static func loadCustomSelectionFromDisk() -> [String] {
+        let url = customSelectionFileURL
+        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
 
         do {
-            let data = try Data(contentsOf: customSelectionFileURL)
-            customPhotosAssetIds = try JSONDecoder().decode([String].self, from: data)
-            print("HypnographState: Loaded \(customPhotosAssetIds.count) custom-selected assets")
+            let data = try Data(contentsOf: url)
+            let ids = try JSONDecoder().decode([String].self, from: data)
+            print("HypnographState: Loaded \(ids.count) custom-selected assets")
+            return ids
         } catch {
             print("HypnographState: Failed to load custom selection: \(error)")
+            return []
         }
     }
 
@@ -308,7 +320,7 @@ final class HypnographState: ObservableObject {
     private func saveCustomSelectionToDisk() {
         do {
             let data = try JSONEncoder().encode(customPhotosAssetIds)
-            try data.write(to: customSelectionFileURL)
+            try data.write(to: Self.customSelectionFileURL)
         } catch {
             print("HypnographState: Failed to save custom selection: \(error)")
         }

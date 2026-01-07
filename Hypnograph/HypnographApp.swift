@@ -45,7 +45,18 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     var isTypingActive: (() -> Bool)?
 
     /// Callback to open a recipe file (injected by app)
-    var openRecipeFile: ((URL) -> Void)?
+    var openRecipeFile: ((URL) -> Void)? {
+        didSet {
+            // Process any pending URL that arrived before callback was wired
+            if let url = pendingRecipeURL, openRecipeFile != nil {
+                pendingRecipeURL = nil
+                openRecipeFile?(url)
+            }
+        }
+    }
+
+    /// URL received before openRecipeFile callback was wired up
+    private var pendingRecipeURL: URL?
 
     /// Callback to check if any session has unsaved changes (injected by app)
     var hasUnsavedEffectChanges: (() -> Bool)?
@@ -148,7 +159,12 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
         // Open the first hypnogram file
         if let url = hypnogramURLs.first {
             print("Hypnograph: Opening file \(url.lastPathComponent)")
-            openRecipeFile?(url)
+            if let openRecipeFile = openRecipeFile {
+                openRecipeFile(url)
+            } else {
+                // Callback not wired yet - queue for later
+                pendingRecipeURL = url
+            }
         }
     }
 }

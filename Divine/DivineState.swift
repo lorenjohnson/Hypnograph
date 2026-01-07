@@ -66,17 +66,18 @@ final class DivineState: ObservableObject {
         self.currentLibraryKey = defaultKey
         self.activeLibraryKeys = activeKeys
 
-        // Build initial library
+        // Load custom selection BEFORE building library so it's included
+        let loadedCustomIds = Self.loadCustomSelectionFromDisk()
+        self.customPhotosAssetIds = loadedCustomIds
+
+        // Build initial library with custom selection
         self.library = MediaLibraryBuilder.buildLibrary(
             keys: activeKeys,
             settings: settings,
-            customPhotosAssetIds: [],
+            customPhotosAssetIds: loadedCustomIds,
             exclusionStore: exclusionStore,
             deleteStore: deleteStore
         )
-
-        // Load custom selection
-        loadCustomSelectionFromDisk()
     }
 
     // MARK: - Library Activation
@@ -159,8 +160,13 @@ final class DivineState: ObservableObject {
         customPhotosAssetIds = identifiers
         saveCustomSelectionToDisk()
 
-        Task {
+        Task { @MainActor in
             await refreshAvailableLibraries()
+
+            // If custom selection is currently active, rebuild the library with new assets
+            if activeLibraryKeys.contains(ApplePhotosLibraryKeys.photosCustom) {
+                await applyActiveLibraries(activeLibraryKeys)
+            }
         }
     }
 
@@ -168,26 +174,29 @@ final class DivineState: ObservableObject {
         setCustomPhotosAssets([])
     }
 
-    private var customSelectionFileURL: URL {
+    private static var customSelectionFileURL: URL {
         DivineEnvironment.appSupportDirectory
             .appendingPathComponent("custom-photos-selection.json")
     }
 
-    private func loadCustomSelectionFromDisk() {
-        guard FileManager.default.fileExists(atPath: customSelectionFileURL.path) else { return }
+    /// Load custom selection from disk (static for use in init)
+    private static func loadCustomSelectionFromDisk() -> [String] {
+        let url = customSelectionFileURL
+        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
 
         do {
-            let data = try Data(contentsOf: customSelectionFileURL)
-            customPhotosAssetIds = try JSONDecoder().decode([String].self, from: data)
+            let data = try Data(contentsOf: url)
+            return try JSONDecoder().decode([String].self, from: data)
         } catch {
             print("DivineState: Failed to load custom selection: \(error)")
+            return []
         }
     }
 
     private func saveCustomSelectionToDisk() {
         do {
             let data = try JSONEncoder().encode(customPhotosAssetIds)
-            try data.write(to: customSelectionFileURL)
+            try data.write(to: Self.customSelectionFileURL)
         } catch {
             print("DivineState: Failed to save custom selection: \(error)")
         }

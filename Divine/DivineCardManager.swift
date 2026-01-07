@@ -120,6 +120,12 @@ final class DivineCardManager: ObservableObject {
         currentIndex = max(0, min(cards.count - 1, index))
     }
 
+    /// Flip the current card over (reveal/hide)
+    func flipCurrentCard() {
+        guard !cards.isEmpty, currentIndex >= 0, currentIndex < cards.count else { return }
+        handleTapAtIndex(currentIndex)
+    }
+
     // MARK: - Internals
 
     private func cardRect(for card: DivineCard) -> CGRect {
@@ -319,8 +325,8 @@ final class DivineCardManager: ObservableObject {
     }
 
     private func makeCard(offset: CGSize) -> DivineCard? {
-        // Get all source file IDs currently on the table
-        let usedFileIDs = Set(cards.map { $0.clip.file.id })
+        // Get all source identifiers currently on the table
+        let usedSources = Set(cards.map { $0.clip.file.source.identifier })
 
         // Try to get a unique clip (not already on the table)
         var clip: VideoClip?
@@ -328,7 +334,7 @@ final class DivineCardManager: ObservableObject {
 
         for _ in 0..<maxAttempts {
             if let candidate = state.randomClip() {
-                if !usedFileIDs.contains(candidate.file.id) {
+                if !usedSources.contains(candidate.file.source.identifier) {
                     clip = candidate
                     break
                 }
@@ -336,7 +342,7 @@ final class DivineCardManager: ObservableObject {
         }
 
         guard let clip = clip else {
-            print("⚠️ Divine: Could not find a unique card (all sources may be in use)")
+            // Silently fail - no unique sources available
             return nil
         }
 
