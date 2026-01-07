@@ -13,7 +13,7 @@ import Foundation
 
 struct HypnographTests {
 
-    // Divine-specific tests moved to DivineApp (separate target)
+    // Divine-specific tests moved to Divine (separate target)
     // Add Hypnograph-specific tests here
 
 }

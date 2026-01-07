@@ -1390,16 +1390,17 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = DivineApp/Divine.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Divine/Divine.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"DivineApp/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"Divine/Preview Content\"";
 				DEVELOPMENT_TEAM = 6A74MR47VX;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = DivineApp/Info.plist;
+				INFOPLIST_FILE = Divine/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Divine needs access to Photos to draw cards from your library.";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1420,16 +1421,17 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = DivineApp/Divine.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Divine/Divine.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"DivineApp/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"Divine/Preview Content\"";
 				DEVELOPMENT_TEAM = 6A74MR47VX;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = DivineApp/Info.plist;
+				INFOPLIST_FILE = Divine/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Divine needs access to Photos to draw cards from your library.";
 				LD_RUNPATH_SEARCH_PATHS = (
