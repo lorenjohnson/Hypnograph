@@ -29,7 +29,6 @@ last_reviewed: 2026-01-04T22:36:32Z
 - [ ] **Sequence mode saving** - Fails silently or incorrectly.
 - [ ] **Output height/width ignored** - Settings file values not applied.
 - [ ] **Finder action not installing** - Automator action fails.
-- [ ] Save last used Global Effect as setting so the app comes back to the last used effect applied to the global layer
 
 ## Minor Projects:
 - [ ] Combine most of what is in HUD into Player Settings modal

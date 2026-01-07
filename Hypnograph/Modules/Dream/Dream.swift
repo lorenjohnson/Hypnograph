@@ -148,8 +148,13 @@ final class Dream: ObservableObject {
             self?.new()
         }
 
-        // Generate initial content for montage player
-        generateNewHypnogram(for: montagePlayer)
+        // Restore last recipe if available, otherwise generate new content
+        if let lastRecipe = state.settings.lastRecipe {
+            loadRecipe(lastRecipe)
+            print("📦 Restored last recipe with \(lastRecipe.sources.count) sources in \(lastRecipe.mode.rawValue) mode")
+        } else {
+            generateNewHypnogram(for: montagePlayer)
+        }
 
         // Watch for device list changes (device disconnected)
         audioManager.$outputDevices
@@ -159,8 +164,8 @@ final class Dream: ObservableObject {
             }
             .store(in: &playerSubscriptions)
 
-        // Restore last used global effect from settings
-        restoreGlobalEffect()
+        // Save recipe when app terminates
+        setupRecipePersistence()
 
         // Live audio subscriptions
         // Use .receive(on: RunLoop.main) to ensure sink runs AFTER property is updated
@@ -259,32 +264,30 @@ final class Dream: ObservableObject {
         }
     }
 
-    // MARK: - Global Effect Persistence
+    // MARK: - Recipe Persistence
 
-    /// Restore last used global effect to both players, and wire up save-on-change
-    private func restoreGlobalEffect() {
-        if let effectName = state.settings.lastGlobalEffectName {
-            if let chain = montagePlayer.effectsSession.chain(named: effectName) {
-                montagePlayer.effectManager.setGlobalEffect(from: chain)
-            }
-            if let chain = sequencePlayer.effectsSession.chain(named: effectName) {
-                sequencePlayer.effectManager.setGlobalEffect(from: chain)
+    /// Set up persistence to save recipe when app terminates
+    private func setupRecipePersistence() {
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.saveCurrentRecipe()
             }
         }
+    }
 
-        // Save global effect name whenever it changes (catches all paths: cycling, clicking, clearing)
-        let wrapCallback = { [weak self] (original: (() -> Void)?, player: DreamPlayerState) -> () -> Void in
-            return {
-                original?()
-                guard let self, player.currentSourceIndex == -1 else { return }
-                let name = player.effectManager.globalEffectName
-                let newValue = (name == "None") ? nil : name
-                guard self.state.settings.lastGlobalEffectName != newValue else { return }
-                self.state.settingsStore.update { $0.lastGlobalEffectName = newValue }
-            }
-        }
-        montagePlayer.effectManager.onEffectChanged = wrapCallback(montagePlayer.effectManager.onEffectChanged, montagePlayer)
-        sequencePlayer.effectManager.onEffectChanged = wrapCallback(sequencePlayer.effectManager.onEffectChanged, sequencePlayer)
+    /// Save current recipe to settings for persistence
+    func saveCurrentRecipe() {
+        let recipe = makeDisplayRecipe()
+        // Only save if we have sources (don't save empty state)
+        guard !recipe.sources.isEmpty else { return }
+        state.settingsStore.update { $0.lastRecipe = recipe }
+        // Force immediate synchronous save for app termination
+        state.settingsStore.save(synchronous: true)
+        print("📦 Saved current recipe with \(recipe.sources.count) sources")
     }
 
     /// Build export settings on-demand with current player config

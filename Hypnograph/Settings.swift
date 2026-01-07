@@ -81,8 +81,8 @@ struct Settings: Codable, MediaLibrarySettings {
     /// Live player audio volume (0.0 to 1.0)
     var liveVolume: Float
 
-    /// Last used global effect name (for persistence across app launches)
-    var lastGlobalEffectName: String?
+    /// Last recipe that was active when app closed (for persistence across app launches)
+    var lastRecipe: HypnogramRecipe?
 
     // Single source of truth for defaults
     private enum Defaults {
@@ -105,7 +105,7 @@ struct Settings: Codable, MediaLibrarySettings {
         static let previewVolume: Float = 1.0
         static let liveAudioDeviceUID: String? = nil
         static let liveVolume: Float = 1.0
-        static let lastGlobalEffectName: String? = nil
+        static let lastRecipe: HypnogramRecipe? = nil
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -117,7 +117,7 @@ struct Settings: Codable, MediaLibrarySettings {
         case previewAudioDeviceUID, previewVolume
         case liveAudioDeviceUID, liveVolume
         case montagePlayerConfig, sequencePlayerConfig
-        case lastGlobalEffectName
+        case lastRecipe
         // Legacy keys for backward compatibility
         case maxSourcesForNew, outputSeconds, aspectRatio, playerResolution
     }
@@ -137,7 +137,7 @@ struct Settings: Codable, MediaLibrarySettings {
         liveVolume: Float = Defaults.liveVolume,
         montagePlayerConfig: PlayerConfiguration? = nil,
         sequencePlayerConfig: PlayerConfiguration? = nil,
-        lastGlobalEffectName: String? = Defaults.lastGlobalEffectName
+        lastRecipe: HypnogramRecipe? = Defaults.lastRecipe
     ) {
         self.outputFolder = outputFolder
         self.sources = sources
@@ -151,7 +151,7 @@ struct Settings: Codable, MediaLibrarySettings {
         self.previewVolume = previewVolume
         self.liveAudioDeviceUID = liveAudioDeviceUID
         self.liveVolume = liveVolume
-        self.lastGlobalEffectName = lastGlobalEffectName
+        self.lastRecipe = lastRecipe
 
         // Use provided configs or create defaults
         self.montagePlayerConfig = montagePlayerConfig ?? PlayerConfiguration(
@@ -204,8 +204,8 @@ struct Settings: Codable, MediaLibrarySettings {
             ?? Defaults.liveAudioDeviceUID
         liveVolume = try c.decodeIfPresent(Float.self, forKey: .liveVolume)
             ?? Defaults.liveVolume
-        lastGlobalEffectName = try c.decodeIfPresent(String.self, forKey: .lastGlobalEffectName)
-            ?? Defaults.lastGlobalEffectName
+        lastRecipe = try c.decodeIfPresent(HypnogramRecipe.self, forKey: .lastRecipe)
+            ?? Defaults.lastRecipe
 
         // Try to load new format (montagePlayerConfig/sequencePlayerConfig)
         if let montage = try c.decodeIfPresent(PlayerConfiguration.self, forKey: .montagePlayerConfig),
@@ -260,7 +260,7 @@ struct Settings: Codable, MediaLibrarySettings {
         try c.encode(previewVolume, forKey: .previewVolume)
         try c.encodeIfPresent(liveAudioDeviceUID, forKey: .liveAudioDeviceUID)
         try c.encode(liveVolume, forKey: .liveVolume)
-        try c.encodeIfPresent(lastGlobalEffectName, forKey: .lastGlobalEffectName)
+        try c.encodeIfPresent(lastRecipe, forKey: .lastRecipe)
 
         // Encode new format
         try c.encode(montagePlayerConfig, forKey: .montagePlayerConfig)
