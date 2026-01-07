@@ -75,11 +75,10 @@ struct HUDView: View {
                     .id(index)
             }
 
-            if state.currentModuleType == .dream {
-                // Source file list section
-                Spacer().frame(height: 12)
+            // Source file list section
+            Spacer().frame(height: 12)
 
-                Text("Sources (\(formattedDuration))")
+            Text("Sources (\(formattedDuration))")
                     .font(.subheadline)
                     .foregroundColor(.white)
 
@@ -120,7 +119,6 @@ struct HUDView: View {
                     }
                     .padding(.top, 4)
                 }
-            }
         }
         .foregroundColor(.white)
         .padding(12)
@@ -132,7 +130,6 @@ struct HUDView: View {
     }
 
     private func hudItems() -> [HUDItem] {
-        guard state.currentModuleType == .dream else { return [] }
         return dream.hudItems().sorted { $0.order < $1.order }
     }
 

@@ -30,23 +30,10 @@ final class HypnographState: ObservableObject {
     let exclusionStore: ExclusionStore
     let deleteStore: DeleteStore
 
-    // Per-module library state
-    private var perModuleLibraryKeys: [ModuleType: Set<String>] = [:]
-
     @Published private(set) var currentLibraryKey: String
     @Published private(set) var activeLibraryKeys: Set<String>
 
     private(set) var library: MediaLibrary
-
-    // MARK: - Module management
-
-    @Published var currentModuleType: ModuleType = .dream {
-        didSet {
-            if oldValue != currentModuleType {
-                switchToModuleLibraries(currentModuleType)
-            }
-        }
-    }
 
     // MARK: - Global UI State
 
@@ -61,12 +48,6 @@ final class HypnographState: ObservableObject {
 
     /// Shared effects editor view model for controller/keyboard navigation
     let effectsEditorViewModel = EffectsEditorViewModel()
-
-    /// Current aspect ratio for composition (global default)
-    @Published var aspectRatio: AspectRatio
-
-    /// Current output resolution (global default)
-    @Published var outputResolution: OutputResolution
 
     // Watch timer - generates new hypnograms at intervals when watch mode is enabled
     private var watchTimer: Timer?
@@ -96,21 +77,14 @@ final class HypnographState: ObservableObject {
         } else {
             defaultKey = settings.defaultSourceLibraryKey
         }
-        let initialKeys: Set<String> = [defaultKey]
 
-        // Initialize per-module library state from settings or use defaults
-        var loadedPerModuleKeys: [ModuleType: Set<String>] = [:]
-        for module in [ModuleType.dream, ModuleType.divine] {
-            if let savedKeys = settings.activeLibrariesPerMode[module.rawValue], !savedKeys.isEmpty {
-                loadedPerModuleKeys[module] = Set(savedKeys)
-            } else {
-                loadedPerModuleKeys[module] = initialKeys
-            }
+        // Load saved library keys from settings, or use defaults
+        let activeKeys: Set<String>
+        if !settings.activeLibraries.isEmpty {
+            activeKeys = Set(settings.activeLibraries)
+        } else {
+            activeKeys = [defaultKey]
         }
-        self.perModuleLibraryKeys = loadedPerModuleKeys
-
-        // Get active keys for the initial module (dream)
-        let activeKeys = loadedPerModuleKeys[.dream] ?? initialKeys
 
         self.currentLibraryKey = defaultKey
         self.activeLibraryKeys = activeKeys
@@ -120,10 +94,6 @@ final class HypnographState: ObservableObject {
             exclusionStore: exclusionStore,
             deleteStore: deleteStore
         )
-
-        // Initialize aspect ratio and resolution from settings (use montage player config as default)
-        self.aspectRatio = settings.montagePlayerConfig.aspectRatio
-        self.outputResolution = settings.outputResolution
 
         self.isTyping = textFieldFocusMonitor.isEditing
         textFieldFocusMonitor.$isEditing
@@ -158,7 +128,7 @@ final class HypnographState: ObservableObject {
     }
 
     func scheduleWatchTimer() {
-        guard settings.watch, settings.outputDuration.seconds > 0 else {
+        guard settings.watch, settings.watchInterval > 0 else {
             watchTimer?.invalidate()
             watchTimer = nil
             return
@@ -166,7 +136,7 @@ final class HypnographState: ObservableObject {
 
         watchTimer?.invalidate()
         watchTimer = Timer.scheduledTimer(
-            withTimeInterval: settings.outputDuration.seconds,
+            withTimeInterval: settings.watchInterval,
             repeats: false
         ) { [weak self] _ in
             guard let self else { return }
@@ -194,7 +164,7 @@ final class HypnographState: ObservableObject {
                     folderLibraryKeys: folderKeys
                 ) else { return }
 
-                await applyActiveLibrariesUnified(newKeys, saveToModule: true)
+                await applyActiveLibrariesUnified(newKeys, save: true)
             }
         }
     }
@@ -211,11 +181,11 @@ final class HypnographState: ObservableObject {
         )
 
         guard result.didChange else { return }
-        await applyActiveLibrariesUnified(result.keys, saveToModule: true)
+        await applyActiveLibrariesUnified(result.keys, save: true)
     }
 
     /// Apply a unified set of active library keys (both folder and Photos)
-    private func applyActiveLibrariesUnified(_ keys: Set<String>, saveToModule: Bool) async {
+    private func applyActiveLibrariesUnified(_ keys: Set<String>, save: Bool) async {
         activeLibraryKeys = keys
         currentLibraryKey = keys.first ?? settings.defaultSourceLibraryKey
 
@@ -228,10 +198,9 @@ final class HypnographState: ObservableObject {
             deleteStore: deleteStore
         )
 
-        // Save to current module's library state if requested
-        if saveToModule {
-            perModuleLibraryKeys[currentModuleType] = keys
-            savePerModuleLibrariesToSettings()
+        // Save to settings if requested
+        if save {
+            settingsStore.update { $0.activeLibraries = Array(keys) }
         }
 
         // Don't regenerate content immediately when changing sources
@@ -266,21 +235,8 @@ final class HypnographState: ObservableObject {
 
                 settingsStore.update { $0.sourceMediaTypes = types }
                 // Rebuild library with new filter - reapply current libraries
-                await applyActiveLibrariesUnified(activeLibraryKeys, saveToModule: false)
+                await applyActiveLibrariesUnified(activeLibraryKeys, save: false)
                 AppNotifications.show("Takes effect on next Hypnogram", flash: true, duration: 1.5)
-            }
-        }
-    }
-
-    /// Switch to the library configuration for a specific module
-    private func switchToModuleLibraries(_ module: ModuleType) {
-        // Get the module's saved library keys (which now include both folder and Photos keys)
-        let keys = perModuleLibraryKeys[module] ?? [settings.defaultSourceLibraryKey]
-
-        // Defer to avoid modifying @Published during view update
-        DispatchQueue.main.async { [self] in
-            Task { @MainActor in
-                await applyActiveLibrariesUnified(keys, saveToModule: false)
             }
         }
     }
@@ -356,31 +312,6 @@ final class HypnographState: ObservableObject {
         } catch {
             print("HypnographState: Failed to save custom selection: \(error)")
         }
-    }
-
-    /// Save per-module library selections to settings file
-    private func savePerModuleLibrariesToSettings() {
-        // Convert perModuleLibraryKeys to [String: [String]] for settings
-        var librariesDict: [String: [String]] = [:]
-        for (module, keys) in perModuleLibraryKeys {
-            librariesDict[module.rawValue] = Array(keys)
-        }
-
-        settingsStore.update { $0.activeLibrariesPerMode = librariesDict }
-    }
-
-    // MARK: - Aspect Ratio & Resolution
-
-    /// Set the aspect ratio and save to settings (applies immediately)
-    func setAspectRatio(_ ratio: AspectRatio) {
-        aspectRatio = ratio
-        settingsStore.update { $0.aspectRatio = ratio }
-    }
-
-    /// Set the output resolution and save to settings (applies immediately)
-    func setOutputResolution(_ resolution: OutputResolution) {
-        outputResolution = resolution
-        settingsStore.update { $0.outputResolution = resolution }
     }
 
     /// Save settings to disk (public - call after modifying state.settings via settingsStore.update)
