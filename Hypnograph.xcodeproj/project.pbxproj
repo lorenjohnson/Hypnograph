@@ -11,6 +11,10 @@
 		04302B442F00E924001C0F60 /* HypnogramQuickLook.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 04302B352F00E924001C0F60 /* HypnogramQuickLook.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		41E09D815A84A5C5F90444FE /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
 		8C9F3A1B2C3D4E5F6A7B8C9D /* HypnoUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C5 /* HypnoUI.framework */; };
+		EMBED0001000000000000001 /* HypnoCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		EMBED0001000000000000002 /* HypnoUI.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C5 /* HypnoUI.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		EMBED0002000000000000001 /* HypnoCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		EMBED0002000000000000002 /* HypnoUI.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C5 /* HypnoUI.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A1B2C3D4E5F6A7B8C9D0E1F8 /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
 		C29DD884B84036A4B39F88C0 /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
 		D1B2C3D4E5F60718293A4B70 /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
@@ -108,6 +112,30 @@
 				04302B442F00E924001C0F60 /* HypnogramQuickLook.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EMBED0001000000000000000 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				EMBED0001000000000000001 /* HypnoCore.framework in Embed Frameworks */,
+				EMBED0001000000000000002 /* HypnoUI.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EMBED0002000000000000000 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				EMBED0002000000000000001 /* HypnoCore.framework in Embed Frameworks */,
+				EMBED0002000000000000002 /* HypnoUI.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -322,6 +350,7 @@
 				042F98FD2EC8990B006D4CDE /* Sources */,
 				042F98FE2EC8990B006D4CDE /* Frameworks */,
 				042F98FF2EC8990B006D4CDE /* Resources */,
+				EMBED0001000000000000000 /* Embed Frameworks */,
 				04302B452F00E924001C0F60 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -462,6 +491,7 @@
 				D1B2C3D4E5F60718293A4B5E /* Sources */,
 				D1B2C3D4E5F60718293A4B5F /* Frameworks */,
 				D1B2C3D4E5F60718293A4B60 /* Resources */,
+				EMBED0002000000000000000 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -1103,6 +1133,7 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 6A74MR47VX;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
 				MARKETING_VERSION = 0.2;
@@ -1152,6 +1183,7 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 6A74MR47VX;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
 				MARKETING_VERSION = 0.2;
@@ -1169,6 +1201,7 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 6A74MR47VX;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
 				MARKETING_VERSION = 0.2;
@@ -1186,6 +1219,7 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 6A74MR47VX;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
 				MARKETING_VERSION = 0.2;
@@ -1203,7 +1237,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Divine/Divine.entitlements;
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1234,7 +1267,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Divine/Divine.entitlements;
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
