@@ -12,7 +12,7 @@ performance display pipeline.
 - `Hypnograph/Modules/Dream/Dream.swift`
 - `Hypnograph/Modules/Dream/DreamPlayerState.swift`
 - `Hypnograph/PlayerConfiguration.swift`
-- `Hypnograph/Modules/LiveDisplay/LivePlayer.swift`
+- `Hypnograph/Modules/LivePlayer/LivePlayer.swift`
 - `Hypnograph/HypnographState.swift`
 
 ## Module Overview
@@ -59,8 +59,23 @@ performance display pipeline.
 - Dream persists device UIDs and volumes in `Settings`.
 - Audio device changes fall back to system default when devices disconnect.
 
+## View Naming Conventions
+
+The codebase uses consistent suffixes to distinguish view types:
+
+| Suffix   | Meaning                                            | Examples                                  |
+| -------- | -------------------------------------------------- | ----------------------------------------- |
+| `Screen` | Full-screen SwiftUI view (takes over main content) | `LivePlayerScreen`                        |
+| `Panel`  | Partial UI element (sidebar, popover)              | `LivePreviewPanel`                        |
+| `View`   | General-purpose reusable view component            | `MontagePlayerView`, `SequencePlayerView` |
+
+Note: `MontagePlayerView` and `SequencePlayerView` are `NSViewRepresentable` bridges
+to AppKit's `AVPlayerView`, but from the file/naming perspective they're treated as
+regular views since the implementation detail isn't meaningful at that level.
+
 ## Integration Points
-- `Dream.makeDisplayView()` selects montage or sequence views using
+
+- `Dream.makeDisplayView()` selects montage, sequence, or live screen views using
   `RenderEngine.makePlayerItem()` results.
 - Dream export uses `RenderEngine.ExportQueue` with per-player sizing/timeline.
 - `HypnographState.onWatchTimerFired` is wired to `Dream.new()` for auto-generation.

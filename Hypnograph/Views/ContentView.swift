@@ -109,7 +109,7 @@ struct ContentView: View {
                 Spacer(minLength: 0)
 
                 if state.windowState.isVisible("livePreview") {
-                    LivePreviewView(
+                    LivePreviewPanel(
                         livePlayer: dream.livePlayer,
                         onClose: {
                             state.windowState.set("livePreview", visible: false)

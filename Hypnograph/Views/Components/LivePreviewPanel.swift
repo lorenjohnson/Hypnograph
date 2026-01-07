@@ -1,5 +1,5 @@
 //
-//  LivePreviewView.swift
+//  LivePreviewPanel.swift
 //  Hypnograph
 //
 //  Preview panel for live display shown in sidebar.
@@ -11,7 +11,7 @@ import AVKit
 import AppKit
 
 /// Preview of live display content, shown as panel in main window
-struct LivePreviewView: View {
+struct LivePreviewPanel: View {
     @ObservedObject var livePlayer: LivePlayer
     let onClose: () -> Void
 
