@@ -148,13 +148,8 @@ final class Dream: ObservableObject {
             self?.new()
         }
 
-        // Restore last recipe if available, otherwise generate new content
-        if let lastRecipe = state.settings.lastRecipe {
-            loadRecipe(lastRecipe)
-            print("📦 Restored last recipe with \(lastRecipe.sources.count) sources in \(lastRecipe.mode.rawValue) mode")
-        } else {
-            generateNewHypnogram(for: montagePlayer)
-        }
+        // Restore last recipes for each mode if available
+        restorePersistedRecipes()
 
         // Watch for device list changes (device disconnected)
         audioManager.$outputDevices
@@ -279,15 +274,76 @@ final class Dream: ObservableObject {
         }
     }
 
-    /// Save current recipe to settings for persistence
+    /// Save recipes for both modes to their respective configs
     func saveCurrentRecipe() {
-        let recipe = makeDisplayRecipe()
-        // Only save if we have sources (don't save empty state)
-        guard !recipe.sources.isEmpty else { return }
-        state.settingsStore.update { $0.lastRecipe = recipe }
+        // Save montage recipe if it has sources
+        var montageRecipe = montagePlayer.recipe
+        montageRecipe.mode = .montage
+        montageRecipe.effectsLibrarySnapshot = montagePlayer.effectsSession.chains
+        if !montageRecipe.sources.isEmpty {
+            state.settingsStore.update { $0.montagePlayerConfig.lastRecipe = montageRecipe }
+            print("📦 Saved montage recipe with \(montageRecipe.sources.count) sources")
+        }
+
+        // Save sequence recipe if it has sources
+        var sequenceRecipe = sequencePlayer.recipe
+        sequenceRecipe.mode = .sequence
+        // Sequence uses its own duration calculation
+        let totalDuration = sequencePlayer.sources.map { $0.clip.duration }.reduce(.zero, +)
+        if totalDuration.seconds > 0 {
+            sequenceRecipe.targetDuration = totalDuration
+        }
+        sequenceRecipe.effectsLibrarySnapshot = sequencePlayer.effectsSession.chains
+        if !sequenceRecipe.sources.isEmpty {
+            state.settingsStore.update { $0.sequencePlayerConfig.lastRecipe = sequenceRecipe }
+            print("📦 Saved sequence recipe with \(sequenceRecipe.sources.count) sources")
+        }
+
         // Force immediate synchronous save for app termination
         state.settingsStore.save(synchronous: true)
-        print("📦 Saved current recipe with \(recipe.sources.count) sources")
+    }
+
+    /// Restore persisted recipes for both modes
+    private func restorePersistedRecipes() {
+        var restoredMode: DreamMode? = nil
+
+        // Restore montage recipe
+        if let montageRecipe = state.settings.montagePlayerConfig.lastRecipe {
+            var recipe = montageRecipe
+            recipe.ensureEffectChainNames()
+            montagePlayer.setRecipe(recipe)
+            montagePlayer.currentSourceIndex = -1
+            montagePlayer.effectManager.clearFrameBuffer()
+            EffectChainLibraryActions.importChainsFromRecipe(recipe, into: montagePlayer.effectsSession)
+            montagePlayer.notifyRecipeChanged()
+            print("📦 Restored montage recipe with \(recipe.sources.count) sources")
+            restoredMode = .montage
+        }
+
+        // Restore sequence recipe
+        if let sequenceRecipe = state.settings.sequencePlayerConfig.lastRecipe {
+            var recipe = sequenceRecipe
+            recipe.ensureEffectChainNames()
+            sequencePlayer.setRecipe(recipe)
+            sequencePlayer.currentSourceIndex = -1
+            sequencePlayer.effectManager.clearFrameBuffer()
+            EffectChainLibraryActions.importChainsFromRecipe(recipe, into: sequencePlayer.effectsSession)
+            sequencePlayer.notifyRecipeChanged()
+            print("📦 Restored sequence recipe with \(recipe.sources.count) sources")
+            // Only set mode to sequence if we didn't already restore montage
+            if restoredMode == nil {
+                restoredMode = .sequence
+            }
+        }
+
+        // Set mode based on what was restored, defaulting to montage
+        if let restoredMode = restoredMode {
+            mode = restoredMode
+        } else {
+            // No saved recipes, generate new content for montage mode
+            mode = .montage
+            generateNewHypnogram(for: montagePlayer)
+        }
     }
 
     /// Build export settings on-demand with current player config
@@ -297,7 +353,7 @@ final class Dream: ObservableObject {
             maxDimension: activePlayer.config.playerResolution.maxDimension
         )
         let timeline: RenderEngine.Timeline = (mode == .montage)
-            ? .montage(targetDuration: activePlayer.config.targetDuration)
+            ? .montage(targetDuration: activePlayer.recipe.targetDuration)
             : .sequence
         return (outputSize, timeline)
     }
@@ -325,7 +381,7 @@ final class Dream: ObservableObject {
         let count = Int.random(in: minCount...total)
 
         for i in 0..<max(1, count) {
-            guard let clip = state.library.randomClip(clipLength: player.config.targetDuration.seconds) else {
+            guard let clip = state.library.randomClip(clipLength: player.recipe.targetDuration.seconds) else {
                 continue
             }
             let blendMode = (i == 0) ? BlendMode.sourceOver : BlendMode.random()
@@ -340,7 +396,7 @@ final class Dream: ObservableObject {
     /// Add a source to the given player
     private func addSourceToPlayer(_ player: DreamPlayerState, length: Double? = nil) {
         // Use default clip length if not provided
-        let clipLength = length ?? player.config.targetDuration.seconds
+        let clipLength = length ?? player.recipe.targetDuration.seconds
         guard let clip = state.library.randomClip(clipLength: clipLength) else { return }
         let blendMode = player.sources.isEmpty ? BlendMode.sourceOver : BlendMode.random()
         let source = HypnogramSource(clip: clip, blendMode: blendMode)
@@ -750,12 +806,14 @@ final class Dream: ObservableObject {
         }
     }
 
-    /// Get the current recipe for display (with proper duration set)
+    /// The live recipe from the active player - use for direct access/mutation
     var currentRecipe: HypnogramRecipe {
-        makeDisplayRecipe()
+        get { activePlayer.recipe }
+        set { activePlayer.recipe = newValue }
     }
 
-    private func makeDisplayRecipe() -> HypnogramRecipe {
+    /// Build a recipe snapshot for display/export (sets mode, timestamp, effects library snapshot)
+    func makeDisplayRecipe() -> HypnogramRecipe {
         // Use the recipe from activePlayer, adjust target duration based on mode
         var recipe = activePlayer.recipe
         recipe.mode = mode  // Store current mode in recipe
@@ -763,10 +821,14 @@ final class Dream: ObservableObject {
         recipe.effectsLibrarySnapshot = effectsSession.chains  // Snapshot the entire effects library
         switch mode {
         case .montage:
-            recipe.targetDuration = activePlayer.config.targetDuration
+            // targetDuration is already on the recipe
+            break
         case .sequence:
+            // For sequence mode, use total clip duration if available
             let total = sequenceTotalDuration()
-            recipe.targetDuration = total.seconds > 0 ? total : activePlayer.config.targetDuration
+            if total.seconds > 0 {
+                recipe.targetDuration = total
+            }
         }
         return recipe
     }
@@ -823,7 +885,7 @@ final class Dream: ObservableObject {
         let count = Int.random(in: minCount...total)
 
         for i in 0..<max(1, count) {
-            guard let clip = state.library.randomClip(clipLength: activePlayer.config.targetDuration.seconds) else {
+            guard let clip = state.library.randomClip(clipLength: activePlayer.recipe.targetDuration.seconds) else {
                 continue
             }
             // First source uses SourceOver, rest get random blend modes
@@ -837,7 +899,7 @@ final class Dream: ObservableObject {
 
         return HypnogramRecipe(
             sources: sources,
-            targetDuration: activePlayer.config.targetDuration,
+            targetDuration: activePlayer.recipe.targetDuration,
             effectChain: effectChain
         )
     }
@@ -885,7 +947,7 @@ final class Dream: ObservableObject {
     private func replaceClipForCurrentSource() {
         let idx = activePlayer.currentSourceIndex
         guard idx >= 0, idx < activePlayer.sources.count else { return }
-        guard let clip = state.library.randomClip(clipLength: activePlayer.config.targetDuration.seconds) else { return }
+        guard let clip = state.library.randomClip(clipLength: activePlayer.recipe.targetDuration.seconds) else { return }
         activePlayer.sources[idx].clip = clip
     }
 
@@ -944,10 +1006,14 @@ final class Dream: ObservableObject {
         var renderRecipe = activePlayer.recipe.copyForExport()
         switch mode {
         case .montage:
-            renderRecipe.targetDuration = activePlayer.config.targetDuration
+            // targetDuration is already on the recipe
+            break
         case .sequence:
+            // For sequence mode, use total clip duration if available
             let total = sequenceTotalDuration()
-            renderRecipe.targetDuration = total.seconds > 0 ? total : activePlayer.config.targetDuration
+            if total.seconds > 0 {
+                renderRecipe.targetDuration = total
+            }
         }
 
         // Create renderer with current settings (aspect ratio + resolution)

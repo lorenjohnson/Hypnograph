@@ -431,15 +431,15 @@ struct PlayerSettingsView: View {
 
                 Spacer()
 
-                let seconds = Int(displayedConfig.targetDuration.seconds)
+                let seconds = Int(player.targetDuration.seconds)
                 Text(formatDuration(seconds))
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white.opacity(dream.isLiveMode ? 0.6 : 1.0))
                     .frame(minWidth: 50)
 
                 Stepper("", value: Binding(
-                    get: { Int(player.config.targetDuration.seconds) },
-                    set: { player.config.targetDuration = CMTime(seconds: Double($0), preferredTimescale: 600) }
+                    get: { Int(player.targetDuration.seconds) },
+                    set: { player.targetDuration = CMTime(seconds: Double($0), preferredTimescale: 600) }
                 ), in: 10...600, step: 10)
                 .labelsHidden()
                 .disabled(dream.isLiveMode)
