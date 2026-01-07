@@ -214,11 +214,11 @@ final class HypnographState: ObservableObject {
 
     // MARK: - Source Media Types
 
-    func isMediaTypeActive(_ type: SourceMediaType) -> Bool {
+    func isMediaTypeActive(_ type: MediaType) -> Bool {
         settings.sourceMediaTypes.contains(type)
     }
 
-    func toggleMediaType(_ type: SourceMediaType) {
+    func toggleMediaType(_ type: MediaType) {
         // Defer state changes to next run loop to avoid modifying @Published during view update
         DispatchQueue.main.async { [self] in
             Task { @MainActor in

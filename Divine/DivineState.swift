@@ -117,11 +117,11 @@ final class DivineState: ObservableObject {
 
     // MARK: - Source Media Types
 
-    func isMediaTypeActive(_ type: SourceMediaType) -> Bool {
+    func isMediaTypeActive(_ type: MediaType) -> Bool {
         settings.sourceMediaTypes.contains(type)
     }
 
-    func toggleMediaType(_ type: SourceMediaType) {
+    func toggleMediaType(_ type: MediaType) {
         DispatchQueue.main.async { [self] in
             Task { @MainActor in
                 var types = settings.sourceMediaTypes
@@ -236,7 +236,7 @@ final class DivineState: ObservableObject {
 // MARK: - Settings
 
 struct Settings: Codable, MediaLibrarySettings {
-    var sourceMediaTypes: Set<SourceMediaType> = [.images, .videos]
+    var sourceMediaTypes: Set<MediaType> = [.images, .videos]
     var activeLibraryKeys: [String] = []
 
     // MediaLibrarySettings conformance
