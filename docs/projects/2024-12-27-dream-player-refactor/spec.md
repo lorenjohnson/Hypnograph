@@ -18,7 +18,7 @@ Separate Dream module into three independent "decks", each with its own recipe a
 Dream (module)
 ├── montagePlayer: DreamPlayerState
 ├── sequencePlayer: DreamPlayerState
-├── performanceDisplay: LiveDisplay  (moved from HypnographState)
+├── performanceDisplay: LivePlayer  (moved from HypnographState)
 ├── activePlayer: DreamPlayerState (computed, based on mode)
 └── state: HypnographState (for libraries, settings only)
 

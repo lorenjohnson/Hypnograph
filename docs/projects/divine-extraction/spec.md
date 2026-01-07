@@ -22,7 +22,7 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
   - Depends directly on `HypnographState`, `Settings`, `MediaLibrary`, `HypnogramSource`/`VideoClip` models, `AppNotifications`, HUD plumbing (`HUDItem`, `HUDView`), gesture utilities, and AVFoundation.
   - Owns UI (`DivineView`), state managers (`DivineCardManager`, `DivinePlayerManager`), and simple audio playback via ad-hoc `AVPlayer` instances.
   - Uses state callbacks (e.g., `state.onWatchTimerFired`) and shared menus defined in `HypnographApp.swift`.
-- **Dream** (`Hypnograph/Modules/Dream/*.swift` + `Renderer/`, `EffectLibrary/`, `Audio/`, `Modules/LiveDisplay/`)
+- **Dream** (`Hypnograph/Modules/Dream/*.swift` + `Renderer/`, `EffectLibrary/`, `Audio/`, `Modules/LivePlayer/`)
   - Coupled to renderer entry points such as `RenderEngine` and `RenderEngine.ExportQueue`.
   - Relies on the effect system (`EffectManager`, `EffectsSession`, metal effect kernels in `Renderer/Effects`), audio routing via `AudioDeviceManager`, and external monitor playback (`LivePlayer`).
   - Shares HUD/menu components and the unified state container.

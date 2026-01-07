@@ -42,7 +42,7 @@ Controls (commands, HUD, controller) are documented in `docs/reference/controls.
 
 ## Module Coordinator Pattern
 
-Each feature module (`Dream`, `Divine`, `LiveDisplay`) is a coordinator class that:
+Each feature module (`Dream`, `Divine`, `LivePlayer`) is a coordinator class that:
 
 ```swift
 @MainActor

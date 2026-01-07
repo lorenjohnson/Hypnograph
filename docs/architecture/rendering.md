@@ -21,7 +21,7 @@ This document describes the preview, performance display, and export rendering p
 - `HypnoRenderer/Models/RenderErrors.swift`
 - `HypnoRenderer/Models/RenderSize.swift`
 - `HypnoEffects/Core/SharedRenderer.swift`
-- `Hypnograph/Modules/LiveDisplay/LivePlayer.swift`
+- `Hypnograph/Modules/LivePlayer/LivePlayer.swift`
 
 ## Core Components
 
