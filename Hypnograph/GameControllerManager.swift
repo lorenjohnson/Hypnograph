@@ -281,7 +281,7 @@ final class GameControllerManager {
         }
 
         dream.livePlayer.send(
-            recipe: dream.currentRecipe,
+            recipe: dream.makeDisplayRecipe(),
             config: dream.activePlayer.config,
             mode: dream.mode
         )

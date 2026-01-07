@@ -81,9 +81,6 @@ struct Settings: Codable, MediaLibrarySettings {
     /// Live player audio volume (0.0 to 1.0)
     var liveVolume: Float
 
-    /// Last recipe that was active when app closed (for persistence across app launches)
-    var lastRecipe: HypnogramRecipe?
-
     // Single source of truth for defaults
     private enum Defaults {
         static let watch: Bool = true
@@ -105,7 +102,6 @@ struct Settings: Codable, MediaLibrarySettings {
         static let previewVolume: Float = 1.0
         static let liveAudioDeviceUID: String? = nil
         static let liveVolume: Float = 1.0
-        static let lastRecipe: HypnogramRecipe? = nil
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -117,7 +113,6 @@ struct Settings: Codable, MediaLibrarySettings {
         case previewAudioDeviceUID, previewVolume
         case liveAudioDeviceUID, liveVolume
         case montagePlayerConfig, sequencePlayerConfig
-        case lastRecipe
         // Legacy keys for backward compatibility
         case maxSourcesForNew, outputSeconds, aspectRatio, playerResolution
     }
@@ -136,8 +131,7 @@ struct Settings: Codable, MediaLibrarySettings {
         liveAudioDeviceUID: String? = Defaults.liveAudioDeviceUID,
         liveVolume: Float = Defaults.liveVolume,
         montagePlayerConfig: PlayerConfiguration? = nil,
-        sequencePlayerConfig: PlayerConfiguration? = nil,
-        lastRecipe: HypnogramRecipe? = Defaults.lastRecipe
+        sequencePlayerConfig: PlayerConfiguration? = nil
     ) {
         self.outputFolder = outputFolder
         self.sources = sources
@@ -151,20 +145,17 @@ struct Settings: Codable, MediaLibrarySettings {
         self.previewVolume = previewVolume
         self.liveAudioDeviceUID = liveAudioDeviceUID
         self.liveVolume = liveVolume
-        self.lastRecipe = lastRecipe
 
         // Use provided configs or create defaults
         self.montagePlayerConfig = montagePlayerConfig ?? PlayerConfiguration(
             aspectRatio: Defaults.aspectRatio,
             playerResolution: Defaults.playerResolution,
-            maxSourcesForNew: Defaults.maxSourcesForNew,
-            targetDuration: CMTime(seconds: Double(Defaults.outputSeconds), preferredTimescale: 600)
+            maxSourcesForNew: Defaults.maxSourcesForNew
         )
         self.sequencePlayerConfig = sequencePlayerConfig ?? PlayerConfiguration(
             aspectRatio: Defaults.aspectRatio,
             playerResolution: Defaults.playerResolution,
-            maxSourcesForNew: Defaults.maxSourcesForNew,
-            targetDuration: CMTime(seconds: Double(Defaults.outputSeconds), preferredTimescale: 600)
+            maxSourcesForNew: Defaults.maxSourcesForNew
         )
 
         // Legacy properties (for backward compatibility)
@@ -204,8 +195,6 @@ struct Settings: Codable, MediaLibrarySettings {
             ?? Defaults.liveAudioDeviceUID
         liveVolume = try c.decodeIfPresent(Float.self, forKey: .liveVolume)
             ?? Defaults.liveVolume
-        lastRecipe = try c.decodeIfPresent(HypnogramRecipe.self, forKey: .lastRecipe)
-            ?? Defaults.lastRecipe
 
         // Try to load new format (montagePlayerConfig/sequencePlayerConfig)
         if let montage = try c.decodeIfPresent(PlayerConfiguration.self, forKey: .montagePlayerConfig),
@@ -228,12 +217,11 @@ struct Settings: Codable, MediaLibrarySettings {
             let legacyPlayerResolution = try c.decodeIfPresent(OutputResolution.self, forKey: .playerResolution)
                 ?? Defaults.playerResolution
 
-            // Create player configs from legacy values
+            // Create player configs from legacy values (no lastRecipe in legacy format)
             let defaultConfig = PlayerConfiguration(
                 aspectRatio: legacyAspectRatio,
                 playerResolution: legacyPlayerResolution,
-                maxSourcesForNew: legacyMaxSources,
-                targetDuration: CMTime(seconds: Double(legacyOutputSeconds), preferredTimescale: 600)
+                maxSourcesForNew: legacyMaxSources
             )
             montagePlayerConfig = defaultConfig
             sequencePlayerConfig = defaultConfig
@@ -260,9 +248,8 @@ struct Settings: Codable, MediaLibrarySettings {
         try c.encode(previewVolume, forKey: .previewVolume)
         try c.encodeIfPresent(liveAudioDeviceUID, forKey: .liveAudioDeviceUID)
         try c.encode(liveVolume, forKey: .liveVolume)
-        try c.encodeIfPresent(lastRecipe, forKey: .lastRecipe)
 
-        // Encode new format
+        // Per-mode configs include their own lastRecipe (no top-level lastRecipe anymore)
         try c.encode(montagePlayerConfig, forKey: .montagePlayerConfig)
         try c.encode(sequencePlayerConfig, forKey: .sequencePlayerConfig)
     }

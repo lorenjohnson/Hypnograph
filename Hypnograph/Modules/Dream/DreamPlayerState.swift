@@ -51,14 +51,22 @@ final class DreamPlayerState: ObservableObject {
     /// This player's own effect manager - independent effects per deck
     let effectManager = EffectManager()
 
-    // MARK: - Computed Properties
+    // MARK: - Recipe Properties (convenience accessors)
 
-    /// Playback rate - synced between config (persistent) and recipe (per-hypnogram)
+    /// Playback rate - reads/writes directly to recipe
     var playRate: Float {
         get { recipe.playRate }
         set {
             recipe.playRate = newValue
-            config.playRate = newValue  // Also update config so it persists
+            objectWillChange.send()
+        }
+    }
+
+    /// Target duration - reads/writes directly to recipe
+    var targetDuration: CMTime {
+        get { recipe.targetDuration }
+        set {
+            recipe.targetDuration = newValue
             objectWillChange.send()
         }
     }
@@ -67,10 +75,11 @@ final class DreamPlayerState: ObservableObject {
 
     init(config: PlayerConfiguration, effectsFilename: String) {
         self.config = config
+        // Recipe starts with defaults; restored from lastRecipe on app launch
         self.recipe = HypnogramRecipe(
             sources: [],
-            targetDuration: config.targetDuration,
-            playRate: config.playRate
+            targetDuration: CMTime(seconds: 60, preferredTimescale: 600),
+            playRate: 1.0
         )
         self.effectsSession = EffectsSession(filename: effectsFilename)
 
@@ -127,8 +136,6 @@ final class DreamPlayerState: ObservableObject {
     /// Replace the entire recipe (used when loading from file)
     func setRecipe(_ newRecipe: HypnogramRecipe) {
         recipe = newRecipe
-        config.targetDuration = newRecipe.targetDuration
-        config.playRate = newRecipe.playRate  // Restore playRate from saved recipe
     }
 
     /// Notify that recipe has changed (triggers re-render)

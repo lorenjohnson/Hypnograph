@@ -5,13 +5,18 @@
 //  Per-player configuration that can differ between montage/sequence/live players.
 //  Groups related display and generation settings into a single, cohesive structure.
 //
+//  Note: targetDuration and playRate are stored in HypnogramRecipe, not here.
+//  Each mode (montage/sequence) has its own lastRecipe that persists these values.
+//
 
 import Foundation
-import CoreMedia
 import HypnoCore
 
 /// Configuration for a player (montage, sequence, or live).
 /// Each player maintains its own independent configuration.
+///
+/// Note: `targetDuration` and `playRate` live on the recipe, not here.
+/// Each mode stores its own `lastRecipe` which persists these values.
 struct PlayerConfiguration: Codable {
 
     // MARK: - Display Settings
@@ -27,11 +32,10 @@ struct PlayerConfiguration: Codable {
     /// Max sources when generating new random hypnograms
     var maxSourcesForNew: Int
 
-    /// Target duration for new hypnograms
-    var targetDuration: CMTime
+    // MARK: - Recipe Persistence
 
-    /// Default playback rate for this player
-    var playRate: Float
+    /// Last recipe for this mode (persists targetDuration, playRate, sources, effects)
+    var lastRecipe: HypnogramRecipe?
 
     // MARK: - Initialization
 
@@ -45,40 +49,12 @@ struct PlayerConfiguration: Codable {
         aspectRatio: AspectRatio,
         playerResolution: OutputResolution,
         maxSourcesForNew: Int,
-        targetDuration: CMTime,
-        playRate: Float = 1.0
+        lastRecipe: HypnogramRecipe? = nil
     ) {
         self.aspectRatio = aspectRatio
         self.playerResolution = playerResolution
         self.maxSourcesForNew = maxSourcesForNew
-        self.targetDuration = targetDuration
-        self.playRate = playRate
-    }
-
-    // MARK: - Codable
-
-    private enum CodingKeys: String, CodingKey {
-        case aspectRatio, playerResolution, maxSourcesForNew
-        case targetDurationSeconds, playRate
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        aspectRatio = try container.decode(AspectRatio.self, forKey: .aspectRatio)
-        playerResolution = try container.decode(OutputResolution.self, forKey: .playerResolution)
-        maxSourcesForNew = try container.decode(Int.self, forKey: .maxSourcesForNew)
-        let seconds = try container.decode(Double.self, forKey: .targetDurationSeconds)
-        targetDuration = CMTime(seconds: seconds, preferredTimescale: 600)
-        playRate = try container.decodeIfPresent(Float.self, forKey: .playRate) ?? 1.0
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(aspectRatio, forKey: .aspectRatio)
-        try container.encode(playerResolution, forKey: .playerResolution)
-        try container.encode(maxSourcesForNew, forKey: .maxSourcesForNew)
-        try container.encode(targetDuration.seconds, forKey: .targetDurationSeconds)
-        try container.encode(playRate, forKey: .playRate)
+        self.lastRecipe = lastRecipe
     }
 
     // MARK: - View Identity
@@ -86,6 +62,6 @@ struct PlayerConfiguration: Codable {
     /// Stable identity string for SwiftUI .id() - includes all config properties
     /// so view rebuilds when any config changes
     var viewID: String {
-        "\(aspectRatio.displayString)-\(playerResolution.rawValue)-\(maxSourcesForNew)-\(targetDuration.seconds)-\(playRate)"
+        "\(aspectRatio.displayString)-\(playerResolution.rawValue)-\(maxSourcesForNew)"
     }
 }
