@@ -56,36 +56,32 @@ final class Dream: ObservableObject {
 
     // MARK: - Audio Output
 
-    /// Audio device manager for device discovery
-    @ObservedObject private var audioManager = AudioDeviceManager.shared
+    /// Audio controller manages device selection and volume for preview/live
+    let audioController: DreamAudioController
 
-    /// Selected audio output device for Preview player (nil = system default)
-    @Published var previewAudioDevice: AudioOutputDevice? = nil
-
-    /// Selected audio output device for Live player (nil = system default)
-    @Published var liveAudioDevice: AudioOutputDevice? = nil
-
-    /// Volume level for Preview audio (0.0 to 1.0)
-    @Published var previewVolume: Float = 1.0
-
-    /// Volume level for Live audio (0.0 to 1.0)
-    @Published var liveVolume: Float = 1.0
-
-    /// Get the device UID for preview audio routing (nil = system default)
-    var previewAudioDeviceUID: String? {
-        previewAudioDevice?.uid
+    /// Convenience accessors for audio state (forwarded from controller)
+    var previewAudioDevice: AudioOutputDevice? {
+        get { audioController.previewAudioDevice }
+        set { audioController.previewAudioDevice = newValue }
     }
 
-    /// Get the device UID for live audio routing (nil = system default)
-    var liveAudioDeviceUID: String? {
-        liveAudioDevice?.uid
+    var liveAudioDevice: AudioOutputDevice? {
+        get { audioController.liveAudioDevice }
+        set { audioController.liveAudioDevice = newValue }
     }
 
-    /// Find audio device by UID, returns system default if not found
-    private func findAudioDevice(byUID uid: String?) -> AudioOutputDevice? {
-        guard let uid = uid else { return audioManager.systemDefault }
-        return audioManager.outputDevices.first { $0.uid == uid } ?? audioManager.systemDefault
+    var previewVolume: Float {
+        get { audioController.previewVolume }
+        set { audioController.previewVolume = newValue }
     }
+
+    var liveVolume: Float {
+        get { audioController.liveVolume }
+        set { audioController.liveVolume = newValue }
+    }
+
+    var previewAudioDeviceUID: String? { audioController.previewAudioDeviceUID }
+    var liveAudioDeviceUID: String? { audioController.liveAudioDeviceUID }
 
     /// Returns the active EffectManager based on live mode
     /// In live mode, effects go to the live display; in edit mode, to the active player
@@ -115,14 +111,19 @@ final class Dream: ObservableObject {
         self.sequencePlayer = DreamPlayerState(config: state.settings.sequencePlayerConfig, effectsFilename: "sequence-effects.json")
         self.livePlayer = LivePlayer(settings: state.settings, effectsFilename: "live-effects.json")
 
-        // Load audio settings from disk
-        loadAudioSettings()
+        // Create audio controller (handles device selection, volume, persistence)
+        self.audioController = DreamAudioController(settingsStore: state.settingsStore, livePlayer: livePlayer)
 
         // Forward player state changes to Dream's objectWillChange for SwiftUI reactivity
         montagePlayer.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &playerSubscriptions)
         sequencePlayer.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &playerSubscriptions)
+
+        // Forward audio controller changes for SwiftUI reactivity
+        audioController.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &playerSubscriptions)
 
@@ -151,112 +152,8 @@ final class Dream: ObservableObject {
         // Restore last recipes for each mode if available
         restorePersistedRecipes()
 
-        // Watch for device list changes (device disconnected)
-        audioManager.$outputDevices
-            .receive(on: RunLoop.main)
-            .sink { [weak self] devices in
-                self?.handleDeviceListChange(devices)
-            }
-            .store(in: &playerSubscriptions)
-
         // Save recipe when app terminates
         setupRecipePersistence()
-
-        // Live audio subscriptions
-        // Use .receive(on: RunLoop.main) to ensure sink runs AFTER property is updated
-        $liveVolume
-            .receive(on: RunLoop.main)
-            .dropFirst()  // Skip initial value (loaded from settings)
-            .sink { [weak self] volume in
-                guard let self = self else { return }
-                self.livePlayer.setVolume(volume)
-                self.saveAudioSettings()
-            }
-            .store(in: &playerSubscriptions)
-
-        $liveAudioDevice
-            .receive(on: RunLoop.main)
-            .dropFirst()  // Skip initial value (loaded from settings)
-            .sink { [weak self] device in
-                guard let self = self else { return }
-                // device.uid is nil for system default
-                let deviceUID = device?.uid
-
-                print("🔊 Dream: liveAudioDevice changed to \(device?.name ?? "nil"), uid=\(deviceUID ?? "System Default")")
-
-                self.livePlayer.setAudioDevice(deviceUID)
-                self.saveAudioSettings()
-            }
-            .store(in: &playerSubscriptions)
-
-        // Preview audio subscriptions (for saving settings)
-        $previewAudioDevice
-            .receive(on: RunLoop.main)
-            .dropFirst()  // Skip initial value (loaded from settings)
-            .sink { [weak self] _ in
-                self?.saveAudioSettings()
-            }
-            .store(in: &playerSubscriptions)
-
-        $previewVolume
-            .receive(on: RunLoop.main)
-            .dropFirst()  // Skip initial value (loaded from settings)
-            .sink { [weak self] _ in
-                self?.saveAudioSettings()
-            }
-            .store(in: &playerSubscriptions)
-    }
-
-    // MARK: - Audio Settings Persistence
-
-    /// Load audio device and volume settings from Settings
-    private func loadAudioSettings() {
-        let settings = state.settings
-
-        // Load volumes
-        previewVolume = settings.previewVolume
-        liveVolume = settings.liveVolume
-
-        // Load devices by UID, defaulting to system default if not found
-        previewAudioDevice = findAudioDevice(byUID: settings.previewAudioDeviceUID)
-        liveAudioDevice = findAudioDevice(byUID: settings.liveAudioDeviceUID)
-
-        // Apply initial live audio settings to LivePlayer
-        // (subscriptions use .dropFirst() so initial values aren't applied via Combine)
-        livePlayer.setVolume(liveVolume)
-        livePlayer.setAudioDevice(liveAudioDevice?.uid)
-
-        print("🔊 Dream: Loaded audio settings - preview: \(previewAudioDevice?.name ?? "System Default") @ \(previewVolume), live: \(liveAudioDevice?.name ?? "System Default") @ \(liveVolume)")
-    }
-
-    /// Save audio device and volume settings to Settings
-    private func saveAudioSettings() {
-        // device.uid is nil for system default, which maps to nil in storage
-        state.settingsStore.update { settings in
-            settings.previewAudioDeviceUID = previewAudioDevice?.uid
-            settings.previewVolume = previewVolume
-            settings.liveAudioDeviceUID = liveAudioDevice?.uid
-            settings.liveVolume = liveVolume
-        }
-    }
-
-    /// Handle device list changes - switch to system default if current device is no longer available
-    private func handleDeviceListChange(_ devices: [AudioOutputDevice]) {
-        // Check preview device
-        if let preview = previewAudioDevice,
-           !preview.isSystemDefault,
-           !devices.contains(where: { $0.uid == preview.uid }) {
-            print("🔊 Dream: Preview audio device '\(preview.name)' disconnected, switching to System Default")
-            previewAudioDevice = audioManager.systemDefault
-        }
-
-        // Check live device
-        if let live = liveAudioDevice,
-           !live.isSystemDefault,
-           !devices.contains(where: { $0.uid == live.uid }) {
-            print("🔊 Dream: Live audio device '\(live.name)' disconnected, switching to System Default")
-            liveAudioDevice = audioManager.systemDefault
-        }
     }
 
     // MARK: - Recipe Persistence
@@ -366,7 +263,7 @@ final class Dream: ObservableObject {
         sourceCount > 0 ? activePlayer.currentSourceIndex + 1 : 0
     }
 
-    private func sequenceTotalDuration() -> CMTime {
+    func sequenceTotalDuration() -> CMTime {
         activePlayer.sources.map { $0.clip.duration }.reduce(.zero, +)
     }
 
@@ -508,185 +405,6 @@ final class Dream: ObservableObject {
         }
     }
 
-    // MARK: - HUD
-
-    func hudItems() -> [HUDItem] {
-        var items: [HUDItem] = []
-
-        // Header
-        items.append(.text("Hypnograph", order: 10, font: .headline))
-        let modeLabel = (mode == .montage ? "Montage" : "Sequence")
-        items.append(.text("Dream: \(modeLabel)", order: 11, font: .subheadline))
-        items.append(.padding(8, order: 15))
-
-        // Queue status
-        if renderQueue.activeJobs > 0 {
-            items.append(.text("Queue: \(renderQueue.activeJobs)", order: 20, font: .subheadline))
-        } else {
-            items.append(.text("Queue: 0", order: 20, font: .caption))
-        }
-        items.append(.padding(8, order: 21))
-
-        // Layer info (Global or Source X of Y)
-        items.append(.text(activePlayer.editingLayerDisplay, order: 22))
-        items.append(.text("Effect (E): \(activeEffectManager.effectName(for: activePlayer.currentSourceIndex))", order: 23))
-
-        // Source-specific info (only when on a source layer, not global)
-        if !activePlayer.isOnGlobalLayer {
-            switch mode {
-            case .montage:
-                items.append(.text("Blend mode (M): \(currentBlendModeDisplayName())", order: 26))
-            case .sequence:
-                let totalSecs = sequenceTotalDuration().seconds
-                items.append(.text(String(format: "Duration: %.1fs", totalSecs), order: 26))
-                if let clip = activePlayer.currentClip {
-                    items.append(.text("Clip: \(String(format: "%.1fs", clip.duration.seconds))", order: 27))
-                }
-            }
-
-        }
-
-        items.append(.padding(16, order: 39))
-
-        // Keyboard hints
-        items.append(.text("Shortcuts", order: 40, font: .subheadline))
-        items.append(.text(". = New clip | M = Blend | Delete = Remove source", order: 41))
-        items.append(.text("Cmd+E = Cycle effect | C = Clear layer | Ctrl+Shift+C = Clear all", order: 42))
-        items.append(.text("E = Effects editor | 0 = Global | 1-9 = Source", order: 43))
-        items.append(.text("Left/Right = Navigate | N = New | Shift+N = Add source", order: 44))
-        items.append(.text("Cmd+S = Save | Cmd+F = Favorite hypnogram", order: 45))
-        items.append(.text("` = Cycle Montage/Sequence/Live | Shift+X/D = Exclude/Mark delete", order: 46))
-
-        return items
-    }
-
-    // MARK: - Menus
-
-    /// Whether a text field is being edited - disables single-key shortcuts
-    private var isTyping: Bool { state.isTyping }
-
-    @ViewBuilder
-    func compositionMenu() -> some View {
-        Button("Cycle Mode (Montage/Sequence/Live)") { [self] in
-            cycleMode()
-        }
-        .keyboardShortcut("`", modifiers: [])
-        .disabled(isTyping)
-
-        Divider()
-
-        Button("Cycle Effect Forward") { [self] in
-            cycleEffect(direction: 1)
-        }
-        .keyboardShortcut("e", modifiers: [.command])
-
-        Button("Cycle Effect Backward") { [self] in
-            cycleEffect(direction: -1)
-        }
-        .keyboardShortcut("e", modifiers: [.command, .shift])
-
-        Button("Add Source") { [self] in
-            addSource()
-        }
-        .keyboardShortcut("n", modifiers: [.shift])
-
-        // Only use arrow shortcuts when effects editor is closed (otherwise they adjust params)
-        if !state.windowState.isVisible("effectsEditor") {
-            Button("> Next Source") { [self] in
-                nextSource()
-            }
-            .keyboardShortcut(.rightArrow, modifiers: [])
-            .disabled(isTyping)
-
-            Button("< Previous Source") { [self] in
-                previousSource()
-            }
-            .keyboardShortcut(.leftArrow, modifiers: [])
-            .disabled(isTyping)
-        } else {
-            Button("> Next Source") { [self] in
-                nextSource()
-            }
-
-            Button("< Previous Source") { [self] in
-                previousSource()
-            }
-        }
-
-        ForEach(0..<9, id: \.self) { [self] idx in
-            Button("Select Source \(idx + 1)") {
-                selectSource(index: idx)
-            }
-            .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
-            .disabled(isTyping)
-        }
-
-        Button("Select Global Layer") { [self] in
-            activePlayer.selectGlobalLayer()
-        }
-        .keyboardShortcut("0", modifiers: [])
-        .disabled(isTyping)
-
-        Divider()
-
-        Button("Clear Current Layer Effect") { [self] in
-            clearCurrentLayerEffect()
-        }
-        .keyboardShortcut("c", modifiers: [])
-        .disabled(isTyping)
-
-        Button("Clear All Effects") { [self] in
-            clearAllEffects()
-        }
-        .keyboardShortcut("c", modifiers: [.control, .shift])
-
-        Divider()
-
-        Button("New Hypnogram") { [self] in
-            new()
-        }
-        .keyboardShortcut("n", modifiers: [])
-        .disabled(isTyping)
-
-        Divider()
-
-        Button("Save Hypnogram") { [self] in
-            save()
-        }
-        .keyboardShortcut("s", modifiers: [.command])
-
-        Button("Render Video") { [self] in
-            renderAndSaveVideo()
-        }
-
-        Button("Favorite Hypnogram") { [self] in
-            favoriteCurrentHypnogram()
-        }
-        .keyboardShortcut("f", modifiers: [.command])
-
-        Divider()
-
-        // Aspect Ratio
-        Section("Aspect Ratio") {
-            ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
-                Toggle(ratio.menuLabel, isOn: Binding(
-                    get: { [self] in activePlayer.config.aspectRatio == ratio },
-                    set: { [self] in if $0 { setAspectRatio(ratio) } }
-                ))
-            }
-        }
-
-        // Output Resolution
-        Section("Output Resolution") {
-            ForEach(OutputResolution.allCases, id: \.self) { resolution in
-                Toggle(resolution.displayName, isOn: Binding(
-                    get: { [self] in activePlayer.config.playerResolution == resolution },
-                    set: { [self] in if $0 { setOutputResolution(resolution) } }
-                ))
-            }
-        }
-    }
-
     // MARK: - Settings helpers
 
     func setAspectRatio(_ ratio: AspectRatio) {
@@ -702,41 +420,6 @@ final class Dream: ObservableObject {
         state.settingsStore.update { $0.outputResolution = resolution }
         // Notify Dream to update menus
         objectWillChange.send()
-    }
-
-    @ViewBuilder
-    func sourceMenu() -> some View {
-        Button("Cycle Blend Mode") { [self] in
-            cycleBlendMode()
-        }
-        .keyboardShortcut("m", modifiers: [])
-        .disabled(isTyping)
-
-        Divider()
-
-        Button("New Random Clip") { [self] in
-            newRandomClip()
-        }
-        .keyboardShortcut(".", modifiers: [])
-        .disabled(isTyping)
-
-        Divider()
-
-        Button("Delete") { [self] in
-            deleteCurrentSource()
-        }
-        .keyboardShortcut(.delete, modifiers: [])
-        .disabled(isTyping)
-
-        Button("Add to Exclude List") { [self] in
-            excludeCurrentSource()
-        }
-        .keyboardShortcut("x", modifiers: [.shift])
-
-        Button("Mark for Deletion") { [self] in
-            markCurrentSourceForDeletion()
-        }
-        .keyboardShortcut("d", modifiers: [.shift])
     }
 
     // MARK: - Display
@@ -1143,7 +826,7 @@ final class Dream: ObservableObject {
         return activePlayer.sources[idx].blendMode ?? (idx == 0 ? BlendMode.sourceOver : BlendMode.defaultMontage)
     }
 
-    private func currentBlendModeDisplayName() -> String {
+    func currentBlendModeDisplayName() -> String {
         blendModeForSourceIndex(activePlayer.currentSourceIndex)
             .replacingOccurrences(of: "CI", with: "")
             .replacingOccurrences(of: "BlendMode", with: "")
