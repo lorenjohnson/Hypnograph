@@ -45,7 +45,9 @@ struct Settings: Codable, MediaLibrarySettings {
     // Optional in JSON (but non-optional in code)
     var watch: Bool
     var snapshotsFolder: String
-    var activeLibrariesPerMode: [String: [String]]
+
+    /// Active source libraries (folder keys or Photos library keys)
+    var activeLibraries: [String]
 
     /// Output resolution for disk rendering
     var outputResolution: OutputResolution
@@ -53,13 +55,6 @@ struct Settings: Codable, MediaLibrarySettings {
     /// Per-player configurations (montage and sequence)
     var montagePlayerConfig: PlayerConfiguration
     var sequencePlayerConfig: PlayerConfiguration
-
-    /// Legacy global defaults (deprecated - use montagePlayerConfig/sequencePlayerConfig instead)
-    /// These are kept for backward compatibility with old settings files
-    var maxSourcesForNew: Int?
-    var outputSeconds: Int?
-    var aspectRatio: AspectRatio?
-    var playerResolution: OutputResolution?
 
     /// Which media types to include in sources: "photos", "videos", or both
     var sourceMediaTypes: Set<SourceMediaType>
@@ -84,17 +79,16 @@ struct Settings: Codable, MediaLibrarySettings {
     // Single source of truth for defaults
     private enum Defaults {
         static let watch: Bool = true
-        static let maxSourcesForNew = 5
         static let outputFolder = "~/Movies/Hypnograph/renders"
         static let snapshotsFolder = "~/Movies/Hypnograph/snapshots"
-        static let outputSeconds = 60
         static let sources = SourcesParam.array([
             "~/Movies/Hypnograph/sources"
         ])
-        static let activeLibrariesPerMode: [String: [String]] = [:]
+        static let activeLibraries: [String] = []
         static let aspectRatio: AspectRatio = .ratio16x9
         static let outputResolution: OutputResolution = .p1080
         static let playerResolution: OutputResolution = .p1080
+        static let maxSourcesForNew = 5
         static let sourceMediaTypes: Set<SourceMediaType> = [.images, .videos]
         static let effectsListCollapsed: Bool = false
         // Audio defaults: nil UID = system default, volume = 1.0
@@ -107,14 +101,12 @@ struct Settings: Codable, MediaLibrarySettings {
     private enum CodingKeys: String, CodingKey {
         case outputFolder, sources
         case watch, snapshotsFolder
-        case activeLibrariesPerMode
+        case activeLibraries
         case outputResolution, sourceMediaTypes
         case effectsListCollapsed
         case previewAudioDeviceUID, previewVolume
         case liveAudioDeviceUID, liveVolume
         case montagePlayerConfig, sequencePlayerConfig
-        // Legacy keys for backward compatibility
-        case maxSourcesForNew, outputSeconds, aspectRatio, playerResolution
     }
 
     init(
@@ -122,7 +114,7 @@ struct Settings: Codable, MediaLibrarySettings {
         sources: SourcesParam,
         watch: Bool = Defaults.watch,
         snapshotsFolder: String = Defaults.snapshotsFolder,
-        activeLibrariesPerMode: [String: [String]] = Defaults.activeLibrariesPerMode,
+        activeLibraries: [String] = Defaults.activeLibraries,
         outputResolution: OutputResolution = Defaults.outputResolution,
         sourceMediaTypes: Set<SourceMediaType> = Defaults.sourceMediaTypes,
         effectsListCollapsed: Bool = Defaults.effectsListCollapsed,
@@ -137,7 +129,7 @@ struct Settings: Codable, MediaLibrarySettings {
         self.sources = sources
         self.watch = watch
         self.snapshotsFolder = snapshotsFolder
-        self.activeLibrariesPerMode = activeLibrariesPerMode
+        self.activeLibraries = activeLibraries
         self.outputResolution = outputResolution
         self.sourceMediaTypes = sourceMediaTypes
         self.effectsListCollapsed = effectsListCollapsed
@@ -157,12 +149,6 @@ struct Settings: Codable, MediaLibrarySettings {
             playerResolution: Defaults.playerResolution,
             maxSourcesForNew: Defaults.maxSourcesForNew
         )
-
-        // Legacy properties (for backward compatibility)
-        self.maxSourcesForNew = nil
-        self.outputSeconds = nil
-        self.aspectRatio = nil
-        self.playerResolution = nil
     }
 
     init(from decoder: Decoder) throws {
@@ -176,8 +162,8 @@ struct Settings: Codable, MediaLibrarySettings {
             ?? Defaults.watch
         snapshotsFolder = try c.decodeIfPresent(String.self, forKey: .snapshotsFolder)
             ?? Defaults.snapshotsFolder
-        activeLibrariesPerMode = try c.decodeIfPresent([String: [String]].self, forKey: .activeLibrariesPerMode)
-            ?? Defaults.activeLibrariesPerMode
+        activeLibraries = try c.decodeIfPresent([String].self, forKey: .activeLibraries)
+            ?? Defaults.activeLibraries
         outputResolution = try c.decodeIfPresent(OutputResolution.self, forKey: .outputResolution)
             ?? Defaults.outputResolution
         if let types = try c.decodeIfPresent([SourceMediaType].self, forKey: .sourceMediaTypes) {
@@ -196,42 +182,19 @@ struct Settings: Codable, MediaLibrarySettings {
         liveVolume = try c.decodeIfPresent(Float.self, forKey: .liveVolume)
             ?? Defaults.liveVolume
 
-        // Try to load new format (montagePlayerConfig/sequencePlayerConfig)
-        if let montage = try c.decodeIfPresent(PlayerConfiguration.self, forKey: .montagePlayerConfig),
-           let sequence = try c.decodeIfPresent(PlayerConfiguration.self, forKey: .sequencePlayerConfig) {
-            montagePlayerConfig = montage
-            sequencePlayerConfig = sequence
-            // Legacy fields stay nil
-            maxSourcesForNew = nil
-            outputSeconds = nil
-            aspectRatio = nil
-            playerResolution = nil
-        } else {
-            // Load legacy format and migrate to new format
-            let legacyMaxSources = try c.decodeIfPresent(Int.self, forKey: .maxSourcesForNew)
-                ?? Defaults.maxSourcesForNew
-            let legacyOutputSeconds = try c.decodeIfPresent(Int.self, forKey: .outputSeconds)
-                ?? Defaults.outputSeconds
-            let legacyAspectRatio = try c.decodeIfPresent(AspectRatio.self, forKey: .aspectRatio)
-                ?? Defaults.aspectRatio
-            let legacyPlayerResolution = try c.decodeIfPresent(OutputResolution.self, forKey: .playerResolution)
-                ?? Defaults.playerResolution
-
-            // Create player configs from legacy values (no lastRecipe in legacy format)
-            let defaultConfig = PlayerConfiguration(
-                aspectRatio: legacyAspectRatio,
-                playerResolution: legacyPlayerResolution,
-                maxSourcesForNew: legacyMaxSources
+        // Load player configs (or create defaults)
+        montagePlayerConfig = try c.decodeIfPresent(PlayerConfiguration.self, forKey: .montagePlayerConfig)
+            ?? PlayerConfiguration(
+                aspectRatio: Defaults.aspectRatio,
+                playerResolution: Defaults.playerResolution,
+                maxSourcesForNew: Defaults.maxSourcesForNew
             )
-            montagePlayerConfig = defaultConfig
-            sequencePlayerConfig = defaultConfig
-
-            // Store legacy values for potential re-encoding
-            maxSourcesForNew = legacyMaxSources
-            outputSeconds = legacyOutputSeconds
-            aspectRatio = legacyAspectRatio
-            playerResolution = legacyPlayerResolution
-        }
+        sequencePlayerConfig = try c.decodeIfPresent(PlayerConfiguration.self, forKey: .sequencePlayerConfig)
+            ?? PlayerConfiguration(
+                aspectRatio: Defaults.aspectRatio,
+                playerResolution: Defaults.playerResolution,
+                maxSourcesForNew: Defaults.maxSourcesForNew
+            )
     }
 
     func encode(to encoder: Encoder) throws {
@@ -240,7 +203,7 @@ struct Settings: Codable, MediaLibrarySettings {
         try c.encode(sources, forKey: .sources)
         try c.encode(watch, forKey: .watch)
         try c.encode(snapshotsFolder, forKey: .snapshotsFolder)
-        try c.encode(activeLibrariesPerMode, forKey: .activeLibrariesPerMode)
+        try c.encode(activeLibraries, forKey: .activeLibraries)
         try c.encode(outputResolution, forKey: .outputResolution)
         try c.encode(Array(sourceMediaTypes), forKey: .sourceMediaTypes)
         try c.encode(effectsListCollapsed, forKey: .effectsListCollapsed)
@@ -248,16 +211,15 @@ struct Settings: Codable, MediaLibrarySettings {
         try c.encode(previewVolume, forKey: .previewVolume)
         try c.encodeIfPresent(liveAudioDeviceUID, forKey: .liveAudioDeviceUID)
         try c.encode(liveVolume, forKey: .liveVolume)
-
-        // Per-mode configs include their own lastRecipe (no top-level lastRecipe anymore)
         try c.encode(montagePlayerConfig, forKey: .montagePlayerConfig)
         try c.encode(sequencePlayerConfig, forKey: .sequencePlayerConfig)
     }
 
     // MARK: - Derived values
 
-    var outputDuration: CMTime {
-        CMTime(seconds: Double(outputSeconds ?? Defaults.outputSeconds), preferredTimescale: 600)
+    /// Watch timer interval - uses montage recipe duration or default 60s
+    var watchInterval: Double {
+        montagePlayerConfig.lastRecipe?.targetDuration.seconds ?? 60.0
     }
 
     var outputURL: URL {
