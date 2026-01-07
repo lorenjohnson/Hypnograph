@@ -9,7 +9,7 @@ import AppKit
 import CoreGraphics
 import CoreMedia
 
-// SourceLibraryInfo and SourcesParam are now provided by HypnoCore
+// SourceLibraryInfo and MediaSourcesParam are now provided by HypnoCore
 
 // MARK: - Output Resolution
 
@@ -40,7 +40,7 @@ enum OutputResolution: Int, Codable, CaseIterable {
 struct Settings: Codable, MediaLibrarySettings {
     // Required in JSON
     var outputFolder: String
-    var sources: SourcesParam
+    var sources: MediaSourcesParam
 
     // Optional in JSON (but non-optional in code)
     var watch: Bool
@@ -57,7 +57,7 @@ struct Settings: Codable, MediaLibrarySettings {
     var sequencePlayerConfig: PlayerConfiguration
 
     /// Which media types to include in sources: "photos", "videos", or both
-    var sourceMediaTypes: Set<SourceMediaType>
+    var sourceMediaTypes: Set<MediaType>
 
     /// Whether the effects list column is collapsed in the Effects Editor
     var effectsListCollapsed: Bool
@@ -81,7 +81,7 @@ struct Settings: Codable, MediaLibrarySettings {
         static let watch: Bool = true
         static let outputFolder = "~/Movies/Hypnograph/renders"
         static let snapshotsFolder = "~/Movies/Hypnograph/snapshots"
-        static let sources = SourcesParam.array([
+        static let sources = MediaSourcesParam.array([
             "~/Movies/Hypnograph/sources"
         ])
         static let activeLibraries: [String] = []
@@ -89,7 +89,7 @@ struct Settings: Codable, MediaLibrarySettings {
         static let outputResolution: OutputResolution = .p1080
         static let playerResolution: OutputResolution = .p1080
         static let maxSourcesForNew = 5
-        static let sourceMediaTypes: Set<SourceMediaType> = [.images, .videos]
+        static let sourceMediaTypes: Set<MediaType> = [.images, .videos]
         static let effectsListCollapsed: Bool = false
         // Audio defaults: nil UID = system default, volume = 1.0
         static let previewAudioDeviceUID: String? = nil
@@ -111,12 +111,12 @@ struct Settings: Codable, MediaLibrarySettings {
 
     init(
         outputFolder: String,
-        sources: SourcesParam,
+        sources: MediaSourcesParam,
         watch: Bool = Defaults.watch,
         snapshotsFolder: String = Defaults.snapshotsFolder,
         activeLibraries: [String] = Defaults.activeLibraries,
         outputResolution: OutputResolution = Defaults.outputResolution,
-        sourceMediaTypes: Set<SourceMediaType> = Defaults.sourceMediaTypes,
+        sourceMediaTypes: Set<MediaType> = Defaults.sourceMediaTypes,
         effectsListCollapsed: Bool = Defaults.effectsListCollapsed,
         previewAudioDeviceUID: String? = Defaults.previewAudioDeviceUID,
         previewVolume: Float = Defaults.previewVolume,
@@ -156,7 +156,7 @@ struct Settings: Codable, MediaLibrarySettings {
 
         outputFolder = try c.decodeIfPresent(String.self, forKey: .outputFolder)
             ?? Defaults.outputFolder
-        sources = try c.decodeIfPresent(SourcesParam.self, forKey: .sources)
+        sources = try c.decodeIfPresent(MediaSourcesParam.self, forKey: .sources)
             ?? Defaults.sources
         watch = try c.decodeIfPresent(Bool.self, forKey: .watch)
             ?? Defaults.watch
@@ -166,7 +166,7 @@ struct Settings: Codable, MediaLibrarySettings {
             ?? Defaults.activeLibraries
         outputResolution = try c.decodeIfPresent(OutputResolution.self, forKey: .outputResolution)
             ?? Defaults.outputResolution
-        if let types = try c.decodeIfPresent([SourceMediaType].self, forKey: .sourceMediaTypes) {
+        if let types = try c.decodeIfPresent([MediaType].self, forKey: .sourceMediaTypes) {
             sourceMediaTypes = Set(types)
         } else {
             sourceMediaTypes = Defaults.sourceMediaTypes
