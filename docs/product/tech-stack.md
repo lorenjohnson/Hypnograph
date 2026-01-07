@@ -5,6 +5,7 @@
 - macOS 14.0+ (Sonoma)
 - Swift 5.9+
 - SwiftUI + AppKit (NSViewRepresentable for Metal/AVPlayer views)
+- Xcode 15+ project (objectVersion 77) with file system-based source discovery
 - No external dependencies
 
 ## Core Frameworks
