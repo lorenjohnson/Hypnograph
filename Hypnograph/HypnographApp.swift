@@ -4,33 +4,6 @@ import AVFoundation
 import HypnoCore
 import HypnoUI
 
-extension NSWindow {
-    func makeHypnographBorderless(on screen: NSScreen) {
-        let fullFrame = screen.frame
-
-        styleMask.remove(.titled)
-        styleMask.remove(.closable)
-        styleMask.remove(.miniaturizable)
-        styleMask.remove(.resizable)
-
-        collectionBehavior = [.fullScreenNone, .canJoinAllSpaces]
-
-        titleVisibility = .hidden
-        titlebarAppearsTransparent = true
-
-        standardWindowButton(.closeButton)?.isHidden = true
-        standardWindowButton(.miniaturizeButton)?.isHidden = true
-        standardWindowButton(.zoomButton)?.isHidden = true
-
-        isOpaque = true
-        backgroundColor = .black
-        level = .normal
-
-        setFrame(fullFrame, display: true, animate: false)
-        isMovable = false
-    }
-}
-
 // MARK: - App Delegate
 
 final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
@@ -324,7 +297,7 @@ struct HypnographApp: App {
                     // Main window stays on primary screen; live display uses external
                     let targetScreen = screens[0]
 
-                    window.makeHypnographBorderless(on: targetScreen)
+                    window.makeBorderlessHypnoWindow(on: targetScreen)
                     appDelegate.mainWindow = window
                 }
 

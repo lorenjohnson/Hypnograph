@@ -366,11 +366,3 @@ final class HypnographState: ObservableObject {
     }
 }
 
-// MARK: - Small helper
-
-private extension Int {
-    func positiveMod(_ n: Int) -> Int {
-        let r = self % n
-        return r >= 0 ? 0 + r : r + n
-    }
-}
