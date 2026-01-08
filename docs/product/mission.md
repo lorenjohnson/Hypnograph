@@ -6,7 +6,8 @@ Hypnograph is a macOS application for **virtual, real-time audiovisual compositi
 
 At its core, Hypnograph is an **autonomous visual instrument**:
 - is given access to a photo/video archive
-- whenit opens and immediately begins generating output to make accessing one's past archive a visceral and immediate experience which can happen without management or curation.
+- when it opens and immediately begins generating output to make accessing one's past archive a visceral and immediate experience which can happen without management or curation.
+- it is a randomizing Video Sequencer...
 
 No setup, planning, or compositional intent is required to begin.
 Something happens by default.

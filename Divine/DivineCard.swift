@@ -41,10 +41,3 @@ struct DivineCard: Identifiable {
         self.lastSnapshotTime = lastSnapshotTime
     }
 }
-
-// Shared helper for offset math used by Divine mode views / logic.
-extension CGSize {
-    static func + (lhs: CGSize, rhs: CGSize) -> CGSize {
-        CGSize(width: lhs.width + rhs.width, height: lhs.height + rhs.height)
-    }
-}

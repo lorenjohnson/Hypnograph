@@ -2,6 +2,7 @@ import SwiftUI
 import AVFoundation
 import AVKit
 import CoreGraphics
+import HypnoCore
 
 // MARK: - Divine View Hierarchy
 

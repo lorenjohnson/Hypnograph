@@ -6,31 +6,25 @@ last_reviewed: 2026-01-07
 
 ## Recently Completed
 
-- [x] Hold `0` in Montage mode to temporarily suspend global effect chain
-- [x] Hold `1-9` in Montage mode to solo source and suspend global effects (keeps source effect for preview)
-
-- Change the default locaiton of stored Hypnograms to ~/Movies/Hypnograph ?
+- Hold `0` in Montage mode to temporarily suspend global effect chain
+- Hold `1-9` in Montage mode to solo source and suspend global effects (keeps source effect for preview)
+- Change the default location of stored Hypnograms to ~/Movies/Hypnograph ?
 - I would like the window state to restore including whether clean screen is currently enabled
 - When there were no windows in the saved window state then Tab toggles on all windows... may change this to just being a special keystroke for show all windows but not sure yet
-
-- Move Divine into its own product, and focus it on ios usage possibly? It just looks at a single Apple Photos directory or file directory for simplicity
-
-- I want there to be a history of Hypnograms regardless of whether or not they were saved so we can always go back when one looked good. The history should be maybe 100 or so back or ? maybe configurable in settings.json with a default setting of 10
-
-- I am questioning whether effects chains ("Treatments")should be named or if they maybe are just a thumbnail and pressing on the Treatment thumbnail applies the treatment or maybe a small button on the thumbnail takes a snapshot of the current hypnogram to be the new thumbnail for that treatment.
+- Move Divine into its own product
 
 ## Research & Development
-- [ ] Custom Metal blends modes for better destructive shaders/effects
+- [ ] Custom Metal blends modes for better destructive shaders/effects. How to integrate our own Metal shaders as Blend Mode options.
 - [ ] Auto blend mode sensing (like based on the relative brightiness of the source images). I think I am already doing something like that.
-- [ ] How to integrate our own Metal shaders as Blend Mode options.
 - [ ] Midi mapping, Mic input, MIDI Clock, OSC
 - [ ] Randomize blend modes and effects for all sources in current Hypnogram (wheel of fortune)
 - [ ] Bring back randomized effect / blend mode as options for randomized hypnogram generation
 - [ ] Live Mode is a bit confusing in this product
+- [ ] I want there to be a history of Hypnograms regardless of whether or not they were saved so we can always go back when one looked good. The history should be maybe 100 or so back or ? maybe configurable in settings.json with a default setting of 10
+- [ ] I am questioning whether effects chains ("Treatments")should be named or if they maybe are just a thumbnail and pressing on the Treatment thumbnail applies the treatment or maybe a small button on the thumbnail takes a snapshot of the current hypnogram to be the new thumbnail for that treatment.
 
 ## Known Issues / Bugs
-- [ ] Rendering/saving some Hypnograms results in an error
-  - [ ] "🔴 HypnogramRenderer: Export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn’t be completed. (Hypnograph.RenderError error 6.)"
+- [ ] Rendering/saving some Hypnograms results in an error: "🔴 HypnogramRenderer: Export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn’t be completed. (Hypnograph.RenderError error 6.)"
 - [ ] Window state not saved in Hypnograph
 - [ ] Increase XcodeBuild MCP timeout to >60s (UI tests time out).
 - [ ] **Effect name editing broken** - Opens edit mode but can't type. `isTyping` focus disconnect once any effects load operation were done first
@@ -47,9 +41,9 @@ last_reviewed: 2026-01-07
   - [ ] Volume leveling (optional)
 - [ ] Bring back Favorites store for saving favorites (by file path or Apple Photos ID?. Pressing F when viewing an Apple Photos asset it should be added to the FavoritesStore as well as to the HypnogramFavorites album in Apple Photos. This keystroke only works when in Sequence mode on any curently playing asset or when in Montage mone on a particular source (not global). Otherwse it gives a short flash message notice "Select a source to favorite" (we should add a basic style for notice vs warning flash messages and this is a warning). Maybe just use an emoji for the warnings and the rest stay the same. In Divine mode this also works for the active card and adds to DivineFavorites in Apple Photos if it is a Photos asset.
 - [ ] The DeleteStore functionality should also put the photo or video in the HypnogramDeletions album in Apple Photos if it is an ApplePhotos aset.
-- [x] Double-tap 1-9 to lock solo mode until any number key is pressed again
 - [ ] Add "Player Settings" style control panel for Divine with settings: Allow Reversed toggle, Max Card (int)
-- [ ] Put a "New Hypnogram" button on the player view
+- [ ] Add a "+ New Hypnogram" button on the player view
+- [ ] Make Player View a bottom of screen strip instead of a side quarter window. Play with "light up punch buttons" for turning and and off sources and a different color to indicate the currently selected source.
 - [ ] Tweaks to the IFrame Compress effect, because I like it:
   - [ ] Make the period between iframe freezes more jittery by default and maybe add a setitng after trying it out
   - [ ] Same with the other params, more jitter by default but with anticipation of adding a param
