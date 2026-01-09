@@ -292,12 +292,6 @@ struct HypnographApp: App {
             .onAppear {
                 DispatchQueue.main.async {
                     guard let window = NSApp.windows.first else { return }
-
-                    let screens = NSScreen.screens
-                    // Main window stays on primary screen; live display uses external
-                    let targetScreen = screens[0]
-
-                    window.makeBorderlessHypnoWindow(on: targetScreen)
                     appDelegate.mainWindow = window
                 }
 
