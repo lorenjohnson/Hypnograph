@@ -124,12 +124,13 @@ struct MontagePlayerView: NSViewRepresentable {
                         } else {
                             playerView = AVPlayerView()
                             playerView.controlsStyle = .none
-                            // Use .resizeAspect since compositor already did aspectFill to outputSize
-                            // Using .resizeAspectFill here would double-crop
-                            playerView.videoGravity = .resizeAspect
                             playerView.translatesAutoresizingMaskIntoConstraints = false
                             c.playerView = playerView
                         }
+                        // Set gravity based on aspect ratio mode
+                        // fillWindow uses .resizeAspectFill to scale content to fill the view
+                        // Other ratios use .resizeAspect since compositor already sized to that ratio
+                        playerView.videoGravity = aspectRatio.isFillWindow ? .resizeAspectFill : .resizeAspect
 
                         // Add to container if needed
                         if playerView.superview != nsView {
