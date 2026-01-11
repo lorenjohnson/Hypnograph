@@ -225,6 +225,12 @@ final class EffectsEditorViewModel: ObservableObject {
         session.resetEffectToDefaults(chainIndex: effectIndex, effectIndex: effectDefIndex)
     }
 
+    /// Randomize an effect's parameters
+    func randomizeEffect(effectIndex: Int, effectDefIndex: Int) {
+        guard let session = session else { return }
+        session.randomizeEffect(chainIndex: effectIndex, effectIndex: effectDefIndex)
+    }
+
     /// Update the name of the selected effect chain
     func updateEffectName(effectIndex: Int, name: String) {
         guard let session = session else { return }
@@ -798,6 +804,30 @@ struct EffectsEditorView: View {
 
                 Spacer()
 
+                // Randomize button
+                Button(action: {
+                    viewModel.randomizeEffect(effectIndex: selectedEffectIndex, effectDefIndex: childIndex)
+                }) {
+                    Image(systemName: "dice")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.cyan.opacity(0.8))
+                }
+                .buttonStyle(.borderless)
+                .help("Randomize parameters")
+
+                // Reset to defaults button
+                Button(action: {
+                    // Update session (for persistence) - the session's onChainUpdated callback
+                    // will trigger effectManager.reapplyActiveEffects() for immediate preview
+                    viewModel.resetEffectToDefaults(effectIndex: selectedEffectIndex, effectDefIndex: childIndex)
+                }) {
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.orange.opacity(0.8))
+                }
+                .buttonStyle(.borderless)
+                .help("Reset to defaults")
+
                 // Delete button
                 Button(action: {
                     // Update session (for persistence) - the session's onChainUpdated callback
@@ -814,19 +844,6 @@ struct EffectsEditorView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Remove from chain")
-
-                // Reset to defaults button
-                Button(action: {
-                    // Update session (for persistence) - the session's onChainUpdated callback
-                    // will trigger effectManager.reapplyActiveEffects() for immediate preview
-                    viewModel.resetEffectToDefaults(effectIndex: selectedEffectIndex, effectDefIndex: childIndex)
-                }) {
-                    Image(systemName: "arrow.uturn.backward")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.orange.opacity(0.8))
-                }
-                .buttonStyle(.borderless)
-                .help("Reset to defaults")
 
                 // Enable/disable toggle
                 Toggle("", isOn: Binding(

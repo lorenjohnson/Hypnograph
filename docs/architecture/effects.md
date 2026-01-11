@@ -63,6 +63,7 @@ and how effects integrate into rendering.
 
 ## Parameter Metadata
 - `ParameterSpec` encodes parameter type, range, and defaults.
+- `ParameterSpec.randomValue()` generates a random value within the spec's constraints.
 - `EffectRegistry.defaults()` derives defaults directly from `parameterSpecs`.
 - File parameters can populate options from `Environment.lutsDirectory` via a cached scan.
 

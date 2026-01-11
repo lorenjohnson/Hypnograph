@@ -14,11 +14,11 @@ last_reviewed: 2026-01-07
 - Move Divine into its own product
 
 ## Research & Development
+- [ ] Option for all effects to randomize the params
 - [ ] Custom Metal blends modes for better destructive shaders/effects. How to integrate our own Metal shaders as Blend Mode options.
 - [ ] Auto blend mode sensing (like based on the relative brightiness of the source images). I think I am already doing something like that.
 - [ ] Midi mapping, Mic input, MIDI Clock, OSC
-- [ ] Randomize blend modes and effects for all sources in current Hypnogram (wheel of fortune)
-- [ ] Bring back randomized effect / blend mode as options for randomized hypnogram generation
+- [ ] Bring back randomized effect as an option for randomized hypnogram generation
 - [ ] Live Mode is a bit confusing in this product
 - [ ] I want there to be a history of Hypnograms regardless of whether or not they were saved so we can always go back when one looked good. The history should be maybe 100 or so back or ? maybe configurable in settings.json with a default setting of 10
 - [ ] I am questioning whether effects chains ("Treatments")should be named or if they maybe are just a thumbnail and pressing on the Treatment thumbnail applies the treatment or maybe a small button on the thumbnail takes a snapshot of the current hypnogram to be the new thumbnail for that treatment.
