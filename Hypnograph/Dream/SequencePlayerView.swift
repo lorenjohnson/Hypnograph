@@ -33,6 +33,10 @@ struct SequencePlayerView: NSViewRepresentable {
     /// Optional callback when source index changes (for syncing Live Display)
     var onSourceIndexChanged: ((Int) -> Void)?
 
+    /// Optional callback when sequence completes (played through all sources once)
+    /// If nil, sequence loops. If set, caller decides whether to loop or generate new.
+    var onSequenceCompleted: (() -> Void)?
+
     class Coordinator: NSObject {
         // Current display mode
         enum DisplayMode {
@@ -68,7 +72,13 @@ struct SequencePlayerView: NSViewRepresentable {
         var endObserverToken: Any?
 
         var loadTask: Task<Void, Never>?
-        
+
+        // Store callback in coordinator so it persists across struct value copies
+        var onSequenceCompleted: (() -> Void)?
+
+        // Store current source index in coordinator so closures read current value, not stale captured struct
+        var currentSourceIndex: Int = 0
+
         deinit {
             cleanup()
         }
@@ -77,8 +87,9 @@ struct SequencePlayerView: NSViewRepresentable {
             durationTimer?.invalidate()
             durationTimer = nil
 
-            if let token = endObserverToken {
-                NotificationCenter.default.removeObserver(token)
+            // Remove boundary time observer from player (NOT NotificationCenter!)
+            if let token = endObserverToken, case .video(let player) = displayMode {
+                player.removeTimeObserver(token)
                 endObserverToken = nil
             }
 
@@ -105,6 +116,16 @@ struct SequencePlayerView: NSViewRepresentable {
     
     func updateNSView(_ nsView: NSView, context: Context) {
         let c = context.coordinator
+
+        // Sync callback to coordinator (may change when Watch mode toggles)
+        c.onSequenceCompleted = onSequenceCompleted
+
+        // Sync current source index to coordinator (closures read from coordinator, not captured struct)
+        // Only sync if binding has valid value (>= 0), otherwise keep coordinator's value
+        // This prevents overwriting a valid index set by switchToSource with -1 from restored state
+        if currentSourceIndex >= 0 {
+            c.currentSourceIndex = currentSourceIndex
+        }
 
         guard !recipe.sources.isEmpty else {
             c.cleanup()
@@ -174,15 +195,20 @@ struct SequencePlayerView: NSViewRepresentable {
     // MARK: - Source Switching
     
     private func switchToSource(index: Int, coordinator c: Coordinator, container: NSView) {
+        // Update coordinator's source index FIRST, before creating any observers
+        // This ensures boundary observer closures read the correct value
+        c.currentSourceIndex = index
+
         // Clean up previous source
         c.durationTimer?.invalidate()
         c.durationTimer = nil
-        
-        if let token = c.endObserverToken {
-            NotificationCenter.default.removeObserver(token)
+
+        // Remove boundary time observer from player (NOT NotificationCenter!)
+        if let token = c.endObserverToken, case .video(let player) = c.displayMode {
+            player.removeTimeObserver(token)
             c.endObserverToken = nil
         }
-        
+
         let source = recipe.sources[index]
         let isStillImage = source.clip.file.mediaKind == .image
         
@@ -380,19 +406,33 @@ struct SequencePlayerView: NSViewRepresentable {
     }
 
     private func advanceToNextSource(coordinator c: Coordinator) {
-        let nextIndex = currentSourceIndex + 1
-        let targetIndex: Int
-        if nextIndex < recipe.sources.count {
-            targetIndex = nextIndex
-        } else {
-            // Loop back to first source
-            targetIndex = 0
-        }
+        // Read from coordinator (current value) not self (stale captured struct value)
+        let nextIndex = c.currentSourceIndex + 1
 
-        DispatchQueue.main.async {
-            self.currentSourceIndex = targetIndex
-            // Notify callback for Live Display sync
-            self.onSourceIndexChanged?(targetIndex)
+        if nextIndex < recipe.sources.count {
+            // More sources to play - update coordinator first
+            c.currentSourceIndex = nextIndex
+            DispatchQueue.main.async {
+                self.currentSourceIndex = nextIndex
+                self.onSourceIndexChanged?(nextIndex)
+            }
+        } else {
+            // Reached end of sequence
+            if let onCompleted = c.onSequenceCompleted {
+                // Watch mode ON: generate new sequence
+                DispatchQueue.main.async {
+                    onCompleted()
+                }
+            } else {
+                // Watch mode OFF: loop back to first source
+                c.currentSourceIndex = 0
+                // Reset lastSourceIndex to force switchToSource even if looping to same index
+                c.lastSourceIndex = -1
+                DispatchQueue.main.async {
+                    self.currentSourceIndex = 0
+                    self.onSourceIndexChanged?(0)
+                }
+            }
         }
     }
 

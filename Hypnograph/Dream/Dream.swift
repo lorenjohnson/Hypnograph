@@ -23,7 +23,6 @@ final class Dream: ObservableObject {
     @Published var mode: DreamMode = .montage
 
     private let maxSequenceSources: Int = 20
-    private let initialSequenceSourceCount: Int = 5
 
     // MARK: - Player States (independent decks)
 
@@ -124,6 +123,11 @@ final class Dream: ObservableObject {
 
         // Forward audio controller changes for SwiftUI reactivity
         audioController.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &playerSubscriptions)
+
+        // Forward settings changes (e.g., watch mode toggle) for SwiftUI reactivity
+        state.settingsStore.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &playerSubscriptions)
 
@@ -445,6 +449,13 @@ final class Dream: ObservableObject {
             )
 
         case .sequence:
+            // Only provide completion handler when Watch mode is ON
+            // When Watch is off, sequence loops indefinitely (nil callback)
+            let watchIsOn = state.settings.watch
+            let completionHandler: (() -> Void)? = watchIsOn ? { [weak self] in
+                self?.newRandomSequence()
+            } : nil
+
             return AnyView(
                 SequencePlayerView(
                     recipe: recipe,
@@ -462,9 +473,10 @@ final class Dream: ObservableObject {
                     onSourceIndexChanged: { [weak self] newIndex in
                         // Sync Live Display when auto-advancing in sequence mode
                         self?.livePlayer.seekToSource(index: newIndex)
-                    }
+                    },
+                    onSequenceCompleted: completionHandler
                 )
-                .id("dream-sequence-\(player.sources.count)-\(player.config.viewID)-\(recipe.playRate)")
+                .id("dream-sequence-\(player.sources.count)-\(player.config.viewID)-\(recipe.playRate)-\(watchIsOn)")
             )
         }
     }
@@ -849,13 +861,18 @@ final class Dream: ObservableObject {
 
     private func newRandomSequence() {
         sequencePlayer.resetForNextHypnogram(preserveGlobalEffect: true)
-        let desiredCount = min(initialSequenceSourceCount, maxSequenceSources)
-        for _ in 0..<desiredCount {
+        // Use maxSourcesForNew from player config, clamped to maxSequenceSources
+        let maxFromConfig = max(1, sequencePlayer.config.maxSourcesForNew)
+        let desiredCount = min(maxFromConfig, maxSequenceSources)
+        // Generate random count between 2 and desiredCount (or just desiredCount if small)
+        let minCount = min(2, desiredCount)
+        let count = Int.random(in: minCount...desiredCount)
+        for _ in 0..<count {
             let length = Double.random(in: 2.0...15.0)
             addSourceToPlayer(sequencePlayer, length: length)
         }
         sequencePlayer.currentSourceIndex = 0
-        print("DreamMode[sequence]: generated sequence with \(sequencePlayer.sources.count) sources, total duration: \(sequenceTotalDuration().seconds)s")
+        print("DreamMode[sequence]: generated sequence with \(sequencePlayer.sources.count) sources (max: \(maxFromConfig)), total duration: \(sequenceTotalDuration().seconds)s")
     }
 
     // MARK: - Source Management Helpers
