@@ -14,7 +14,6 @@ last_reviewed: 2026-01-07
 - Move Divine into its own product
 
 ## Research & Development
-- [ ] Option for all effects to randomize the params
 - [ ] Custom Metal blends modes for better destructive shaders/effects. How to integrate our own Metal shaders as Blend Mode options.
 - [ ] Auto blend mode sensing (like based on the relative brightiness of the source images). I think I am already doing something like that.
 - [ ] Midi mapping, Mic input, MIDI Clock, OSC
