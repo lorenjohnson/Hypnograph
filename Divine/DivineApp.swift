@@ -5,6 +5,7 @@ import HypnoUI
 
 final class DivineAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSWindow.allowsAutomaticWindowTabbing = false
         AppNotifications.configure(identity: .fromBundle())
         AppNotifications.requestAuthorization()
     }

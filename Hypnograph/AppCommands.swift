@@ -87,16 +87,7 @@ struct AppCommands: Commands {
             .keyboardShortcut("o", modifiers: [.command])
         }
 
-        CommandGroup(after: .sidebar) {
-            Toggle("Watch", isOn: Binding(
-                get: { state.settings.watch },
-                set: { _ in state.toggleWatchMode() }
-            ))
-            .keyboardShortcut("w", modifiers: [])
-            .disabled(isTyping)
-
-            Divider()
-
+        CommandGroup(replacing: .sidebar) {
             Section("Overlays") {
                 Toggle("Info HUD", isOn: Binding(
                     get: { state.windowState.isVisible("hud") },
@@ -135,6 +126,13 @@ struct AppCommands: Commands {
                 ))
                 .keyboardShortcut("p", modifiers: [])
                 .disabled(isTyping)
+
+                Toggle("Watch", isOn: Binding(
+                    get: { state.settings.watch },
+                    set: { _ in state.toggleWatchMode() }
+                ))
+                .keyboardShortcut("w", modifiers: [])
+                .disabled(isTyping)
             }
 
             Divider()
@@ -170,6 +168,14 @@ struct AppCommands: Commands {
                 .keyboardShortcut("r", modifiers: [.command, .shift])
                 .disabled(!dream.livePlayer.isVisible)
             }
+
+            Divider()
+
+            Toggle("Full Screen", isOn: Binding(
+                get: { NSApp.mainWindow?.styleMask.contains(.fullScreen) ?? false },
+                set: { _ in NSApp.mainWindow?.toggleFullScreen(nil) }
+            ))
+            .keyboardShortcut("f", modifiers: [.control, .command])
         }
 
         CommandMenu("Sources") {
