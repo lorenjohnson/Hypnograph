@@ -24,6 +24,9 @@ final class Dream: ObservableObject {
 
     private let maxSequenceSources: Int = 20
 
+    /// Global templates store (shared across Montage/Sequence/Live)
+    let effectsLibrarySession: EffectsSession
+
     /// Global RECENT effects store (shared across Montage/Sequence/Live)
     let recentEffectsStore: RecentEffectChainsStore
 
@@ -92,9 +95,9 @@ final class Dream: ObservableObject {
     }
 
     /// Returns the active EffectsSession based on live mode
-    /// In live mode, uses live display's session; in edit mode, uses the active player's session
+    /// In Step 4 (MVR), templates are global across modes.
     var effectsSession: EffectsSession {
-        isLiveMode ? livePlayer.effectsSession : activePlayer.effectsSession
+        effectsLibrarySession
     }
 
     func toggleLiveMode() {
@@ -108,12 +111,15 @@ final class Dream: ObservableObject {
         self.state = state
         self.renderQueue = renderQueue
 
+        // Step 4 (MVR): one canonical library store across modes (no migration).
+        // This points all template browsing/apply to the same file going forward.
+        self.effectsLibrarySession = EffectsSession(filename: "effects-library.json")
         self.recentEffectsStore = RecentEffectChainsStore()
 
         // Create independent player states with mode-specific effects files and configs
-        self.montagePlayer = DreamPlayerState(config: state.settings.montagePlayerConfig, effectsFilename: "montage-effects.json")
-        self.sequencePlayer = DreamPlayerState(config: state.settings.sequencePlayerConfig, effectsFilename: "sequence-effects.json")
-        self.livePlayer = LivePlayer(settings: state.settings, effectsFilename: "live-effects.json")
+        self.montagePlayer = DreamPlayerState(config: state.settings.montagePlayerConfig, effectsSession: effectsLibrarySession)
+        self.sequencePlayer = DreamPlayerState(config: state.settings.sequencePlayerConfig, effectsSession: effectsLibrarySession)
+        self.livePlayer = LivePlayer(settings: state.settings, effectsSession: effectsLibrarySession)
 
         // Wire RECENT store into all effect managers
         montagePlayer.effectManager.recentStore = recentEffectsStore

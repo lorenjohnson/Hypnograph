@@ -76,7 +76,7 @@ final class DreamPlayerState: ObservableObject {
 
     // MARK: - Init
 
-    init(config: PlayerConfiguration, effectsFilename: String) {
+    init(config: PlayerConfiguration, effectsSession: EffectsSession) {
         self.config = config
         // Recipe starts with defaults; restored from lastRecipe on app launch
         self.recipe = HypnogramRecipe(
@@ -84,7 +84,7 @@ final class DreamPlayerState: ObservableObject {
             targetDuration: CMTime(seconds: 60, preferredTimescale: 600),
             playRate: 1.0
         )
-        self.effectsSession = EffectsSession(filename: effectsFilename)
+        self.effectsSession = effectsSession
 
         setupEffectManager()
         setupEffectsSession()

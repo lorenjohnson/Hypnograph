@@ -47,6 +47,7 @@ Status:
 - ✅ Step 1 implemented (2026-01-14)
 - ✅ Step 2 implemented (2026-01-14)
 - ✅ Step 3 implemented (2026-01-14)
+- ✅ Step 4 implemented (2026-01-14)
 
 ---
 
@@ -366,6 +367,10 @@ For initial rollout, do not merge existing per-mode libraries. Instead:
 
 - Template list is identical regardless of mode.
 - Applying templates works in all modes.
+
+Completed:
+- Added a single shared `EffectsSession` (`effects-library.json`) and injected it into Montage/Sequence/Live.
+- The effects editor now browses/saves/loads templates against the shared library session.
 
 ---
 

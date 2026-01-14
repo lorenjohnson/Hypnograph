@@ -275,6 +275,8 @@ struct EffectsEditorView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var dream: Dream
 
+    private let listColumnWidth: CGFloat = 220
+
     /// SwiftUI focus state - tracks which field has keyboard focus
     @FocusState private var focusedField: EffectsEditorField?
 
@@ -376,7 +378,7 @@ struct EffectsEditorView: View {
                 if !state.settings.effectsListCollapsed {
                     // Left column: Effect list (Tab stop 1)
                     effectListColumn
-                        .frame(width: 160)
+                        .frame(width: listColumnWidth)
                         .focusable()
                         .focused($focusedField, equals: .effectList)
                         .focusSection()
@@ -399,7 +401,7 @@ struct EffectsEditorView: View {
         }
         .foregroundColor(.white)
         .padding(20)
-        .frame(width: 500)
+        .frame(width: 620)
         .background(Color.black.opacity(0.6))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         // Arrow key navigation - only when not in text fields
