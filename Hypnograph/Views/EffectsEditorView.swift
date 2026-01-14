@@ -291,26 +291,26 @@ struct EffectsEditorView: View {
         dream.activePlayer.currentSourceIndex
     }
 
-    /// Effect name for the current layer (from active effects - edit or live mode)
-    private var currentLayerEffectName: String {
-        dream.activeEffectManager.effectName(for: currentLayer)
+    /// Target rows to show in CURRENT (Global + sources in the active recipe)
+    private var currentTargets: [Int] {
+        [-1] + Array(0..<dream.activePlayer.sources.count)
     }
 
-    /// Computed selected effect index from current layer's effect (-1 = None)
-    /// Uses pending selection for immediate UI feedback
-    private var selectedEffectIndex: Int {
-        viewModel.selectedEffectIndex(for: currentLayerEffectName, layer: currentLayer)
+    /// Selection lives in CURRENT: binds List(selection:) to the active target layer.
+    private var selectedTargetBinding: Binding<Int?> {
+        Binding(
+            get: { Optional(dream.activePlayer.currentSourceIndex) },
+            set: { newValue in
+                guard let layer = newValue else { return }
+                dream.activePlayer.selectSource(layer)
+            }
+        )
     }
 
     /// Computed selected chain from current layer's effect
     /// Reads from the recipe's stored chain (per-hypnogram), not the library
     private var selectedDefinition: EffectChain? {
         dream.activeEffectManager.effectChain(for: currentLayer)
-    }
-
-    /// Number of effects in the current effect chain
-    private var currentEffectsCount: Int {
-        selectedDefinition?.effects.count ?? 0
     }
 
     /// Check if currently in a text editing state
@@ -323,40 +323,8 @@ struct EffectsEditorView: View {
         }
     }
 
-    /// Select an effect with immediate UI feedback
-    /// Copies the library chain into the recipe and instantiates the effect
-    private func selectEffect(at index: Int) {
-        // Update UI immediately via pending selection
-        viewModel.setPendingSelection(effectIndex: index, for: currentLayer)
-
-        // Get the library chain to copy into the recipe
-        let libraryChains = viewModel.effectChains
-        let chain: EffectChain? = (index >= 0 && index < libraryChains.count)
-            ? libraryChains[index]
-            : nil
-
-        // Defer the recipe update to next run loop to allow UI to update first
-        // Use activeEffectManager so effects go to live display in live mode
-        let layer = currentLayer
-        let effectManager = dream.activeEffectManager
-        let isLive = dream.isLiveMode
-        print("🎨 EffectsEditor: selectEffect(\(index)) for layer \(layer), isLive=\(isLive)")
-        DispatchQueue.main.async {
-            // Set effect from chain - this copies the chain into the recipe
-            // and instantiates the effect from it
-            effectManager.setEffect(from: chain, for: layer)
-            if let c = chain {
-                print("🎨 EffectsEditor: Set effect '\(c.name ?? "unnamed")' for layer \(layer)")
-            } else {
-                print("🎨 EffectsEditor: Cleared effect for layer \(layer)")
-            }
-        }
-
-        // Clear pending after a short delay to let recipe update propagate
-        let vm = viewModel
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            vm.clearPendingSelection(for: layer)
-        }
+    private func applyTemplate(_ template: EffectChain?) {
+        dream.activeEffectManager.applyTemplate(template, to: currentLayer)
     }
 
     var body: some View {
@@ -448,11 +416,6 @@ struct EffectsEditorView: View {
         .onAppear {
             // Connect view model to the active session
             viewModel.session = dream.effectsSession
-
-            // Auto-expand list when no effect is selected (None)
-            if selectedEffectIndex == -1 && state.settings.effectsListCollapsed {
-                state.settingsStore.update { $0.effectsListCollapsed = false }
-            }
             // Set initial focus to effect list immediately
             focusedField = .effectList
             viewModel.activeSection = .effectList
@@ -493,23 +456,12 @@ struct EffectsEditorView: View {
     private func handleUpDown(delta: Int) {
         switch focusedField {
         case .effectList:
-            // Move effect selection up/down with wrap-around
-            let chains = viewModel.effectChains
-            let currentIndex = selectedEffectIndex  // -1 = None, 0+ = effects
-            var newIndex = currentIndex + delta
-
-            // Total items: None (-1) + effects (0 to chains.count-1)
-            // Wrap around: going up from None wraps to last effect, going down from last wraps to None
-            if newIndex < -1 {
-                // Wrap to last effect
-                newIndex = chains.count - 1
-            } else if newIndex >= chains.count {
-                // Wrap to None
-                newIndex = -1
-            }
-
-            // Select new effect with immediate UI feedback
-            selectEffect(at: newIndex)
+            // Move CURRENT target selection up/down with wrap-around
+            let targets = currentTargets
+            guard !targets.isEmpty else { return }
+            let currentIndex = targets.firstIndex(of: dream.activePlayer.currentSourceIndex) ?? 0
+            let nextIndex = (currentIndex + delta + targets.count) % targets.count
+            dream.activePlayer.selectSource(targets[nextIndex])
 
         default:
             // In text fields, let native focus handle navigation
@@ -523,46 +475,77 @@ struct EffectsEditorView: View {
         return EffectRegistry.formatEffectTypeName(type)
     }
 
+    private func chainSummary(_ chain: EffectChain) -> String {
+        guard !chain.effects.isEmpty else { return "None" }
+        return chain.effects
+            .map { formatEffectType($0.type) ?? $0.type }
+            .joined(separator: " + ")
+    }
+
+    private func chainDisplayName(_ chain: EffectChain?) -> String {
+        guard let chain else { return "None" }
+        if let name = chain.name, !name.isEmpty { return name }
+        return chainSummary(chain)
+    }
+
     // MARK: - Effect List Column
 
     private var effectListColumn: some View {
-        // Cache selected index once to avoid recomputing for every row
-        let currentlySelected = selectedEffectIndex
-
         return VStack(alignment: .leading, spacing: 8) {
-            // Effects header with add button
-            HStack {
-                Text("Effects")
-                    .font(.headline)
+            Text("Effects")
+                .font(.headline)
 
-                Spacer()
-
-                // Add new effect button
-                Button(action: {
-                    let newIndex = viewModel.createNewEffect()
-                    selectEffect(at: newIndex)
-                }) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.white.opacity(0.8))
-                        .frame(width: 20, height: 20)
+            List(selection: selectedTargetBinding) {
+                Section("CURRENT") {
+                    ForEach(currentTargets, id: \.self) { layer in
+                        let chain = dream.activeEffectManager.effectChain(for: layer)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(layer == -1 ? "Global" : "Source \(layer + 1)")
+                                .font(.system(.body, design: .monospaced))
+                            Text(chainDisplayName(chain))
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.6))
+                                .lineLimit(1)
+                        }
+                        .tag(Optional(layer))
+                        .contextMenu {
+                            Button("Clear") {
+                                dream.activeEffectManager.applyTemplate(nil, to: layer)
+                            }
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
-                .background(Color.cyan.opacity(0.6))
-                .cornerRadius(4)
-                .hudTooltip("Add New Effect")
-            }
 
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 4) {
-                    // None option (always first)
-                    effectNoneRow(isSelected: currentlySelected == -1)
+                Section("RECENT") {
+                    Text("Coming soon")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.5))
+                }
 
+                Section("LIBRARIES") {
                     ForEach(Array(viewModel.effectChains.enumerated()), id: \.offset) { index, chain in
-                        effectRowCached(index: index, chain: chain, isSelected: index == currentlySelected)
+                        Button {
+                            applyTemplate(chain)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(chain.name ?? "Unnamed")
+                                    .font(.system(.body, design: .monospaced))
+                                Text(chainSummary(chain))
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.6))
+                                    .lineLimit(1)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            Button("Delete Template", role: .destructive) {
+                                viewModel.deleteEffect(at: index)
+                            }
+                        }
                     }
                 }
             }
+            .listStyle(.sidebar)
 
             Spacer()
 
@@ -657,65 +640,6 @@ struct EffectsEditorView: View {
         }
     }
 
-    /// Background color for selected effect row
-    /// - Cyan when effect list is focused (active highlight)
-    /// - Gray when parameters panel is focused (selected but not active)
-    private func effectRowBackground(isSelected: Bool) -> Color {
-        guard isSelected else { return .clear }
-        let isEffectListFocused = viewModel.activeSection == .effectList
-        return isEffectListFocused ? Color.cyan.opacity(0.3) : Color.white.opacity(0.15)
-    }
-
-    private func effectNoneRow(isSelected: Bool) -> some View {
-        HStack {
-            Text("None")
-                .font(.system(.body, design: .monospaced))
-                .italic()
-                .foregroundColor(.white.opacity(0.7))
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(effectRowBackground(isSelected: isSelected))
-        .cornerRadius(4)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            selectEffect(at: -1)
-        }
-    }
-
-    private func effectRowCached(index: Int, chain: EffectChain, isSelected: Bool) -> some View {
-        HStack(spacing: 4) {
-            Text(chain.name ?? "Unnamed")
-                .font(.system(.body, design: .monospaced))
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            // Delete button (only visible when selected)
-            if isSelected {
-                Button(action: {
-                    // Clear selection first if this effect is selected
-                    selectEffect(at: -1)
-                    viewModel.deleteEffect(at: index)
-                }) {
-                    Image(systemName: "trash")
-                        .font(.system(size: 10))
-                        .foregroundColor(.red.opacity(0.8))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(effectRowBackground(isSelected: isSelected))
-        .cornerRadius(4)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            selectEffect(at: index)
-        }
-    }
-
     // MARK: - Parameters Column
 
     private var parametersColumn: some View {
@@ -723,12 +647,8 @@ struct EffectsEditorView: View {
             if let def = selectedDefinition {
                 // Editable name header
                 EditableEffectNameHeader(
-                    name: def.name ?? "Unnamed",
+                    name: def.effects.isEmpty ? "None" : (def.name ?? "Unnamed"),
                     onSave: { newName in
-                        // Update session (for persistence)
-                        viewModel.updateEffectName(effectIndex: selectedEffectIndex, name: newName)
-                        // Also update the recipe's chain directly (reapplyActiveEffects can't
-                        // find the chain by old name after a rename)
                         dream.activeEffectManager.updateChainName(for: currentLayer, name: newName)
                     },
                     focusedField: $focusedField
@@ -743,7 +663,7 @@ struct EffectsEditorView: View {
                     }
                 }
             } else {
-                Text("Select an effect")
+                Text("Select a target")
                     .foregroundColor(.white.opacity(0.5))
             }
         }
@@ -769,17 +689,14 @@ struct EffectsEditorView: View {
                 .onDrop(of: [.text], delegate: EffectDropDelegate(
                     currentIndex: childIndex,
                     draggingIndex: $draggingEffectIndex,
-                    effectIndex: selectedEffectIndex,
                     onReorder: { from, to in
-                        // Update session (for persistence) - the session's onChainUpdated callback
-                        // will trigger effectManager.reapplyActiveEffects() for immediate preview
-                        viewModel.reorderEffects(effectIndex: selectedEffectIndex, fromIndex: from, toIndex: to)
+                        dream.activeEffectManager.reorderEffectsInChain(for: layer, fromIndex: from, toIndex: to)
                     }
                 ))
             }
 
             // Add effect button
-            addEffectButton
+            addEffectButton(for: layer)
         }
     }
 
@@ -806,7 +723,7 @@ struct EffectsEditorView: View {
 
                 // Randomize button
                 Button(action: {
-                    viewModel.randomizeEffect(effectIndex: selectedEffectIndex, effectDefIndex: childIndex)
+                    dream.activeEffectManager.randomizeEffect(for: layer, effectDefIndex: childIndex)
                 }) {
                     Image(systemName: "dice")
                         .font(.system(size: 10, weight: .medium))
@@ -817,9 +734,7 @@ struct EffectsEditorView: View {
 
                 // Reset to defaults button
                 Button(action: {
-                    // Update session (for persistence) - the session's onChainUpdated callback
-                    // will trigger effectManager.reapplyActiveEffects() for immediate preview
-                    viewModel.resetEffectToDefaults(effectIndex: selectedEffectIndex, effectDefIndex: childIndex)
+                    dream.activeEffectManager.resetEffectToDefaults(for: layer, effectDefIndex: childIndex)
                 }) {
                     Image(systemName: "arrow.uturn.backward")
                         .font(.system(size: 10, weight: .medium))
@@ -830,9 +745,7 @@ struct EffectsEditorView: View {
 
                 // Delete button
                 Button(action: {
-                    // Update session (for persistence) - the session's onChainUpdated callback
-                    // will trigger effectManager.reapplyActiveEffects() for immediate preview
-                    viewModel.removeEffectFromChain(effectIndex: selectedEffectIndex, effectDefIndex: childIndex)
+                    dream.activeEffectManager.removeEffectFromChain(for: layer, effectDefIndex: childIndex)
                     // Clean up expanded indices
                     expandedEffectIndices.remove(childIndex)
                     // Shift down indices above the deleted one
@@ -849,14 +762,7 @@ struct EffectsEditorView: View {
                 Toggle("", isOn: Binding(
                     get: { isEnabled },
                     set: { newValue in
-                        // Update session (for persistence) - the session's onChainUpdated callback
-                        // will trigger effectManager.reapplyActiveEffects() for immediate preview
-                        viewModel.updateParameter(
-                            effectIndex: selectedEffectIndex,
-                            effectDefIndex: childIndex,
-                            paramName: "_enabled",
-                            value: .bool(newValue)
-                        )
+                        dream.activeEffectManager.setEffectEnabled(for: layer, effectDefIndex: childIndex, enabled: newValue)
                     }
                 ))
                 .toggleStyle(.darkModeSwitchCompact)
@@ -890,13 +796,11 @@ struct EffectsEditorView: View {
     }
 
     @ViewBuilder
-    private var addEffectButton: some View {
+    private func addEffectButton(for layer: Int) -> some View {
         Menu {
             ForEach(viewModel.availableEffectTypes, id: \.type) { effect in
                 Button(effect.displayName) {
-                    // Update session (for persistence) - the session's onChainUpdated callback
-                    // will trigger effectManager.reapplyActiveEffects() for immediate preview
-                    viewModel.addEffectToChain(effectIndex: selectedEffectIndex, effectType: effect.type)
+                    dream.activeEffectManager.addEffectToChain(for: layer, effectType: effect.type)
                 }
             }
         } label: {
@@ -931,12 +835,10 @@ struct EffectsEditorView: View {
                         effectType: effectDef.type,
                         spec: specs[key],
                         onChange: { newValue in
-                            // Update session (for persistence) - the session's onChainUpdated callback
-                            // will trigger effectManager.reapplyActiveEffects() for immediate preview
-                            viewModel.updateParameter(
-                                effectIndex: selectedEffectIndex,
+                            dream.activeEffectManager.updateEffectParameter(
+                                for: layer,
                                 effectDefIndex: effectDefIndex,
-                                paramName: key,
+                                key: key,
                                 value: newValue
                             )
                         }
@@ -1042,7 +944,6 @@ struct EditableEffectNameHeader: View {
 struct EffectDropDelegate: DropDelegate {
     let currentIndex: Int
     @Binding var draggingIndex: Int?
-    let effectIndex: Int
     let onReorder: (Int, Int) -> Void
 
     func performDrop(info: DropInfo) -> Bool {
