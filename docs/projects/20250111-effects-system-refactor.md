@@ -244,6 +244,11 @@ Session [···] menu:
   Hidden Libraries → (modal with list to re-show)
 ```
 
+Implementation status (as of 2026-01-14):
+- The UI will show a visible `[···]` menu button per row (not just right-click menus).
+- With MVR Step 4, templates live in a single global library file (`effects-library.json`), so all templates are treated as writable for now.
+- Multi-library (“My Effects” vs “Bundled”) and library header/session menus are deferred until a follow-up library model exists.
+
 ### Chain Display Names
 
 All chain rows use the same vertical format:
