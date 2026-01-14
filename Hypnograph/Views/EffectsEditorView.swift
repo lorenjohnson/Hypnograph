@@ -528,6 +528,7 @@ struct EffectsEditorView: View {
             librariesSection
         }
         .listStyle(.sidebar)
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
