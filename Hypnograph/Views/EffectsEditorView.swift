@@ -610,25 +610,15 @@ struct EffectsEditorView: View {
     @ViewBuilder
     private func recentRow(entry: RecentEntry) -> some View {
         HStack(spacing: 8) {
-            Button {
-                recentStore.addToFront(entry.chain)
-                dream.activeEffectManager.applyChainSnapshot(
-                    entry.chain,
-                    sourceTemplateId: entry.sourceTemplateId,
-                    to: currentLayer
-                )
-            } label: {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(chainDisplayName(entry.chain))
-                        .font(.system(.body, design: .monospaced))
-                    Text("\(chainSummary(entry.chain)) · \(recentVariantText(entry))")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(chainDisplayName(entry.chain))
+                    .font(.system(.body, design: .monospaced))
+                Text("\(chainSummary(entry.chain)) · \(recentVariantText(entry))")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.6))
+                    .lineLimit(1)
             }
-            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Menu {
                 Button("Remove from History", role: .destructive) {
@@ -645,6 +635,15 @@ struct EffectsEditorView: View {
             .menuIndicator(.hidden)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            recentStore.addToFront(entry.chain)
+            dream.activeEffectManager.applyChainSnapshot(
+                entry.chain,
+                sourceTemplateId: entry.sourceTemplateId,
+                to: currentLayer
+            )
+        }
     }
 
     @ViewBuilder
@@ -659,20 +658,15 @@ struct EffectsEditorView: View {
     @ViewBuilder
     private func libraryRow(index: Int, chain: EffectChain) -> some View {
         HStack(spacing: 8) {
-            Button {
-                applyTemplate(chain)
-            } label: {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(templateDisplayName(chain))
-                        .font(.system(.body, design: .monospaced))
-                    Text(chainSummary(chain))
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(templateDisplayName(chain))
+                    .font(.system(.body, design: .monospaced))
+                Text(chainSummary(chain))
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.6))
+                    .lineLimit(1)
             }
-            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Menu {
                 Button("Duplicate") {
@@ -696,6 +690,10 @@ struct EffectsEditorView: View {
             .menuIndicator(.hidden)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            applyTemplate(chain)
+        }
     }
 
     private func updateLibraryEntry(from chain: EffectChain, templateId: UUID) {
