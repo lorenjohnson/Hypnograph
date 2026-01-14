@@ -154,10 +154,18 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		04302B482F00E924001C0F60 /* Exceptions for "HypnogramQuickLook" folder in "HypnogramQuickLook" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
+			042F99AA2EC8990B006D4CDE /* Exceptions for "Hypnograph" folder in "Hypnograph" target */ = {
+				isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+				membershipExceptions = (
+					"Add to Hypnograph Sources.workflow/Contents/Info.plist",
+					Info.plist,
+				);
+				target = 042F99002EC8990B006D4CDE /* Hypnograph */;
+			};
+			04302B482F00E924001C0F60 /* Exceptions for "HypnogramQuickLook" folder in "HypnogramQuickLook" target */ = {
+				isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+				membershipExceptions = (
+					Info.plist,
 			);
 			target = 04302B342F00E924001C0F60 /* HypnogramQuickLook */;
 		};
@@ -171,11 +179,14 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		042F99032EC8990B006D4CDE /* Hypnograph */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Hypnograph;
-			sourceTree = "<group>";
-		};
+			042F99032EC8990B006D4CDE /* Hypnograph */ = {
+				isa = PBXFileSystemSynchronizedRootGroup;
+				exceptions = (
+					042F99AA2EC8990B006D4CDE /* Exceptions for "Hypnograph" folder in "Hypnograph" target */,
+				);
+				path = Hypnograph;
+				sourceTree = "<group>";
+			};
 		042F99152EC8990C006D4CDE /* HypnographTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = HypnographTests;
