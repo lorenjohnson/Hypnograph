@@ -499,6 +499,10 @@ struct EffectsEditorView: View {
         return chainSummary(chain)
     }
 
+    private func templateDisplayName(_ chain: EffectChain) -> String {
+        chain.name?.isEmpty == false ? chain.name! : chainSummary(chain)
+    }
+
     // MARK: - Effect List Column
 
     private var effectListColumn: some View {
@@ -510,20 +514,53 @@ struct EffectsEditorView: View {
                 Section("CURRENT") {
                     ForEach(currentTargets, id: \.self) { layer in
                         let chain = dream.activeEffectManager.effectChain(for: layer)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(layer == -1 ? "Global" : "Source \(layer + 1)")
-                                .font(.system(.body, design: .monospaced))
-                            Text(chainDisplayName(chain))
-                                .font(.caption)
-                                .foregroundColor(.white.opacity(0.6))
-                                .lineLimit(1)
+                        HStack(spacing: 8) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(layer == -1 ? "Global" : "Source \(layer + 1)")
+                                    .font(.system(.body, design: .monospaced))
+                                Text(chainDisplayName(chain))
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.6))
+                                    .lineLimit(1)
+                            }
+
+                            Spacer(minLength: 0)
+
+                            Menu {
+                                if let chain, !chain.effects.isEmpty, let templateId = chain.sourceTemplateId {
+                                    let canUpdate = viewModel.session?.chain(id: templateId) != nil
+                                    Button("Update Library Entry") {
+                                        guard let session = viewModel.session else { return }
+                                        session.updateTemplate(id: templateId, from: chain, preserveName: true)
+                                        AppNotifications.show("Updated library entry", flash: true)
+                                    }
+                                    .disabled(!canUpdate)
+                                }
+
+                                if let chain, !chain.effects.isEmpty {
+                                    Button("Copy to Library") {
+                                        guard let session = viewModel.session else { return }
+                                        let baseName = chain.name?.isEmpty == false ? chain.name! : "Effect"
+                                        let newId = session.addTemplate(from: chain, name: "\(baseName) Copy")
+                                        dream.activeEffectManager.updateSourceTemplateId(for: layer, sourceTemplateId: newId)
+                                        AppNotifications.show("Copied to library", flash: true)
+                                    }
+                                }
+
+                                Divider()
+
+                                Button("Clear") {
+                                    dream.activeEffectManager.applyTemplate(nil, to: layer)
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.7))
+                                    .frame(width: 20, height: 20)
+                            }
+                            .menuStyle(.borderlessButton)
                         }
                         .tag(Optional(layer))
-                        .contextMenu {
-                            Button("Clear") {
-                                dream.activeEffectManager.applyTemplate(nil, to: layer)
-                            }
-                        }
                     }
                 }
 
@@ -535,28 +572,39 @@ struct EffectsEditorView: View {
                             .foregroundColor(.white.opacity(0.5))
                     } else {
                         ForEach(entries) { entry in
-                            Button {
-                                recentStore.addToFront(entry.chain)
-                                dream.activeEffectManager.applyChainSnapshot(
-                                    entry.chain,
-                                    sourceTemplateId: entry.sourceTemplateId,
-                                    to: currentLayer
-                                )
-                            } label: {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(chainDisplayName(entry.chain))
-                                        .font(.system(.body, design: .monospaced))
-                                    Text("\(chainSummary(entry.chain)) · \(recentVariantText(entry))")
-                                        .font(.caption)
-                                        .foregroundColor(.white.opacity(0.6))
-                                        .lineLimit(1)
+                            HStack(spacing: 8) {
+                                Button {
+                                    recentStore.addToFront(entry.chain)
+                                    dream.activeEffectManager.applyChainSnapshot(
+                                        entry.chain,
+                                        sourceTemplateId: entry.sourceTemplateId,
+                                        to: currentLayer
+                                    )
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(chainDisplayName(entry.chain))
+                                            .font(.system(.body, design: .monospaced))
+                                        Text("\(chainSummary(entry.chain)) · \(recentVariantText(entry))")
+                                            .font(.caption)
+                                            .foregroundColor(.white.opacity(0.6))
+                                            .lineLimit(1)
+                                    }
                                 }
-                            }
-                            .buttonStyle(.plain)
-                            .contextMenu {
-                                Button("Remove from History", role: .destructive) {
-                                    recentStore.remove(id: entry.id)
+                                .buttonStyle(.plain)
+
+                                Spacer(minLength: 0)
+
+                                Menu {
+                                    Button("Remove from History", role: .destructive) {
+                                        recentStore.remove(id: entry.id)
+                                    }
+                                } label: {
+                                    Image(systemName: "ellipsis")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.7))
+                                        .frame(width: 20, height: 20)
                                 }
+                                .menuStyle(.borderlessButton)
                             }
                         }
                     }
@@ -564,23 +612,44 @@ struct EffectsEditorView: View {
 
                 Section("LIBRARIES") {
                     ForEach(Array(viewModel.effectChains.enumerated()), id: \.offset) { index, chain in
-                        Button {
-                            applyTemplate(chain)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(chain.name ?? "Unnamed")
-                                    .font(.system(.body, design: .monospaced))
-                                Text(chainSummary(chain))
-                                    .font(.caption)
-                                    .foregroundColor(.white.opacity(0.6))
-                                    .lineLimit(1)
+                        HStack(spacing: 8) {
+                            Button {
+                                applyTemplate(chain)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(templateDisplayName(chain))
+                                        .font(.system(.body, design: .monospaced))
+                                    Text(chainSummary(chain))
+                                        .font(.caption)
+                                        .foregroundColor(.white.opacity(0.6))
+                                        .lineLimit(1)
+                                }
                             }
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu {
-                            Button("Delete Template", role: .destructive) {
-                                viewModel.deleteEffect(at: index)
+                            .buttonStyle(.plain)
+
+                            Spacer(minLength: 0)
+
+                            Menu {
+                                Button("Duplicate") {
+                                    guard let session = viewModel.session else { return }
+                                    let baseName = chain.name?.isEmpty == false ? chain.name! : "Effect"
+                                    _ = session.addTemplate(from: chain, name: "\(baseName) Copy")
+                                    AppNotifications.show("Duplicated template", flash: true)
+                                }
+
+                                Divider()
+
+                                Button("Delete", role: .destructive) {
+                                    viewModel.deleteEffect(at: index)
+                                    AppNotifications.show("Deleted template", flash: true)
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.7))
+                                    .frame(width: 20, height: 20)
                             }
+                            .menuStyle(.borderlessButton)
                         }
                     }
                 }
