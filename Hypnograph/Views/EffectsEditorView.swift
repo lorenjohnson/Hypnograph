@@ -577,9 +577,8 @@ struct EffectsEditorView: View {
                     dream.activeEffectManager.applyTemplate(nil, to: layer)
                 }
             } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white.opacity(0.7))
+                Text(" ")
+                    .foregroundColor(.clear)
                     .frame(width: 20, height: 20)
             }
             .menuStyle(.borderlessButton)
@@ -622,6 +621,7 @@ struct EffectsEditorView: View {
                         .foregroundColor(.white.opacity(0.6))
                         .lineLimit(1)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
 
@@ -632,9 +632,8 @@ struct EffectsEditorView: View {
                     recentStore.remove(id: entry.id)
                 }
             } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white.opacity(0.7))
+                Text(" ")
+                    .foregroundColor(.clear)
                     .frame(width: 20, height: 20)
             }
             .menuStyle(.borderlessButton)
@@ -664,6 +663,7 @@ struct EffectsEditorView: View {
                         .foregroundColor(.white.opacity(0.6))
                         .lineLimit(1)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
 
@@ -681,9 +681,8 @@ struct EffectsEditorView: View {
                     AppNotifications.show("Deleted template", flash: true)
                 }
             } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white.opacity(0.7))
+                Text(" ")
+                    .foregroundColor(.clear)
                     .frame(width: 20, height: 20)
             }
             .menuStyle(.borderlessButton)
