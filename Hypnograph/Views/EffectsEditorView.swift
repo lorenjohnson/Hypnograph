@@ -9,6 +9,7 @@
 import SwiftUI
 import Combine
 import HypnoCore
+import HypnoUI
 
 /// Focus fields for the effects editor
 /// Uses SwiftUI's native focus system for tab/shift-tab navigation
@@ -506,155 +507,11 @@ struct EffectsEditorView: View {
     // MARK: - Effect List Column
 
     private var effectListColumn: some View {
-        return VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
             Text("Effects")
                 .font(.headline)
 
-            List(selection: selectedTargetBinding) {
-                Section("CURRENT") {
-                    ForEach(currentTargets, id: \.self) { layer in
-                        let chain = dream.activeEffectManager.effectChain(for: layer)
-                        HStack(spacing: 8) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(layer == -1 ? "Global" : "Source \(layer + 1)")
-                                    .font(.system(.body, design: .monospaced))
-                                Text(chainDisplayName(chain))
-                                    .font(.caption)
-                                    .foregroundColor(.white.opacity(0.6))
-                                    .lineLimit(1)
-                            }
-
-                            Spacer(minLength: 0)
-
-                            Menu {
-                                if let chain, !chain.effects.isEmpty, let templateId = chain.sourceTemplateId {
-                                    let canUpdate = viewModel.session?.chain(id: templateId) != nil
-                                    Button("Update Library Entry") {
-                                        guard let session = viewModel.session else { return }
-                                        session.updateTemplate(id: templateId, from: chain, preserveName: true)
-                                        AppNotifications.show("Updated library entry", flash: true)
-                                    }
-                                    .disabled(!canUpdate)
-                                }
-
-                                if let chain, !chain.effects.isEmpty {
-                                    Button("Copy to Library") {
-                                        guard let session = viewModel.session else { return }
-                                        let baseName = chain.name?.isEmpty == false ? chain.name! : "Effect"
-                                        let newId = session.addTemplate(from: chain, name: "\(baseName) Copy")
-                                        dream.activeEffectManager.updateSourceTemplateId(for: layer, sourceTemplateId: newId)
-                                        AppNotifications.show("Copied to library", flash: true)
-                                    }
-                                }
-
-                                Divider()
-
-                                Button("Clear") {
-                                    dream.activeEffectManager.applyTemplate(nil, to: layer)
-                                }
-                            } label: {
-                                Image(systemName: "ellipsis")
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.7))
-                                    .frame(width: 20, height: 20)
-                            }
-                            .menuStyle(.borderlessButton)
-                        }
-                        .tag(Optional(layer))
-                    }
-                }
-
-                Section("RECENT") {
-                    let entries = Array(recentStore.entries.prefix(10))
-                    if entries.isEmpty {
-                        Text("No recent effects")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.5))
-                    } else {
-                        ForEach(entries) { entry in
-                            HStack(spacing: 8) {
-                                Button {
-                                    recentStore.addToFront(entry.chain)
-                                    dream.activeEffectManager.applyChainSnapshot(
-                                        entry.chain,
-                                        sourceTemplateId: entry.sourceTemplateId,
-                                        to: currentLayer
-                                    )
-                                } label: {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(chainDisplayName(entry.chain))
-                                            .font(.system(.body, design: .monospaced))
-                                        Text("\(chainSummary(entry.chain)) · \(recentVariantText(entry))")
-                                            .font(.caption)
-                                            .foregroundColor(.white.opacity(0.6))
-                                            .lineLimit(1)
-                                    }
-                                }
-                                .buttonStyle(.plain)
-
-                                Spacer(minLength: 0)
-
-                                Menu {
-                                    Button("Remove from History", role: .destructive) {
-                                        recentStore.remove(id: entry.id)
-                                    }
-                                } label: {
-                                    Image(systemName: "ellipsis")
-                                        .font(.system(size: 12, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.7))
-                                        .frame(width: 20, height: 20)
-                                }
-                                .menuStyle(.borderlessButton)
-                            }
-                        }
-                    }
-                }
-
-                Section("LIBRARIES") {
-                    ForEach(Array(viewModel.effectChains.enumerated()), id: \.offset) { index, chain in
-                        HStack(spacing: 8) {
-                            Button {
-                                applyTemplate(chain)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(templateDisplayName(chain))
-                                        .font(.system(.body, design: .monospaced))
-                                    Text(chainSummary(chain))
-                                        .font(.caption)
-                                        .foregroundColor(.white.opacity(0.6))
-                                        .lineLimit(1)
-                                }
-                            }
-                            .buttonStyle(.plain)
-
-                            Spacer(minLength: 0)
-
-                            Menu {
-                                Button("Duplicate") {
-                                    guard let session = viewModel.session else { return }
-                                    let baseName = chain.name?.isEmpty == false ? chain.name! : "Effect"
-                                    _ = session.addTemplate(from: chain, name: "\(baseName) Copy")
-                                    AppNotifications.show("Duplicated template", flash: true)
-                                }
-
-                                Divider()
-
-                                Button("Delete", role: .destructive) {
-                                    viewModel.deleteEffect(at: index)
-                                    AppNotifications.show("Deleted template", flash: true)
-                                }
-                            } label: {
-                                Image(systemName: "ellipsis")
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.7))
-                                    .frame(width: 20, height: 20)
-                            }
-                            .menuStyle(.borderlessButton)
-                        }
-                    }
-                }
-            }
-            .listStyle(.sidebar)
+            effectsList
 
             Spacer()
 
@@ -662,6 +519,196 @@ struct EffectsEditorView: View {
             effectLibraryButtons
         }
         .padding(.trailing, 12)
+    }
+
+    private var effectsList: some View {
+        List(selection: selectedTargetBinding) {
+            currentSection
+            recentSection
+            librariesSection
+        }
+        .listStyle(.sidebar)
+    }
+
+    @ViewBuilder
+    private var currentSection: some View {
+        Section("CURRENT") {
+            ForEach(currentTargets, id: \.self) { layer in
+                currentRow(layer: layer)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func currentRow(layer: Int) -> some View {
+        let chain = dream.activeEffectManager.effectChain(for: layer)
+        let templateId = chain?.sourceTemplateId
+        let canUpdate = templateId != nil && (viewModel.session?.chain(id: templateId!) != nil)
+
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(layer == -1 ? "Global" : "Source \(layer + 1)")
+                    .font(.system(.body, design: .monospaced))
+                Text(chainDisplayName(chain))
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.6))
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+
+            Menu {
+                if let chain, !chain.effects.isEmpty, let templateId {
+                    Button("Update Library Entry") {
+                        updateLibraryEntry(from: chain, templateId: templateId)
+                    }
+                    .disabled(!canUpdate)
+                }
+
+                if let chain, !chain.effects.isEmpty {
+                    Button("Copy to Library") {
+                        copyCurrentToLibrary(chain: chain, layer: layer)
+                    }
+                }
+
+                Divider()
+
+                Button("Clear") {
+                    dream.activeEffectManager.applyTemplate(nil, to: layer)
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.7))
+                    .frame(width: 20, height: 20)
+            }
+            .menuStyle(.borderlessButton)
+        }
+        .tag(Optional(layer))
+    }
+
+    @ViewBuilder
+    private var recentSection: some View {
+        Section("RECENT") {
+            let entries = Array(recentStore.entries.prefix(10))
+            if entries.isEmpty {
+                Text("No recent effects")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.5))
+            } else {
+                ForEach(entries) { entry in
+                    recentRow(entry: entry)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func recentRow(entry: RecentEntry) -> some View {
+        HStack(spacing: 8) {
+            Button {
+                recentStore.addToFront(entry.chain)
+                dream.activeEffectManager.applyChainSnapshot(
+                    entry.chain,
+                    sourceTemplateId: entry.sourceTemplateId,
+                    to: currentLayer
+                )
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(chainDisplayName(entry.chain))
+                        .font(.system(.body, design: .monospaced))
+                    Text("\(chainSummary(entry.chain)) · \(recentVariantText(entry))")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.6))
+                        .lineLimit(1)
+                }
+            }
+            .buttonStyle(.plain)
+
+            Spacer(minLength: 0)
+
+            Menu {
+                Button("Remove from History", role: .destructive) {
+                    recentStore.remove(id: entry.id)
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.7))
+                    .frame(width: 20, height: 20)
+            }
+            .menuStyle(.borderlessButton)
+        }
+    }
+
+    @ViewBuilder
+    private var librariesSection: some View {
+        Section("LIBRARIES") {
+            ForEach(Array(viewModel.effectChains.enumerated()), id: \.offset) { index, chain in
+                libraryRow(index: index, chain: chain)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func libraryRow(index: Int, chain: EffectChain) -> some View {
+        HStack(spacing: 8) {
+            Button {
+                applyTemplate(chain)
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(templateDisplayName(chain))
+                        .font(.system(.body, design: .monospaced))
+                    Text(chainSummary(chain))
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.6))
+                        .lineLimit(1)
+                }
+            }
+            .buttonStyle(.plain)
+
+            Spacer(minLength: 0)
+
+            Menu {
+                Button("Duplicate") {
+                    duplicateTemplate(chain: chain)
+                }
+
+                Divider()
+
+                Button("Delete", role: .destructive) {
+                    viewModel.deleteEffect(at: index)
+                    AppNotifications.show("Deleted template", flash: true)
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.7))
+                    .frame(width: 20, height: 20)
+            }
+            .menuStyle(.borderlessButton)
+        }
+    }
+
+    private func updateLibraryEntry(from chain: EffectChain, templateId: UUID) {
+        guard let session = viewModel.session else { return }
+        session.updateTemplate(id: templateId, from: chain, preserveName: true)
+        AppNotifications.show("Updated library entry", flash: true)
+    }
+
+    private func copyCurrentToLibrary(chain: EffectChain, layer: Int) {
+        guard let session = viewModel.session else { return }
+        let baseName = chain.name?.isEmpty == false ? chain.name! : "Effect"
+        let newId = session.addTemplate(from: chain, name: "\(baseName) Copy")
+        dream.activeEffectManager.updateSourceTemplateId(for: layer, sourceTemplateId: newId)
+        AppNotifications.show("Copied to library", flash: true)
+    }
+
+    private func duplicateTemplate(chain: EffectChain) {
+        guard let session = viewModel.session else { return }
+        let baseName = chain.name?.isEmpty == false ? chain.name! : "Effect"
+        _ = session.addTemplate(from: chain, name: "\(baseName) Copy")
+        AppNotifications.show("Duplicated template", flash: true)
     }
 
     // MARK: - Effect Library Buttons
