@@ -101,7 +101,12 @@ struct ContentView: View {
             // Right-side panels: Effects editor (top-aligned) and Live preview (bottom)
             VStack(spacing: 0) {
                 if state.windowState.isVisible("effectsEditor") {
-                    EffectsEditorView(viewModel: effectsEditorViewModel, state: state, dream: dream)
+                    EffectsEditorView(
+                        viewModel: effectsEditorViewModel,
+                        recentStore: dream.recentEffectsStore,
+                        state: state,
+                        dream: dream
+                    )
                         .padding(.bottom, state.windowState.isVisible("livePreview") ? 12 : 0)
                         .transition(.move(edge: .trailing))
                 }

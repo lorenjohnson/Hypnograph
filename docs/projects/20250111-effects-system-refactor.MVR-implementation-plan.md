@@ -46,7 +46,7 @@ This ordering keeps the app working after each step and defers the cross-mode wi
 Status:
 - ✅ Step 1 implemented (2026-01-14)
 - ✅ Step 2 implemented (2026-01-14)
-- ⏳ Step 3 next
+- ✅ Step 3 implemented (2026-01-14)
 
 ---
 
@@ -323,6 +323,12 @@ To make it global:
 - Clear current: cleared chain appears in RECENT.
 - Switch modes: RECENT list is the same.
 - Restart app: RECENT persists.
+
+Completed:
+- Added global persistent `RecentEffectChainsStore` (deduped by `paramsHash`, capped at 100).
+- Wired `EffectManager.applyTemplate` + `EffectManager.clearEffect` to capture replaced/cleared chains into RECENT.
+- Injected the shared store into Montage/Sequence/Live effect managers.
+- Implemented RECENT section UI in the effects editor (apply + remove).
 
 ---
 

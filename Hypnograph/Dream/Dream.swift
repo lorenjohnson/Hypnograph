@@ -24,6 +24,9 @@ final class Dream: ObservableObject {
 
     private let maxSequenceSources: Int = 20
 
+    /// Global RECENT effects store (shared across Montage/Sequence/Live)
+    let recentEffectsStore: RecentEffectChainsStore
+
     // MARK: - Player States (independent decks)
 
     /// Montage player - blends all sources together
@@ -105,10 +108,17 @@ final class Dream: ObservableObject {
         self.state = state
         self.renderQueue = renderQueue
 
+        self.recentEffectsStore = RecentEffectChainsStore()
+
         // Create independent player states with mode-specific effects files and configs
         self.montagePlayer = DreamPlayerState(config: state.settings.montagePlayerConfig, effectsFilename: "montage-effects.json")
         self.sequencePlayer = DreamPlayerState(config: state.settings.sequencePlayerConfig, effectsFilename: "sequence-effects.json")
         self.livePlayer = LivePlayer(settings: state.settings, effectsFilename: "live-effects.json")
+
+        // Wire RECENT store into all effect managers
+        montagePlayer.effectManager.recentStore = recentEffectsStore
+        sequencePlayer.effectManager.recentStore = recentEffectsStore
+        livePlayer.effectManager.recentStore = recentEffectsStore
 
         // Create audio controller (handles device selection, volume, persistence)
         self.audioController = DreamAudioController(settingsStore: state.settingsStore, livePlayer: livePlayer)
