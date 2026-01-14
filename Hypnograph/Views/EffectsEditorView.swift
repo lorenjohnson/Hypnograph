@@ -276,7 +276,7 @@ struct EffectsEditorView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var dream: Dream
 
-    private let listColumnWidth: CGFloat = 220
+    private let listColumnWidth: CGFloat = 240
 
     /// SwiftUI focus state - tracks which field has keyboard focus
     @FocusState private var focusedField: EffectsEditorField?
