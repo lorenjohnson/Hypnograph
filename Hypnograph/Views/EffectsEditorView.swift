@@ -546,16 +546,17 @@ struct EffectsEditorView: View {
         let templateId = chain?.sourceTemplateId
         let canUpdate = templateId != nil && (viewModel.session?.chain(id: templateId!) != nil)
 
-        VStack(alignment: .leading, spacing: 2) {
-            Text(layer == -1 ? "Global" : "Source \(layer + 1)")
-                .font(.system(.body, design: .monospaced))
-            Text(chainDisplayName(chain))
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.6))
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .trailing) {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(layer == -1 ? "Global" : "Source \(layer + 1)")
+                    .font(.system(.body, design: .monospaced))
+                Text(chainDisplayName(chain))
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.6))
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             Menu {
                 if let chain, !chain.effects.isEmpty, let templateId {
                     Button("Update Library Entry") {
@@ -576,13 +577,16 @@ struct EffectsEditorView: View {
                     dream.activeEffectManager.applyTemplate(nil, to: layer)
                 }
             } label: {
-                Text(" ")
-                    .foregroundColor(.clear)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.7))
                     .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
             }
             .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
         }
-        .padding(.trailing, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .tag(Optional(layer))
     }
@@ -605,39 +609,42 @@ struct EffectsEditorView: View {
 
     @ViewBuilder
     private func recentRow(entry: RecentEntry) -> some View {
-        Button {
-            recentStore.addToFront(entry.chain)
-            dream.activeEffectManager.applyChainSnapshot(
-                entry.chain,
-                sourceTemplateId: entry.sourceTemplateId,
-                to: currentLayer
-            )
-        } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(chainDisplayName(entry.chain))
-                    .font(.system(.body, design: .monospaced))
-                Text("\(chainSummary(entry.chain)) · \(recentVariantText(entry))")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.6))
-                    .lineLimit(1)
+        HStack(spacing: 8) {
+            Button {
+                recentStore.addToFront(entry.chain)
+                dream.activeEffectManager.applyChainSnapshot(
+                    entry.chain,
+                    sourceTemplateId: entry.sourceTemplateId,
+                    to: currentLayer
+                )
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(chainDisplayName(entry.chain))
+                        .font(.system(.body, design: .monospaced))
+                    Text("\(chainSummary(entry.chain)) · \(recentVariantText(entry))")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.6))
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .trailing) {
+            .buttonStyle(.plain)
+
             Menu {
                 Button("Remove from History", role: .destructive) {
                     recentStore.remove(id: entry.id)
                 }
             } label: {
-                Text(" ")
-                    .foregroundColor(.clear)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.7))
                     .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
             }
             .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
         }
-        .padding(.trailing, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -651,22 +658,22 @@ struct EffectsEditorView: View {
 
     @ViewBuilder
     private func libraryRow(index: Int, chain: EffectChain) -> some View {
-        Button {
-            applyTemplate(chain)
-        } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(templateDisplayName(chain))
-                    .font(.system(.body, design: .monospaced))
-                Text(chainSummary(chain))
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.6))
-                    .lineLimit(1)
+        HStack(spacing: 8) {
+            Button {
+                applyTemplate(chain)
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(templateDisplayName(chain))
+                        .font(.system(.body, design: .monospaced))
+                    Text(chainSummary(chain))
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.6))
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .trailing) {
+            .buttonStyle(.plain)
+
             Menu {
                 Button("Duplicate") {
                     duplicateTemplate(chain: chain)
@@ -679,13 +686,16 @@ struct EffectsEditorView: View {
                     AppNotifications.show("Deleted template", flash: true)
                 }
             } label: {
-                Text(" ")
-                    .foregroundColor(.clear)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.7))
                     .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
             }
             .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
         }
-        .padding(.trailing, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func updateLibraryEntry(from chain: EffectChain, templateId: UUID) {
