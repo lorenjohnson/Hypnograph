@@ -132,9 +132,9 @@ final class LivePlayer: ObservableObject {
 
     // MARK: - Init
 
-    init(settings: Settings, effectsFilename: String = "live-effects.json") {
+    init(settings: Settings, effectsSession: EffectsSession) {
         self.config = PlayerConfiguration(from: settings)
-        self.effectsSession = EffectsSession(filename: effectsFilename)
+        self.effectsSession = effectsSession
         setupEffectManager()
         setupEffectsSession()
     }
