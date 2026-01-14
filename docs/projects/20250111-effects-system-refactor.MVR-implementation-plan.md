@@ -43,6 +43,11 @@ Given risk and isolation, the recommended order is:
 
 This ordering keeps the app working after each step and defers the cross-mode wiring change until the end.
 
+Status:
+- ✅ Step 1 implemented (2026-01-14)
+- ✅ Step 2 implemented (2026-01-14)
+- ⏳ Step 3 next
+
 ---
 
 ## Step 1 — Identity + explicit copy semantics
@@ -108,6 +113,10 @@ This is the foundation that later steps rely on:
 
 - Save and reload: confirm new fields persist.
 - Confirm a fresh install path works (no existing files present).
+
+Completed:
+- `EffectChain.id`, `EffectChain.sourceTemplateId`, `EffectChain.paramsHash`
+- `EffectChain.clone()` (same identity) + `EffectChain.init(duplicating:sourceTemplateId:)` (new identity)
 
 ---
 
@@ -215,6 +224,11 @@ Keep `setEffect(from:for:)` for internal recipe updates only.
 - Apply template, tweak params, switch away and back: CURRENT retains tweaks.
 - Edit template library (if still possible anywhere), observe CURRENT does not change.
 - Save recipe, restart app, restore recipe: CURRENT still has tweaked values.
+
+Completed:
+- UI edits now route through `EffectManager` recipe mutation APIs (CURRENT is the working copy).
+- Template library updates no longer trigger name-based overwrites into the recipe.
+- Left panel converted to a sectioned `List` with CURRENT/RECENT/LIBRARIES (RECENT stubbed until Step 3).
 
 ---
 

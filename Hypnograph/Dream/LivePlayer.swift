@@ -168,15 +168,10 @@ final class LivePlayer: ObservableObject {
     }
 
     private func setupEffectsSession() {
-        // When a chain is updated in the session, reapply active effects
-        effectsSession.onChainUpdated = { [weak self] _, _ in
-            self?.effectManager.reapplyActiveEffects()
-        }
-
-        // When session is reloaded, reapply active effects
-        effectsSession.onReloaded = { [weak self] in
-            self?.effectManager.reapplyActiveEffects()
-        }
+        // Step 2 (MVR): template updates should not overwrite CURRENT (recipe) by name.
+        // Templates are applied explicitly; editing CURRENT flows through EffectManager recipe mutation APIs.
+        effectsSession.onChainUpdated = nil
+        effectsSession.onReloaded = nil
     }
 
     // MARK: - Public API

@@ -570,7 +570,7 @@ final class Dream: ObservableObject {
         }
 
         // Copy effect chain from active player so new recipes inherit current effects
-        let effectChain = activePlayer.recipe.effectChain.copy()
+        let effectChain = activePlayer.recipe.effectChain.clone()
 
         return HypnogramRecipe(
             sources: sources,

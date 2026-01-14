@@ -177,7 +177,7 @@ enum EffectChainLibraryActions {
 
         // Add global effect chain if it has effects
         if !recipe.effectChain.effects.isEmpty {
-            let globalChain = recipe.effectChain.copy()
+            let globalChain = recipe.effectChain.clone()
             // Ensure it has a name
             if globalChain.name == nil || globalChain.name?.isEmpty == true {
                 globalChain.name = "Global (imported)"
@@ -188,7 +188,7 @@ enum EffectChainLibraryActions {
         // Add per-source effect chains that have effects
         for (index, source) in recipe.sources.enumerated() {
             if !source.effectChain.effects.isEmpty {
-                let sourceChain = source.effectChain.copy()
+                let sourceChain = source.effectChain.clone()
                 // Ensure it has a name
                 if sourceChain.name == nil || sourceChain.name?.isEmpty == true {
                     sourceChain.name = "Source \(index + 1) (imported)"

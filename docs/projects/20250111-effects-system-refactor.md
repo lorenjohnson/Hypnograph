@@ -413,3 +413,4 @@ Allow viewing a library template’s parameters without applying it (read-only p
 
 - **2025-01-11**: Initial planning session. Defined two-tier model.
 - **2025-01-13**: Major revision. New model: Current (applied to targets), Recent (history), Libraries (templates). Libraries are templates, recipes store copies. Bundled is bundled. Selection lives in Current section. Chain naming optional (auto-generated from effects). "Update Library Entry" vs "Save to Library..." actions.
+- **2026-01-14**: MVR Step 1–2 implemented: `EffectChain` identity (`id`, `sourceTemplateId`, `paramsHash`) + explicit copy semantics; Effects editor now edits CURRENT (recipe) via `EffectManager` APIs; template edits no longer overwrite CURRENT by name; left panel uses sectioned `List` with RECENT stub.
