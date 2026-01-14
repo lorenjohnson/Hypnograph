@@ -554,6 +554,7 @@ struct EffectsEditorView: View {
                     .foregroundColor(.white.opacity(0.6))
                     .lineLimit(1)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 0)
 
@@ -583,6 +584,8 @@ struct EffectsEditorView: View {
             }
             .menuStyle(.borderlessButton)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
         .tag(Optional(layer))
     }
 
@@ -624,6 +627,7 @@ struct EffectsEditorView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 0)
 
@@ -638,6 +642,8 @@ struct EffectsEditorView: View {
             }
             .menuStyle(.borderlessButton)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder
@@ -666,6 +672,7 @@ struct EffectsEditorView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 0)
 
@@ -687,6 +694,8 @@ struct EffectsEditorView: View {
             }
             .menuStyle(.borderlessButton)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     private func updateLibraryEntry(from chain: EffectChain, templateId: UUID) {
