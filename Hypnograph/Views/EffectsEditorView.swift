@@ -546,15 +546,29 @@ struct EffectsEditorView: View {
         let templateId = chain?.sourceTemplateId
         let canUpdate = templateId != nil && (viewModel.session?.chain(id: templateId!) != nil)
 
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(layer == -1 ? "Global" : "Source \(layer + 1)")
-                    .font(.system(.body, design: .monospaced))
-                Text(chainDisplayName(chain))
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.6))
-                    .lineLimit(1)
+        // Use a full-width plain Button for row interaction, and overlay the trailing Menu separately,
+        // so the row hit area spans the entire sidebar width while keeping a small menu target.
+        ZStack(alignment: .trailing) {
+            Button {
+                selectedTargetBinding.wrappedValue = layer
+            } label: {
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(layer == -1 ? "Global" : "Source \(layer + 1)")
+                            .font(.system(.body, design: .monospaced))
+                        Text(chainDisplayName(chain))
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.6))
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .padding(.trailing, 24)
             }
+            .buttonStyle(.plain)
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Menu {
@@ -585,9 +599,10 @@ struct EffectsEditorView: View {
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
+            .frame(width: 20, height: 20)
+            .fixedSize()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
         .tag(Optional(layer))
     }
 
@@ -609,15 +624,32 @@ struct EffectsEditorView: View {
 
     @ViewBuilder
     private func recentRow(entry: RecentEntry) -> some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(chainDisplayName(entry.chain))
-                    .font(.system(.body, design: .monospaced))
-                Text("\(chainSummary(entry.chain)) · \(recentVariantText(entry))")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.6))
-                    .lineLimit(1)
+        ZStack(alignment: .trailing) {
+            Button {
+                recentStore.addToFront(entry.chain)
+                dream.activeEffectManager.applyChainSnapshot(
+                    entry.chain,
+                    sourceTemplateId: entry.sourceTemplateId,
+                    to: currentLayer
+                )
+            } label: {
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(chainDisplayName(entry.chain))
+                            .font(.system(.body, design: .monospaced))
+                        Text("\(chainSummary(entry.chain)) · \(recentVariantText(entry))")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.6))
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .padding(.trailing, 24)
             }
+            .buttonStyle(.plain)
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Menu {
@@ -633,17 +665,10 @@ struct EffectsEditorView: View {
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
+            .frame(width: 20, height: 20)
+            .fixedSize()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            recentStore.addToFront(entry.chain)
-            dream.activeEffectManager.applyChainSnapshot(
-                entry.chain,
-                sourceTemplateId: entry.sourceTemplateId,
-                to: currentLayer
-            )
-        }
     }
 
     @ViewBuilder
@@ -657,15 +682,27 @@ struct EffectsEditorView: View {
 
     @ViewBuilder
     private func libraryRow(index: Int, chain: EffectChain) -> some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(templateDisplayName(chain))
-                    .font(.system(.body, design: .monospaced))
-                Text(chainSummary(chain))
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.6))
-                    .lineLimit(1)
+        ZStack(alignment: .trailing) {
+            Button {
+                applyTemplate(chain)
+            } label: {
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(templateDisplayName(chain))
+                            .font(.system(.body, design: .monospaced))
+                        Text(chainSummary(chain))
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.6))
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .padding(.trailing, 24)
             }
+            .buttonStyle(.plain)
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Menu {
@@ -688,12 +725,10 @@ struct EffectsEditorView: View {
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
+            .frame(width: 20, height: 20)
+            .fixedSize()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            applyTemplate(chain)
-        }
     }
 
     private func updateLibraryEntry(from chain: EffectChain, templateId: UUID) {
