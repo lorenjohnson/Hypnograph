@@ -271,6 +271,7 @@ final class EffectsEditorViewModel: ObservableObject {
 
 struct EffectsEditorView: View {
     @ObservedObject var viewModel: EffectsEditorViewModel
+    @ObservedObject var recentStore: RecentEffectChainsStore
     @ObservedObject var state: HypnographState
     @ObservedObject var dream: Dream
 
@@ -482,6 +483,14 @@ struct EffectsEditorView: View {
             .joined(separator: " + ")
     }
 
+    private func recentVariantText(_ entry: RecentEntry) -> String {
+        let suffix = entry.variantHint ?? String(entry.chain.paramsHash.prefix(6))
+        if entry.sourceTemplateId != nil, let name = entry.templateNameHint, !name.isEmpty {
+            return "\(name) · \(suffix)"
+        }
+        return "Variant · \(suffix)"
+    }
+
     private func chainDisplayName(_ chain: EffectChain?) -> String {
         guard let chain else { return "None" }
         if let name = chain.name, !name.isEmpty { return name }
@@ -517,9 +526,38 @@ struct EffectsEditorView: View {
                 }
 
                 Section("RECENT") {
-                    Text("Coming soon")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.5))
+                    let entries = Array(recentStore.entries.prefix(10))
+                    if entries.isEmpty {
+                        Text("No recent effects")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.5))
+                    } else {
+                        ForEach(entries) { entry in
+                            Button {
+                                recentStore.addToFront(entry.chain)
+                                dream.activeEffectManager.applyChainSnapshot(
+                                    entry.chain,
+                                    sourceTemplateId: entry.sourceTemplateId,
+                                    to: currentLayer
+                                )
+                            } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(chainDisplayName(entry.chain))
+                                        .font(.system(.body, design: .monospaced))
+                                    Text("\(chainSummary(entry.chain)) · \(recentVariantText(entry))")
+                                        .font(.caption)
+                                        .foregroundColor(.white.opacity(0.6))
+                                        .lineLimit(1)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                Button("Remove from History", role: .destructive) {
+                                    recentStore.remove(id: entry.id)
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Section("LIBRARIES") {
