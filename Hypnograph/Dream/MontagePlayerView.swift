@@ -4,7 +4,7 @@ import AVFoundation
 import CoreMedia
 import HypnoCore
 
-/// Player view for Dream module montage style.
+/// Player view for Dream module layered playback.
 /// All sources are composited together, looping at targetDuration.
 struct MontagePlayerView: NSViewRepresentable {
     let recipe: HypnogramRecipe
@@ -255,7 +255,7 @@ struct MontagePlayerView: NSViewRepresentable {
             return "\(name)|\(start)|\(dur)|\(transformsStr)"
         }
         let durationPart = "dur=\(recipe.targetDuration.seconds)"
-        return pairs.joined(separator: ";;") + "||" + durationPart + "||montage"
+        return pairs.joined(separator: ";;") + "||" + durationPart
     }
 
     // MARK: - Observer setup
@@ -275,7 +275,7 @@ struct MontagePlayerView: NSViewRepresentable {
             c.endObserverToken = nil
         }
 
-        // Track playback time for montage
+        // Track playback time
         let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
         c.timeObserverToken = player.addPeriodicTimeObserver(
             forInterval: interval,

@@ -28,7 +28,7 @@ final class Dream: ObservableObject {
 
     // MARK: - Player States
 
-    /// Preview deck - a layered clip (montage-like)
+    /// Preview deck - a layered clip
     let player: DreamPlayerState
 
     /// Live display - external monitor output (moved from HypnographState)
@@ -549,7 +549,6 @@ final class Dream: ObservableObject {
         // Ensure effect chains have names (required for library matching)
         var mutableRecipe = recipe
         mutableRecipe.ensureEffectChainNames()
-        mutableRecipe.mode = .montage
 
         // Ensure we're editing the preview deck
         liveMode = .edit

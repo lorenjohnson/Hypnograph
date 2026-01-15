@@ -15,7 +15,7 @@ struct ContentView: View {
     }
 
     private var soloIndicatorText: String? {
-        // Only show during flash solo (when navigating sources in montage mode)
+        // Only show during flash solo (when navigating sources)
         guard dream.activePlayer.effectManager.flashSoloIndex != nil,
               !dream.activePlayer.sources.isEmpty else {
             return nil
