@@ -946,6 +946,29 @@ struct EffectsEditorView: View {
                         },
                         focusedField: $focusedField
                     )
+                } else if case let .some(.recent(id)) = listSelection {
+                    // Allow renaming recent snapshots (does not modify the active layer or library template).
+                    EditableEffectNameHeader(
+                        name: ctx.chain.effects.isEmpty ? "None" : (ctx.chain.name ?? "Unnamed"),
+                        onSave: { newName in
+                            recentStore.updateEntryName(id: id, name: newName)
+                            AppNotifications.show("Renamed recent entry", flash: true)
+                        },
+                        focusedField: $focusedField
+                    )
+                } else if case let .some(.library(id)) = listSelection,
+                          let session = viewModel.session,
+                          let chainIndex = session.chainIndex(id: id)
+                {
+                    // Allow renaming library templates even when not applied.
+                    EditableEffectNameHeader(
+                        name: ctx.chain.effects.isEmpty ? "None" : (ctx.chain.name ?? "Unnamed"),
+                        onSave: { newName in
+                            session.updateChainName(chainIndex: chainIndex, name: newName)
+                            AppNotifications.show("Renamed template", flash: true)
+                        },
+                        focusedField: $focusedField
+                    )
                 } else {
                     Text(ctx.title)
                         .font(.system(.headline, design: .monospaced))
@@ -1135,9 +1158,10 @@ struct EffectsEditorView: View {
 
                 Spacer()
 
-                Image(systemName: isEnabled ? "checkmark.circle" : "slash.circle")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(isEnabled ? .white.opacity(0.4) : .white.opacity(0.25))
+                Toggle("", isOn: .constant(isEnabled))
+                    .toggleStyle(.darkModeSwitchCompact)
+                    .labelsHidden()
+                    .disabled(true)
                     .help(isEnabled ? "Enabled" : "Disabled")
             }
             .padding(.horizontal, 8)
