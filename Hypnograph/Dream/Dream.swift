@@ -227,8 +227,7 @@ final class Dream: ObservableObject {
         player.targetDuration = CMTime(seconds: clipLengthSeconds, preferredTimescale: 600)
 
         let total = max(1, player.config.maxLayers)
-        let minCount = min(2, total)
-        let count = Int.random(in: minCount...total)
+        let count = Int.random(in: 1...total)
 
         for i in 0..<max(1, count) {
             guard let clip = state.library.randomClip(clipLength: player.recipe.targetDuration.seconds) else {
