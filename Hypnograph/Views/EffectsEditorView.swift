@@ -348,6 +348,35 @@ struct EffectsEditorView: View {
         listSelection = .current(currentLayer)
     }
 
+    private func chainHeaderName(_ chain: EffectChain) -> String {
+        chain.effects.isEmpty ? "None" : (chain.name ?? "Unnamed")
+    }
+
+    private func chainNameSaveHandler(for selection: EffectsListSelection?) -> ((String) -> Void)? {
+        guard let selection else { return nil }
+        switch selection {
+        case .current(let layer):
+            return { newName in
+                dream.activeEffectManager.updateChainName(for: layer, name: newName)
+            }
+
+        case .recent(let id):
+            return { newName in
+                recentStore.updateChainName(id: id, name: newName)
+                AppNotifications.show("Renamed recent entry", flash: true)
+            }
+
+        case .library(let id):
+            return { newName in
+                guard let session = viewModel.session,
+                      let chainIndex = session.chainIndex(id: id)
+                else { return }
+                session.updateChainName(chainIndex: chainIndex, name: newName)
+                AppNotifications.show("Renamed template", flash: true)
+            }
+        }
+    }
+
     private func applyRecentEntry(_ entry: RecentEntry) {
         recentStore.addToFront(entry.chain)
         dream.activeEffectManager.applyChainSnapshot(
@@ -937,36 +966,10 @@ struct EffectsEditorView: View {
     private var parametersColumn: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let ctx = selectedChainContext {
-                if let layer = ctx.editableLayer {
-                    // Editable name header (current layer chain)
+                if let onSave = chainNameSaveHandler(for: listSelection) {
                     EditableEffectNameHeader(
-                        name: ctx.chain.effects.isEmpty ? "None" : (ctx.chain.name ?? "Unnamed"),
-                        onSave: { newName in
-                            dream.activeEffectManager.updateChainName(for: layer, name: newName)
-                        },
-                        focusedField: $focusedField
-                    )
-                } else if case let .some(.recent(id)) = listSelection {
-                    // Allow renaming recent snapshots (does not modify the active layer or library template).
-                    EditableEffectNameHeader(
-                        name: ctx.chain.effects.isEmpty ? "None" : (ctx.chain.name ?? "Unnamed"),
-                        onSave: { newName in
-                            recentStore.updateEntryName(id: id, name: newName)
-                            AppNotifications.show("Renamed recent entry", flash: true)
-                        },
-                        focusedField: $focusedField
-                    )
-                } else if case let .some(.library(id)) = listSelection,
-                          let session = viewModel.session,
-                          let chainIndex = session.chainIndex(id: id)
-                {
-                    // Allow renaming library templates even when not applied.
-                    EditableEffectNameHeader(
-                        name: ctx.chain.effects.isEmpty ? "None" : (ctx.chain.name ?? "Unnamed"),
-                        onSave: { newName in
-                            session.updateChainName(chainIndex: chainIndex, name: newName)
-                            AppNotifications.show("Renamed template", flash: true)
-                        },
+                        name: chainHeaderName(ctx.chain),
+                        onSave: onSave,
                         focusedField: $focusedField
                     )
                 } else {
