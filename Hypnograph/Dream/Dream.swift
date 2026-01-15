@@ -281,7 +281,6 @@ final class Dream: ObservableObject {
 
     /// Cycle effect for current layer (global when -1, source when 0+)
     func cycleEffect(direction: Int = 1) {
-        state.noteUserInteraction()
         activeEffectManager.cycleEffect(for: activePlayer.currentSourceIndex, direction: direction)
 
         // Show flash message when effects panel is not open
@@ -294,7 +293,6 @@ final class Dream: ObservableObject {
 
     /// Clear effect for current layer only
     func clearCurrentLayerEffect() {
-        state.noteUserInteraction()
         activeEffectManager.clearEffect(for: activePlayer.currentSourceIndex)
 
         // Show flash message when effects panel is not open
@@ -615,8 +613,6 @@ final class Dream: ObservableObject {
     }
 
     func cycleBlendMode(at index: Int? = nil) {
-        state.noteUserInteraction()
-
         let idx = index ?? activePlayer.currentSourceIndex
         guard idx > 0, idx < activePlayer.sources.count else { return } // bottom layer stays SourceOver
 
@@ -630,7 +626,6 @@ final class Dream: ObservableObject {
 
     /// Clear all effects AND reset blend modes to Screen (default)
     func clearAllEffects() {
-        state.noteUserInteraction()
         activeEffectManager.clearEffect(for: -1)  // Global
 
         // Get source count from appropriate context
