@@ -57,6 +57,10 @@ final class HypnographState: ObservableObject {
     // Callback to trigger mode-specific new() when watch timer fires
     var onWatchTimerFired: (() -> Void)?
 
+    /// Provider for the current watch interval (e.g., the active clip duration).
+    /// If nil, falls back to a settings-based default interval.
+    var watchIntervalProvider: (() -> Double)?
+
     // MARK: - Init
 
     init(settingsStore: SettingsStore, coreConfig: HypnoCoreConfig) {
@@ -132,7 +136,8 @@ final class HypnographState: ObservableObject {
     }
 
     func scheduleWatchTimer() {
-        guard settings.watch, settings.watchInterval > 0 else {
+        let interval = watchIntervalProvider?() ?? settings.watchInterval
+        guard settings.watch, interval > 0 else {
             watchTimer?.invalidate()
             watchTimer = nil
             return
@@ -140,7 +145,7 @@ final class HypnographState: ObservableObject {
 
         watchTimer?.invalidate()
         watchTimer = Timer.scheduledTimer(
-            withTimeInterval: settings.watchInterval,
+            withTimeInterval: interval,
             repeats: false
         ) { [weak self] _ in
             guard let self else { return }
@@ -365,4 +370,3 @@ final class HypnographState: ObservableObject {
         }
     }
 }
-
