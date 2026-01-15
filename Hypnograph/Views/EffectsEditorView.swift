@@ -308,17 +308,6 @@ struct EffectsEditorView: View {
         [-1] + Array(0..<dream.activePlayer.sources.count)
     }
 
-    /// Selection lives in CURRENT: binds List(selection:) to the active target layer.
-    private var selectedTargetBinding: Binding<Int?> {
-        Binding(
-            get: { Optional(dream.activePlayer.currentSourceIndex) },
-            set: { newValue in
-                guard let layer = newValue else { return }
-                dream.activePlayer.selectSource(layer)
-            }
-        )
-    }
-
     /// Computed selected chain from current layer's effect
     /// Reads from the recipe's stored chain (per-hypnogram), not the library
     private struct SelectedChainContext {
@@ -356,6 +345,7 @@ struct EffectsEditorView: View {
 
     private func applyTemplate(_ template: EffectChain?) {
         dream.activeEffectManager.applyTemplate(template, to: currentLayer)
+        listSelection = .current(currentLayer)
     }
 
     private func applyRecentEntry(_ entry: RecentEntry) {
@@ -365,6 +355,7 @@ struct EffectsEditorView: View {
             sourceTemplateId: entry.sourceTemplateId,
             to: currentLayer
         )
+        listSelection = .current(currentLayer)
     }
 
     private struct HoverRevealControlsRow<Label: View, Controls: View>: View {
@@ -502,6 +493,11 @@ struct EffectsEditorView: View {
                 viewModel.activeSection = field
             }
         }
+        .onChange(of: dream.activePlayer.currentSourceIndex) { _, newValue in
+            // Keep CURRENT selection in sync when the active layer changes externally.
+            guard case .some(.current) = listSelection else { return }
+            listSelection = .current(newValue)
+        }
         .onChange(of: listSelection) { _, newValue in
             // Clear effect expansion state when changing which chain is being inspected.
             expandedEffectIndices.removeAll()
@@ -617,28 +613,21 @@ struct EffectsEditorView: View {
         let isSelected = listSelection == .current(layer)
 
         HoverRevealControlsRow(isSelected: isSelected) {
-            Button {
-                selectedTargetBinding.wrappedValue = layer
-                listSelection = .current(layer)
-            } label: {
-                HStack(spacing: 8) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(layer == -1 ? "Global" : "Source \(layer + 1)")
-                            .font(.system(.body, design: .monospaced))
-                        Text(chainDisplayName(chain))
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.6))
-                            .lineLimit(1)
-                    }
-
-                    Spacer(minLength: 0)
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(layer == -1 ? "Global" : "Source \(layer + 1)")
+                        .font(.system(.body, design: .monospaced))
+                    Text(chainDisplayName(chain))
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.6))
+                        .lineLimit(1)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .padding(.trailing, 24)
+
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.plain)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .padding(.trailing, 24)
         } controls: {
             Menu {
                 if let chain, !chain.effects.isEmpty, let templateId {
@@ -697,31 +686,24 @@ struct EffectsEditorView: View {
         let isSelected = listSelection == .recent(entry.id)
 
         HoverRevealControlsRow(isSelected: isSelected) {
-            Button {
-                listSelection = .recent(entry.id)
-            } label: {
-                HStack(spacing: 8) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(chainDisplayName(entry.chain))
-                            .font(.system(.body, design: .monospaced))
-                        Text("\(chainSummary(entry.chain)) · \(recentVariantText(entry))")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.6))
-                            .lineLimit(1)
-                    }
-
-                    Spacer(minLength: 0)
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(chainDisplayName(entry.chain))
+                        .font(.system(.body, design: .monospaced))
+                    Text("\(chainSummary(entry.chain)) · \(recentVariantText(entry))")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.6))
+                        .lineLimit(1)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .padding(.trailing, 24)
+
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.plain)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .padding(.trailing, 24)
         } controls: {
             Menu {
                 Button("Apply") {
-                    listSelection = .recent(entry.id)
                     applyRecentEntry(entry)
                 }
 
@@ -746,7 +728,6 @@ struct EffectsEditorView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .tag(EffectsListSelection.recent(entry.id))
         .onTapGesture(count: 2) {
-            listSelection = .recent(entry.id)
             applyRecentEntry(entry)
         }
     }
@@ -765,31 +746,24 @@ struct EffectsEditorView: View {
         let isSelected = listSelection == .library(chain.id)
 
         HoverRevealControlsRow(isSelected: isSelected) {
-            Button {
-                listSelection = .library(chain.id)
-            } label: {
-                HStack(spacing: 8) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(templateDisplayName(chain))
-                            .font(.system(.body, design: .monospaced))
-                        Text(chainSummary(chain))
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.6))
-                            .lineLimit(1)
-                    }
-
-                    Spacer(minLength: 0)
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(templateDisplayName(chain))
+                        .font(.system(.body, design: .monospaced))
+                    Text(chainSummary(chain))
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.6))
+                        .lineLimit(1)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .padding(.trailing, 24)
+
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.plain)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .padding(.trailing, 24)
         } controls: {
             Menu {
                 Button("Apply") {
-                    listSelection = .library(chain.id)
                     applyTemplate(chain)
                 }
 
@@ -821,7 +795,6 @@ struct EffectsEditorView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .tag(EffectsListSelection.library(chain.id))
         .onTapGesture(count: 2) {
-            listSelection = .library(chain.id)
             applyTemplate(chain)
         }
     }
