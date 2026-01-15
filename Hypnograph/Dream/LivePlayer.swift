@@ -404,7 +404,7 @@ final class LivePlayer: ObservableObject {
         let config = RenderEngine.Config(
             outputSize: outputSize,
             frameRate: 30,
-            enableGlobalEffects: true
+            enableEffects: true
         )
 
         let result = await renderEngine.makePlayerItem(
