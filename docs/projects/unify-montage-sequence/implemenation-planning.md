@@ -89,9 +89,6 @@ Goal: remove the watch timer and make playback event-driven.
 
 Hard requirement:
 - clips advance on clip end; if at end of tape, generate next (∞) or loop within run (finite N).
- 
-Explicitly do **not** preserve the old “watch timer resets on user interaction” behavior:
-- clip advance should be driven by playback reaching the clip end (or explicit pause), not by “editing activity”.
 
 Implementation options (pick one):
 
