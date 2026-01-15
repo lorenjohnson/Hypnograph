@@ -460,13 +460,13 @@ struct EffectsEditorView: View {
         // Arrow key navigation - only when not in text fields
         .onKeyPress(.upArrow) {
             guard !isTextEditing else { return .ignored }
-            guard focusedField == .effectList, case .some(.current) = listSelection else { return .ignored }
+            guard focusedField == .effectList, case .some(.current(_)) = listSelection else { return .ignored }
             handleUpDown(delta: -1)
             return .handled
         }
         .onKeyPress(.downArrow) {
             guard !isTextEditing else { return .ignored }
-            guard focusedField == .effectList, case .some(.current) = listSelection else { return .ignored }
+            guard focusedField == .effectList, case .some(.current(_)) = listSelection else { return .ignored }
             handleUpDown(delta: 1)
             return .handled
         }
@@ -495,7 +495,7 @@ struct EffectsEditorView: View {
         }
         .onChange(of: dream.activePlayer.currentSourceIndex) { _, newValue in
             // Keep CURRENT selection in sync when the active layer changes externally.
-            guard case .some(.current) = listSelection else { return }
+            guard case .some(.current(_)) = listSelection else { return }
             listSelection = .current(newValue)
         }
         .onChange(of: listSelection) { _, newValue in
@@ -727,9 +727,9 @@ struct EffectsEditorView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .tag(EffectsListSelection.recent(entry.id))
-        .onTapGesture(count: 2) {
+        .simultaneousGesture(TapGesture(count: 2).onEnded {
             applyRecentEntry(entry)
-        }
+        })
     }
 
     @ViewBuilder
@@ -794,9 +794,9 @@ struct EffectsEditorView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .tag(EffectsListSelection.library(chain.id))
-        .onTapGesture(count: 2) {
+        .simultaneousGesture(TapGesture(count: 2).onEnded {
             applyTemplate(chain)
-        }
+        })
     }
 
     private func updateLibraryEntry(from chain: EffectChain, templateId: UUID) {
