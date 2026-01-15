@@ -595,12 +595,26 @@ struct EffectsEditorView: View {
         .frame(maxWidth: .infinity)
     }
 
+    private func effectsListSectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.caption.weight(.semibold))
+            .foregroundColor(.white.opacity(0.85))
+            .padding(.vertical, 4)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.white.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .padding(.vertical, 2)
+    }
+
     @ViewBuilder
     private var currentSection: some View {
-        Section("CURRENT") {
+        Section {
             ForEach(currentTargets, id: \.self) { layer in
                 currentRow(layer: layer)
             }
+        } header: {
+            effectsListSectionHeader("CURRENT")
         }
     }
 
@@ -670,7 +684,7 @@ struct EffectsEditorView: View {
 
     @ViewBuilder
     private var recentSection: some View {
-        Section("RECENT") {
+        Section {
             let entries = Array(recentStore.entries.prefix(10))
             if entries.isEmpty {
                 Text("No recent effects")
@@ -681,6 +695,8 @@ struct EffectsEditorView: View {
                     recentRow(entry: entry)
                 }
             }
+        } header: {
+            effectsListSectionHeader("RECENT")
         }
     }
 
@@ -740,10 +756,12 @@ struct EffectsEditorView: View {
 
     @ViewBuilder
     private var librariesSection: some View {
-        Section("LIBRARIES") {
+        Section {
             ForEach(Array(viewModel.effectChains.enumerated()), id: \.offset) { index, chain in
                 libraryRow(index: index, chain: chain)
             }
+        } header: {
+            effectsListSectionHeader("LIBRARIES")
         }
     }
 
