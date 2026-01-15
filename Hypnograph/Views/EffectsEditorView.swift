@@ -628,6 +628,9 @@ struct EffectsEditorView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .padding(.trailing, 24)
+            .onTapGesture {
+                listSelection = .current(layer)
+            }
         } controls: {
             Menu {
                 if let chain, !chain.effects.isEmpty, let templateId {
@@ -701,6 +704,9 @@ struct EffectsEditorView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .padding(.trailing, 24)
+            .onTapGesture {
+                listSelection = .recent(entry.id)
+            }
         } controls: {
             Menu {
                 Button("Apply") {
@@ -761,6 +767,9 @@ struct EffectsEditorView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .padding(.trailing, 24)
+            .onTapGesture {
+                listSelection = .library(chain.id)
+            }
         } controls: {
             Menu {
                 Button("Apply") {
