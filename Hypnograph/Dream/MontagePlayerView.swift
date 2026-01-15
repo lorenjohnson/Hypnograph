@@ -94,7 +94,7 @@ struct MontagePlayerView: NSViewRepresentable {
                 let config = RenderEngine.Config(
                     outputSize: outputSize,
                     frameRate: 30,
-                    enableGlobalEffects: true
+                    enableEffects: true
                 )
 
                 let result = await engine.makePlayerItem(
