@@ -172,7 +172,6 @@ final class Dream: ObservableObject {
     /// Save the current recipe for persistence
     func saveCurrentRecipe() {
         var recipe = player.recipe
-        recipe.mode = .montage
         recipe.effectsLibrarySnapshot = effectsSession.chains
         if !recipe.sources.isEmpty {
             state.settingsStore.update { $0.playerConfig.lastRecipe = recipe }
@@ -188,7 +187,6 @@ final class Dream: ObservableObject {
         if let persisted = state.settings.playerConfig.lastRecipe {
             var recipe = persisted
             recipe.ensureEffectChainNames()
-            recipe.mode = .montage
             player.setRecipe(recipe)
             player.currentSourceIndex = -1
             player.effectManager.clearFrameBuffer()
@@ -247,7 +245,6 @@ final class Dream: ObservableObject {
         // Keep settings in sync so watch interval reflects the current clip length.
         // (This will be replaced by clip-tape persistence in Phase 2.)
         var persisted = player.recipe
-        persisted.mode = .montage
         persisted.effectsLibrarySnapshot = effectsSession.chains
         state.settingsStore.update { $0.playerConfig.lastRecipe = persisted }
     }
@@ -371,7 +368,6 @@ final class Dream: ObservableObject {
     /// Build a recipe snapshot for display/export (sets mode, timestamp, effects library snapshot)
     func makeDisplayRecipe() -> HypnogramRecipe {
         var recipe = activePlayer.recipe
-        recipe.mode = .montage
         recipe.createdAt = Date()  // Set creation timestamp
         recipe.effectsLibrarySnapshot = effectsSession.chains  // Snapshot the entire effects library
         return recipe
