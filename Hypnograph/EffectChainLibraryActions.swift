@@ -122,27 +122,14 @@ enum EffectChainLibraryActions {
     }
 
     /// Load effect chains from a hypnogram recipe file
-    /// If the recipe has an effectsLibrarySnapshot, uses that
-    /// Otherwise extracts only the chains used in the recipe
+    /// Extracts only the chains used in the recipe
     private static func loadFromHypnogram(url: URL, session: EffectsSession, merge: Bool) {
         guard let recipe = RecipeStore.load(from: url) else {
             AppNotifications.show("Failed to load hypnogram", flash: true)
             return
         }
 
-        // Prefer the full library snapshot if available
-        if let snapshot = recipe.effectsLibrarySnapshot, !snapshot.isEmpty {
-            if merge {
-                session.merge(chains: snapshot)
-                AppNotifications.show("Merged \(snapshot.count) effect chains from snapshot", flash: true)
-            } else {
-                session.replaceChains(snapshot)
-                AppNotifications.show("Loaded \(snapshot.count) effect chains from snapshot", flash: true)
-            }
-            return
-        }
-
-        // Fallback: extract only the chains used in the recipe
+        // Extract only the chains used in the recipe
         let chains = extractEffectChains(from: recipe)
 
         if chains.isEmpty {

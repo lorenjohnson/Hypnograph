@@ -178,7 +178,6 @@ final class Dream: ObservableObject {
     /// Save the current recipe for persistence
     func saveCurrentRecipe() {
         var recipe = player.recipe
-        recipe.effectsLibrarySnapshot = effectsSession.chains
         if !recipe.sources.isEmpty {
             state.settingsStore.update { $0.playerConfig.lastRecipe = recipe }
             print("📦 Saved recipe with \(recipe.sources.count) layer(s)")
@@ -369,7 +368,6 @@ final class Dream: ObservableObject {
     func makeDisplayRecipe() -> HypnogramRecipe {
         var recipe = activePlayer.recipe
         recipe.createdAt = Date()  // Set creation timestamp
-        recipe.effectsLibrarySnapshot = effectsSession.chains  // Snapshot the entire effects library
         return recipe
     }
 
