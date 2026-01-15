@@ -276,6 +276,12 @@ struct EffectsEditorView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var dream: Dream
 
+    private enum EffectsListSelection: Hashable {
+        case current(Int)
+        case recent(UUID)
+        case library(UUID)
+    }
+
     private let listColumnWidth: CGFloat = 240
 
     /// SwiftUI focus state - tracks which field has keyboard focus
@@ -289,6 +295,8 @@ struct EffectsEditorView: View {
 
     /// Show confirmation dialog for restoring default effects library
     @State private var showRestoreConfirmation = false
+
+    @State private var listSelection: EffectsListSelection?
 
     /// Current layer being edited (-1 = global, 0+ = source)
     private var currentLayer: Int {
@@ -313,8 +321,27 @@ struct EffectsEditorView: View {
 
     /// Computed selected chain from current layer's effect
     /// Reads from the recipe's stored chain (per-hypnogram), not the library
-    private var selectedDefinition: EffectChain? {
-        dream.activeEffectManager.effectChain(for: currentLayer)
+    private struct SelectedChainContext {
+        let chain: EffectChain
+        let editableLayer: Int?
+        let title: String
+    }
+
+    private var selectedChainContext: SelectedChainContext? {
+        guard let selection = listSelection else { return nil }
+        switch selection {
+        case .current(let layer):
+            guard let chain = dream.activeEffectManager.effectChain(for: layer) else { return nil }
+            return SelectedChainContext(chain: chain, editableLayer: layer, title: chainDisplayName(chain))
+
+        case .recent(let id):
+            guard let entry = recentStore.entries.first(where: { $0.id == id }) else { return nil }
+            return SelectedChainContext(chain: entry.chain, editableLayer: nil, title: chainDisplayName(entry.chain))
+
+        case .library(let id):
+            guard let chain = viewModel.effectChains.first(where: { $0.id == id }) else { return nil }
+            return SelectedChainContext(chain: chain, editableLayer: nil, title: templateDisplayName(chain))
+        }
     }
 
     /// Check if currently in a text editing state
@@ -329,6 +356,40 @@ struct EffectsEditorView: View {
 
     private func applyTemplate(_ template: EffectChain?) {
         dream.activeEffectManager.applyTemplate(template, to: currentLayer)
+    }
+
+    private func applyRecentEntry(_ entry: RecentEntry) {
+        recentStore.addToFront(entry.chain)
+        dream.activeEffectManager.applyChainSnapshot(
+            entry.chain,
+            sourceTemplateId: entry.sourceTemplateId,
+            to: currentLayer
+        )
+    }
+
+    private struct HoverRevealControlsRow<Label: View, Controls: View>: View {
+        let isSelected: Bool
+        let label: Label
+        let controls: Controls
+
+        @State private var isHovered = false
+
+        init(isSelected: Bool, @ViewBuilder label: () -> Label, @ViewBuilder controls: () -> Controls) {
+            self.isSelected = isSelected
+            self.label = label()
+            self.controls = controls()
+        }
+
+        var body: some View {
+            let showControls = isSelected || isHovered
+            ZStack(alignment: .trailing) {
+                label
+                controls
+                    .opacity(showControls ? 1 : 0)
+                    .allowsHitTesting(showControls)
+            }
+            .onHover { isHovered = $0 }
+        }
     }
 
     var body: some View {
@@ -408,11 +469,13 @@ struct EffectsEditorView: View {
         // Arrow key navigation - only when not in text fields
         .onKeyPress(.upArrow) {
             guard !isTextEditing else { return .ignored }
+            guard focusedField == .effectList, case .some(.current) = listSelection else { return .ignored }
             handleUpDown(delta: -1)
             return .handled
         }
         .onKeyPress(.downArrow) {
             guard !isTextEditing else { return .ignored }
+            guard focusedField == .effectList, case .some(.current) = listSelection else { return .ignored }
             handleUpDown(delta: 1)
             return .handled
         }
@@ -423,6 +486,7 @@ struct EffectsEditorView: View {
             // Set initial focus to effect list immediately
             focusedField = .effectList
             viewModel.activeSection = .effectList
+            listSelection = .current(currentLayer)
         }
         .onChange(of: dream.isLiveMode) { _, _ in
             // Update session when live mode changes (Edit ↔ Live)
@@ -437,6 +501,15 @@ struct EffectsEditorView: View {
             if let field = newField {
                 viewModel.activeSection = field
             }
+        }
+        .onChange(of: listSelection) { _, newValue in
+            // Clear effect expansion state when changing which chain is being inspected.
+            expandedEffectIndices.removeAll()
+            draggingEffectIndex = nil
+
+            // Selecting a CURRENT row should switch the active layer (works for keyboard selection too).
+            guard case let .some(.current(layer)) = newValue else { return }
+            dream.activePlayer.selectSource(layer)
         }
         .confirmationDialog(
             "Restore Default Effects Library?",
@@ -458,19 +531,14 @@ struct EffectsEditorView: View {
     // MARK: - Navigation Helpers
 
     private func handleUpDown(delta: Int) {
-        switch focusedField {
-        case .effectList:
-            // Move CURRENT target selection up/down with wrap-around
-            let targets = currentTargets
-            guard !targets.isEmpty else { return }
-            let currentIndex = targets.firstIndex(of: dream.activePlayer.currentSourceIndex) ?? 0
-            let nextIndex = (currentIndex + delta + targets.count) % targets.count
-            dream.activePlayer.selectSource(targets[nextIndex])
-
-        default:
-            // In text fields, let native focus handle navigation
-            break
-        }
+        // Move CURRENT target selection up/down with wrap-around
+        let targets = currentTargets
+        guard !targets.isEmpty else { return }
+        let currentIndex = targets.firstIndex(of: dream.activePlayer.currentSourceIndex) ?? 0
+        let nextIndex = (currentIndex + delta + targets.count) % targets.count
+        let nextLayer = targets[nextIndex]
+        dream.activePlayer.selectSource(nextLayer)
+        listSelection = .current(nextLayer)
     }
 
     /// Format effect type for display: "FrameDifferenceEffect" -> "Frame Difference"
@@ -522,7 +590,7 @@ struct EffectsEditorView: View {
     }
 
     private var effectsList: some View {
-        List(selection: selectedTargetBinding) {
+        List(selection: $listSelection) {
             currentSection
             recentSection
             librariesSection
@@ -546,11 +614,12 @@ struct EffectsEditorView: View {
         let templateId = chain?.sourceTemplateId
         let canUpdate = templateId != nil && (viewModel.session?.chain(id: templateId!) != nil)
 
-        // Use a full-width plain Button for row interaction, and overlay the trailing Menu separately,
-        // so the row hit area spans the entire sidebar width while keeping a small menu target.
-        ZStack(alignment: .trailing) {
+        let isSelected = listSelection == .current(layer)
+
+        HoverRevealControlsRow(isSelected: isSelected) {
             Button {
                 selectedTargetBinding.wrappedValue = layer
+                listSelection = .current(layer)
             } label: {
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -570,7 +639,7 @@ struct EffectsEditorView: View {
             }
             .buttonStyle(.plain)
             .frame(maxWidth: .infinity, alignment: .leading)
-
+        } controls: {
             Menu {
                 if let chain, !chain.effects.isEmpty, let templateId {
                     Button("Update Library Entry") {
@@ -601,9 +670,10 @@ struct EffectsEditorView: View {
             .menuIndicator(.hidden)
             .frame(width: 20, height: 20)
             .fixedSize()
+            .simultaneousGesture(TapGesture().onEnded { listSelection = .current(layer) })
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .tag(Optional(layer))
+        .tag(EffectsListSelection.current(layer))
     }
 
     @ViewBuilder
@@ -624,14 +694,11 @@ struct EffectsEditorView: View {
 
     @ViewBuilder
     private func recentRow(entry: RecentEntry) -> some View {
-        ZStack(alignment: .trailing) {
+        let isSelected = listSelection == .recent(entry.id)
+
+        HoverRevealControlsRow(isSelected: isSelected) {
             Button {
-                recentStore.addToFront(entry.chain)
-                dream.activeEffectManager.applyChainSnapshot(
-                    entry.chain,
-                    sourceTemplateId: entry.sourceTemplateId,
-                    to: currentLayer
-                )
+                listSelection = .recent(entry.id)
             } label: {
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -651,8 +718,15 @@ struct EffectsEditorView: View {
             }
             .buttonStyle(.plain)
             .frame(maxWidth: .infinity, alignment: .leading)
-
+        } controls: {
             Menu {
+                Button("Apply") {
+                    listSelection = .recent(entry.id)
+                    applyRecentEntry(entry)
+                }
+
+                Divider()
+
                 Button("Remove from History", role: .destructive) {
                     recentStore.remove(id: entry.id)
                 }
@@ -667,8 +741,14 @@ struct EffectsEditorView: View {
             .menuIndicator(.hidden)
             .frame(width: 20, height: 20)
             .fixedSize()
+            .simultaneousGesture(TapGesture().onEnded { listSelection = .recent(entry.id) })
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .tag(EffectsListSelection.recent(entry.id))
+        .onTapGesture(count: 2) {
+            listSelection = .recent(entry.id)
+            applyRecentEntry(entry)
+        }
     }
 
     @ViewBuilder
@@ -682,9 +762,11 @@ struct EffectsEditorView: View {
 
     @ViewBuilder
     private func libraryRow(index: Int, chain: EffectChain) -> some View {
-        ZStack(alignment: .trailing) {
+        let isSelected = listSelection == .library(chain.id)
+
+        HoverRevealControlsRow(isSelected: isSelected) {
             Button {
-                applyTemplate(chain)
+                listSelection = .library(chain.id)
             } label: {
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -704,8 +786,15 @@ struct EffectsEditorView: View {
             }
             .buttonStyle(.plain)
             .frame(maxWidth: .infinity, alignment: .leading)
-
+        } controls: {
             Menu {
+                Button("Apply") {
+                    listSelection = .library(chain.id)
+                    applyTemplate(chain)
+                }
+
+                Divider()
+
                 Button("Duplicate") {
                     duplicateTemplate(chain: chain)
                 }
@@ -727,8 +816,14 @@ struct EffectsEditorView: View {
             .menuIndicator(.hidden)
             .frame(width: 20, height: 20)
             .fixedSize()
+            .simultaneousGesture(TapGesture().onEnded { listSelection = .library(chain.id) })
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .tag(EffectsListSelection.library(chain.id))
+        .onTapGesture(count: 2) {
+            listSelection = .library(chain.id)
+            applyTemplate(chain)
+        }
     }
 
     private func updateLibraryEntry(from chain: EffectChain, templateId: UUID) {
@@ -841,22 +936,33 @@ struct EffectsEditorView: View {
 
     private var parametersColumn: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if let def = selectedDefinition {
-                // Editable name header
-                EditableEffectNameHeader(
-                    name: def.effects.isEmpty ? "None" : (def.name ?? "Unnamed"),
-                    onSave: { newName in
-                        dream.activeEffectManager.updateChainName(for: currentLayer, name: newName)
-                    },
-                    focusedField: $focusedField
-                )
+            if let ctx = selectedChainContext {
+                if let layer = ctx.editableLayer {
+                    // Editable name header (current layer chain)
+                    EditableEffectNameHeader(
+                        name: ctx.chain.effects.isEmpty ? "None" : (ctx.chain.name ?? "Unnamed"),
+                        onSave: { newName in
+                            dream.activeEffectManager.updateChainName(for: layer, name: newName)
+                        },
+                        focusedField: $focusedField
+                    )
+                } else {
+                    Text(ctx.title)
+                        .font(.system(.headline, design: .monospaced))
+                        .foregroundColor(.white)
+                        .padding(.vertical, 4)
+                }
 
                 Divider()
                     .background(Color.white.opacity(0.3))
 
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
-                        parametersForChain(def, layer: currentLayer)
+                        if let layer = ctx.editableLayer {
+                            parametersForChain(ctx.chain, layer: layer)
+                        } else {
+                            parametersForChainReadOnly(ctx.chain)
+                        }
                     }
                 }
             } else {
@@ -894,6 +1000,25 @@ struct EffectsEditorView: View {
 
             // Add effect button
             addEffectButton(for: layer)
+        }
+    }
+
+    @ViewBuilder
+    private func parametersForChainReadOnly(_ chain: EffectChain) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(chain.effects.enumerated()), id: \.offset) { childIndex, effectDef in
+                chainedEffectSectionReadOnly(
+                    effectDef: effectDef,
+                    childIndex: childIndex,
+                    totalEffects: chain.effects.count
+                )
+            }
+
+            if chain.effects.isEmpty {
+                Text("No effects")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.5))
+            }
         }
     }
 
@@ -993,6 +1118,52 @@ struct EffectsEditorView: View {
     }
 
     @ViewBuilder
+    private func chainedEffectSectionReadOnly(effectDef: EffectDefinition, childIndex: Int, totalEffects: Int) -> some View {
+        let isEnabled = effectDef.params?["_enabled"]?.boolValue ?? true
+        let isExpanded = expandedEffectIndices.contains(childIndex)
+
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.white.opacity(0.25))
+                    .frame(width: 20)
+
+                Text(formatEffectType(effectDef.type) ?? "Effect \(childIndex + 1)")
+                    .font(.system(.body, design: .monospaced).bold())
+                    .foregroundColor(isEnabled ? .white : .white.opacity(0.5))
+
+                Spacer()
+
+                Image(systemName: isEnabled ? "checkmark.circle" : "slash.circle")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(isEnabled ? .white.opacity(0.4) : .white.opacity(0.25))
+                    .help(isEnabled ? "Enabled" : "Disabled")
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(isExpanded ? Color.white.opacity(0.24) : Color.white.opacity(0.1))
+            .cornerRadius(6)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    if expandedEffectIndices.contains(childIndex) {
+                        expandedEffectIndices.remove(childIndex)
+                    } else {
+                        expandedEffectIndices.insert(childIndex)
+                    }
+                }
+            }
+
+            if isExpanded {
+                parameterFieldsForEffectReadOnly(effectDef)
+                    .padding(.top, 8)
+                    .opacity(isEnabled ? 1.0 : 0.5)
+            }
+        }
+    }
+
+    @ViewBuilder
     private func addEffectButton(for layer: Int) -> some View {
         Menu {
             ForEach(viewModel.availableEffectTypes, id: \.type) { effect in
@@ -1040,6 +1211,31 @@ struct EffectsEditorView: View {
                             )
                         }
                     )
+                }
+            }
+        } else {
+            Text("No parameters")
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.5))
+        }
+    }
+
+    @ViewBuilder
+    private func parameterFieldsForEffectReadOnly(_ effectDef: EffectDefinition) -> some View {
+        let mergedParams = EffectsEditorViewModel.mergedParametersForEffect(effectDef)
+        let specs = EffectRegistry.parameterSpecs(for: effectDef.type)
+
+        if !mergedParams.isEmpty {
+            ForEach(Array(mergedParams.keys.sorted()), id: \.self) { key in
+                if let value = mergedParams[key] {
+                    ParameterSliderRow(
+                        name: key,
+                        value: value,
+                        effectType: effectDef.type,
+                        spec: specs[key],
+                        onChange: { _ in }
+                    )
+                    .disabled(true)
                 }
             }
         } else {
