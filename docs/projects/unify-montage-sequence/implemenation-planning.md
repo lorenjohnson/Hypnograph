@@ -81,10 +81,7 @@ User-facing behaviors to implement:
 Settings to add early:
 
 - `historyLimit`: Int (default 200).
-- `maxLayers`: Int.
-- `randomizeLayerCount`: Bool (generation behavior).
-  - When ON, new clips choose `layerCount` randomly in `1...maxLayers`.
-  - When OFF, new clips always start with `layerCount == maxLayers`.
+- `maxLayers`: Int (generation ceiling; new clips choose a layer count in `1...maxLayers`).
 - `randomizeBlendModes`: Bool.
 - `randomizeGlobalEffect`: Bool (random from all templates; OFF = carry forward prior clip global chain).
 - `clipLengthMin/Max`: Double (default 2–15).
