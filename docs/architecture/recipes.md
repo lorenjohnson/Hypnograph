@@ -25,8 +25,7 @@ storage for hypnograms.
   - `targetDuration`
   - `playRate`
   - global `effectChain`
-  - optional `effectsLibrarySnapshot`
-  - `mode` and `createdAt`
+  - `createdAt`
   - optional `snapshot` (base64 JPEG)
 
 ### HypnogramSource
@@ -51,8 +50,8 @@ storage for hypnograms.
 ## Load Flow
 - `RecipeStore.load()` decodes JSON into `HypnogramRecipe`.
 - `RecipeFileActions.openRecipe()` provides the Open Panel UI.
-- If the recipe contains `effectsLibrarySnapshot`, the effects library can be
-  merged or replaced by `EffectChainLibraryActions`.
+- `EffectChainLibraryActions` can extract effect chains used in a recipe and
+  merge/replace the current effects library.
 
 ## HypnogramStore
 - Stores a list of saved entries.
