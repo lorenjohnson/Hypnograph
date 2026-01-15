@@ -66,6 +66,9 @@ User-facing behaviors to implement:
 
 - Generate and append new clips; drop oldest if beyond `K`.
 - Navigate previous/next clip.
+  - Keyboard: Left Arrow = previous clip, Right Arrow = next clip.
+  - If there is no “future” clip (at end of history), Right Arrow does nothing.
+  - If there is a prior clip, Left Arrow jumps immediately to that clip.
 - Edit overwrites the current clip in place.
 - Delete current clip.
 - “Clear Clip History” menu item (resets and generates a fresh clip).
@@ -86,6 +89,9 @@ Goal: remove the watch timer and make playback event-driven.
 
 Hard requirement:
 - clips advance on clip end; if at end of tape, generate next (∞) or loop within run (finite N).
+ 
+Explicitly do **not** preserve the old “watch timer resets on user interaction” behavior:
+- clip advance should be driven by playback reaching the clip end (or explicit pause), not by “editing activity”.
 
 Implementation options (pick one):
 
