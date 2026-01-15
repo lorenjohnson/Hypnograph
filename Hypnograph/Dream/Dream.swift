@@ -149,7 +149,7 @@ final class Dream: ObservableObject {
         state.watchIntervalProvider = { [weak self] in
             guard let self else { return 60.0 }
             let playRate = Double(max(0.01, self.activePlayer.playRate))
-            return self.activePlayer.recipe.targetDuration.seconds / playRate
+            return self.activePlayer.targetDuration.seconds / playRate
         }
         state.scheduleWatchTimer()
 
@@ -178,9 +178,9 @@ final class Dream: ObservableObject {
     /// Save the current recipe for persistence
     func saveCurrentRecipe() {
         var recipe = player.recipe
-        if !recipe.sources.isEmpty {
+        if !player.sources.isEmpty {
             state.settingsStore.update { $0.playerConfig.lastRecipe = recipe }
-            print("📦 Saved recipe with \(recipe.sources.count) layer(s)")
+            print("📦 Saved recipe with \(player.sources.count) layer(s)")
         }
 
         // Force immediate synchronous save for app termination
@@ -197,7 +197,7 @@ final class Dream: ObservableObject {
             player.effectManager.clearFrameBuffer()
             EffectChainLibraryActions.importChainsFromRecipe(recipe, into: player.effectsSession)
             player.notifyRecipeChanged()
-            print("📦 Restored recipe with \(recipe.sources.count) layer(s)")
+            print("📦 Restored recipe with \(player.sources.count) layer(s)")
         } else {
             generateNewHypnogram(for: player)
         }
@@ -235,7 +235,7 @@ final class Dream: ObservableObject {
         let count = Int.random(in: 1...total)
 
         for i in 0..<max(1, count) {
-            guard let clip = state.library.randomClip(clipLength: player.recipe.targetDuration.seconds) else {
+            guard let clip = state.library.randomClip(clipLength: player.targetDuration.seconds) else {
                 continue
             }
             let blendMode = (i == 0) ? BlendMode.sourceOver : BlendMode.defaultMontage
@@ -253,7 +253,7 @@ final class Dream: ObservableObject {
     /// Add a source to the given player
     private func addSourceToPlayer(_ player: DreamPlayerState, length: Double? = nil) {
         // Use default clip length if not provided
-        let clipLength = length ?? player.recipe.targetDuration.seconds
+        let clipLength = length ?? player.targetDuration.seconds
         guard let clip = state.library.randomClip(clipLength: clipLength) else { return }
         let blendMode = player.sources.isEmpty ? BlendMode.sourceOver : BlendMode.defaultMontage
         let source = HypnogramSource(clip: clip, blendMode: blendMode)
@@ -332,12 +332,11 @@ final class Dream: ObservableObject {
             generateNewHypnogram(for: activePlayer)
         }
 
-        let recipe = makeDisplayRecipe()
         let player = activePlayer
 
         return AnyView(
             MontagePlayerView(
-                recipe: recipe,
+                clip: player.currentClip,
                 aspectRatio: player.config.aspectRatio,
                 displayResolution: player.config.playerResolution,
                 currentSourceIndex: Binding(
@@ -354,7 +353,7 @@ final class Dream: ObservableObject {
                 volume: previewVolume,
                 audioDeviceUID: previewAudioDeviceUID
             )
-            .id("dream-preview-\(player.config.viewID)-\(recipe.playRate)")
+            .id("dream-preview-\(player.config.viewID)-\(player.playRate)")
         )
     }
 
@@ -368,6 +367,9 @@ final class Dream: ObservableObject {
     func makeDisplayRecipe() -> HypnogramRecipe {
         var recipe = activePlayer.recipe
         recipe.createdAt = Date()  // Set creation timestamp
+        if recipe.clips.indices.contains(activePlayer.currentClipIndex) {
+            recipe.clips[activePlayer.currentClipIndex].createdAt = recipe.createdAt
+        }
         return recipe
     }
 
@@ -389,7 +391,7 @@ final class Dream: ObservableObject {
     /// Send current hypnogram to live display
     func sendToLivePlayer() {
         livePlayer.send(
-            recipe: activePlayer.recipe,
+            clip: activePlayer.currentClip.copyForExport(),
             config: activePlayer.config
         )
     }
@@ -426,7 +428,7 @@ final class Dream: ObservableObject {
     private func replaceClipForCurrentSource() {
         let idx = activePlayer.currentSourceIndex
         guard idx >= 0, idx < activePlayer.sources.count else { return }
-        guard let clip = state.library.randomClip(clipLength: activePlayer.recipe.targetDuration.seconds) else { return }
+        guard let clip = state.library.randomClip(clipLength: activePlayer.targetDuration.seconds) else { return }
         activePlayer.sources[idx].clip = clip
     }
 
@@ -476,22 +478,22 @@ final class Dream: ObservableObject {
     /// Render and save the hypnogram as a video file (enqueue to render queue)
     /// This is the legacy save behavior - available in menu without hotkey
     func renderAndSaveVideo() {
-        guard !activePlayer.recipe.sources.isEmpty else {
+        guard !activePlayer.sources.isEmpty else {
             print("Dream: no sources to render.")
             return
         }
 
-        // Deep copy recipe with fresh effect instances to avoid sharing state with preview
-        let renderRecipe = activePlayer.recipe.copyForExport()
+        // Deep copy clip with fresh effect instances to avoid sharing state with preview
+        let renderClip = activePlayer.currentClip.copyForExport()
 
         // Create renderer with current settings (aspect ratio + resolution)
         let outputSize = exportSettings()
 
-        print("Dream: enqueueing recipe with \(renderRecipe.sources.count) layer(s), duration: \(renderRecipe.targetDuration.seconds)s")
+        print("Dream: enqueueing clip with \(renderClip.sources.count) layer(s), duration: \(renderClip.targetDuration.seconds)s")
 
         // Enqueue immediately (don't defer - the renderer handles async internally)
         renderQueue.enqueue(
-            recipe: renderRecipe,
+            clip: renderClip,
             outputFolder: state.settings.outputURL,
             outputSize: outputSize
         )
@@ -568,7 +570,7 @@ final class Dream: ObservableObject {
 
     /// Favorite the current hypnogram (save to store as favorite)
     func favoriteCurrentHypnogram() {
-        guard !activePlayer.recipe.sources.isEmpty else {
+        guard !activePlayer.sources.isEmpty else {
             print("Dream: no sources to favorite")
             return
         }

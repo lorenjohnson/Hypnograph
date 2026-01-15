@@ -21,6 +21,9 @@ final class DreamPlayerState: ObservableObject {
     /// The current hypnogram recipe - sources, effects, duration
     @Published var recipe: HypnogramRecipe
 
+    /// The active clip index in `recipe.clips`
+    @Published var currentClipIndex: Int = 0
+
     // MARK: - Playback State
 
     /// Current source index for navigation (-1 = global layer, 0+ = source index)
@@ -56,21 +59,38 @@ final class DreamPlayerState: ObservableObject {
 
     // MARK: - Recipe Properties (convenience accessors)
 
+    /// The currently selected clip (materialized).
+    var currentClip: HypnogramClip {
+        get {
+            let index = max(0, min(currentClipIndex, recipe.clips.count - 1))
+            return recipe.clips[index]
+        }
+        set {
+            let index = max(0, min(currentClipIndex, recipe.clips.count - 1))
+            recipe.clips[index] = newValue
+            objectWillChange.send()
+        }
+    }
+
+    private func updateCurrentClip(_ update: (inout HypnogramClip) -> Void) {
+        var clip = currentClip
+        update(&clip)
+        currentClip = clip
+    }
+
     /// Playback rate - reads/writes directly to recipe
     var playRate: Float {
-        get { recipe.playRate }
+        get { currentClip.playRate }
         set {
-            recipe.playRate = newValue
-            objectWillChange.send()
+            updateCurrentClip { $0.playRate = newValue }
         }
     }
 
     /// Target duration - reads/writes directly to recipe
     var targetDuration: CMTime {
-        get { recipe.targetDuration }
+        get { currentClip.targetDuration }
         set {
-            recipe.targetDuration = newValue
-            objectWillChange.send()
+            updateCurrentClip { $0.targetDuration = newValue }
         }
     }
 
@@ -100,25 +120,31 @@ final class DreamPlayerState: ObservableObject {
         }
 
         // Recipe provider
-        effectManager.recipeProvider = { [weak self] in
-            self?.recipe
+        effectManager.clipProvider = { [weak self] in
+            self?.currentClip
         }
 
         // Global effect chain setter
         effectManager.globalEffectChainSetter = { [weak self] chain in
-            self?.recipe.effectChain = chain
+            self?.updateCurrentClip { $0.effectChain = chain }
         }
 
         // Source effect chain setter
         effectManager.sourceEffectChainSetter = { [weak self] sourceIndex, chain in
-            guard let self = self, sourceIndex < self.recipe.sources.count else { return }
-            self.recipe.sources[sourceIndex].effectChain = chain
+            guard let self else { return }
+            self.updateCurrentClip { clip in
+                guard sourceIndex < clip.sources.count else { return }
+                clip.sources[sourceIndex].effectChain = chain
+            }
         }
 
         // Blend mode setter (getter is via recipeProvider reading source.blendMode)
         effectManager.blendModeSetter = { [weak self] sourceIndex, blendMode in
-            guard let self = self, sourceIndex < self.recipe.sources.count else { return }
-            self.recipe.sources[sourceIndex].blendMode = blendMode
+            guard let self else { return }
+            self.updateCurrentClip { clip in
+                guard sourceIndex < clip.sources.count else { return }
+                clip.sources[sourceIndex].blendMode = blendMode
+            }
         }
     }
 
@@ -134,6 +160,7 @@ final class DreamPlayerState: ObservableObject {
     /// Replace the entire recipe (used when loading from file)
     func setRecipe(_ newRecipe: HypnogramRecipe) {
         recipe = newRecipe
+        currentClipIndex = 0
     }
 
     /// Notify that recipe has changed (triggers re-render)
@@ -144,13 +171,13 @@ final class DreamPlayerState: ObservableObject {
     // MARK: - Convenience Accessors
 
     var sources: [HypnogramSource] {
-        get { recipe.sources }
-        set { recipe.sources = newValue }
+        get { currentClip.sources }
+        set { updateCurrentClip { $0.sources = newValue } }
     }
 
     var effectChain: EffectChain {
-        get { recipe.effectChain }
-        set { recipe.effectChain = newValue }
+        get { currentClip.effectChain }
+        set { updateCurrentClip { $0.effectChain = newValue } }
     }
     
     var activeSourceCount: Int { sources.count }
@@ -160,7 +187,7 @@ final class DreamPlayerState: ObservableObject {
         return sources[currentSourceIndex]
     }
     
-    var currentClip: VideoClip? {
+    var currentVideoClip: VideoClip? {
         currentSource?.clip
     }
 
@@ -204,16 +231,18 @@ final class DreamPlayerState: ObservableObject {
         effectManager.clearFrameBuffer()
 
         // Save the effect chain (source of truth) before clearing
-        let savedEffectChain = preserveGlobalEffect ? recipe.effectChain.clone() : nil
+        let savedEffectChain = preserveGlobalEffect ? currentClip.effectChain.clone() : nil
 
-        sources.removeAll()
-        recipe.effectChain = EffectChain()
+        updateCurrentClip { clip in
+            clip.sources.removeAll()
+            clip.effectChain = EffectChain()
+        }
         currentSourceIndex = -1  // Reset to global layer
         currentClipTimeOffset = nil
 
         // Restore effect chain (it will lazily re-instantiate effects when apply() is called)
         if preserveGlobalEffect, let chain = savedEffectChain {
-            recipe.effectChain = chain
+            updateCurrentClip { $0.effectChain = chain }
         }
     }
 

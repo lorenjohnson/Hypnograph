@@ -7,7 +7,7 @@ import HypnoCore
 /// Player view for Dream module layered playback.
 /// All sources are composited together, looping at targetDuration.
 struct MontagePlayerView: NSViewRepresentable {
-    let recipe: HypnogramRecipe
+    let clip: HypnogramClip
     let aspectRatio: AspectRatio
     let displayResolution: OutputResolution
     @Binding var currentSourceIndex: Int
@@ -61,9 +61,9 @@ struct MontagePlayerView: NSViewRepresentable {
         let c = context.coordinator
 
         // Always update playRate so closures use current value
-        c.playRate = recipe.playRate
+        c.playRate = clip.playRate
 
-        guard !recipe.sources.isEmpty else {
+        guard !clip.sources.isEmpty else {
             // Just pause, don't tear down - sources might be added back immediately
             c.player?.pause()
             c.currentTask?.cancel()
@@ -78,7 +78,7 @@ struct MontagePlayerView: NSViewRepresentable {
         // Use display resolution for preview - AVPlayerView handles fitting to view
         let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: displayResolution.maxDimension)
 
-        let newID = compositionIdentity(for: recipe)
+        let newID = compositionIdentity(for: clip)
 
         if newID != c.compositionID {
             c.currentTask?.cancel()
@@ -98,7 +98,7 @@ struct MontagePlayerView: NSViewRepresentable {
                 )
 
                 let result = await engine.makePlayerItem(
-                    recipe: recipe,
+                    clip: clip,
                     config: config,
                     effectManager: effectManager
                 )
@@ -207,7 +207,7 @@ struct MontagePlayerView: NSViewRepresentable {
                 if isPaused {
                     c.player?.pause()
                 } else {
-                    c.player?.playImmediately(atRate: recipe.playRate)
+                    c.player?.playImmediately(atRate: clip.playRate)
                 }
                 c.lastPauseState = isPaused
             }
@@ -242,9 +242,9 @@ struct MontagePlayerView: NSViewRepresentable {
     
     // MARK: - Helpers
 
-    private func compositionIdentity(for recipe: HypnogramRecipe) -> String {
+    private func compositionIdentity(for clip: HypnogramClip) -> String {
         // Blend modes are dynamic (managed by EffectManager), but transforms are baked
-        let pairs: [String] = recipe.sources.enumerated().map { index, source in
+        let pairs: [String] = clip.sources.enumerated().map { index, source in
             let name = source.clip.file.displayName
             let start = source.clip.startTime.seconds
             let dur = source.clip.duration.seconds
@@ -254,7 +254,7 @@ struct MontagePlayerView: NSViewRepresentable {
             }.joined(separator: ";")
             return "\(name)|\(start)|\(dur)|\(transformsStr)"
         }
-        let durationPart = "dur=\(recipe.targetDuration.seconds)"
+        let durationPart = "dur=\(clip.targetDuration.seconds)"
         return pairs.joined(separator: ";;") + "||" + durationPart
     }
 

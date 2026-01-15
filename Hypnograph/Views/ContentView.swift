@@ -14,13 +14,24 @@ struct ContentView: View {
         state.effectsEditorViewModel
     }
 
-    private var soloIndicatorText: String? {
-        // Only show during flash solo (when navigating sources)
-        guard dream.activePlayer.effectManager.flashSoloIndex != nil,
-              !dream.activePlayer.sources.isEmpty else {
-            return nil
+    private var topRightIndicatorText: String? {
+        // LIVE indicator (same placement/size as the layer indicator)
+        if dream.isLiveMode {
+            return "LIVE"
         }
-        return "\(dream.activePlayer.currentSourceIndex + 1)/\(dream.activePlayer.sources.count)"
+
+        // Layer indicators: show during flash solo (1-9 hold) or global hold (`) while global effects are suspended.
+        guard !dream.activePlayer.sources.isEmpty else { return nil }
+
+        if dream.activePlayer.effectManager.flashSoloIndex != nil {
+            return "\(dream.activePlayer.currentSourceIndex + 1)/\(dream.activePlayer.sources.count)"
+        }
+
+        if dream.activePlayer.isGlobalEffectSuspended {
+            return "GLOBAL/\(dream.activePlayer.sources.count)"
+        }
+
+        return nil
     }
 
     var body: some View {
@@ -32,18 +43,6 @@ struct ContentView: View {
             // Dream display
             dream.makeDisplayView()
                 .ignoresSafeArea()
-
-            // LIVE indicator - top left, only in Live mode
-            if dream.isLiveMode {
-                Text("LIVE")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.red)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.black.opacity(0.6).cornerRadius(6))
-                    .padding(.top, 12)
-                    .padding(.leading, 12)
-            }
 
             // HUD and Hypnogram List - top left (below LIVE if visible)
             VStack(alignment: .leading, spacing: 8) {
@@ -90,11 +89,14 @@ struct ContentView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if let text = soloIndicatorText {
+            if let text = topRightIndicatorText {
                 Text(text)
-                    .font(.system(size: 48, weight: .bold))
+                    .font(.system(size: 36, weight: .bold))
                     .foregroundColor(.red)
-                    .padding()
+                    .padding(.top, 14)
+                    .padding(.bottom, 14)
+                    .padding(.leading, 14)
+                    .padding(.trailing, 28)
             }
         }
         .overlay(alignment: .topTrailing) {

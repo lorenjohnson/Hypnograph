@@ -39,7 +39,7 @@ extension Dream {
         // Source-specific info (only when on a source layer, not global)
         if !activePlayer.isOnGlobalLayer {
             items.append(.text("Blend mode (M): \(currentBlendModeDisplayName())", order: 26))
-            if let clip = activePlayer.currentClip {
+            if let clip = activePlayer.currentVideoClip {
                 items.append(.text("Layer clip: \(String(format: "%.1fs", clip.duration.seconds))", order: 27))
             }
 
@@ -51,10 +51,10 @@ extension Dream {
         items.append(.text("Shortcuts", order: 40, font: .subheadline))
         items.append(.text(". = New clip | M = Blend | Delete = Remove source", order: 41))
         items.append(.text("Cmd+E = Cycle effect | C = Clear layer | Ctrl+Shift+C = Clear all", order: 42))
-        items.append(.text("E = Effects editor | 0 = Global | 1-9 = Source", order: 43))
+        items.append(.text("E = Effects editor | ` = Global | 1-9 = Source", order: 43))
         items.append(.text("Left/Right = Navigate | N = New | Shift+N = Add source", order: 44))
         items.append(.text("Cmd+S = Save | Cmd+F = Favorite hypnogram", order: 45))
-        items.append(.text("` = Toggle Preview/Live | Shift+X/D = Exclude/Mark delete", order: 46))
+        items.append(.text("Shift+X/D = Exclude/Mark delete", order: 46))
 
         return items
     }
@@ -69,7 +69,6 @@ extension Dream {
         Button("Toggle Live Mode (Preview/Live)") { [self] in
             toggleLiveMode()
         }
-        .keyboardShortcut("`", modifiers: [])
         .disabled(isTyping)
 
         Divider()
@@ -123,7 +122,7 @@ extension Dream {
         Button("Select Global Layer") { [self] in
             activePlayer.selectGlobalLayer()
         }
-        .keyboardShortcut("0", modifiers: [])
+        .keyboardShortcut("`", modifiers: [])
         .disabled(isTyping)
 
         Divider()

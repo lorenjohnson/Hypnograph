@@ -158,29 +158,29 @@ enum EffectChainLibraryActions {
 
     // MARK: - Private Helpers
 
-    /// Extract effect chains from a recipe (global + per-source)
+    /// Extract effect chains from a recipe (per-clip global + per-clip per-source)
     private static func extractEffectChains(from recipe: HypnogramRecipe) -> [EffectChain] {
         var chains: [EffectChain] = []
 
-        // Add global effect chain if it has effects
-        if !recipe.effectChain.effects.isEmpty {
-            let globalChain = recipe.effectChain.clone()
-            // Ensure it has a name
-            if globalChain.name == nil || globalChain.name?.isEmpty == true {
-                globalChain.name = "Global (imported)"
-            }
-            chains.append(globalChain)
-        }
-
-        // Add per-source effect chains that have effects
-        for (index, source) in recipe.sources.enumerated() {
-            if !source.effectChain.effects.isEmpty {
-                let sourceChain = source.effectChain.clone()
-                // Ensure it has a name
-                if sourceChain.name == nil || sourceChain.name?.isEmpty == true {
-                    sourceChain.name = "Source \(index + 1) (imported)"
+        for (clipIndex, clip) in recipe.clips.enumerated() {
+            // Add per-clip global effect chain if it has effects
+            if !clip.effectChain.effects.isEmpty {
+                let globalChain = clip.effectChain.clone()
+                if globalChain.name == nil || globalChain.name?.isEmpty == true {
+                    globalChain.name = "Clip \(clipIndex + 1) Global (imported)"
                 }
-                chains.append(sourceChain)
+                chains.append(globalChain)
+            }
+
+            // Add per-source effect chains that have effects
+            for (sourceIndex, source) in clip.sources.enumerated() {
+                if !source.effectChain.effects.isEmpty {
+                    let sourceChain = source.effectChain.clone()
+                    if sourceChain.name == nil || sourceChain.name?.isEmpty == true {
+                        sourceChain.name = "Clip \(clipIndex + 1) Source \(sourceIndex + 1) (imported)"
+                    }
+                    chains.append(sourceChain)
+                }
             }
         }
 
