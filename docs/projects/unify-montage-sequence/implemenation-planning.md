@@ -51,56 +51,61 @@ only supports “sources-as-layers” (montage) until clip-tape export exists.
 - Remove any sequence-oriented renderer tests.
 - Keep `HypnogramRecipe.mode` as a legacy decode field if it exists in old `.hypno` files, but treat it as informational only.
 
-## Phase 2: Introduce Clip Tape (materialized history) + maxClips
+## Phase 2: Introduce Clip History (materialized)
 
 Goal: implement the new primary behavior: ordered clip history you can navigate/edit/delete.
+
+Clarification: `HypnogramRecipe` stays a *single-clip* recipe (layers + effects + duration).
+We do not introduce “recipes that contain sequences of clips”. When we render multiple clips,
+that is represented as a separate export request/spec that references a slice of `ClipHistory`.
 
 Minimum viable data model (can be refined later):
 
 - `Clip` = a `HypnogramRecipe` plus any clip-level metadata needed (e.g., stable id, createdAt).
   - Per-clip `playRate` already exists on `HypnogramRecipe`.
   - Per-clip effects already exist (global + per-layer) on `HypnogramRecipe`.
-- `ClipTape` = `[Clip]` + `currentIndex` + `historyLimitK` + `clipCountSetting` (N or ∞).
+- `ClipHistory` = `[Clip]` + `currentIndex` + `historyLimit`.
 
 User-facing behaviors to implement:
 
-- Generate and append new clips; drop oldest if beyond `K`.
+- Generate and append new clips; drop oldest if beyond `historyLimit`.
 - Navigate previous/next clip.
   - Keyboard: Left Arrow = previous clip, Right Arrow = next clip.
   - If there is no “future” clip (at end of history), Right Arrow does nothing.
   - If there is a prior clip, Left Arrow jumps immediately to that clip.
+  - HUD: when the user manually navigates history (arrow keys or menu commands), flash a clip counter overlay in the same size/style as the existing Layer counter, but in blue (e.g. `3/57`).
 - Edit overwrites the current clip in place.
 - Delete current clip.
-- “Clear Clip History” menu item (resets and generates a fresh clip).
+- “Clear Clip History” menu item keeps the current clip and deletes all history before/after it.
 
 Settings to add early:
 
-- `clipCount`: `Int?` (nil = ∞) or an enum.
-- `historyLimitK`: Int (default 200).
+- `historyLimit`: Int (default 200).
 - `maxLayers`: Int.
-- `randomizeLayerCount`: Bool.
+- `randomizeLayerCount`: Bool (generation behavior).
+  - When ON, new clips choose `layerCount` randomly in `1...maxLayers`.
+  - When OFF, new clips always start with `layerCount == maxLayers`.
 - `randomizeBlendModes`: Bool.
 - `randomizeGlobalEffect`: Bool (random from all templates; OFF = carry forward prior clip global chain).
 - `clipLengthMin/Max`: Double (default 2–15).
+- `watchMode`: Bool (preview behavior; ON = advance/generate on clip end, OFF = loop current clip).
 
 ## Phase 3: Playback semantics (replace Watch timer)
 
 Goal: remove the watch timer and make playback event-driven.
 
 Hard requirement:
-- clips advance on clip end; if at end of tape, generate next (∞) or loop within run (finite N).
+- if `watchMode` is ON, advance on clip end; if at end of history, generate and append next.
+- if `watchMode` is OFF, loop the current clip (do not auto-generate).
 
-Implementation options (pick one):
+Implementation approach:
 
-1) **Player-driven end callback** (ideal):
-   - the preview player emits “clip ended” at the end of clip duration
-   - Dream advances tape index / generates next
+1) **Player-driven end callback**:
+   - the preview player emits “clip ended” at the end of the current clip
+   - Dream advances `ClipHistory.currentIndex` (or generates next if at end)
+   - remove the current “loop-on-end” behavior from preview when `watchMode` is ON
 
-2) **Timer-driven end** (acceptable first pass):
-   - schedule a timer for current clip duration adjusted by play rate
-   - robust to pause/seek needs extra handling (may be fragile)
-
-This phase also decides whether “finite N” is a fixed window (first N) or a moving window (most recent N). The overview assumes “ensure there are N materialized; loop within those N”.
+Note: any “how many clips to render” knob belongs to render/export only (e.g. `renderClipCount`).
 
 ## Phase 4: Render clip tape (minimal UI)
 
@@ -108,8 +113,14 @@ Goal: export a concatenation of materialized clips (hard cuts), matching preview
 
 Minimal render UX:
 
-- Finite N: render the current N-clip run.
-- ∞: prompt for “render last N clips”.
+- Ask for `renderClipCount` (N) each time (or remember last value).
+- Default selection comes from history only:
+  - If there are at least N clips starting at the current clip, render that forward slice.
+  - Otherwise render the last N clips available (ending at the end of history).
+
+Future (when we want one “recipe” type to cover both single-clip and multi-clip):
+- Keep `HypnogramRecipe` as the clip recipe (layers + effects + duration).
+- Introduce a higher-level “sequence”/“episode” document (e.g. `HypnogramSequence`) that stores `[HypnogramRecipe]` for export/persistence.
 
 Render architecture direction:
 
