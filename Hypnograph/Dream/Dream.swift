@@ -146,6 +146,12 @@ final class Dream: ObservableObject {
         state.onWatchTimerFired = { [weak self] in
             self?.new()
         }
+        state.watchIntervalProvider = { [weak self] in
+            guard let self else { return 60.0 }
+            let playRate = Double(max(0.01, self.activePlayer.playRate))
+            return self.activePlayer.recipe.targetDuration.seconds / playRate
+        }
+        state.scheduleWatchTimer()
 
         // Restore last recipe if available
         restorePersistedRecipe()
@@ -241,11 +247,8 @@ final class Dream: ObservableObject {
         player.effectManager.invalidateBlendAnalysis()
         player.effectManager.onEffectChanged?()
 
-        // Keep settings in sync so watch interval reflects the current clip length.
-        // (This will be replaced by clip-tape persistence in Phase 2.)
-        var persisted = player.recipe
-        persisted.effectsLibrarySnapshot = effectsSession.chains
-        state.settingsStore.update { $0.playerConfig.lastRecipe = persisted }
+        // Note: watch timing now uses state.watchIntervalProvider, so we no longer
+        // persist recipes just to synchronize the watch timer interval.
     }
 
     /// Add a source to the given player

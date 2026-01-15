@@ -224,9 +224,10 @@ struct Settings: Codable, MediaLibrarySettings {
 
     // MARK: - Derived values
 
-    /// Watch timer interval - uses last recipe duration or default 60s
+    /// Watch timer default interval (seconds).
+    /// The active clip can override this via `HypnographState.watchIntervalProvider`.
     var watchInterval: Double {
-        playerConfig.lastRecipe?.targetDuration.seconds ?? 60.0
+        max(0.1, (clipLengthMinSeconds + clipLengthMaxSeconds) / 2.0)
     }
 
     var outputURL: URL {
