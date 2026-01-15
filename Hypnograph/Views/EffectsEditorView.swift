@@ -512,10 +512,6 @@ struct EffectsEditorView: View {
             // Update session when live mode changes (Edit ↔ Live)
             viewModel.session = dream.effectsSession
         }
-        .onChange(of: dream.mode) { _, _ in
-            // Update session when dream mode changes (Montage ↔ Sequence)
-            viewModel.session = dream.effectsSession
-        }
         .onChange(of: focusedField) { _, newField in
             // Sync active section when focus changes
             if let field = newField {

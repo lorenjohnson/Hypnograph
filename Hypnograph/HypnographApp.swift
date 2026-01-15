@@ -307,17 +307,12 @@ struct HypnographApp: App {
                 // Wire up session-based unsaved changes check
                 appDelegate.hasUnsavedEffectChanges = { [weak dream] in
                     guard let dream = dream else { return false }
-                    // Check all sessions for unsaved changes
-                    return dream.montagePlayer.effectsSession.hasUnsavedChanges ||
-                           dream.sequencePlayer.effectsSession.hasUnsavedChanges ||
-                           dream.livePlayer.effectsSession.hasUnsavedChanges
+                    return dream.effectsSession.hasUnsavedChanges
                 }
 
                 // Wire up session-based save
                 appDelegate.saveEffectSessions = { [weak dream] in
-                    dream?.montagePlayer.effectsSession.save()
-                    dream?.sequencePlayer.effectsSession.save()
-                    dream?.livePlayer.effectsSession.save()
+                    dream?.effectsSession.save()
                 }
 
                 // Wire up Tab key callbacks for clean screen toggle
@@ -333,21 +328,21 @@ struct HypnographApp: App {
                     state?.saveWindowStateToDisk()
                 }
 
-                // Wire up global effect suspend (0 key hold in Montage mode)
+                // Wire up global effect suspend (0 key hold)
                 appDelegate.setGlobalEffectSuspended = { [weak dream] suspended in
-                    guard let dream = dream, dream.mode == .montage else { return }
-                    dream.montagePlayer.isGlobalEffectSuspended = suspended
-                    dream.montagePlayer.effectManager.isGlobalEffectSuspended = suspended
+                    guard let dream = dream, !dream.isLiveMode else { return }
+                    dream.player.isGlobalEffectSuspended = suspended
+                    dream.player.effectManager.isGlobalEffectSuspended = suspended
                 }
 
-                // Wire up flash solo (1-9 key hold in Montage mode)
+                // Wire up flash solo (1-9 key hold)
                 appDelegate.setFlashSolo = { [weak dream] sourceIndex in
-                    guard let dream = dream, dream.mode == .montage else { return false }
+                    guard let dream = dream, !dream.isLiveMode else { return false }
                     // Only set flash solo if the source exists, otherwise ignore
                     if let index = sourceIndex {
-                        guard index < dream.montagePlayer.sources.count else { return false }
+                        guard index < dream.player.sources.count else { return false }
                     }
-                    dream.montagePlayer.effectManager.setFlashSolo(sourceIndex)
+                    dream.player.effectManager.setFlashSolo(sourceIndex)
                     return true
                 }
 
@@ -383,4 +378,3 @@ struct HypnographApp: App {
         }
     }
 }
-

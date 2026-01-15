@@ -27,21 +27,18 @@ This document describes the preview, performance display, and export rendering p
 
 ### Public API (HypnoRenderer)
 - `RenderEngine` is the primary entry point for preview and export.
-- `RenderEngine.Timeline` defines montage vs sequence playback.
 - `RenderEngine.ExportQueue` handles async export jobs and progress callbacks.
 - Models: `AspectRatio`, `RenderError`, and `renderSize(...)` are public sizing/error helpers.
 
 ### RenderEngine
 - Entry point for preview and export.
-- `makePlayerItem()` builds an `AVPlayerItem` for montage or sequence preview.
+- `makePlayerItem()` builds an `AVPlayerItem` for montage preview.
 - `export()` builds a composition and runs `AVAssetExportSession` or a still-image montage.
 - `RenderEngine.Config.enableGlobalEffects` gates effect usage across the pipeline.
 
 ### CompositionBuilder
 - Builds `AVMutableComposition`, `AVMutableVideoComposition`, audio mix, and `RenderInstruction` objects.
-- Supports two timeline strategies:
-  - Montage: layered tracks, looping per-source clips to `targetDuration`.
-  - Sequence: single track, clips concatenated end-to-end.
+- Builds montage compositions: layered tracks, looping per-source clips to `targetDuration`.
 
 ### RenderInstruction
 - Per-time-range instruction for `AVVideoCompositing`.
@@ -94,19 +91,13 @@ This document describes the preview, performance display, and export rendering p
 3. If montage output contains only still images, `PhotoMontage` exports a PNG.
 4. Otherwise `AVAssetExportSession` writes a `.mov`.
 
-## Montage vs Sequence Details
+## Montage Details
 
-### Montage
 - Each source gets its own video track.
 - Video clips loop to fill `targetDuration`.
 - Still images create empty time ranges and are passed as `stillImages` in
   internal render instructions.
 - Multiple audio tracks are mixed with normalized volume to reduce clipping.
-
-### Sequence
-- Single video track and single audio track.
-- Each clip is inserted sequentially with its own internal render instruction.
-- Still images are represented as empty time ranges with `stillImages` provided.
 
 ## Output Sizing
 - Render sizes are computed via `renderSize(aspectRatio:maxDimension)` using

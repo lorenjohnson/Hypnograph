@@ -16,7 +16,7 @@ import HypnoCore
 /// - **LB** (Left Bumper) - Cycle blend mode (M) - current layer
 /// - **RB** (Right Bumper) - Cycle source effect backward (F) - current layer
 /// - **LT** (Left Trigger) - Clear all effects and reset blend modes
-/// - **RT** (Right Trigger) - Toggle style (Montage/Sequence)
+/// - **RT** (Right Trigger) - Toggle Preview/Live
 /// - **Start/Menu** - Pause/Play (P)
 /// - **Back/Options** - Toggle HUD (H)
 /// - **Left Stick Click** - Toggle watch mode (W)
@@ -230,10 +230,10 @@ final class GameControllerManager {
             self?.dream?.clearAllEffects()
         }
 
-        // Right Trigger - Toggle mode (Montage/Sequence)
+        // Right Trigger - Toggle Live mode (Preview/Live)
         gamepad.rightTrigger.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed else { return }
-            self?.dream?.toggleMode()
+            self?.dream?.toggleLiveMode()
         }
     }
 
@@ -282,8 +282,7 @@ final class GameControllerManager {
 
         dream.livePlayer.send(
             recipe: dream.makeDisplayRecipe(),
-            config: dream.activePlayer.config,
-            mode: dream.mode
+            config: dream.activePlayer.config
         )
         print("🎮 Sent to Live Display")
     }

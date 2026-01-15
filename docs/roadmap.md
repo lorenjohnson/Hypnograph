@@ -23,7 +23,7 @@ last_reviewed: 2026-01-07
 - [ ] I am questioning whether effects chains ("Treatments")should be named or if they maybe are just a thumbnail and pressing on the Treatment thumbnail applies the treatment or maybe a small button on the thumbnail takes a snapshot of the current hypnogram to be the new thumbnail for that treatment.
 
 ## Known Issues / Bugs
-- [ ] Rendering/saving some Hypnograms results in an error: "🔴 HypnogramRenderer: Export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn’t be completed. (Hypnograph.RenderError error 6.)"
+- [ ] Rendering/saving some Hypnograms results in an error: "🔴 RenderEngine.export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn’t be completed. (Hypnograph.RenderError error 6.)"
 - [ ] Window state not saved in Hypnograph
 - [ ] Increase XcodeBuild MCP timeout to >60s (UI tests time out).
 - [ ] **Effect name editing broken** - Opens edit mode but can't type. `isTyping` focus disconnect once any effects load operation were done first

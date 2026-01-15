@@ -91,13 +91,12 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
    - Ensure new frameworks depend on `HypnoCore` for shared media models and Photos access.  
    - Update renderer/effects resource loading to use framework bundles (avoid `Bundle.main` for Metal and effect JSON assets).  
    - Use a single public entry point type per subsystem (RenderEngine, EffectManager, AudioDeviceManager). If we later want stricter public surface control, add thin facades and reduce access in Stage 7. Divine keeps referencing these through protocols even if it only needs still-grab helpers today.  
-   - *Verification*: macOS build + focused unit tests covering `RenderEngine.makePlayerItem`, `RenderEngine.makePlayerItemForSource`, still-image export, and `EffectManager` lookback.
+   - *Verification*: macOS build + focused unit tests covering `RenderEngine.makePlayerItem`, still-image export, and `EffectManager` lookback.
 4. **Stage 2.5.1 – HypnoRenderer API cleanup**  
    - **Status: Complete**  
    - Move UI-only helpers back into the app: `MetalImageView`, `TransitionManager`, `ImageUtils`, and `FrameProcessor`.  
    - Hide pipeline internals (`CompositionBuilder`, `RenderInstruction`, `FrameCompositor`) and route app usage through `RenderEngine` only.  
    - Replace `RenderQueue`/`HypnogramRenderer` with `RenderEngine.ExportQueue`.  
-   - Add `RenderEngine.Timeline` and a single-source player-item API for sequence playback.  
    - *Verification*: macOS build + unit tests for render pipeline entry points; manual playback smoke test pending.
 5. **Stage 2.8 – Parameterize core stores (remove singleton + global config ordering hazards)**
    - **Status: Complete**  

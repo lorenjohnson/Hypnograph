@@ -9,50 +9,43 @@ This document covers the Dream module, its player state model, and the
 performance display pipeline.
 
 ## Sources
-- `Hypnograph/Modules/Dream/Dream.swift`
-- `Hypnograph/Modules/Dream/DreamPlayerState.swift`
+- `Hypnograph/Dream/Dream.swift`
+- `Hypnograph/Dream/DreamPlayerState.swift`
 - `Hypnograph/PlayerConfiguration.swift`
-- `Hypnograph/Modules/LivePlayer/LivePlayer.swift`
+- `Hypnograph/Dream/LivePlayer.swift`
 - `Hypnograph/HypnographState.swift`
 
 ## Module Overview
 
 ### Dream
 - The Dream module is a coordinator that owns:
-  - `montagePlayer` (layered montage playback)
-  - `sequencePlayer` (clip sequence playback)
+  - `player` (preview deck playback)
   - `livePlayer` (performance display output)
-- `mode` selects the active player: montage or sequence.
-- `performanceMode` toggles between edit (local preview) and live (mirror
-  performance display).
+- `isLiveMode` selects the target surface for actions (preview vs live output).
 
 ### Active Player Selection
-- `activePlayer` is `montagePlayer` or `sequencePlayer` based on `mode`.
-- `activeEffectManager` and `effectsSession` switch to the live player when
-  `performanceMode` is `.live`.
+- `activePlayer` is always the preview `player`.
+- Live output has its own `EffectManager` and `EffectsSession` owned by `livePlayer`.
 
 ## DreamPlayerState
 - Owns the recipe, per-player config, and playback state.
 - Holds its own `EffectsSession` and `EffectManager`.
 - Provides navigation helpers and source/layer selection.
-- Synchronizes `playRate` between `recipe` and `config`.
+- Exposes `playRate` and `targetDuration` as convenience accessors on the recipe.
 
 ## PlayerConfiguration
-- Per-player configuration for aspect ratio, resolution, target duration, and
-  source generation limits.
-- Stored in settings as `montagePlayerConfig` and `sequencePlayerConfig`.
+- Per-player configuration for aspect ratio, resolution, and generation limits.
+- Stored in settings as `playerConfig` (legacy keys are decoded and migrated).
 - `viewID` encodes configuration for SwiftUI identity changes.
 
 ## Recipe Generation
 - Dream uses `HypnographState.library.randomClip()` to generate new sources.
-- Montage mode assigns a base layer plus randomized blend modes.
-- Sequence mode uses variable clip lengths for per-source timing.
+- Generation produces a layered montage clip (1…N layers) with a randomized target duration.
 
 ## Live Display (LivePlayer)
-- Owns its own `EffectManager` and `EffectsSession` (`live-effects.json`).
+- Owns its own `EffectManager` and shares the global `EffectsSession` (`effects-library.json`).
 - Uses two internal `AVPlayer` instances (A/B) with crossfade transitions.
 - Can render to a fullscreen external monitor or a windowed preview.
-- Syncs performance display with active source in sequence mode.
 
 ## Audio Routing
 - Preview and performance output have independent audio devices and volumes.
@@ -69,14 +62,13 @@ The codebase uses consistent suffixes to distinguish view types:
 | `Panel`  | Partial UI element (sidebar, popover)              | `LivePreviewPanel`                        |
 | `View`   | General-purpose reusable view component            | `MontagePlayerView`, `SequencePlayerView` |
 
-Note: `MontagePlayerView` and `SequencePlayerView` are `NSViewRepresentable` bridges
+Note: `MontagePlayerView` is an `NSViewRepresentable` bridge
 to AppKit's `AVPlayerView`, but from the file/naming perspective they're treated as
 regular views since the implementation detail isn't meaningful at that level.
 
 ## Integration Points
 
-- `Dream.makeDisplayView()` selects montage, sequence, or live screen views using
-  `RenderEngine.makePlayerItem()` results.
+- `MontagePlayerView` and `LivePlayer` build `AVPlayerItem`s via `RenderEngine.makePlayerItem()`.
 - Dream export uses `RenderEngine.ExportQueue` with per-player sizing/timeline.
 - `HypnographState.onWatchTimerFired` is wired to `Dream.new()` for auto-generation.
 - `EffectsEditorView` edits the `EffectsSession` used by the active player or

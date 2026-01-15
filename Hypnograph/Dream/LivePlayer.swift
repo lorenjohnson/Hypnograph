@@ -116,15 +116,6 @@ final class LivePlayer: ObservableObject {
     /// The current recipe being displayed (mutable for live effect changes)
     private var currentRecipe: HypnogramRecipe?
 
-    /// Current mode (montage or sequence)
-    private var currentMode: DreamMode = .montage
-
-    /// Clip start times for sequence mode seeking
-    private var clipStartTimes: [CMTime] = []
-
-    /// Still images by source index (for sequence mode with still images)
-    private var stillImagesBySourceIndex: [Int: CIImage] = [:]
-
     enum PlayerSlot {
         case a, b
         var opposite: PlayerSlot { self == .a ? .b : .a }
@@ -368,8 +359,7 @@ final class LivePlayer: ObservableObject {
     /// - Parameters:
     ///   - recipe: The hypnogram recipe to display
     ///   - config: Player configuration (aspect ratio, resolution, etc.)
-    ///   - mode: Dream mode (montage or sequence)
-    func send(recipe: HypnogramRecipe, config: PlayerConfiguration, mode: DreamMode = .montage) {
+    func send(recipe: HypnogramRecipe, config: PlayerConfiguration) {
         // Ensure we have a content view for playback
         ensureContentView()
 
@@ -394,56 +384,23 @@ final class LivePlayer: ObservableObject {
 
         let sourceCount = recipe.sources.count
         activeSourceCount = sourceCount
-        let modeLabel = mode == .sequence ? "sequence" : "montage"
-        currentRecipeDescription = "\(sourceCount) source\(sourceCount == 1 ? "" : "s") (\(modeLabel))"
+        currentRecipeDescription = "\(sourceCount) layer\(sourceCount == 1 ? "" : "s")"
 
-        print("🎬 LivePlayer: Building \(modeLabel) with \(sourceCount) sources...")
-
-        // Store the mode for sequence seeking
-        self.currentMode = mode
+        print("🎬 LivePlayer: Building live display with \(sourceCount) layers...")
 
         pendingBuildTask = Task {
-            await buildAndTransition(content: content, mode: mode)
-        }
-    }
-
-    // MARK: - Sequence Mode Sync
-
-    /// Seek to a specific source index in sequence mode
-    /// Call this when the main preview navigates to a different source
-    /// - Parameter index: The source index to seek to
-    func seekToSource(index: Int) {
-        // Only works in sequence mode with valid clip start times
-        guard currentMode == .sequence,
-              index >= 0,
-              index < clipStartTimes.count,
-              let player = activeAVPlayer else {
-            return
-        }
-
-        let targetTime = clipStartTimes[index]
-        let rate = currentRecipe?.playRate ?? 0.8
-        player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
-            // Ensure playback continues after seek at recipe's play rate
-            player.playImmediately(atRate: rate)
+            await buildAndTransition(content: content)
         }
     }
 
     // MARK: - Private Methods
 
-    private func buildAndTransition(content: LiveContentView, mode: DreamMode) async {
+    private func buildAndTransition(content: LiveContentView) async {
         guard let recipe = currentRecipe else { return }
         let outputSize = renderSize(aspectRatio: config.aspectRatio, maxDimension: config.playerResolution.maxDimension)
 
         // Build composition using LivePlayer's own EffectManager
         // This makes effects completely independent of the main preview
-        let timeline: RenderEngine.Timeline
-        switch mode {
-        case .montage:
-            timeline = .montage(targetDuration: recipe.targetDuration)
-        case .sequence:
-            timeline = .sequence
-        }
         let config = RenderEngine.Config(
             outputSize: outputSize,
             frameRate: 30,
@@ -452,7 +409,6 @@ final class LivePlayer: ObservableObject {
 
         let result = await renderEngine.makePlayerItem(
             recipe: recipe,
-            timeline: timeline,
             config: config,
             effectManager: effectManager  // Use LivePlayer's own EffectManager
         )
@@ -463,9 +419,9 @@ final class LivePlayer: ObservableObject {
         }
 
         switch result {
-        case .success(let buildResult):
+        case .success(let playerItem):
             await performCrossfade(
-                to: buildResult,
+                to: playerItem,
                 content: content
             )
 
@@ -475,34 +431,30 @@ final class LivePlayer: ObservableObject {
     }
 
     private func performCrossfade(
-        to buildResult: RenderEngine.PlayerItemResult,
+        to playerItem: AVPlayerItem,
         content: LiveContentView
     ) async {
         isTransitioning = true
-
-        // Store clip start times for sequence mode seeking
-        self.clipStartTimes = buildResult.clipStartTimes
-        self.stillImagesBySourceIndex = buildResult.stillImagesBySourceIndex
 
         // Determine which player to use next
         let nextSlot = activePlayer.opposite
         let nextPlayerView = nextSlot == .a ? content.playerA : content.playerB
         let currentPlayerView = activePlayer == .a ? content.playerA : content.playerB
 
-        buildResult.playerItem.audioTimePitchAlgorithm = .timeDomain
+        playerItem.audioTimePitchAlgorithm = .timeDomain
 
         // Setup player - simple AVPlayer like preview
         let player: AVPlayer
         if let existing = nextPlayerView.player {
-            existing.replaceCurrentItem(with: buildResult.playerItem)
+            existing.replaceCurrentItem(with: playerItem)
             player = existing
         } else {
-            player = AVPlayer(playerItem: buildResult.playerItem)
+            player = AVPlayer(playerItem: playerItem)
             nextPlayerView.player = player
         }
 
         // Setup notification-based looping (same as preview)
-        setupLooping(for: player, item: buildResult.playerItem, slot: nextSlot)
+        setupLooping(for: player, item: playerItem, slot: nextSlot)
 
         // Mute old player immediately before starting new one
         currentPlayerView.player?.volume = 0.0

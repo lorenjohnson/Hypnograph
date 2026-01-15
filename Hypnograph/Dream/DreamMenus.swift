@@ -21,8 +21,7 @@ extension Dream {
 
         // Header
         items.append(.text("Hypnograph", order: 10, font: .headline))
-        let modeLabel = (mode == .montage ? "Montage" : "Sequence")
-        items.append(.text("Dream: \(modeLabel)", order: 11, font: .subheadline))
+        items.append(.text("Dream: \(isLiveMode ? "Live" : "Preview")", order: 11, font: .subheadline))
         items.append(.padding(8, order: 15))
 
         // Queue status
@@ -39,15 +38,9 @@ extension Dream {
 
         // Source-specific info (only when on a source layer, not global)
         if !activePlayer.isOnGlobalLayer {
-            switch mode {
-            case .montage:
-                items.append(.text("Blend mode (M): \(currentBlendModeDisplayName())", order: 26))
-            case .sequence:
-                let totalSecs = sequenceTotalDuration().seconds
-                items.append(.text(String(format: "Duration: %.1fs", totalSecs), order: 26))
-                if let clip = activePlayer.currentClip {
-                    items.append(.text("Clip: \(String(format: "%.1fs", clip.duration.seconds))", order: 27))
-                }
+            items.append(.text("Blend mode (M): \(currentBlendModeDisplayName())", order: 26))
+            if let clip = activePlayer.currentClip {
+                items.append(.text("Layer clip: \(String(format: "%.1fs", clip.duration.seconds))", order: 27))
             }
 
         }
@@ -61,7 +54,7 @@ extension Dream {
         items.append(.text("E = Effects editor | 0 = Global | 1-9 = Source", order: 43))
         items.append(.text("Left/Right = Navigate | N = New | Shift+N = Add source", order: 44))
         items.append(.text("Cmd+S = Save | Cmd+F = Favorite hypnogram", order: 45))
-        items.append(.text("` = Cycle Montage/Sequence/Live | Shift+X/D = Exclude/Mark delete", order: 46))
+        items.append(.text("` = Toggle Preview/Live | Shift+X/D = Exclude/Mark delete", order: 46))
 
         return items
     }
@@ -73,8 +66,8 @@ extension Dream {
 
     @ViewBuilder
     func compositionMenu() -> some View {
-        Button("Cycle Mode (Montage/Sequence/Live)") { [self] in
-            cycleMode()
+        Button("Toggle Live Mode (Preview/Live)") { [self] in
+            toggleLiveMode()
         }
         .keyboardShortcut("`", modifiers: [])
         .disabled(isTyping)
@@ -148,7 +141,7 @@ extension Dream {
 
         Divider()
 
-        Button("New Hypnogram") { [self] in
+        Button("New Clip") { [self] in
             new()
         }
         .keyboardShortcut("n", modifiers: [])

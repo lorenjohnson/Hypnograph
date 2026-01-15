@@ -351,27 +351,15 @@ struct PlayerSettingsView: View {
                 .keyboardShortcut(.escape, modifiers: [])
             }
 
-            // Header row 2: Player mode switcher (full width)
+            // Header row 2: Target switcher (full width)
             HStack(spacing: 6) {
-                // Montage mode button
+                // Preview button
                 playerModeButton(
-                    icon: "square.grid.2x2",
-                    label: "Montage",
-                    isSelected: !dream.isLiveMode && dream.mode == .montage,
+                    icon: "rectangle",
+                    label: "Preview",
+                    isSelected: !dream.isLiveMode,
                     action: {
                         if dream.isLiveMode { dream.toggleLiveMode() }
-                        if dream.mode != .montage { dream.toggleMode() }
-                    }
-                )
-
-                // Sequence mode button
-                playerModeButton(
-                    icon: "arrow.right.square",
-                    label: "Sequence",
-                    isSelected: !dream.isLiveMode && dream.mode == .sequence,
-                    action: {
-                        if dream.isLiveMode { dream.toggleLiveMode() }
-                        if dream.mode != .sequence { dream.toggleMode() }
                     }
                 )
 
@@ -404,18 +392,18 @@ struct PlayerSettingsView: View {
             }
 
             HStack {
-                Text("Max Sources:")
+                Text("Max Layers:")
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white.opacity(dream.isLiveMode ? 0.4 : 0.8))
 
                 Spacer()
 
-                Text("\(displayedConfig.maxSourcesForNew)")
+                Text("\(displayedConfig.maxLayers)")
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white.opacity(dream.isLiveMode ? 0.6 : 1.0))
                     .frame(minWidth: 30)
 
-                Stepper("", value: $player.config.maxSourcesForNew, in: 1...20)
+                Stepper("", value: $player.config.maxLayers, in: 1...20)
                     .labelsHidden()
                     .disabled(dream.isLiveMode)
             }
@@ -424,25 +412,58 @@ struct PlayerSettingsView: View {
                 .background(Color.white.opacity(0.3))
                 .padding(.vertical, 4)
 
+            let clipMinBinding = Binding(
+                get: { Int(dream.state.settings.clipLengthMinSeconds.rounded()) },
+                set: { newValue in
+                    let minValue = max(1, newValue)
+                    let maxValue = max(minValue, Int(dream.state.settings.clipLengthMaxSeconds.rounded()))
+                    dream.state.settingsStore.update {
+                        $0.clipLengthMinSeconds = Double(minValue)
+                        $0.clipLengthMaxSeconds = Double(maxValue)
+                    }
+                }
+            )
+
+            let clipMaxBinding = Binding(
+                get: { Int(dream.state.settings.clipLengthMaxSeconds.rounded()) },
+                set: { newValue in
+                    let maxValue = max(newValue, Int(dream.state.settings.clipLengthMinSeconds.rounded()))
+                    dream.state.settingsStore.update { $0.clipLengthMaxSeconds = Double(maxValue) }
+                }
+            )
+
             HStack {
-                Text("Duration:")
+                Text("Clip Length Min:")
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white.opacity(dream.isLiveMode ? 0.4 : 0.8))
 
                 Spacer()
 
-                let seconds = Int(player.targetDuration.seconds)
-                Text(formatDuration(seconds))
+                Text("\(clipMinBinding.wrappedValue)s")
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white.opacity(dream.isLiveMode ? 0.6 : 1.0))
                     .frame(minWidth: 50)
 
-                Stepper("", value: Binding(
-                    get: { Int(player.targetDuration.seconds) },
-                    set: { player.targetDuration = CMTime(seconds: Double($0), preferredTimescale: 600) }
-                ), in: 10...600, step: 10)
-                .labelsHidden()
-                .disabled(dream.isLiveMode)
+                Stepper("", value: clipMinBinding, in: 1...60, step: 1)
+                    .labelsHidden()
+                    .disabled(dream.isLiveMode)
+            }
+
+            HStack {
+                Text("Clip Length Max:")
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(.white.opacity(dream.isLiveMode ? 0.4 : 0.8))
+
+                Spacer()
+
+                Text("\(clipMaxBinding.wrappedValue)s")
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(.white.opacity(dream.isLiveMode ? 0.6 : 1.0))
+                    .frame(minWidth: 50)
+
+                Stepper("", value: clipMaxBinding, in: clipMinBinding.wrappedValue...120, step: 1)
+                    .labelsHidden()
+                    .disabled(dream.isLiveMode)
             }
 
             PlayRateControl(playRate: $player.playRate)

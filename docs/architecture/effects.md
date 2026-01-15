@@ -77,7 +77,7 @@ metatypes and provides:
 ## Effect Library
 
 ### EffectsSession
-- Owns the editable list of effect chains for a context (montage, sequence, live).
+- Owns the editable list of effect chains for a context (preview/live/export).
 - Persists to JSON in `~/Library/Application Support/Hypnograph/effect-libraries/`.
 - Uses debounced saves and tracks `isDirty` via a hash of the config.
 - Exposes a thread-safe snapshot for non-main-actor consumers.
@@ -104,16 +104,14 @@ metatypes and provides:
 
 ## Isolation and Mode Separation
 - Preview uses the active player's `EffectManager` and `EffectsSession`.
-- Live display uses its own `EffectManager` and `EffectsSession`.
+- Live display uses its own `EffectManager` and shares the global `EffectsSession`.
 - Export uses `EffectManager.forExport(recipe:)` and `recipe.copyForExport()` to
   avoid sharing mutable effect state.
 
 ## Persistence Locations
 - Bundled defaults: `HypnoEffects/EffectLibrary/effects-default.json` (in HypnoEffects bundle).
-- Session files (per mode):
-  - `montage-effects.json`
-  - `sequence-effects.json`
-  - `live-effects.json`
+- Session file:
+  - `effects-library.json`
 
 ## Integration Points
 - `EffectsEditorView` edits `EffectsSession` and uses `EffectManager` to apply
