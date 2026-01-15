@@ -49,34 +49,28 @@ only supports “sources-as-layers” (montage) until clip-tape export exists.
 
 - Remove `RenderEngine.Timeline` / `CompositionBuilder.TimelineStrategy` / `buildSequence(...)`.
 - Remove any sequence-oriented renderer tests.
-- Keep `HypnogramRecipe.mode` as a legacy decode field if it exists in old `.hypno` files, but treat it as informational only.
 
-## Phase 2: Introduce Clip History (materialized)
+## Phase 2: Upgrade Recipe format to multi-clip (basic backward compatibility)
 
-Goal: implement the new primary behavior: ordered clip history you can navigate/edit/delete.
+Goal: move to a single canonical recipe/document format that can represent 1+ clips.
+Single-clip hypnograms become “a recipe with one clip”.
 
-Clarification: `HypnogramRecipe` stays a *single-clip* recipe (layers + effects + duration).
-We do not introduce “recipes that contain sequences of clips”. When we render multiple clips,
-that is represented as a separate export request/spec that references a slice of `ClipHistory`.
+Why before history UI: clip history/navigation is fundamentally “a list of clips + current index”.
+If the end-state recipe format already contains `[Clip]`, it’s cheaper to build on top of that
+than to create a parallel history structure and refactor later.
 
-Minimum viable data model (can be refined later):
+Minimum data model direction:
 
-- `Clip` = a `HypnogramRecipe` plus any clip-level metadata needed (e.g., stable id, createdAt).
-  - Per-clip `playRate` already exists on `HypnogramRecipe`.
-  - Per-clip effects already exist (global + per-layer) on `HypnogramRecipe`.
-- `ClipHistory` = `[Clip]` + `currentIndex` + `historyLimit`.
+- `HypnogramRecipe` becomes the multi-clip container (`clips: [HypnogramClip]` + metadata).
+- `HypnogramClip` holds what today lives on `HypnogramRecipe` (sources/layers, duration, playRate, effect chains).
+- Runtime state should hold one `HypnogramRecipe` plus a `currentClipIndex` (not a parallel history structure).
 
-User-facing behaviors to implement:
+Backward compatibility (minimal):
+- When decoding, if there is no top-level `clips` key, decode the legacy single-clip fields and wrap them into `clips: [legacyClip]`.
 
-- Generate and append new clips; drop oldest if beyond `historyLimit`.
-- Navigate previous/next clip.
-  - Keyboard: Left Arrow = previous clip, Right Arrow = next clip.
-  - If there is no “future” clip (at end of history), Right Arrow does nothing.
-  - If there is a prior clip, Left Arrow jumps immediately to that clip.
-  - HUD: when the user manually navigates history (arrow keys or menu commands), flash a clip counter overlay in the same size/style as the existing Layer counter, but in blue (e.g. `3/57`).
-- Edit overwrites the current clip in place.
-- Delete current clip.
-- “Clear Clip History” menu item keeps the current clip and deletes all history before/after it.
+Notes:
+- This phase is mostly data-shape + migration, but it will necessarily touch state and UI bindings where they assumed a single clip.
+- Keep the UX “preview == render”: preview is always the currently selected clip (`currentClipIndex`) in the materialized list.
 
 Settings to add early:
 
@@ -92,19 +86,38 @@ Settings to add early:
 Goal: remove the watch timer and make playback event-driven.
 
 Hard requirement:
-- if `watchMode` is ON, advance on clip end; if at end of history, generate and append next.
+- if `watchMode` is ON, advance on clip end; if at end of the clip list, generate and append next (dropping oldest if beyond `historyLimit`).
 - if `watchMode` is OFF, loop the current clip (do not auto-generate).
 
 Implementation approach:
 
 1) **Player-driven end callback**:
    - the preview player emits “clip ended” at the end of the current clip
-   - Dream advances `ClipHistory.currentIndex` (or generates next if at end)
+   - Dream advances `currentClipIndex` (or generates next if at end)
    - remove the current “loop-on-end” behavior from preview when `watchMode` is ON
 
 Note: any “how many clips to render” knob belongs to render/export only (e.g. `renderClipCount`).
 
-## Phase 4: Render clip tape (minimal UI)
+## Phase 4: Clip History UX (navigate/edit/delete)
+
+Goal: implement the new primary behavior: ordered, materialized clip history you can navigate/edit/delete.
+
+User-facing behaviors to implement:
+
+- Generate and append new clips; drop oldest if beyond `historyLimit`.
+- Navigate previous/next clip.
+  - Keyboard: Left Arrow = previous clip, Right Arrow = next clip.
+  - If there is no “future” clip (at end of history), Right Arrow does nothing.
+  - If there is a prior clip, Left Arrow jumps immediately to that clip.
+  - HUD: when the user manually navigates history (arrow keys or menu commands), flash a clip counter overlay in the same size/style as the existing Layer counter, but in blue (e.g. `3/57`).
+- Edit overwrites the current clip in place.
+- Delete current clip.
+- “Clear Clip History” menu item keeps the current clip and deletes all history before/after it.
+
+Notes:
+- This phase should primarily be UI/commands + small state glue; the clip list + index should already exist from Phase 2.
+
+## Phase 5: Render clip tape (minimal UI)
 
 Goal: export a concatenation of materialized clips (hard cuts), matching preview.
 

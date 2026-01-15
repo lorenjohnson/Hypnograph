@@ -281,7 +281,7 @@ final class GameControllerManager {
         }
 
         dream.livePlayer.send(
-            recipe: dream.makeDisplayRecipe(),
+            clip: dream.activePlayer.currentClip.copyForExport(),
             config: dream.activePlayer.config
         )
         print("🎮 Sent to Live Display")

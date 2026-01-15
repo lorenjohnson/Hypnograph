@@ -113,8 +113,8 @@ final class LivePlayer: ObservableObject {
     /// This display's own effects session - for live mode effects
     let effectsSession: EffectsSession
 
-    /// The current recipe being displayed (mutable for live effect changes)
-    private var currentRecipe: HypnogramRecipe?
+    /// The current clip being displayed (mutable for live effect changes)
+    private var currentClip: HypnogramClip?
 
     enum PlayerSlot {
         case a, b
@@ -134,27 +134,35 @@ final class LivePlayer: ObservableObject {
         // Wire up the effects session for chain lookups
         effectManager.session = effectsSession
 
-        // Wire up recipe provider to return the mutable current recipe
-        effectManager.recipeProvider = { [weak self] in
-            self?.currentRecipe
+        // Wire up clip provider to return the mutable current clip
+        effectManager.clipProvider = { [weak self] in
+            self?.currentClip
         }
 
         // Wire up global effect chain setter
         effectManager.globalEffectChainSetter = { [weak self] chain in
-            guard let self = self, var recipe = self.currentRecipe else { return }
+            guard let self = self, var clip = self.currentClip else { return }
             print("🎬 LivePlayer: globalEffectChainSetter - setting chain: \(chain.name ?? "unnamed")")
-            recipe.effectChain = chain
-            self.currentRecipe = recipe
+            clip.effectChain = chain
+            self.currentClip = clip
         }
 
         // Wire up source effect chain setter
         effectManager.sourceEffectChainSetter = { [weak self] (sourceIndex: Int, chain: EffectChain) in
             guard let self = self,
-                  var recipe = self.currentRecipe,
-                  sourceIndex < recipe.sources.count else { return }
+                  var clip = self.currentClip,
+                  sourceIndex < clip.sources.count else { return }
             print("🎬 LivePlayer: sourceEffectChainSetter - setting source[\(sourceIndex)] chain: \(chain.name ?? "unnamed")")
-            recipe.sources[sourceIndex].effectChain = chain
-            self.currentRecipe = recipe
+            clip.sources[sourceIndex].effectChain = chain
+            self.currentClip = clip
+        }
+
+        effectManager.blendModeSetter = { [weak self] sourceIndex, blendMode in
+            guard let self = self,
+                  var clip = self.currentClip,
+                  sourceIndex < clip.sources.count else { return }
+            clip.sources[sourceIndex].blendMode = blendMode
+            self.currentClip = clip
         }
     }
 
@@ -327,7 +335,7 @@ final class LivePlayer: ObservableObject {
         activePlayer = .a
         currentRecipeDescription = ""
         activeSourceCount = 0
-        currentRecipe = nil
+        currentClip = nil
 
         print("🎬 LivePlayer: Stopped and reset")
     }
@@ -357,9 +365,9 @@ final class LivePlayer: ObservableObject {
     /// Send a recipe to the live display
     /// Builds the composition asynchronously, then crossfades to it
     /// - Parameters:
-    ///   - recipe: The hypnogram recipe to display
+    ///   - clip: The hypnogram clip to display
     ///   - config: Player configuration (aspect ratio, resolution, etc.)
-    func send(recipe: HypnogramRecipe, config: PlayerConfiguration) {
+    func send(clip: HypnogramClip, config: PlayerConfiguration) {
         // Ensure we have a content view for playback
         ensureContentView()
 
@@ -379,10 +387,10 @@ final class LivePlayer: ObservableObject {
         // Update config from the recipe being sent
         self.config = config
 
-        // Store the recipe for live effect modifications
-        self.currentRecipe = recipe
+        // Store the clip for live effect modifications
+        self.currentClip = clip
 
-        let sourceCount = recipe.sources.count
+        let sourceCount = clip.sources.count
         activeSourceCount = sourceCount
         currentRecipeDescription = "\(sourceCount) layer\(sourceCount == 1 ? "" : "s")"
 
@@ -396,7 +404,7 @@ final class LivePlayer: ObservableObject {
     // MARK: - Private Methods
 
     private func buildAndTransition(content: LiveContentView) async {
-        guard let recipe = currentRecipe else { return }
+        guard let clip = currentClip else { return }
         let outputSize = renderSize(aspectRatio: config.aspectRatio, maxDimension: config.playerResolution.maxDimension)
 
         // Build composition using LivePlayer's own EffectManager
@@ -408,7 +416,7 @@ final class LivePlayer: ObservableObject {
         )
 
         let result = await renderEngine.makePlayerItem(
-            recipe: recipe,
+            clip: clip,
             config: config,
             effectManager: effectManager  // Use LivePlayer's own EffectManager
         )
@@ -463,7 +471,7 @@ final class LivePlayer: ObservableObject {
         player.volume = currentVolume
         player.audioOutputDeviceUniqueID = currentAudioDeviceUID
         nextPlayerView.alphaValue = 0
-        player.playImmediately(atRate: currentRecipe?.playRate ?? 0.8)
+        player.playImmediately(atRate: currentClip?.playRate ?? 0.8)
 
         // Visual crossfade
         let duration = crossfadeDuration
@@ -502,7 +510,7 @@ final class LivePlayer: ObservableObject {
         }
 
         // Add new observer
-        let playRate = currentRecipe?.playRate ?? 0.8
+        let playRate = currentClip?.playRate ?? 0.8
         let observer = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
             object: item,

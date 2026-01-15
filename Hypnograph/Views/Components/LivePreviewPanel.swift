@@ -9,6 +9,7 @@
 import SwiftUI
 import AVKit
 import AppKit
+import HypnoCore
 
 /// Preview of live display content, shown as panel in main window
 struct LivePreviewPanel: View {
@@ -23,6 +24,22 @@ struct LivePreviewPanel: View {
     /// Whether the separate window is currently shown
     private var isWindowVisible: Bool {
         livePlayer.isVisible
+    }
+
+    /// Aspect ratio used for the preview panel.
+    /// If the player is set to Fill Window, pick a reasonable default based on the live target screen
+    /// (external monitor if present, otherwise main).
+    private var previewAspectRatio: CGFloat {
+        let ar = livePlayer.config.aspectRatio
+        if !ar.isFillWindow {
+            return ar.value
+        }
+
+        let target = NSScreen.screens.first(where: { $0 != NSScreen.main }) ?? NSScreen.main
+        guard let frame = target?.frame, frame.height > 0 else {
+            return 16.0 / 9.0
+        }
+        return frame.width / frame.height
     }
 
     var body: some View {
@@ -86,7 +103,7 @@ struct LivePreviewPanel: View {
                 if livePlayer.hasContent {
                     // Show wrapped AVPlayerView from live display
                     LivePlayerWrapper(livePlayer: livePlayer)
-                        .aspectRatio(16/9, contentMode: .fit)
+                        .aspectRatio(previewAspectRatio, contentMode: .fit)
                 } else {
                     // Placeholder when no source assigned
                     VStack(spacing: 8) {
@@ -102,7 +119,7 @@ struct LivePreviewPanel: View {
                     }
                 }
             }
-            .aspectRatio(16/9, contentMode: .fit)
+            .aspectRatio(previewAspectRatio, contentMode: .fit)
             .cornerRadius(6)
             .clipped()
 
@@ -148,13 +165,14 @@ struct LivePlayerWrapper: NSViewRepresentable {
         // Use HitTransparentPlayerView so keyboard shortcuts still work
         let playerView = HitTransparentPlayerView()
         playerView.controlsStyle = .none
-        playerView.videoGravity = .resizeAspect
+        playerView.videoGravity = livePlayer.config.aspectRatio.isFillWindow ? .resizeAspectFill : .resizeAspect
         return playerView
     }
 
     func updateNSView(_ nsView: AVPlayerView, context: Context) {
         // Mirror the active player from live display
         nsView.player = livePlayer.activeAVPlayer
+        nsView.videoGravity = livePlayer.config.aspectRatio.isFillWindow ? .resizeAspectFill : .resizeAspect
     }
 
     /// AVPlayerView that forwards mouse/keyboard events so SwiftUI and menu shortcuts still work
@@ -162,4 +180,3 @@ struct LivePlayerWrapper: NSViewRepresentable {
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
     }
 }
-

@@ -33,6 +33,8 @@ last_reviewed: 2026-01-07
 - [ ] First load of app seemed to not connect to apple photos but relauches were fine, in both apps
 
 ## Minor Projects:
+- [ ] Transitions between Hypnograms. Maybe a Player setting for Transition Style with options: None, Fade, Punk (random dissolve)?
+- [ ] Feature flag Live mode as a possible optional feature... to eventually be a paid add on? 
 - [ ] Watch mode to be more watchable...
   - [ ] Blend between subsequent Hypnograms like by overlapping sources... R&D but so curious.
   - [ ] Looping: Make it optional such that when it is off and you're in watch mode a new Hypnogram is generated when the previous one ends, unless the clip was shorter than a predetermined minimum length (2s?) in which case it will either be skipped or looped. The play length of a recipe is the length of the  longest running clip in the sources (up to the max duration of course). I guess this should be a player setting in the Watch toggle area.

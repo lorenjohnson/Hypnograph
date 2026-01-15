@@ -9,6 +9,7 @@
 import SwiftUI
 import AVKit
 import AppKit
+import HypnoCore
 
 /// Full-screen player screen that mirrors Live Display content
 /// Used as the main preview when in Live mode (Cmd-P)
@@ -49,7 +50,7 @@ struct LiveModeAVPlayerView: NSViewRepresentable {
         // Use HitTransparentPlayerView so keyboard shortcuts still work
         let playerView = HitTransparentPlayerView()
         playerView.controlsStyle = .none
-        playerView.videoGravity = .resizeAspect
+        playerView.videoGravity = livePlayer.config.aspectRatio.isFillWindow ? .resizeAspectFill : .resizeAspect
         playerView.player = livePlayer.activeAVPlayer
         return playerView
     }
@@ -57,6 +58,7 @@ struct LiveModeAVPlayerView: NSViewRepresentable {
     func updateNSView(_ nsView: AVPlayerView, context: Context) {
         // Mirror the active player from live display
         nsView.player = livePlayer.activeAVPlayer
+        nsView.videoGravity = livePlayer.config.aspectRatio.isFillWindow ? .resizeAspectFill : .resizeAspect
     }
 
     /// AVPlayerView that forwards mouse/keyboard events so SwiftUI and menu shortcuts still work
@@ -64,4 +66,3 @@ struct LiveModeAVPlayerView: NSViewRepresentable {
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
     }
 }
-

@@ -149,7 +149,7 @@ struct HUDView: View {
     }
 
     private var formattedDuration: String {
-        let totalSeconds = dream.activePlayer.recipe.targetDuration.seconds
+        let totalSeconds = dream.activePlayer.targetDuration.seconds
         if totalSeconds < 60 {
             return String(format: "%.1fs", totalSeconds)
         } else {

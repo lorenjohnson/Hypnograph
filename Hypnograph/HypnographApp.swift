@@ -53,8 +53,8 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Event monitor for Tab key (workaround for SwiftUI menu shortcut not registering until menu opened)
     private var tabKeyMonitor: Any?
 
-    /// Event monitor for 0 key hold to suspend global effects
-    private var zeroKeyMonitor: Any?
+    /// Event monitor for ` key hold to suspend global effects
+    private var globalKeyMonitor: Any?
 
     /// Event monitor for 1-9 keys hold to suspend source effects
     private var sourceKeyMonitor: Any?
@@ -84,12 +84,11 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
             return event
         }
 
-        // Install 0 key monitor for hold-to-suspend global effects
-        // keyCode 29 = "0" key on macOS
-        zeroKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
-            // Only handle 0 key with no modifiers
-            guard event.keyCode == 29,
-                  event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty else {
+        // Install ` key monitor for hold-to-suspend global effects
+        globalKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+            // Only handle ` key with no modifiers
+            guard event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
+                  event.charactersIgnoringModifiers == "`" else {
                 return event
             }
             // Don't intercept if user is typing
@@ -328,7 +327,7 @@ struct HypnographApp: App {
                     state?.saveWindowStateToDisk()
                 }
 
-                // Wire up global effect suspend (0 key hold)
+                // Wire up global effect suspend (` key hold)
                 appDelegate.setGlobalEffectSuspended = { [weak dream] suspended in
                     guard let dream = dream, !dream.isLiveMode else { return }
                     dream.player.isGlobalEffectSuspended = suspended
