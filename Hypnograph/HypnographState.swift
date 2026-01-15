@@ -130,11 +130,6 @@ final class HypnographState: ObservableObject {
         scheduleWatchTimer()
     }
 
-    /// Reset the watch timer when user interacts with the app
-    func noteUserInteraction() {
-        scheduleWatchTimer()
-    }
-
     func scheduleWatchTimer() {
         let interval = watchIntervalProvider?() ?? settings.watchInterval
         guard settings.watch, interval > 0 else {
