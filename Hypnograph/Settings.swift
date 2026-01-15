@@ -224,7 +224,7 @@ struct Settings: Codable, MediaLibrarySettings {
 
     // MARK: - Derived values
 
-    /// Watch timer interval - uses montage recipe duration or default 60s
+    /// Watch timer interval - uses last recipe duration or default 60s
     var watchInterval: Double {
         playerConfig.lastRecipe?.targetDuration.seconds ?? 60.0
     }

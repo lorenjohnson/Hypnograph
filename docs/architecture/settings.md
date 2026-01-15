@@ -30,7 +30,7 @@ This document describes settings storage, defaults, and related persistent state
   - `snapshotsFolder`
 - Source libraries and filters:
   - `sources` (polymorphic array or dictionary)
-  - `activeLibrariesPerMode`
+  - `activeLibraries`
   - `sourceMediaTypes` (images/videos)
 - Rendering defaults:
   - `outputResolution`

@@ -115,7 +115,7 @@ final class EffectChain {
 
 - **Current is per-mode**: Montage, Sequence, and Live each have their own current recipe, so the CURRENT section reflects the active mode.
 - **Recent + Libraries are global**: RECENT and LIBRARIES are shared across modes and persist across app restarts.
-- **Targets**: “Global + Source N” always refers to the active recipe’s sources; in sequence mode, sources are the sequential segments.
+- **Targets**: “Global + Source N” always refers to the active recipe’s sources (layers).
 
 ### Selection Model
 

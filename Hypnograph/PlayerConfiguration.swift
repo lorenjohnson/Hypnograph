@@ -39,7 +39,7 @@ struct PlayerConfiguration: Codable {
 
     // MARK: - Initialization
 
-    /// Initialize with global defaults from Settings (uses montage config)
+    /// Initialize with global defaults from Settings
     init(from settings: Settings) {
         self = settings.playerConfig
     }

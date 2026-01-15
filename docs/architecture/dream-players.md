@@ -60,7 +60,7 @@ The codebase uses consistent suffixes to distinguish view types:
 | -------- | -------------------------------------------------- | ----------------------------------------- |
 | `Screen` | Full-screen SwiftUI view (takes over main content) | `LivePlayerScreen`                        |
 | `Panel`  | Partial UI element (sidebar, popover)              | `LivePreviewPanel`                        |
-| `View`   | General-purpose reusable view component            | `MontagePlayerView`, `SequencePlayerView` |
+| `View`   | General-purpose reusable view component            | `MontagePlayerView`                       |
 
 Note: `MontagePlayerView` is an `NSViewRepresentable` bridge
 to AppKit's `AVPlayerView`, but from the file/naming perspective they're treated as
