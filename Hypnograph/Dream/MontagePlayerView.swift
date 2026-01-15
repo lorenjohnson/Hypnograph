@@ -91,7 +91,6 @@ struct MontagePlayerView: NSViewRepresentable {
 
             c.currentTask = Task {
                 let engine = RenderEngine()
-                let timeline: RenderEngine.Timeline = .montage(targetDuration: recipe.targetDuration)
                 let config = RenderEngine.Config(
                     outputSize: outputSize,
                     frameRate: 30,
@@ -100,7 +99,6 @@ struct MontagePlayerView: NSViewRepresentable {
 
                 let result = await engine.makePlayerItem(
                     recipe: recipe,
-                    timeline: timeline,
                     config: config,
                     effectManager: effectManager
                 )
@@ -116,7 +114,7 @@ struct MontagePlayerView: NSViewRepresentable {
                     guard c.compositionID == newID else { return }
 
                     switch result {
-                    case .success(let buildResult):
+                    case .success(let playerItem):
                         // Create or reuse player view
                         let playerView: AVPlayerView
                         if let existing = c.playerView {
@@ -146,18 +144,18 @@ struct MontagePlayerView: NSViewRepresentable {
                         let player: AVPlayer
                         if let existing = c.player {
                             player = existing
-                            player.replaceCurrentItem(with: buildResult.playerItem)
+                            player.replaceCurrentItem(with: playerItem)
                         } else {
-                            player = AVPlayer(playerItem: buildResult.playerItem)
+                            player = AVPlayer(playerItem: playerItem)
                             c.player = player
                         }
 
-                        c.currentPlayerItem = buildResult.playerItem
-                        c.currentVideoComposition = buildResult.playerItem.videoComposition
+                        c.currentPlayerItem = playerItem
+                        c.currentVideoComposition = playerItem.videoComposition
                         playerView.player = player
 
                         // Use high-quality audio time pitch algorithm for non-1.0 playback rates
-                        buildResult.playerItem.audioTimePitchAlgorithm = .timeDomain
+                        playerItem.audioTimePitchAlgorithm = .timeDomain
 
                         // Apply volume and audio device immediately, before playback starts.
                         // This is necessary because player setup runs in an async Task that
@@ -174,11 +172,11 @@ struct MontagePlayerView: NSViewRepresentable {
                         c.lastPauseState = nil
                         c.lastEffectsCounter = effectsChangeCounter
 
-                        self.setupMontageObservers(player: player, item: buildResult.playerItem, coordinator: c)
+                        self.setupMontageObservers(player: player, item: playerItem, coordinator: c)
 
                         // Wait for player item to be ready before starting playback
                         c.statusObserver?.invalidate()
-                        c.statusObserver = buildResult.playerItem.observe(\.status, options: [.initial, .new]) { [weak player, weak c] item, _ in
+                        c.statusObserver = playerItem.observe(\.status, options: [.initial, .new]) { [weak player, weak c] item, _ in
                             guard let player = player, let c = c else { return }
                             if item.status == .readyToPlay {
                                 c.statusObserver?.invalidate()

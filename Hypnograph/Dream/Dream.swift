@@ -2,7 +2,7 @@
 //  Dream.swift
 //  Hypnograph
 //
-//  Dream feature: video/image composition with montage and sequence modes.
+//  Dream feature: video/image composition with a single preview path.
 //
 
 import Foundation
@@ -20,23 +20,16 @@ final class Dream: ObservableObject {
     let state: HypnographState
     let renderQueue: RenderEngine.ExportQueue
 
-    @Published var mode: DreamMode = .montage
-
-    private let maxSequenceSources: Int = 20
-
-    /// Global templates store (shared across Montage/Sequence/Live)
+    /// Global templates store (shared across preview + live)
     let effectsLibrarySession: EffectsSession
 
-    /// Global RECENT effects store (shared across Montage/Sequence/Live)
+    /// Global RECENT effects store (shared across preview + live)
     let recentEffectsStore: RecentEffectChainsStore
 
-    // MARK: - Player States (independent decks)
+    // MARK: - Player States
 
-    /// Montage player - blends all sources together
-    let montagePlayer: DreamPlayerState
-
-    /// Sequence player - plays sources back-to-back
-    let sequencePlayer: DreamPlayerState
+    /// Preview deck - a layered clip (montage-like)
+    let player: DreamPlayerState
 
     /// Live display - external monitor output (moved from HypnographState)
     let livePlayer: LivePlayer
@@ -44,10 +37,8 @@ final class Dream: ObservableObject {
     /// Subscriptions to forward player state changes to Dream's objectWillChange
     private var playerSubscriptions: Set<AnyCancellable> = []
 
-    /// The active player based on current mode
-    var activePlayer: DreamPlayerState {
-        mode == .montage ? montagePlayer : sequencePlayer
-    }
+    /// The active preview player (always the preview deck)
+    var activePlayer: DreamPlayerState { player }
 
     /// Live mode: Edit (local preview) vs Live (mirror live display)
     enum LiveMode {
@@ -116,24 +107,19 @@ final class Dream: ObservableObject {
         self.effectsLibrarySession = EffectsSession(filename: "effects-library.json")
         self.recentEffectsStore = RecentEffectChainsStore()
 
-        // Create independent player states with mode-specific effects files and configs
-        self.montagePlayer = DreamPlayerState(config: state.settings.montagePlayerConfig, effectsSession: effectsLibrarySession)
-        self.sequencePlayer = DreamPlayerState(config: state.settings.sequencePlayerConfig, effectsSession: effectsLibrarySession)
+        // Create the preview player state (single deck) + live display
+        self.player = DreamPlayerState(config: state.settings.playerConfig, effectsSession: effectsLibrarySession)
         self.livePlayer = LivePlayer(settings: state.settings, effectsSession: effectsLibrarySession)
 
         // Wire RECENT store into all effect managers
-        montagePlayer.effectManager.recentStore = recentEffectsStore
-        sequencePlayer.effectManager.recentStore = recentEffectsStore
+        player.effectManager.recentStore = recentEffectsStore
         livePlayer.effectManager.recentStore = recentEffectsStore
 
         // Create audio controller (handles device selection, volume, persistence)
         self.audioController = DreamAudioController(settingsStore: state.settingsStore, livePlayer: livePlayer)
 
         // Forward player state changes to Dream's objectWillChange for SwiftUI reactivity
-        montagePlayer.objectWillChange
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &playerSubscriptions)
-        sequencePlayer.objectWillChange
+        player.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &playerSubscriptions)
 
@@ -148,29 +134,21 @@ final class Dream: ObservableObject {
             .store(in: &playerSubscriptions)
 
         // Sync player config changes back to settings
-        montagePlayer.$config
+        player.$config
             .dropFirst() // Skip initial value
             .sink { [weak self] config in
                 guard let self = self else { return }
-                self.state.settingsStore.update { $0.montagePlayerConfig = config }
+                self.state.settingsStore.update { $0.playerConfig = config }
             }
             .store(in: &playerSubscriptions)
 
-        sequencePlayer.$config
-            .dropFirst() // Skip initial value
-            .sink { [weak self] config in
-                guard let self = self else { return }
-                self.state.settingsStore.update { $0.sequencePlayerConfig = config }
-            }
-            .store(in: &playerSubscriptions)
-
-        // Set up watch timer callback to respect current mode
+        // Set up watch timer callback
         state.onWatchTimerFired = { [weak self] in
             self?.new()
         }
 
-        // Restore last recipes for each mode if available
-        restorePersistedRecipes()
+        // Restore last recipe if available
+        restorePersistedRecipe()
 
         // Save recipe when app terminates
         setupRecipePersistence()
@@ -191,88 +169,44 @@ final class Dream: ObservableObject {
         }
     }
 
-    /// Save recipes for both modes to their respective configs
+    /// Save the current recipe for persistence
     func saveCurrentRecipe() {
-        // Save montage recipe if it has sources
-        var montageRecipe = montagePlayer.recipe
-        montageRecipe.mode = .montage
-        montageRecipe.effectsLibrarySnapshot = montagePlayer.effectsSession.chains
-        if !montageRecipe.sources.isEmpty {
-            state.settingsStore.update { $0.montagePlayerConfig.lastRecipe = montageRecipe }
-            print("📦 Saved montage recipe with \(montageRecipe.sources.count) sources")
-        }
-
-        // Save sequence recipe if it has sources
-        var sequenceRecipe = sequencePlayer.recipe
-        sequenceRecipe.mode = .sequence
-        // Sequence uses its own duration calculation
-        let totalDuration = sequencePlayer.sources.map { $0.clip.duration }.reduce(.zero, +)
-        if totalDuration.seconds > 0 {
-            sequenceRecipe.targetDuration = totalDuration
-        }
-        sequenceRecipe.effectsLibrarySnapshot = sequencePlayer.effectsSession.chains
-        if !sequenceRecipe.sources.isEmpty {
-            state.settingsStore.update { $0.sequencePlayerConfig.lastRecipe = sequenceRecipe }
-            print("📦 Saved sequence recipe with \(sequenceRecipe.sources.count) sources")
+        var recipe = player.recipe
+        recipe.mode = .montage
+        recipe.effectsLibrarySnapshot = effectsSession.chains
+        if !recipe.sources.isEmpty {
+            state.settingsStore.update { $0.playerConfig.lastRecipe = recipe }
+            print("📦 Saved recipe with \(recipe.sources.count) layer(s)")
         }
 
         // Force immediate synchronous save for app termination
         state.settingsStore.save(synchronous: true)
     }
 
-    /// Restore persisted recipes for both modes
-    private func restorePersistedRecipes() {
-        var restoredMode: DreamMode? = nil
-
-        // Restore montage recipe
-        if let montageRecipe = state.settings.montagePlayerConfig.lastRecipe {
-            var recipe = montageRecipe
+    /// Restore persisted recipe (preview deck)
+    private func restorePersistedRecipe() {
+        if let persisted = state.settings.playerConfig.lastRecipe {
+            var recipe = persisted
             recipe.ensureEffectChainNames()
-            montagePlayer.setRecipe(recipe)
-            montagePlayer.currentSourceIndex = -1
-            montagePlayer.effectManager.clearFrameBuffer()
-            EffectChainLibraryActions.importChainsFromRecipe(recipe, into: montagePlayer.effectsSession)
-            montagePlayer.notifyRecipeChanged()
-            print("📦 Restored montage recipe with \(recipe.sources.count) sources")
-            restoredMode = .montage
-        }
-
-        // Restore sequence recipe
-        if let sequenceRecipe = state.settings.sequencePlayerConfig.lastRecipe {
-            var recipe = sequenceRecipe
-            recipe.ensureEffectChainNames()
-            sequencePlayer.setRecipe(recipe)
-            sequencePlayer.currentSourceIndex = -1
-            sequencePlayer.effectManager.clearFrameBuffer()
-            EffectChainLibraryActions.importChainsFromRecipe(recipe, into: sequencePlayer.effectsSession)
-            sequencePlayer.notifyRecipeChanged()
-            print("📦 Restored sequence recipe with \(recipe.sources.count) sources")
-            // Only set mode to sequence if we didn't already restore montage
-            if restoredMode == nil {
-                restoredMode = .sequence
-            }
-        }
-
-        // Set mode based on what was restored, defaulting to montage
-        if let restoredMode = restoredMode {
-            mode = restoredMode
+            recipe.mode = .montage
+            player.setRecipe(recipe)
+            player.currentSourceIndex = -1
+            player.effectManager.clearFrameBuffer()
+            EffectChainLibraryActions.importChainsFromRecipe(recipe, into: player.effectsSession)
+            player.notifyRecipeChanged()
+            print("📦 Restored recipe with \(recipe.sources.count) layer(s)")
         } else {
-            // No saved recipes, generate new content for montage mode
-            mode = .montage
-            generateNewHypnogram(for: montagePlayer)
+            generateNewHypnogram(for: player)
         }
     }
 
     /// Build export settings on-demand with current player config
-    private func exportSettings(for mode: DreamMode) -> (outputSize: CGSize, timeline: RenderEngine.Timeline) {
+    private func exportSettings() -> CGSize {
         let outputSize = renderSize(
             aspectRatio: activePlayer.config.aspectRatio,
             maxDimension: activePlayer.config.playerResolution.maxDimension
         )
-        let timeline: RenderEngine.Timeline = (mode == .montage)
-            ? .montage(targetDuration: activePlayer.recipe.targetDuration)
-            : .sequence
-        return (outputSize, timeline)
+        return outputSize
     }
 
     // MARK: - Shared helpers
@@ -283,17 +217,18 @@ final class Dream: ObservableObject {
         sourceCount > 0 ? activePlayer.currentSourceIndex + 1 : 0
     }
 
-    func sequenceTotalDuration() -> CMTime {
-        activePlayer.sources.map { $0.clip.duration }.reduce(.zero, +)
-    }
-
     // MARK: - Hypnogram Generation
 
     /// Generate a new random hypnogram for the given player
     private func generateNewHypnogram(for player: DreamPlayerState) {
         player.resetForNextHypnogram(preserveGlobalEffect: true)
 
-        let total = max(1, player.config.maxSourcesForNew)
+        let clipLengthMin = max(0.1, state.settings.clipLengthMinSeconds)
+        let clipLengthMax = max(clipLengthMin, state.settings.clipLengthMaxSeconds)
+        let clipLengthSeconds = Double.random(in: clipLengthMin...clipLengthMax)
+        player.targetDuration = CMTime(seconds: clipLengthSeconds, preferredTimescale: 600)
+
+        let total = max(1, player.config.maxLayers)
         let minCount = min(2, total)
         let count = Int.random(in: minCount...total)
 
@@ -301,13 +236,20 @@ final class Dream: ObservableObject {
             guard let clip = state.library.randomClip(clipLength: player.recipe.targetDuration.seconds) else {
                 continue
             }
-            let blendMode = (i == 0) ? BlendMode.sourceOver : BlendMode.random()
+            let blendMode = (i == 0) ? BlendMode.sourceOver : BlendMode.defaultMontage
             let source = HypnogramSource(clip: clip, blendMode: blendMode)
             player.sources.append(source)
         }
 
         player.effectManager.invalidateBlendAnalysis()
         player.effectManager.onEffectChanged?()
+
+        // Keep settings in sync so watch interval reflects the current clip length.
+        // (This will be replaced by clip-tape persistence in Phase 2.)
+        var persisted = player.recipe
+        persisted.mode = .montage
+        persisted.effectsLibrarySnapshot = effectsSession.chains
+        state.settingsStore.update { $0.playerConfig.lastRecipe = persisted }
     }
 
     /// Add a source to the given player
@@ -315,67 +257,25 @@ final class Dream: ObservableObject {
         // Use default clip length if not provided
         let clipLength = length ?? player.recipe.targetDuration.seconds
         guard let clip = state.library.randomClip(clipLength: clipLength) else { return }
-        let blendMode = player.sources.isEmpty ? BlendMode.sourceOver : BlendMode.random()
+        let blendMode = player.sources.isEmpty ? BlendMode.sourceOver : BlendMode.defaultMontage
         let source = HypnogramSource(clip: clip, blendMode: blendMode)
         player.sources.append(source)
         player.currentSourceIndex = player.sources.count - 1
     }
 
-    private func preferredClipLength() -> Double? {
-        switch mode {
-        case .montage:
-            return nil
-        case .sequence:
-            return Double.random(in: 2.0...15.0)
-        }
-    }
-
-    // MARK: - Mode
-
-    /// Toggle between montage and sequence (used by PlayerSettingsView buttons)
-    func toggleMode() {
-        state.noteUserInteraction()
-        mode = (mode == .montage) ? .sequence : .montage
-    }
-
-    /// Cycle through all three modes: Montage → Sequence → Live → Montage
-    func cycleMode() {
-        state.noteUserInteraction()
-        if isLiveMode {
-            // Live → Montage (exit live mode)
-            liveMode = .edit
-            mode = .montage
-        } else if mode == .montage {
-            // Montage → Sequence
-            mode = .sequence
-        } else {
-            // Sequence → Live
-            liveMode = .live
-        }
-    }
-
-    // MARK: - Source Navigation (sequence sync)
-    // Note: Flash solo is now handled by NSEvent key hold detection in HypnographAppDelegate
+    // MARK: - Layer Navigation
+    // Note: Flash solo is handled by NSEvent key hold detection in HypnographAppDelegate
 
     func nextSource() {
         activePlayer.nextSource()
-        syncLivePlayerIfSequence()
     }
 
     func previousSource() {
         activePlayer.previousSource()
-        syncLivePlayerIfSequence()
     }
 
     func selectSource(index: Int) {
         activePlayer.selectSource(index)
-        syncLivePlayerIfSequence()
-    }
-
-    /// Sync Live Display to current source when in sequence mode
-    private func syncLivePlayerIfSequence() {
-        guard mode == .sequence else { return }
-        livePlayer.seekToSource(index: activePlayer.currentSourceIndex)
     }
 
     // MARK: - Effects
@@ -425,7 +325,6 @@ final class Dream: ObservableObject {
     // MARK: - Display
 
     func makeDisplayView() -> AnyView {
-        // In Live mode, mirror the Live Display player instead of local preview
         if isLiveMode {
             return AnyView(
                 LivePlayerScreen(livePlayer: livePlayer)
@@ -433,68 +332,34 @@ final class Dream: ObservableObject {
             )
         }
 
-        if mode == .sequence, activePlayer.sources.isEmpty {
-            newRandomSequence()
+        if activePlayer.sources.isEmpty {
+            generateNewHypnogram(for: activePlayer)
         }
 
         let recipe = makeDisplayRecipe()
         let player = activePlayer
 
-        switch mode {
-        case .montage:
-            return AnyView(
-                MontagePlayerView(
-                    recipe: recipe,
-                    aspectRatio: player.config.aspectRatio,
-                    displayResolution: player.config.playerResolution,
-                    currentSourceIndex: Binding(
-                        get: { player.currentSourceIndex },
-                        set: { player.currentSourceIndex = $0 }
-                    ),
-                    currentSourceTime: Binding(
-                        get: { player.currentClipTimeOffset },
-                        set: { player.currentClipTimeOffset = $0 }
-                    ),
-                    isPaused: player.isPaused,
-                    effectsChangeCounter: player.effectsChangeCounter,
-                    effectManager: player.effectManager,
-                    volume: previewVolume,
-                    audioDeviceUID: previewAudioDeviceUID
-                )
-                .id("dream-montage-\(player.config.viewID)-\(recipe.playRate)")
+        return AnyView(
+            MontagePlayerView(
+                recipe: recipe,
+                aspectRatio: player.config.aspectRatio,
+                displayResolution: player.config.playerResolution,
+                currentSourceIndex: Binding(
+                    get: { player.currentSourceIndex },
+                    set: { player.currentSourceIndex = $0 }
+                ),
+                currentSourceTime: Binding(
+                    get: { player.currentClipTimeOffset },
+                    set: { player.currentClipTimeOffset = $0 }
+                ),
+                isPaused: player.isPaused,
+                effectsChangeCounter: player.effectsChangeCounter,
+                effectManager: player.effectManager,
+                volume: previewVolume,
+                audioDeviceUID: previewAudioDeviceUID
             )
-
-        case .sequence:
-            // Only provide completion handler when Watch mode is ON
-            // When Watch is off, sequence loops indefinitely (nil callback)
-            let watchIsOn = state.settings.watch
-            let completionHandler: (() -> Void)? = watchIsOn ? { [weak self] in
-                self?.newRandomSequence()
-            } : nil
-
-            return AnyView(
-                SequencePlayerView(
-                    recipe: recipe,
-                    aspectRatio: player.config.aspectRatio,
-                    displayResolution: player.config.playerResolution,
-                    currentSourceIndex: Binding(
-                        get: { player.currentSourceIndex },
-                        set: { player.currentSourceIndex = $0 }
-                    ),
-                    isPaused: player.isPaused,
-                    effectsChangeCounter: player.effectsChangeCounter,
-                    effectManager: player.effectManager,
-                    volume: previewVolume,
-                    audioDeviceUID: previewAudioDeviceUID,
-                    onSourceIndexChanged: { [weak self] newIndex in
-                        // Sync Live Display when auto-advancing in sequence mode
-                        self?.livePlayer.seekToSource(index: newIndex)
-                    },
-                    onSequenceCompleted: completionHandler
-                )
-                .id("dream-sequence-\(player.sources.count)-\(player.config.viewID)-\(recipe.playRate)-\(watchIsOn)")
-            )
-        }
+            .id("dream-preview-\(player.config.viewID)-\(recipe.playRate)")
+        )
     }
 
     /// The live recipe from the active player - use for direct access/mutation
@@ -505,34 +370,16 @@ final class Dream: ObservableObject {
 
     /// Build a recipe snapshot for display/export (sets mode, timestamp, effects library snapshot)
     func makeDisplayRecipe() -> HypnogramRecipe {
-        // Use the recipe from activePlayer, adjust target duration based on mode
         var recipe = activePlayer.recipe
-        recipe.mode = mode  // Store current mode in recipe
+        recipe.mode = .montage
         recipe.createdAt = Date()  // Set creation timestamp
         recipe.effectsLibrarySnapshot = effectsSession.chains  // Snapshot the entire effects library
-        switch mode {
-        case .montage:
-            // targetDuration is already on the recipe
-            break
-        case .sequence:
-            // For sequence mode, use total clip duration if available
-            let total = sequenceTotalDuration()
-            if total.seconds > 0 {
-                recipe.targetDuration = total
-            }
-        }
         return recipe
     }
 
     // MARK: - Lifecycle
 
     func new() {
-        // In Live mode, generate directly for live display without changing edit state
-        if isLiveMode {
-            newForLivePlayer()
-            return
-        }
-
         // Clear frame buffer to prevent memory bloat from stored CIImages
         activePlayer.effectManager.clearFrameBuffer()
 
@@ -542,65 +389,14 @@ final class Dream: ObservableObject {
             StillImageCache.clear()
         }
 
-        switch mode {
-        case .montage:
-            generateNewHypnogram(for: montagePlayer)
-        case .sequence:
-            newRandomSequence()
-        }
-    }
-
-    /// Generate a new random recipe and send directly to live display
-    /// Does NOT modify the edit state
-    private func newForLivePlayer() {
-        // Clear live display's frame buffer
-        livePlayer.effectManager.clearFrameBuffer()
-
-        // Generate a standalone recipe
-        let recipe = generateRandomRecipe()
-
-        // Send directly to live display
-        livePlayer.send(
-            recipe: recipe,
-            config: activePlayer.config,
-            mode: mode
-        )
-    }
-
-    /// Generate a random recipe without modifying state (for live display)
-    /// Preserves the current effect chain from the active player
-    private func generateRandomRecipe() -> HypnogramRecipe {
-        var sources: [HypnogramSource] = []
-        let total = max(1, activePlayer.config.maxSourcesForNew)
-        let minCount = min(2, total)
-        let count = Int.random(in: minCount...total)
-
-        for i in 0..<max(1, count) {
-            guard let clip = state.library.randomClip(clipLength: activePlayer.recipe.targetDuration.seconds) else {
-                continue
-            }
-            // First source uses SourceOver, rest get random blend modes
-            let blendMode = (i == 0) ? BlendMode.sourceOver : BlendMode.random()
-            let source = HypnogramSource(clip: clip, blendMode: blendMode)
-            sources.append(source)
-        }
-
-        // Copy effect chain from active player so new recipes inherit current effects
-        let effectChain = activePlayer.recipe.effectChain.clone()
-
-        return HypnogramRecipe(
-            sources: sources,
-            targetDuration: activePlayer.recipe.targetDuration,
-            effectChain: effectChain
-        )
+        generateNewHypnogram(for: player)
     }
 
     /// Send current hypnogram to live display
     func sendToLivePlayer() {
         livePlayer.send(
             recipe: activePlayer.recipe,
-            config: activePlayer.config,
-            mode: mode
+            config: activePlayer.config
         )
     }
 
@@ -612,10 +408,8 @@ final class Dream: ObservableObject {
         activePlayer.togglePause()
     }
 
-    // Override addSource to use appropriate length for sequence mode
     func addSource() {
-        let length = preferredClipLength()
-        addSourceToPlayer(activePlayer, length: length)
+        addSourceToPlayer(activePlayer)
     }
 
     func newRandomClip() {
@@ -689,35 +483,23 @@ final class Dream: ObservableObject {
     /// This is the legacy save behavior - available in menu without hotkey
     func renderAndSaveVideo() {
         guard !activePlayer.recipe.sources.isEmpty else {
-            print("Dream[\(mode.rawValue)]: no sources to render.")
+            print("Dream: no sources to render.")
             return
         }
 
         // Deep copy recipe with fresh effect instances to avoid sharing state with preview
-        var renderRecipe = activePlayer.recipe.copyForExport()
-        switch mode {
-        case .montage:
-            // targetDuration is already on the recipe
-            break
-        case .sequence:
-            // For sequence mode, use total clip duration if available
-            let total = sequenceTotalDuration()
-            if total.seconds > 0 {
-                renderRecipe.targetDuration = total
-            }
-        }
+        let renderRecipe = activePlayer.recipe.copyForExport()
 
         // Create renderer with current settings (aspect ratio + resolution)
-        let settings = exportSettings(for: mode)
+        let outputSize = exportSettings()
 
-        print("Dream[\(mode.rawValue)]: enqueueing recipe with \(renderRecipe.sources.count) source(s), duration: \(renderRecipe.targetDuration.seconds)s")
+        print("Dream: enqueueing recipe with \(renderRecipe.sources.count) layer(s), duration: \(renderRecipe.targetDuration.seconds)s")
 
         // Enqueue immediately (don't defer - the renderer handles async internally)
         renderQueue.enqueue(
             recipe: renderRecipe,
             outputFolder: state.settings.outputURL,
-            outputSize: settings.outputSize,
-            timeline: settings.timeline
+            outputSize: outputSize
         )
 
         AppNotifications.show("Rendering video...", flash: true)
@@ -726,13 +508,7 @@ final class Dream: ObservableObject {
         // Defer this to avoid modifying @Published during button action
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-
-            switch self.mode {
-            case .montage:
-                self.generateNewHypnogram(for: self.montagePlayer)
-            case .sequence:
-                self.newRandomSequence()
-            }
+            self.generateNewHypnogram(for: self.player)
         }
     }
 
@@ -777,9 +553,10 @@ final class Dream: ObservableObject {
         // Ensure effect chains have names (required for library matching)
         var mutableRecipe = recipe
         mutableRecipe.ensureEffectChainNames()
+        mutableRecipe.mode = .montage
 
-        // Switch to the mode the recipe was saved in
-        mode = mutableRecipe.mode
+        // Ensure we're editing the preview deck
+        liveMode = .edit
 
         activePlayer.setRecipe(mutableRecipe)
         // Default to Global layer (-1) so effects editor shows global effects first
@@ -871,24 +648,6 @@ final class Dream: ObservableObject {
                 activePlayer.sources[i].blendMode = BlendMode.defaultMontage
             }
         }
-    }
-
-    // MARK: - Sequence helpers
-
-    private func newRandomSequence() {
-        sequencePlayer.resetForNextHypnogram(preserveGlobalEffect: true)
-        // Use maxSourcesForNew from player config, clamped to maxSequenceSources
-        let maxFromConfig = max(1, sequencePlayer.config.maxSourcesForNew)
-        let desiredCount = min(maxFromConfig, maxSequenceSources)
-        // Generate random count between 2 and desiredCount (or just desiredCount if small)
-        let minCount = min(2, desiredCount)
-        let count = Int.random(in: minCount...desiredCount)
-        for _ in 0..<count {
-            let length = Double.random(in: 2.0...15.0)
-            addSourceToPlayer(sequencePlayer, length: length)
-        }
-        sequencePlayer.currentSourceIndex = 0
-        print("DreamMode[sequence]: generated sequence with \(sequencePlayer.sources.count) sources (max: \(maxFromConfig)), total duration: \(sequenceTotalDuration().seconds)s")
     }
 
     // MARK: - Source Management Helpers

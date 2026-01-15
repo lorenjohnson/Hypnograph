@@ -6,17 +6,10 @@
   },
   "outputFolder": "~/Movies/Hypnograph/renders",
   "snapshotsFolder": "~/Movies/Hypnograph/snapshots",
-  "montagePlayerConfig": {
+  "playerConfig": {
     "aspectRatio": "16:9",
     "playerResolution": 1080,
-    "maxSourcesForNew": 5,
-    "targetDurationSeconds": 60.0,
-    "playRate": 1.0
-  },
-  "sequencePlayerConfig": {
-    "aspectRatio": "16:9",
-    "playerResolution": 1080,
-    "maxSourcesForNew": 5,
+    "maxLayers": 5,
     "targetDurationSeconds": 60.0,
     "playRate": 1.0
   }

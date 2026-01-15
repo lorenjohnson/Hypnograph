@@ -11,15 +11,15 @@
 		04302B442F00E924001C0F60 /* HypnogramQuickLook.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 04302B352F00E924001C0F60 /* HypnogramQuickLook.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		41E09D815A84A5C5F90444FE /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
 		8C9F3A1B2C3D4E5F6A7B8C9D /* HypnoUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C5 /* HypnoUI.framework */; };
-		EMBED0001000000000000001 /* HypnoCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		EMBED0001000000000000002 /* HypnoUI.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C5 /* HypnoUI.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		EMBED0002000000000000001 /* HypnoCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		EMBED0002000000000000002 /* HypnoUI.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C5 /* HypnoUI.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A1B2C3D4E5F6A7B8C9D0E1F8 /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
 		C29DD884B84036A4B39F88C0 /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
 		D1B2C3D4E5F60718293A4B70 /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
 		D1B2C3D4E5F60718293A4B74 /* HypnoUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C5 /* HypnoUI.framework */; };
 		D1E2F3A4B5C6D7E8F9A0B1D1 /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
+		EMBED0001000000000000001 /* HypnoCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		EMBED0001000000000000002 /* HypnoUI.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C5 /* HypnoUI.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		EMBED0002000000000000001 /* HypnoCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		EMBED0002000000000000002 /* HypnoUI.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C5 /* HypnoUI.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -161,6 +161,13 @@
 			);
 			target = 04302B342F00E924001C0F60 /* HypnogramQuickLook */;
 		};
+		C0FFEE000000000000000001 /* Exceptions for "Hypnograph" folder in "Hypnograph" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 042F99002EC8990B006D4CDE /* Hypnograph */;
+		};
 		D1B2C3D4E5F60718293A4B66 /* Exceptions for "Divine" folder in "Divine" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -173,6 +180,9 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		042F99032EC8990B006D4CDE /* Hypnograph */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C0FFEE000000000000000001 /* Exceptions for "Hypnograph" folder in "Hypnograph" target */,
+			);
 			path = Hypnograph;
 			sourceTree = "<group>";
 		};

@@ -3,7 +3,7 @@
 //  Hypnograph
 //
 //  Metal-based view for displaying processed CIImages directly.
-//  Used for still images in sequence mode, bypassing AVPlayer.
+//  Used for still images / direct CIImage presentation, bypassing AVPlayer.
 //
 
 import MetalKit

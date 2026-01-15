@@ -3,7 +3,7 @@
 //  Hypnograph
 //
 //  Independent player state for Dream module.
-//  Each player (montage, sequence) has its own recipe, effects, and settings.
+//  Holds the current recipe, effects, and settings for the preview deck.
 //
 
 import Foundation
@@ -11,8 +11,8 @@ import CoreMedia
 import Combine
 import HypnoCore
 
-/// Independent player state for a Dream deck (montage or sequence).
-/// Each player maintains its own recipe, playback state, and generation settings.
+/// Independent player state for the Dream preview deck.
+/// Maintains its own recipe, playback state, and generation settings.
 @MainActor
 final class DreamPlayerState: ObservableObject {
 
