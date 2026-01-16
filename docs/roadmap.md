@@ -27,16 +27,13 @@ last_reviewed: 2026-01-07
 
 ## Known Issues / Bugs
 - [ ] Save and Render: Rendering started and another flash message appear at the same time and one of those messages is extraneus 
-- [ ] When the Player is not playing / when it is all still images blend modes don't apply and I can't "flash" to a new layer and see it without effects like I can when vidoes are playing. It should work/work the same in both scenarios. 
+- [ ] When the Player is not playing / when it is all still images blend modes don't apply and I can't "flash" to a new layer and see it without effects like I can when vidoes are playing. It should work/work the same in both scenarios.
 - [ ] Updating an Effect Chain title from where it is applied (e.g. global), then saving back to library just seemed to create a new Library Entry instead of saving back to the original library entry.
 - [ ] Rendering/saving some Hypnograms results in an error: "🔴 RenderEngine.export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn’t be completed. (Hypnograph.RenderError error 6.)"
 any effects load operation were done first
-- [ ] **Output height/width ignored** - Settings file values not applied.
-- [ ] **Finder action not installing** - Automator action fails.
-- [ ] First load of app seemed to not connect to apple photos but relauches were fine, in both apps
+- [ ] Finder action not installing - Automator action fails.
 
 ## Minor Projects:
-- [ ] Right arrow key should create a New Hypnogram when in Player view
 - [ ] We can do away with lastRecipe, if there is no history or a failure on load we just generate a new hypnogram on start and start a new history
 - [ ] Confirm the Add Source functionality (which should be mapped to ".") still works.
 - [ ] Hypnograph: Put what is in HUD view into the top of the Player Settings modal, eliminating the HUD View. Player Settings may get retitled, not sure. But it now takes up more vertical space and goes to top left of screen. We may need to iterate on the styling and what actually stays, as some things in the HUD may just go away or move elsewhere. 
