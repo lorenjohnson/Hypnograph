@@ -29,6 +29,7 @@ final class HypnographState: ObservableObject {
 
     let exclusionStore: ExclusionStore
     let deleteStore: DeleteStore
+    let sourceFavoritesStore: SourceFavoritesStore
 
     @Published private(set) var currentLibraryKey: String
     @Published private(set) var activeLibraryKeys: Set<String>
@@ -56,10 +57,12 @@ final class HypnographState: ObservableObject {
     init(settingsStore: SettingsStore, coreConfig: HypnoCoreConfig) {
         let exclusionStore = ExclusionStore(url: coreConfig.exclusionsURL)
         let deleteStore = DeleteStore(url: coreConfig.deletionsURL)
+        let sourceFavoritesStore = SourceFavoritesStore(url: coreConfig.sourceFavoritesURL)
 
         self.settingsStore = settingsStore
         self.exclusionStore = exclusionStore
         self.deleteStore = deleteStore
+        self.sourceFavoritesStore = sourceFavoritesStore
 
         // Local alias for init (self.settings is a computed property that can't be used yet)
         let settings = settingsStore.value

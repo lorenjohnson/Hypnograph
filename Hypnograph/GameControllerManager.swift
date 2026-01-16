@@ -176,7 +176,7 @@ final class GameControllerManager {
                 self.navigateEffectsEditor(delta: 1)
             } else {
                 // Normal mode: delete source
-                self.dream?.deleteCurrentSource()
+                self.dream?.removeCurrentLayer()
             }
         }
     }
