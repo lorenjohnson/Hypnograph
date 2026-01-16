@@ -49,13 +49,13 @@ extension Dream {
 
         // Keyboard hints
         items.append(.text("Shortcuts", order: 40, font: .subheadline))
-        items.append(.text(". = New clip | M = Blend | Delete = Mark for deletion", order: 41))
+        items.append(.text(". = New clip | M = Blend | Delete = Delete source", order: 41))
         items.append(.text("Cmd+E = Cycle effect | C = Clear layer | Ctrl+Shift+C = Clear all", order: 42))
         items.append(.text("E = Effects editor | ` = Global | 1-9 = Source", order: 43))
         items.append(.text("Left/Right = Navigate clips | Opt+Left/Right = Navigate layers", order: 44))
-        items.append(.text("N = New | Shift+N = Add source | Opt+Delete = Remove layer | Cmd+Delete = Delete clip", order: 45))
+        items.append(.text("N = New | Shift+N = Add source | Cmd+Delete = Delete clip", order: 45))
         items.append(.text("Cmd+S = Save | Cmd+F = Favorite hypnogram", order: 46))
-        items.append(.text("Shift+X/D/F = Exclude/Delete/Favorite source", order: 47))
+        items.append(.text("Shift+X/F = Exclude/Favorite source", order: 47))
 
         return items
     }
@@ -230,10 +230,10 @@ extension Dream {
 
         Divider()
 
-        Button("Remove Layer") { [self] in
+        Button("Delete Source") { [self] in
             removeCurrentLayer()
         }
-        .keyboardShortcut(.delete, modifiers: [.option])
+        .keyboardShortcut(.delete, modifiers: [])
         .disabled(isTyping)
 
         Button("Add to Exclude List") { [self] in
@@ -245,16 +245,5 @@ extension Dream {
             favoriteCurrentSource()
         }
         .keyboardShortcut("f", modifiers: [.shift])
-
-        Button("Delete") { [self] in
-            markCurrentSourceForDeletion()
-        }
-        .keyboardShortcut(.delete, modifiers: [])
-        .disabled(isTyping)
-
-        Button("Mark for Deletion") { [self] in
-            markCurrentSourceForDeletion()
-        }
-        .keyboardShortcut("d", modifiers: [.shift])
     }
 }
