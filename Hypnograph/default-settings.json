@@ -9,6 +9,7 @@
   "clipLengthMinSeconds": 2,
   "clipLengthMaxSeconds": 15,
   "historyLimit": 200,
+  "sourceFraming": "fill",
   "playerConfig": {
     "aspectRatio": "16:9",
     "playerResolution": 1080,

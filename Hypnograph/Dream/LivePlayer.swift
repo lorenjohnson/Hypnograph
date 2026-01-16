@@ -24,6 +24,9 @@ final class LivePlayer: ObservableObject {
     /// Per-player settings (aspect ratio, resolution, generation settings)
     @Published var config: PlayerConfiguration
 
+    /// Global source framing behavior (Fill vs Fit)
+    private var sourceFraming: SourceFraming
+
 
 
     // MARK: - State
@@ -125,9 +128,22 @@ final class LivePlayer: ObservableObject {
 
     init(settings: Settings, effectsSession: EffectsSession) {
         self.config = PlayerConfiguration(from: settings)
+        self.sourceFraming = settings.sourceFraming
         self.effectsSession = effectsSession
         setupEffectManager()
         setupEffectsSession()
+    }
+
+    func setSourceFraming(_ newValue: SourceFraming) {
+        guard sourceFraming != newValue else { return }
+        sourceFraming = newValue
+
+        guard let content = contentView, currentClip != nil else { return }
+
+        pendingBuildTask?.cancel()
+        pendingBuildTask = Task {
+            await buildAndTransition(content: content)
+        }
     }
 
     private func setupEffectManager() {
@@ -412,7 +428,8 @@ final class LivePlayer: ObservableObject {
         let config = RenderEngine.Config(
             outputSize: outputSize,
             frameRate: 30,
-            enableEffects: true
+            enableEffects: true,
+            sourceFraming: sourceFraming
         )
 
         let result = await renderEngine.makePlayerItem(

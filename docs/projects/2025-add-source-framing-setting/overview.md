@@ -1,7 +1,7 @@
 # Add Global Source Framing Setting: Overview
 
 **Created**: 2025-01-16  
-**Status**: Proposal / Planning
+**Status**: Complete
 
 Goal: add a single global **Source Framing** setting that controls how each source/layer is mapped into the output frame: **Fill** (crop) vs **Fit** (no crop).
 

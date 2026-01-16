@@ -145,6 +145,14 @@ final class Dream: ObservableObject {
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &playerSubscriptions)
 
+        state.settingsStore.$value
+            .map(\.sourceFraming)
+            .removeDuplicates()
+            .sink { [weak self] framing in
+                self?.livePlayer.setSourceFraming(framing)
+            }
+            .store(in: &playerSubscriptions)
+
         // Sync player config changes back to settings
         player.$config
             .dropFirst() // Skip initial value
@@ -521,6 +529,7 @@ final class Dream: ObservableObject {
                 clip: player.currentClip,
                 aspectRatio: player.config.aspectRatio,
                 displayResolution: player.config.playerResolution,
+                sourceFraming: state.settings.sourceFraming,
                 watchMode: state.settings.watchMode,
                 onClipEnded: { [weak self] in
                     guard let self else { return }
@@ -685,7 +694,8 @@ final class Dream: ObservableObject {
         renderQueue.enqueue(
             clip: renderClip,
             outputFolder: state.settings.outputURL,
-            outputSize: outputSize
+            outputSize: outputSize,
+            sourceFraming: state.settings.sourceFraming
         )
 
         AppNotifications.show("Rendering video...", flash: true)

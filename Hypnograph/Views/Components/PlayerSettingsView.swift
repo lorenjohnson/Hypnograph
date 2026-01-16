@@ -471,6 +471,27 @@ struct PlayerSettingsView: View {
                 .opacity(dream.isLiveMode ? 0.5 : 1.0)
 
             HStack {
+                Text("Source Framing:")
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.8))
+
+                Spacer()
+
+                Picker("", selection: Binding(
+                    get: { dream.state.settings.sourceFraming },
+                    set: { newValue in
+                        dream.state.settingsStore.update { $0.sourceFraming = newValue }
+                    }
+                )) {
+                    ForEach(SourceFraming.allCases, id: \.self) { framing in
+                        Text(framing.displayName).tag(framing)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(width: 120)
+            }
+
+            HStack {
                 Text("Aspect Ratio:")
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white.opacity(dream.isLiveMode ? 0.4 : 0.8))

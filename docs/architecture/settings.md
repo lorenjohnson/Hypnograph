@@ -34,6 +34,7 @@ This document describes settings storage, defaults, and related persistent state
   - `sourceMediaTypes` (images/videos)
 - Rendering defaults:
   - `outputResolution`
+  - `sourceFraming`
   - `playerConfig` (legacy: `montagePlayerConfig` / `sequencePlayerConfig`)
 - UI state:
   - `effectsListCollapsed`

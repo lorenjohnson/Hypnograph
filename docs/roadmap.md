@@ -8,6 +8,7 @@ last_reviewed: 2026-01-07
 
 - Hold `0` in Montage mode to temporarily suspend global effect chain
 - Hold `1-9` in Montage mode to solo source and suspend global effects (keeps source effect for preview)
+- Add global Source Framing setting (Fill/Fit) persisted in `hypnograph-settings.json` and applied to preview/live/export
 - Change the default location of stored Hypnograms to ~/Movies/Hypnograph ?
 - I would like the window state to restore including whether clean screen is currently enabled
 - When there were no windows in the saved window state then Tab toggles on all windows... may change this to just being a special keystroke for show all windows but not sure yet
@@ -23,6 +24,8 @@ last_reviewed: 2026-01-07
 - [ ] I am questioning whether effects chains ("Treatments")should be named or if they maybe are just a thumbnail and pressing on the Treatment thumbnail applies the treatment or maybe a small button on the thumbnail takes a snapshot of the current hypnogram to be the new thumbnail for that treatment.
 
 ## Known Issues / Bugs
+- [ ] When the Player is not playing / when it is all still images blend modes don't apply and I can't "flash" to a new layer and see it without effects like I can when vidoes are playing. It should work/work the same in both scenarios. 
+- [ ] Updating an Effect Chain title from where it is applied (e.g. global), then saving back to library just seemed to create a new Library Entry instead of saving back to the original library entry.
 - [ ] Rendering/saving some Hypnograms results in an error: "🔴 RenderEngine.export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn’t be completed. (Hypnograph.RenderError error 6.)"
 - [ ] Explore how some watch sort of mode where individual sources in a layered montage hypnogram change one by one randomly might work. Start with prototype just to see how the experience feels and if it is worth integrating.
 - [ ] Increase XcodeBuild MCP timeout to >60s (UI tests time out).
@@ -33,6 +36,7 @@ last_reviewed: 2026-01-07
 - [ ] First load of app seemed to not connect to apple photos but relauches were fine, in both apps
 
 ## Minor Projects:
+- [ ] We can do away with lastRecipe, if there is no history or a failure on load we just generate a new hypnogram on start and start a new history
 - [ ] Right arrow key should create a New Hypnogram when in Player view
 - [ ] Confirm the Add Source functionality (which should be mapped to ".") still works.
 - [ ] Let's remove the delete store and deleted collection and just rely on Exclude which as I user I can review later in Apple Photos for any assets that I actually just want to fully delete. This means the Delete key should now map again to Current Source / Source > "Delete Source" such that it for the current composition removes the current source. 
@@ -58,10 +62,6 @@ last_reviewed: 2026-01-07
 - Docs: `docs/projects/20250116-save-sequences/overview.md`
 - Plan: `docs/projects/20250116-save-sequences/implementation-planning.md`
 
-## Project: Add Global Source Framing Setting
-- Goal: add global Source Framing (Fit/Fill per source layer) that is separate from Output Aspect Ratio, with transparent padding for Fit so lower layers show through.
-- Docs: `docs/projects/2025-add-source-framing-setting/overview.md`
-- Plan: `docs/projects/2025-add-source-framing-setting/implementation-planning.md`
 
 ## Project: Basic Library Manager view for managing sets of items (for use by and modeld after current Effects Manager)
 - [ ] Abstract for use by both the Effects Chains Library and Hypnogram Sets
