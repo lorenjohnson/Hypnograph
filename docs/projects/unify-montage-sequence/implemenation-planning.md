@@ -1,7 +1,7 @@
 # Unify Montage/Sequence: Implementation Planning
 
 **Created**: 2026-01-15  
-**Status**: In progress (Phase 3 next)
+**Status**: In progress (Phase 4 next)
 
 This is an implementation-oriented plan derived from `docs/projects/unify-montage-sequence/overview.md`.
 
@@ -93,7 +93,7 @@ Settings to add early:
 
 Goal: remove the watch timer (if any remains) and make playback event-driven.
 
-**Status**: Next
+**Status**: Completed
 
 Hard requirement:
 - if `watchMode` is ON, advance on clip end; if at end of the clip list, generate and append next (dropping oldest if beyond `historyLimit`).
@@ -108,7 +108,8 @@ Implementation approach:
 
 Notes:
 - We do **not** preserve the old “user interaction prolongs clip” behavior.
-- If there is an unused `watchTimer` remaining in state, remove it as dead code as part of this phase.
+- Implemented by removing the watch timer entirely and advancing via `AVPlayerItemDidPlayToEndTime`.
+- Naming: `watch` → `watchMode` in settings (decode legacy `watch` for backward compatibility).
 
 Note: any “how many clips to render” knob belongs to render/export only (e.g. `renderClipCount`).
 

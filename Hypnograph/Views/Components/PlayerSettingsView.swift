@@ -385,7 +385,7 @@ struct PlayerSettingsView: View {
                 Spacer()
 
                 Toggle("", isOn: Binding(
-                    get: { dream.state.settings.watch },
+                    get: { dream.state.settings.watchMode },
                     set: { _ in dream.state.toggleWatchMode() }
                 ))
                 .toggleStyle(.darkMode)

@@ -49,17 +49,7 @@ final class HypnographState: ObservableObject {
     /// Shared effects editor view model for controller/keyboard navigation
     let effectsEditorViewModel = EffectsEditorViewModel()
 
-    // Watch timer - generates new hypnograms at intervals when watch mode is enabled
-    private var watchTimer: Timer?
-
     private var cancellables: Set<AnyCancellable> = []
-
-    // Callback to trigger mode-specific new() when watch timer fires
-    var onWatchTimerFired: (() -> Void)?
-
-    /// Provider for the current watch interval (e.g., the active clip duration).
-    /// If nil, falls back to a settings-based default interval.
-    var watchIntervalProvider: (() -> Double)?
 
     // MARK: - Init
 
@@ -114,11 +104,6 @@ final class HypnographState: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Start watch timer if enabled (modules will set onWatchTimerFired callback)
-        if settings.watch {
-            scheduleWatchTimer()
-        }
-
         // Load window state from disk
         loadWindowStateFromDisk()
     }
@@ -126,28 +111,7 @@ final class HypnographState: ObservableObject {
     // MARK: - UI Toggles
 
     func toggleWatchMode() {
-        settingsStore.update { $0.watch.toggle() }
-        scheduleWatchTimer()
-    }
-
-    func scheduleWatchTimer() {
-        let interval = watchIntervalProvider?() ?? settings.watchInterval
-        guard settings.watch, interval > 0 else {
-            watchTimer?.invalidate()
-            watchTimer = nil
-            return
-        }
-
-        watchTimer?.invalidate()
-        watchTimer = Timer.scheduledTimer(
-            withTimeInterval: interval,
-            repeats: false
-        ) { [weak self] _ in
-            guard let self else { return }
-            // Call mode-specific new() - modules set this callback
-            self.onWatchTimerFired?()
-            self.scheduleWatchTimer()
-        }
+        settingsStore.update { $0.watchMode.toggle() }
     }
 
     // MARK: - Library switching (unified: folders + Photos)
@@ -205,14 +169,6 @@ final class HypnographState: ObservableObject {
         // Save to settings if requested
         if save {
             settingsStore.update { $0.activeLibraries = Array(keys) }
-        }
-
-        // Don't regenerate content immediately when changing sources
-        // Just reset the watch timer and let it fire naturally
-        watchTimer?.invalidate()
-        watchTimer = nil
-        if settings.watch {
-            scheduleWatchTimer()
         }
     }
 

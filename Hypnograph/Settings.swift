@@ -43,7 +43,7 @@ struct Settings: Codable, MediaLibrarySettings {
     var sources: MediaSourcesParam
 
     // Optional in JSON (but non-optional in code)
-    var watch: Bool
+    var watchMode: Bool
     var snapshotsFolder: String
 
     /// Default clip length range (seconds) for newly generated clips
@@ -81,7 +81,7 @@ struct Settings: Codable, MediaLibrarySettings {
 
     // Single source of truth for defaults
     private enum Defaults {
-        static let watch: Bool = true
+        static let watchMode: Bool = true
         static let outputFolder = "~/Movies/Hypnograph/renders"
         static let snapshotsFolder = "~/Movies/Hypnograph/snapshots"
         static let clipLengthMinSeconds: Double = 2.0
@@ -105,7 +105,7 @@ struct Settings: Codable, MediaLibrarySettings {
 
     private enum CodingKeys: String, CodingKey {
         case outputFolder, sources
-        case watch, snapshotsFolder
+        case watchMode, snapshotsFolder
         case clipLengthMinSeconds, clipLengthMaxSeconds
         case activeLibraries
         case outputResolution, sourceMediaTypes
@@ -115,12 +115,14 @@ struct Settings: Codable, MediaLibrarySettings {
         case playerConfig
         // Legacy (pre-unify): montagePlayerConfig, sequencePlayerConfig
         case montagePlayerConfig, sequencePlayerConfig
+        // Legacy: watchMode was previously persisted as `watch`
+        case watch
     }
 
     init(
         outputFolder: String,
         sources: MediaSourcesParam,
-        watch: Bool = Defaults.watch,
+        watchMode: Bool = Defaults.watchMode,
         snapshotsFolder: String = Defaults.snapshotsFolder,
         clipLengthMinSeconds: Double = Defaults.clipLengthMinSeconds,
         clipLengthMaxSeconds: Double = Defaults.clipLengthMaxSeconds,
@@ -136,7 +138,7 @@ struct Settings: Codable, MediaLibrarySettings {
     ) {
         self.outputFolder = outputFolder
         self.sources = sources
-        self.watch = watch
+        self.watchMode = watchMode
         self.snapshotsFolder = snapshotsFolder
         self.clipLengthMinSeconds = clipLengthMinSeconds
         self.clipLengthMaxSeconds = clipLengthMaxSeconds
@@ -164,8 +166,9 @@ struct Settings: Codable, MediaLibrarySettings {
             ?? Defaults.outputFolder
         sources = try c.decodeIfPresent(MediaSourcesParam.self, forKey: .sources)
             ?? Defaults.sources
-        watch = try c.decodeIfPresent(Bool.self, forKey: .watch)
-            ?? Defaults.watch
+        watchMode = try c.decodeIfPresent(Bool.self, forKey: .watchMode)
+            ?? c.decodeIfPresent(Bool.self, forKey: .watch)
+            ?? Defaults.watchMode
         snapshotsFolder = try c.decodeIfPresent(String.self, forKey: .snapshotsFolder)
             ?? Defaults.snapshotsFolder
         clipLengthMinSeconds = try c.decodeIfPresent(Double.self, forKey: .clipLengthMinSeconds)
@@ -207,7 +210,7 @@ struct Settings: Codable, MediaLibrarySettings {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(outputFolder, forKey: .outputFolder)
         try c.encode(sources, forKey: .sources)
-        try c.encode(watch, forKey: .watch)
+        try c.encode(watchMode, forKey: .watchMode)
         try c.encode(snapshotsFolder, forKey: .snapshotsFolder)
         try c.encode(clipLengthMinSeconds, forKey: .clipLengthMinSeconds)
         try c.encode(clipLengthMaxSeconds, forKey: .clipLengthMaxSeconds)
@@ -223,12 +226,6 @@ struct Settings: Codable, MediaLibrarySettings {
     }
 
     // MARK: - Derived values
-
-    /// Watch timer default interval (seconds).
-    /// The active clip can override this via `HypnographState.watchIntervalProvider`.
-    var watchInterval: Double {
-        max(0.1, (clipLengthMinSeconds + clipLengthMaxSeconds) / 2.0)
-    }
 
     var outputURL: URL {
         URL(

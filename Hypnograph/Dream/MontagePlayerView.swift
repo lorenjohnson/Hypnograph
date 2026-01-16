@@ -10,6 +10,8 @@ struct MontagePlayerView: NSViewRepresentable {
     let clip: HypnogramClip
     let aspectRatio: AspectRatio
     let displayResolution: OutputResolution
+    let watchMode: Bool
+    let onClipEnded: (() -> Void)?
     @Binding var currentSourceIndex: Int
     @Binding var currentSourceTime: CMTime?
     let isPaused: Bool
@@ -35,6 +37,8 @@ struct MontagePlayerView: NSViewRepresentable {
         var currentVideoComposition: AVVideoComposition?
         var playRate: Float = 0.8
         var lastVolume: Float?
+        var watchMode: Bool = false
+        var onClipEnded: (() -> Void)?
         /// Use a sentinel to distinguish "never set" from "set to nil (system default)"
         private static let notSetSentinel = "___NOT_SET___"
         var lastAudioDeviceUID: String? = notSetSentinel
@@ -62,6 +66,8 @@ struct MontagePlayerView: NSViewRepresentable {
 
         // Always update playRate so closures use current value
         c.playRate = clip.playRate
+        c.watchMode = watchMode
+        c.onClipEnded = onClipEnded
 
         guard !clip.sources.isEmpty else {
             // Just pause, don't tear down - sources might be added back immediately
@@ -294,6 +300,10 @@ struct MontagePlayerView: NSViewRepresentable {
             queue: .main
         ) { [weak player, weak c] _ in
             guard let p = player, let c = c else { return }
+            if c.watchMode, let onClipEnded = c.onClipEnded {
+                onClipEnded()
+                return
+            }
             p.seek(to: .zero)
             // Only play if not paused
             if c.lastPauseState != true {
