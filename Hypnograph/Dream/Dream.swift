@@ -394,9 +394,13 @@ final class Dream: ObservableObject {
 
     func nextClip() {
         let nextIndex = player.currentClipIndex + 1
-        guard nextIndex < player.recipe.clips.count else { return }
-        player.currentClipIndex = nextIndex
-        applyClipSelectionChanged(manual: true)
+        if nextIndex < player.recipe.clips.count {
+            player.currentClipIndex = nextIndex
+            applyClipSelectionChanged(manual: true)
+        } else {
+            // At end of history: treat "next" as "new hypnogram"
+            new()
+        }
     }
 
     func deleteCurrentClip() {
