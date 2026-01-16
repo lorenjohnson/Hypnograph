@@ -5,7 +5,6 @@ last_reviewed: 2026-01-07
 # Roadmap
 
 ## Recently Completed
-
 - Hold `0` in Montage mode to temporarily suspend global effect chain
 - Hold `1-9` in Montage mode to solo source and suspend global effects (keeps source effect for preview)
 - Add global Source Framing setting (Fill/Fit) persisted in `hypnograph-settings.json` and applied to preview/live/export
@@ -15,6 +14,7 @@ last_reviewed: 2026-01-07
 - Move Divine into its own product
 
 ## Research & Development
+- [ ] Explore how some watch sort of mode where individual sources in a layered montage hypnogram change one by one randomly might work. Start with prototype just to see how the experience feels and if it is worth integrating.
 - [ ] Custom Metal blends modes for better destructive shaders/effects. How to integrate our own Metal shaders as Blend Mode options.
 - [ ] Auto blend mode sensing (like based on the relative brightiness of the source images). I think I am already doing something like that.
 - [ ] Midi mapping, Mic input, MIDI Clock, OSC
@@ -24,13 +24,11 @@ last_reviewed: 2026-01-07
 - [ ] I am questioning whether effects chains ("Treatments")should be named or if they maybe are just a thumbnail and pressing on the Treatment thumbnail applies the treatment or maybe a small button on the thumbnail takes a snapshot of the current hypnogram to be the new thumbnail for that treatment.
 
 ## Known Issues / Bugs
+- [ ] Save and Render: Rendering started and another flash message appear at the same time and one of those messages is extraneus 
 - [ ] When the Player is not playing / when it is all still images blend modes don't apply and I can't "flash" to a new layer and see it without effects like I can when vidoes are playing. It should work/work the same in both scenarios. 
 - [ ] Updating an Effect Chain title from where it is applied (e.g. global), then saving back to library just seemed to create a new Library Entry instead of saving back to the original library entry.
 - [ ] Rendering/saving some Hypnograms results in an error: "🔴 RenderEngine.export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn’t be completed. (Hypnograph.RenderError error 6.)"
-- [ ] Explore how some watch sort of mode where individual sources in a layered montage hypnogram change one by one randomly might work. Start with prototype just to see how the experience feels and if it is worth integrating.
-- [ ] Increase XcodeBuild MCP timeout to >60s (UI tests time out).
-- [ ] **Effect name editing broken** - Opens edit mode but can't type. `isTyping` focus disconnect once any effects load operation were done first
-- [ ] **Sequence mode saving** - Fails silently or incorrectly.
+any effects load operation were done first
 - [ ] **Output height/width ignored** - Settings file values not applied.
 - [ ] **Finder action not installing** - Automator action fails.
 - [ ] First load of app seemed to not connect to apple photos but relauches were fine, in both apps
@@ -39,7 +37,7 @@ last_reviewed: 2026-01-07
 - [ ] We can do away with lastRecipe, if there is no history or a failure on load we just generate a new hypnogram on start and start a new history
 - [ ] Right arrow key should create a New Hypnogram when in Player view
 - [ ] Confirm the Add Source functionality (which should be mapped to ".") still works.
-- [ ] Let's remove the delete store and deleted collection and just rely on Exclude which as I user I can review later in Apple Photos for any assets that I actually just want to fully delete. This means the Delete key should now map again to Current Source / Source > "Delete Source" such that it for the current composition removes the current source. 
+- [ ] To simplify the UX let's for now entirely remove the delete store and deleted collection and just rely on Exclude which as I user I can review later in Apple Photos for any assets that I actually just want to fully delete. As part of this we can again map the Delete key to Current Source / Source > "Delete Source" such that it for the current composition removes the current source. Make sure that Delete Source still works (including if it is the only source for a Hypnogram in which case it just either goes back in history or generates a new Hypnogram if there is no history to go back to. The goal of this task is simplifcation so note any extra complexity in the code you find along the way. 
 - [ ] Add a Volume leveling option in Player Settings (keeps relative db same across all shown Hypnograms). Can protype maybe by apply a SoundSource effect first (to see if we might want to apply compression or something as a more sophisticated way to level volume)
 - [ ] Window state not saved in Hypnograph. Maybe save it. Also tab when there are no windows shown or to restore, shows a default set of Player Settings and Effects.
 - [ ] Transitions between Hypnograms. Maybe a Player setting for Transition Style with options: None, Fade, Punk (random dissolve)?
