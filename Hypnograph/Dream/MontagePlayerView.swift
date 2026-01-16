@@ -28,6 +28,7 @@ struct MontagePlayerView: NSViewRepresentable {
         var playerView: AVPlayerView?
         var timeObserverToken: Any?
         var endObserverToken: Any?
+        var stillClipTimer: Timer?
         var statusObserver: NSKeyValueObservation?
         var compositionID: String?
         var currentTask: Task<Void, Never>?
@@ -39,6 +40,7 @@ struct MontagePlayerView: NSViewRepresentable {
         var lastVolume: Float?
         var watchMode: Bool = false
         var onClipEnded: (() -> Void)?
+        var isAllStillImages: Bool = false
         /// Use a sentinel to distinguish "never set" from "set to nil (system default)"
         private static let notSetSentinel = "___NOT_SET___"
         var lastAudioDeviceUID: String? = notSetSentinel
@@ -68,6 +70,7 @@ struct MontagePlayerView: NSViewRepresentable {
         c.playRate = clip.playRate
         c.watchMode = watchMode
         c.onClipEnded = onClipEnded
+        c.isAllStillImages = clip.sources.allSatisfy { $0.clip.file.mediaKind == .image }
 
         guard !clip.sources.isEmpty else {
             // Just pause, don't tear down - sources might be added back immediately
@@ -78,6 +81,8 @@ struct MontagePlayerView: NSViewRepresentable {
             if currentSourceTime != nil {
                 currentSourceTime = nil
             }
+            c.stillClipTimer?.invalidate()
+            c.stillClipTimer = nil
             return
         }
 
@@ -187,7 +192,14 @@ struct MontagePlayerView: NSViewRepresentable {
                             if item.status == .readyToPlay {
                                 c.statusObserver?.invalidate()
                                 c.statusObserver = nil
-                                if c.lastPauseState != true {
+                                if c.isAllStillImages {
+                                    // All-still clips don't advance time via AVPlayer; keep it paused on frame 0.
+                                    player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
+                                    player.pause()
+                                    if c.lastPauseState != true {
+                                        self.scheduleStillClipTimer(coordinator: c)
+                                    }
+                                } else if c.lastPauseState != true {
                                     player.playImmediately(atRate: c.playRate)
                                 }
                             }
@@ -210,7 +222,14 @@ struct MontagePlayerView: NSViewRepresentable {
             }
         } else {
             if c.lastPauseState != isPaused {
-                if isPaused {
+                if c.isAllStillImages {
+                    if isPaused {
+                        c.stillClipTimer?.invalidate()
+                        c.stillClipTimer = nil
+                    } else {
+                        scheduleStillClipTimer(coordinator: c)
+                    }
+                } else if isPaused {
                     c.player?.pause()
                 } else {
                     c.player?.playImmediately(atRate: clip.playRate)
@@ -220,10 +239,15 @@ struct MontagePlayerView: NSViewRepresentable {
 
             if c.lastEffectsCounter != effectsChangeCounter {
                 c.lastEffectsCounter = effectsChangeCounter
-                // Only force redraw when paused - while playing, compositor picks up changes naturally
-                if isPaused, let player = c.player {
-                    let currentTime = player.currentTime()
-                    player.seek(to: currentTime, toleranceBefore: .zero, toleranceAfter: .zero)
+                if let player = c.player {
+                    if c.isAllStillImages {
+                        // Force redraw of still frame at t=0
+                        player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
+                    } else if isPaused {
+                        // Only force redraw when paused - while playing, compositor picks up changes naturally
+                        let currentTime = player.currentTime()
+                        player.seek(to: currentTime, toleranceBefore: .zero, toleranceAfter: .zero)
+                    }
                 }
             }
         }
@@ -280,6 +304,8 @@ struct MontagePlayerView: NSViewRepresentable {
             NotificationCenter.default.removeObserver(token)
             c.endObserverToken = nil
         }
+        c.stillClipTimer?.invalidate()
+        c.stillClipTimer = nil
 
         // Track playback time
         let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
@@ -293,22 +319,40 @@ struct MontagePlayerView: NSViewRepresentable {
             }
         }
 
-        // Loop at end - respect pause state
-        c.endObserverToken = NotificationCenter.default.addObserver(
-            forName: .AVPlayerItemDidPlayToEndTime,
-            object: item,
-            queue: .main
-        ) { [weak player, weak c] _ in
-            guard let p = player, let c = c else { return }
-            if c.watchMode, let onClipEnded = c.onClipEnded {
-                onClipEnded()
-                return
+        if c.isAllStillImages {
+            // AVPlayer ends immediately for all-still compositions; use a timer for watch-mode advancement.
+            scheduleStillClipTimer(coordinator: c)
+        } else {
+            // Loop at end - respect pause state
+            c.endObserverToken = NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemDidPlayToEndTime,
+                object: item,
+                queue: .main
+            ) { [weak player, weak c] _ in
+                guard let p = player, let c = c else { return }
+                if c.watchMode, let onClipEnded = c.onClipEnded {
+                    onClipEnded()
+                    return
+                }
+                p.seek(to: .zero)
+                // Only play if not paused
+                if c.lastPauseState != true {
+                    p.playImmediately(atRate: c.playRate)
+                }
             }
-            p.seek(to: .zero)
-            // Only play if not paused
-            if c.lastPauseState != true {
-                p.playImmediately(atRate: c.playRate)
-            }
+        }
+    }
+
+    private func scheduleStillClipTimer(coordinator c: Coordinator) {
+        c.stillClipTimer?.invalidate()
+        c.stillClipTimer = nil
+
+        guard c.watchMode, c.lastPauseState != true else { return }
+        guard let onClipEnded = c.onClipEnded else { return }
+
+        let seconds = max(0.1, clip.targetDuration.seconds)
+        c.stillClipTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { _ in
+            onClipEnded()
         }
     }
 
@@ -327,6 +371,9 @@ struct MontagePlayerView: NSViewRepresentable {
             NotificationCenter.default.removeObserver(token)
         }
         c.endObserverToken = nil
+
+        c.stillClipTimer?.invalidate()
+        c.stillClipTimer = nil
 
         c.player?.pause()
         c.playerView?.player = nil

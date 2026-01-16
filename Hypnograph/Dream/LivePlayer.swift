@@ -462,7 +462,10 @@ final class LivePlayer: ObservableObject {
         }
 
         // Setup notification-based looping (same as preview)
-        setupLooping(for: player, item: playerItem, slot: nextSlot)
+        let isAllStillImages = currentClip?.sources.allSatisfy { $0.clip.file.mediaKind == .image } ?? false
+        if !isAllStillImages {
+            setupLooping(for: player, item: playerItem, slot: nextSlot)
+        }
 
         // Mute old player immediately before starting new one
         currentPlayerView.player?.volume = 0.0
@@ -471,7 +474,12 @@ final class LivePlayer: ObservableObject {
         player.volume = currentVolume
         player.audioOutputDeviceUniqueID = currentAudioDeviceUID
         nextPlayerView.alphaValue = 0
-        player.playImmediately(atRate: currentClip?.playRate ?? 0.8)
+        if isAllStillImages {
+            await player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
+            player.pause()
+        } else {
+            player.playImmediately(atRate: currentClip?.playRate ?? 0.8)
+        }
 
         // Visual crossfade
         let duration = crossfadeDuration
