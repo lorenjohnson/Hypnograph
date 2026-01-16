@@ -1,7 +1,7 @@
 # Unify Montage/Sequence: Implementation Planning
 
 **Created**: 2026-01-15  
-**Status**: Planning
+**Status**: In progress (Phase 3 next)
 
 This is an implementation-oriented plan derived from `docs/projects/unify-montage-sequence/overview.md`.
 
@@ -16,11 +16,13 @@ This is an implementation-oriented plan derived from `docs/projects/unify-montag
 
 Goal: align names to the new model without changing behavior yet.
 
+**Status**: Completed
+
 - Rename “Max Sources” to **Max Layers** in UI and types.
   - `PlayerConfiguration.maxSourcesForNew` → `maxLayers` (with Codable migration).
 - Rename “Duration” to **Clip Length (min/max)** in UI.
   - Introduce `clipLengthMinSeconds` / `clipLengthMaxSeconds` (default 2–15).
-  - Keep existing `recipe.targetDuration` temporarily as “current clip length” until tape exists.
+  - Keep existing `recipe.targetDuration` temporarily as “current clip length” until clip history exists.
 - Clarify blend defaults:
   - default blend = SourceOver for base layer; Screen for other layers.
 
@@ -29,6 +31,8 @@ Why early: it makes later PRs readable and reduces mode-shaped thinking.
 ## Phase 1: Remove Sequence Mode (UI + state)
 
 Goal: collapse mode branching so there is only one preview composition path.
+
+**Status**: Completed
 
 Work items:
 
@@ -40,12 +44,14 @@ Work items:
 
 Notes:
 - This phase can keep the existing `HypnogramRecipe` shape to avoid a huge data migration.
-- Sequence-specific export behavior is removed; export becomes “export what you’re previewing” until clip tape export exists.
+- Sequence-specific export behavior is removed; export becomes “export what you’re previewing” until clip-history export exists.
 
 ## Phase 1.5: Remove sequence render path (renderer + tests)
 
 Goal: eliminate the “sources-as-timeline” interpretation in the renderer so the codebase
-only supports “sources-as-layers” (montage) until clip-tape export exists.
+only supports “sources-as-layers” (montage) until clip-history export exists.
+
+**Status**: Completed
 
 - Remove `RenderEngine.Timeline` / `CompositionBuilder.TimelineStrategy` / `buildSequence(...)`.
 - Remove any sequence-oriented renderer tests.
@@ -54,6 +60,8 @@ only supports “sources-as-layers” (montage) until clip-tape export exists.
 
 Goal: move to a single canonical recipe/document format that can represent 1+ clips.
 Single-clip hypnograms become “a recipe with one clip”.
+
+**Status**: Completed (`64cf855`)
 
 Why before history UI: clip history/navigation is fundamentally “a list of clips + current index”.
 If the end-state recipe format already contains `[Clip]`, it’s cheaper to build on top of that
@@ -83,7 +91,9 @@ Settings to add early:
 
 ## Phase 3: Playback semantics (replace Watch timer)
 
-Goal: remove the watch timer and make playback event-driven.
+Goal: remove the watch timer (if any remains) and make playback event-driven.
+
+**Status**: Next
 
 Hard requirement:
 - if `watchMode` is ON, advance on clip end; if at end of the clip list, generate and append next (dropping oldest if beyond `historyLimit`).
@@ -96,15 +106,22 @@ Implementation approach:
    - Dream advances `currentClipIndex` (or generates next if at end)
    - remove the current “loop-on-end” behavior from preview when `watchMode` is ON
 
+Notes:
+- We do **not** preserve the old “user interaction prolongs clip” behavior.
+- If there is an unused `watchTimer` remaining in state, remove it as dead code as part of this phase.
+
 Note: any “how many clips to render” knob belongs to render/export only (e.g. `renderClipCount`).
 
 ## Phase 4: Clip History UX (navigate/edit/delete)
 
 Goal: implement the new primary behavior: ordered, materialized clip history you can navigate/edit/delete.
 
+**Status**: Pending
+
 User-facing behaviors to implement:
 
 - Generate and append new clips; drop oldest if beyond `historyLimit`.
+- If `watchMode` is ON but you are “back in history” (i.e. there are future clips after the current index), auto-advance is suspended until you return to the end.
 - Navigate previous/next clip.
   - Keyboard: Left Arrow = previous clip, Right Arrow = next clip.
   - If there is no “future” clip (at end of history), Right Arrow does nothing.
@@ -113,13 +130,19 @@ User-facing behaviors to implement:
 - Edit overwrites the current clip in place.
 - Delete current clip.
 - “Clear Clip History” menu item keeps the current clip and deletes all history before/after it.
+- “Load recipe file” appends the loaded clip(s) into history (does not wipe/replace history).
+  - For now, `.hypno` load is “one clip”, so it appends one clip and jumps to it.
+  - Later, when multi-clip recipes exist, load should append all clips and reset selection state (see Phase 5).
 
 Notes:
 - This phase should primarily be UI/commands + small state glue; the clip list + index should already exist from Phase 2.
+- `historyLimit` changes: on load/save, trim oldest to limit and adjust `currentClipIndex` accordingly.
 
-## Phase 5: Render clip tape (minimal UI)
+## Phase 5: Render from clip history (minimal UI)
 
 Goal: export a concatenation of materialized clips (hard cuts), matching preview.
+
+**Status**: Pending
 
 Minimal render UX:
 
@@ -128,14 +151,26 @@ Minimal render UX:
   - If there are at least N clips starting at the current clip, render that forward slice.
   - Otherwise render the last N clips available (ending at the end of history).
 
-Future (when we want one “recipe” type to cover both single-clip and multi-clip):
-- Keep `HypnogramRecipe` as the clip recipe (layers + effects + duration).
-- Introduce a higher-level “sequence”/“episode” document (e.g. `HypnogramSequence`) that stores `[HypnogramRecipe]` for export/persistence.
+Note: Phase 2 made `HypnogramRecipe` multi-clip. Phase 5 should export from the materialized clip list (`recipe.clips`) so “preview == render”.
+
+Selection model (export source):
+
+- Default export source is always history (there is no “randomize on export” mode).
+- In/out points (likely menu commands, Phase 5+):
+  - Add “Set In” / “Set Out” commands to mark the clip range for export.
+  - Store points as **clip ids** (not indices) so deletes/trimming don’t silently change the selection.
+  - Default: both in/out point to the current clip so export/recipe-save stays “current clip only” unless the user expands the range.
+- Loading a multi-clip recipe (future) should append all clips and set/reset in/out points to the loaded range.
+
+Recipe file behaviors (for this project):
+
+- “Save .hypno” saves **current clip only** (consistent with “hypnogram”).
+- Later, once in/out exists, saving/exporting should use the in/out range; the default in=out=current preserves current behavior.
 
 Render architecture direction:
 
 - First pass can enqueue N renders and stitch, or build a single composition that concatenates clip compositions.
-- Longer-term goal (not required in MVP): one “render tape” path that handles:
+- Longer-term goal (not required in MVP): one “render history” path that handles:
   - layering within each clip, and
   - concatenation across clips
 
@@ -143,5 +178,11 @@ Render architecture direction:
 
 - Add “Delete Clip” and “Clear Clip History” commands to the left menu early; these will be used constantly during iteration.
 - Stabilize identity: give each clip a stable id so edits/deletes don’t cause weird UI state.
-- Persist tape separately from general settings if it keeps settings.json clean (e.g., `clip-tape.json`), but keep it simple initially.
-- Ensure Effects window scopes to “current clip + selected layer/global” as the tape index changes (avoid accidental edits to the wrong clip).
+  - Implemented as `HypnogramClip.id`.
+- Persist history separately from preferences so `hypnograph-settings.json` stays clean (e.g., `clip-history.json`).
+  - Phase 2 moved us to `recipe.clips`, which will grow once we persist history; we likely do not want a 200-clip “lastRecipe” blob living inside `hypnograph-settings.json`.
+  - `hypnograph-settings.json` (preferences-only): `watchMode`, `historyLimit`, `clipLengthMinSeconds`, `clipLengthMaxSeconds`, `outputFolder`, `snapshotsFolder`, `sources`, `activeLibraries`, `sourceMediaTypes`, `outputResolution`, `playerConfig.aspectRatio`, `playerConfig.playerResolution`, `playerConfig.maxLayers`, `effectsListCollapsed`, `previewAudioDeviceUID`, `previewVolume`, `liveAudioDeviceUID`, `liveVolume`.
+  - history file (state): `clips`, `currentClipIndex` (and later in/out points).
+  - Corruption handling: if history file fails to decode, rename it to something like `clip-history.corrupt-<timestamp>.json` and start a new history.
+- Ensure Effects window scopes to “current clip + selected layer/global” as the history index changes (avoid accidental edits to the wrong clip).
+- Consider flattening `Settings.playerConfig` if it reduces type/JSON complexity once `lastRecipe` is removed (optional cleanup).
