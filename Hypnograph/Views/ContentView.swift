@@ -14,21 +14,25 @@ struct ContentView: View {
         state.effectsEditorViewModel
     }
 
-    private var topRightIndicatorText: String? {
+    private var topRightIndicator: (text: String, color: Color)? {
         // LIVE indicator (same placement/size as the layer indicator)
         if dream.isLiveMode {
-            return "LIVE"
+            return ("LIVE", .red)
+        }
+
+        if let clipText = dream.clipHistoryIndicatorText {
+            return (clipText, .blue)
         }
 
         // Layer indicators: show during flash solo (1-9 hold) or global hold (`) while global effects are suspended.
         guard !dream.activePlayer.sources.isEmpty else { return nil }
 
         if dream.activePlayer.effectManager.flashSoloIndex != nil {
-            return "\(dream.activePlayer.currentSourceIndex + 1)/\(dream.activePlayer.sources.count)"
+            return ("\(dream.activePlayer.currentSourceIndex + 1)/\(dream.activePlayer.sources.count)", .red)
         }
 
         if dream.activePlayer.isGlobalEffectSuspended {
-            return "GLOBAL/\(dream.activePlayer.sources.count)"
+            return ("GLOBAL/\(dream.activePlayer.sources.count)", .red)
         }
 
         return nil
@@ -61,7 +65,7 @@ struct ContentView: View {
                                 AppNotifications.show("Failed to load recipe", flash: true)
                                 return
                             }
-                            dream.loadRecipe(recipe)
+                            dream.appendRecipeToHistory(recipe)
                             AppNotifications.show("Loaded: \(entry.name)", flash: true)
                         }
                     )
@@ -89,10 +93,10 @@ struct ContentView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if let text = topRightIndicatorText {
-                Text(text)
+            if let indicator = topRightIndicator {
+                Text(indicator.text)
                     .font(.system(size: 36, weight: .bold))
-                    .foregroundColor(.red)
+                    .foregroundColor(indicator.color)
                     .padding(.top, 14)
                     .padding(.bottom, 14)
                     .padding(.leading, 14)

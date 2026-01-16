@@ -50,6 +50,9 @@ struct Settings: Codable, MediaLibrarySettings {
     var clipLengthMinSeconds: Double
     var clipLengthMaxSeconds: Double
 
+    /// Max number of clips to retain in history (oldest dropped first)
+    var historyLimit: Int
+
     /// Active source libraries (folder keys or Photos library keys)
     var activeLibraries: [String]
 
@@ -86,6 +89,7 @@ struct Settings: Codable, MediaLibrarySettings {
         static let snapshotsFolder = "~/Movies/Hypnograph/snapshots"
         static let clipLengthMinSeconds: Double = 2.0
         static let clipLengthMaxSeconds: Double = 15.0
+        static let historyLimit: Int = 200
         static let sources = MediaSourcesParam.array([
             "~/Movies/Hypnograph/sources"
         ])
@@ -107,6 +111,7 @@ struct Settings: Codable, MediaLibrarySettings {
         case outputFolder, sources
         case watchMode, snapshotsFolder
         case clipLengthMinSeconds, clipLengthMaxSeconds
+        case historyLimit
         case activeLibraries
         case outputResolution, sourceMediaTypes
         case effectsListCollapsed
@@ -126,6 +131,7 @@ struct Settings: Codable, MediaLibrarySettings {
         snapshotsFolder: String = Defaults.snapshotsFolder,
         clipLengthMinSeconds: Double = Defaults.clipLengthMinSeconds,
         clipLengthMaxSeconds: Double = Defaults.clipLengthMaxSeconds,
+        historyLimit: Int = Defaults.historyLimit,
         activeLibraries: [String] = Defaults.activeLibraries,
         outputResolution: OutputResolution = Defaults.outputResolution,
         sourceMediaTypes: Set<MediaType> = Defaults.sourceMediaTypes,
@@ -142,6 +148,7 @@ struct Settings: Codable, MediaLibrarySettings {
         self.snapshotsFolder = snapshotsFolder
         self.clipLengthMinSeconds = clipLengthMinSeconds
         self.clipLengthMaxSeconds = clipLengthMaxSeconds
+        self.historyLimit = historyLimit
         self.activeLibraries = activeLibraries
         self.outputResolution = outputResolution
         self.sourceMediaTypes = sourceMediaTypes
@@ -175,6 +182,8 @@ struct Settings: Codable, MediaLibrarySettings {
             ?? Defaults.clipLengthMinSeconds
         clipLengthMaxSeconds = try c.decodeIfPresent(Double.self, forKey: .clipLengthMaxSeconds)
             ?? Defaults.clipLengthMaxSeconds
+        historyLimit = try c.decodeIfPresent(Int.self, forKey: .historyLimit)
+            ?? Defaults.historyLimit
         activeLibraries = try c.decodeIfPresent([String].self, forKey: .activeLibraries)
             ?? Defaults.activeLibraries
         outputResolution = try c.decodeIfPresent(OutputResolution.self, forKey: .outputResolution)
@@ -214,6 +223,7 @@ struct Settings: Codable, MediaLibrarySettings {
         try c.encode(snapshotsFolder, forKey: .snapshotsFolder)
         try c.encode(clipLengthMinSeconds, forKey: .clipLengthMinSeconds)
         try c.encode(clipLengthMaxSeconds, forKey: .clipLengthMaxSeconds)
+        try c.encode(historyLimit, forKey: .historyLimit)
         try c.encode(activeLibraries, forKey: .activeLibraries)
         try c.encode(outputResolution, forKey: .outputResolution)
         try c.encode(Array(sourceMediaTypes), forKey: .sourceMediaTypes)

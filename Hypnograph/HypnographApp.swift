@@ -351,7 +351,7 @@ struct HypnographApp: App {
                         AppNotifications.show("Failed to load recipe", flash: true)
                         return
                     }
-                    dream?.loadRecipe(recipe)
+                    dream?.appendRecipeToHistory(recipe)
                     AppNotifications.show("Loaded \(url.lastPathComponent)", flash: true)
                 }
 

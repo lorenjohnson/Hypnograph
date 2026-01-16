@@ -49,12 +49,13 @@ extension Dream {
 
         // Keyboard hints
         items.append(.text("Shortcuts", order: 40, font: .subheadline))
-        items.append(.text(". = New clip | M = Blend | Delete = Remove source", order: 41))
+        items.append(.text(". = New clip | M = Blend | Delete = Mark for deletion", order: 41))
         items.append(.text("Cmd+E = Cycle effect | C = Clear layer | Ctrl+Shift+C = Clear all", order: 42))
         items.append(.text("E = Effects editor | ` = Global | 1-9 = Source", order: 43))
-        items.append(.text("Left/Right = Navigate | N = New | Shift+N = Add source", order: 44))
-        items.append(.text("Cmd+S = Save | Cmd+F = Favorite hypnogram", order: 45))
-        items.append(.text("Shift+X/D = Exclude/Mark delete", order: 46))
+        items.append(.text("Left/Right = Navigate clips | Opt+Left/Right = Navigate layers", order: 44))
+        items.append(.text("N = New | Shift+N = Add source | Opt+Delete = Remove layer | Cmd+Delete = Delete clip", order: 45))
+        items.append(.text("Cmd+S = Save | Cmd+F = Favorite hypnogram", order: 46))
+        items.append(.text("Shift+X/D = Exclude/Mark delete", order: 47))
 
         return items
     }
@@ -90,18 +91,40 @@ extension Dream {
 
         // Only use arrow shortcuts when effects editor is closed (otherwise they adjust params)
         if !state.windowState.isVisible("effectsEditor") {
+            Button("> Next Clip") { [self] in
+                nextClip()
+            }
+            .keyboardShortcut(.rightArrow, modifiers: [])
+            .disabled(isTyping)
+
+            Button("< Previous Clip") { [self] in
+                previousClip()
+            }
+            .keyboardShortcut(.leftArrow, modifiers: [])
+            .disabled(isTyping)
+
+            Divider()
+
             Button("> Next Source") { [self] in
                 nextSource()
             }
-            .keyboardShortcut(.rightArrow, modifiers: [])
+            .keyboardShortcut(.rightArrow, modifiers: [.option])
             .disabled(isTyping)
 
             Button("< Previous Source") { [self] in
                 previousSource()
             }
-            .keyboardShortcut(.leftArrow, modifiers: [])
+            .keyboardShortcut(.leftArrow, modifiers: [.option])
             .disabled(isTyping)
         } else {
+            Button("> Next Clip") { [self] in
+                nextClip()
+            }
+
+            Button("< Previous Clip") { [self] in
+                previousClip()
+            }
+
             Button("> Next Source") { [self] in
                 nextSource()
             }
@@ -144,6 +167,12 @@ extension Dream {
             new()
         }
         .keyboardShortcut("n", modifiers: [])
+        .disabled(isTyping)
+
+        Button("Delete Clip") { [self] in
+            deleteCurrentClip()
+        }
+        .keyboardShortcut(.delete, modifiers: [.command])
         .disabled(isTyping)
 
         Divider()
@@ -203,10 +232,10 @@ extension Dream {
 
         Divider()
 
-        Button("Delete") { [self] in
+        Button("Remove Layer") { [self] in
             deleteCurrentSource()
         }
-        .keyboardShortcut(.delete, modifiers: [])
+        .keyboardShortcut(.delete, modifiers: [.option])
         .disabled(isTyping)
 
         Button("Add to Exclude List") { [self] in
@@ -214,9 +243,10 @@ extension Dream {
         }
         .keyboardShortcut("x", modifiers: [.shift])
 
-        Button("Mark for Deletion") { [self] in
+        Button("Delete") { [self] in
             markCurrentSourceForDeletion()
         }
-        .keyboardShortcut("d", modifiers: [.shift])
+        .keyboardShortcut(.delete, modifiers: [])
+        .disabled(isTyping)
     }
 }

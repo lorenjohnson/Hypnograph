@@ -56,6 +56,11 @@ enum Environment {
         appSupportDirectory.appendingPathComponent("hypnograph-settings.json")
     }
 
+    /// ~/Library/Application Support/Hypnograph/clip-history.json
+    static var clipHistoryURL: URL {
+        appSupportDirectory.appendingPathComponent("clip-history.json")
+    }
+
     /// ~/Library/Application Support/Hypnograph/exclusions.json
     static var exclusionsURL: URL {
         appSupportDirectory.appendingPathComponent("exclusions.json")

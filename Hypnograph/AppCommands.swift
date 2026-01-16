@@ -44,6 +44,11 @@ struct AppCommands: Commands {
             .keyboardShortcut(.space, modifiers: [])
             .disabled(isTyping)
 
+            Button("Clear Clip History") {
+                dream.clearClipHistory()
+            }
+            .disabled(isTyping)
+
             Button("Show Settings Folder") {
                 Environment.showSettingsFolderInFinder()
             }
