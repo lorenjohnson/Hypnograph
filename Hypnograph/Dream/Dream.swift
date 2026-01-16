@@ -598,7 +598,7 @@ final class Dream: ObservableObject {
         replaceClipForCurrentSource()
     }
 
-    func deleteCurrentSource() {
+    func removeCurrentLayer() {
         let idx = activePlayer.currentSourceIndex
         guard idx >= 0, idx < activePlayer.sources.count else { return }
         activePlayer.sources.remove(at: idx)
@@ -613,6 +613,10 @@ final class Dream: ObservableObject {
     /// Replace the clip for current source with a new random one
     private func replaceClipForCurrentSource() {
         let idx = activePlayer.currentSourceIndex
+        replaceClip(forSourceIndex: idx)
+    }
+
+    private func replaceClip(forSourceIndex idx: Int) {
         guard idx >= 0, idx < activePlayer.sources.count else { return }
         guard let clip = state.library.randomClip(clipLength: activePlayer.targetDuration.seconds) else { return }
         activePlayer.sources[idx].clip = clip
@@ -833,69 +837,114 @@ final class Dream: ObservableObject {
 
     /// Exclude current source from library
     func excludeCurrentSource() {
-        let idx = activePlayer.currentSourceIndex
-        guard idx >= 0, idx < activePlayer.sources.count else { return }
-        let file = activePlayer.sources[idx].clip.file
-        state.library.exclude(file: file)
-        replaceClipForCurrentSource()
-        AppNotifications.show("Added to exclusion list", flash: true)
+        curateCurrentSource(.excluded)
     }
 
     /// Mark current source for deletion
     func markCurrentSourceForDeletion() {
-        let resolvedIndex: Int
-        if activePlayer.currentSourceIndex == -1 {
-            if activePlayer.sources.count == 1 {
-                resolvedIndex = 0
-            } else if activePlayer.sources.isEmpty {
-                AppNotifications.show("No layers to delete", flash: true, duration: 1.25)
-                return
-            } else {
-                AppNotifications.show("Select a layer to delete (1-9)", flash: true, duration: 1.25)
-                return
+        curateCurrentSource(.deleted)
+    }
+
+    func favoriteCurrentSource() {
+        curateCurrentSource(.favorited)
+    }
+
+    private enum SourceCurationAction {
+        case excluded
+        case deleted
+        case favorited
+
+        var notification: String {
+            switch self {
+            case .excluded: return "Source excluded"
+            case .deleted: return "Source marked for deletion"
+            case .favorited: return "Favorite added"
             }
-        } else {
-            resolvedIndex = activePlayer.currentSourceIndex
         }
 
-        guard resolvedIndex >= 0, resolvedIndex < activePlayer.sources.count else {
+        var failureNotification: String {
+            switch self {
+            case .excluded: return "Failed to exclude source"
+            case .deleted: return "Failed to mark source for deletion"
+            case .favorited: return "Failed to add favorite"
+            }
+        }
+    }
+
+    private func resolveSelectedSourceIndexForCuration() -> Int? {
+        if activePlayer.currentSourceIndex == -1 {
+            if activePlayer.sources.count == 1 {
+                return 0
+            }
+            return nil
+        }
+        return activePlayer.currentSourceIndex
+    }
+
+    private func curateCurrentSource(_ action: SourceCurationAction) {
+        guard let idx = resolveSelectedSourceIndexForCuration() else {
+            if activePlayer.sources.isEmpty {
+                AppNotifications.show("No layers selected", flash: true, duration: 1.25)
+            } else {
+                AppNotifications.show("Select a layer (1-9)", flash: true, duration: 1.25)
+            }
+            return
+        }
+
+        guard idx >= 0, idx < activePlayer.sources.count else {
             AppNotifications.show("No layer selected", flash: true, duration: 1.25)
             return
         }
 
-        let file = activePlayer.sources[resolvedIndex].clip.file
-        state.library.markForDeletion(file: file)
+        let file = activePlayer.sources[idx].clip.file
 
-        Task {
-            switch file.source {
-            case .external(let identifier):
-                let success = await ApplePhotos.shared.addAssetToDeleteAlbumInHypnogramsFolder(localIdentifier: identifier)
-                if success {
-                    AppNotifications.show("Added to Photos: Delete", flash: true, duration: 1.0)
-                } else if ApplePhotos.shared.status.canWrite {
-                    AppNotifications.show("Failed to add to Photos: Delete", flash: true, duration: 1.5)
+        switch file.source {
+        case .url:
+            switch action {
+            case .excluded:
+                state.library.exclude(file: file)
+                replaceClip(forSourceIndex: idx)
+            case .deleted:
+                state.library.markForDeletion(file: file)
+                replaceClip(forSourceIndex: idx)
+            case .favorited:
+                state.sourceFavoritesStore.add(file.source)
+            }
+
+            AppNotifications.show(action.notification, flash: true)
+
+        case .external(let identifier):
+            ApplePhotos.shared.refreshStatus()
+            guard ApplePhotos.shared.status.canWrite else {
+                if action == .favorited {
+                    AppNotifications.show("Photos permission required", flash: true, duration: 1.25)
+                } else {
+                    replaceClip(forSourceIndex: idx)
+                    state.library.removeFromIndex(source: file.source)
+                    AppNotifications.show("Photos permission required", flash: true, duration: 1.25)
                 }
+                return
+            }
 
-            case .url(let url):
-                guard ApplePhotos.shared.status.canWrite else { break }
+            if action == .excluded || action == .deleted {
+                replaceClip(forSourceIndex: idx)
+                state.library.removeFromIndex(source: file.source)
+            }
+
+            Task {
                 let success: Bool
-                switch file.mediaKind {
-                case .image:
-                    success = await ApplePhotos.shared.saveImage(at: url, toAlbumNamed: "Delete", inFolderNamed: "Hypnograms")
-                case .video:
-                    success = await ApplePhotos.shared.saveVideo(at: url, toAlbumNamed: "Delete", inFolderNamed: "Hypnograms")
+                switch action {
+                case .excluded:
+                    success = await ApplePhotos.shared.addAssetToExcludedAlbumInHypnographFolder(localIdentifier: identifier)
+                case .deleted:
+                    success = await ApplePhotos.shared.addAssetToDeletedAlbumInHypnographFolder(localIdentifier: identifier)
+                case .favorited:
+                    success = await ApplePhotos.shared.addAssetToFavoritesAlbumInHypnographFolder(localIdentifier: identifier)
                 }
 
-                if success {
-                    AppNotifications.show("Added to Photos: Delete", flash: true, duration: 1.0)
-                } else if ApplePhotos.shared.status.canWrite {
-                    AppNotifications.show("Failed to add to Photos: Delete", flash: true, duration: 1.5)
-                }
+                AppNotifications.show(success ? action.notification : action.failureNotification, flash: true, duration: 1.25)
             }
         }
-
-        replaceClipForCurrentSource()
-        AppNotifications.show("Marked for deletion", flash: true)
     }
 
 }

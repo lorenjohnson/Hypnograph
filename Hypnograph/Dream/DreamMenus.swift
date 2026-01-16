@@ -55,7 +55,7 @@ extension Dream {
         items.append(.text("Left/Right = Navigate clips | Opt+Left/Right = Navigate layers", order: 44))
         items.append(.text("N = New | Shift+N = Add source | Opt+Delete = Remove layer | Cmd+Delete = Delete clip", order: 45))
         items.append(.text("Cmd+S = Save | Cmd+F = Favorite hypnogram", order: 46))
-        items.append(.text("Shift+X/D = Exclude/Mark delete", order: 47))
+        items.append(.text("Shift+X/D/F = Exclude/Delete/Favorite source", order: 47))
 
         return items
     }
@@ -222,8 +222,6 @@ extension Dream {
         .keyboardShortcut("m", modifiers: [])
         .disabled(isTyping)
 
-        Divider()
-
         Button("New Random Clip") { [self] in
             newRandomClip()
         }
@@ -233,7 +231,7 @@ extension Dream {
         Divider()
 
         Button("Remove Layer") { [self] in
-            deleteCurrentSource()
+            removeCurrentLayer()
         }
         .keyboardShortcut(.delete, modifiers: [.option])
         .disabled(isTyping)
@@ -243,10 +241,20 @@ extension Dream {
         }
         .keyboardShortcut("x", modifiers: [.shift])
 
+        Button("Add to Favorites") { [self] in
+            favoriteCurrentSource()
+        }
+        .keyboardShortcut("f", modifiers: [.shift])
+
         Button("Delete") { [self] in
             markCurrentSourceForDeletion()
         }
         .keyboardShortcut(.delete, modifiers: [])
         .disabled(isTyping)
+
+        Button("Mark for Deletion") { [self] in
+            markCurrentSourceForDeletion()
+        }
+        .keyboardShortcut("d", modifiers: [.shift])
     }
 }
