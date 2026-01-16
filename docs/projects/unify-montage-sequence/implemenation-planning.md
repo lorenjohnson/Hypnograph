@@ -1,7 +1,7 @@
 # Unify Montage/Sequence: Implementation Planning
 
 **Created**: 2026-01-15  
-**Status**: In progress (Phase 4 next)
+**Status**: In progress (Phase 5 next)
 
 This is an implementation-oriented plan derived from `docs/projects/unify-montage-sequence/overview.md`.
 
@@ -93,7 +93,7 @@ Settings to add early:
 
 Goal: remove the watch timer (if any remains) and make playback event-driven.
 
-**Status**: Completed
+**Status**: Completed (`71e2430`)
 
 Hard requirement:
 - if `watchMode` is ON, advance on clip end; if at end of the clip list, generate and append next (dropping oldest if beyond `historyLimit`).
@@ -117,12 +117,12 @@ Note: any “how many clips to render” knob belongs to render/export only (e.g
 
 Goal: implement the new primary behavior: ordered, materialized clip history you can navigate/edit/delete.
 
-**Status**: Pending
+**Status**: Completed
 
 User-facing behaviors to implement:
 
 - Generate and append new clips; drop oldest if beyond `historyLimit`.
-- If `watchMode` is ON but you are “back in history” (i.e. there are future clips after the current index), auto-advance is suspended until you return to the end.
+- If `watchMode` is ON and you are “back in history” (i.e. there are future clips after the current index), auto-advance continues through those existing clips; only at the end does it generate/append a new clip.
 - Navigate previous/next clip.
   - Keyboard: Left Arrow = previous clip, Right Arrow = next clip.
   - If there is no “future” clip (at end of history), Right Arrow does nothing.

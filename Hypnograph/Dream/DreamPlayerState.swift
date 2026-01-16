@@ -24,6 +24,10 @@ final class DreamPlayerState: ObservableObject {
     /// The active clip index in `recipe.clips`
     @Published var currentClipIndex: Int = 0
 
+    /// Bumps when the recipe or any of its clips are mutated.
+    /// Use this for persistence triggers (mutating nested fields of a struct doesn't reliably publish).
+    @Published private(set) var recipeRevision: Int = 0
+
     // MARK: - Playback State
 
     /// Current source index for navigation (-1 = global layer, 0+ = source index)
@@ -68,6 +72,7 @@ final class DreamPlayerState: ObservableObject {
         set {
             let index = max(0, min(currentClipIndex, recipe.clips.count - 1))
             recipe.clips[index] = newValue
+            recipeRevision &+= 1
             objectWillChange.send()
         }
     }
@@ -161,11 +166,17 @@ final class DreamPlayerState: ObservableObject {
     func setRecipe(_ newRecipe: HypnogramRecipe) {
         recipe = newRecipe
         currentClipIndex = 0
+        recipeRevision &+= 1
     }
 
     /// Notify that recipe has changed (triggers re-render)
     func notifyRecipeChanged() {
         effectsChangeCounter += 1
+    }
+
+    /// Notify that recipe has changed (triggers persistence).
+    func notifyRecipeMutated() {
+        recipeRevision &+= 1
     }
 
     // MARK: - Convenience Accessors
@@ -216,6 +227,19 @@ final class DreamPlayerState: ObservableObject {
     /// Move to global layer
     func selectGlobalLayer() {
         currentSourceIndex = -1
+    }
+
+    /// Ensure `currentSourceIndex` is valid for the current clip.
+    func clampCurrentSourceIndex() {
+        if currentSourceIndex == -1 { return }
+        let maxIndex = sources.count - 1
+        if maxIndex < 0 {
+            currentSourceIndex = -1
+            return
+        }
+        if currentSourceIndex > maxIndex {
+            currentSourceIndex = maxIndex
+        }
     }
 
     // MARK: - Playback Control

@@ -6,6 +6,9 @@
   },
   "outputFolder": "~/Movies/Hypnograph/renders",
   "snapshotsFolder": "~/Movies/Hypnograph/snapshots",
+  "clipLengthMinSeconds": 2,
+  "clipLengthMaxSeconds": 15,
+  "historyLimit": 200,
   "playerConfig": {
     "aspectRatio": "16:9",
     "playerResolution": 1080,
