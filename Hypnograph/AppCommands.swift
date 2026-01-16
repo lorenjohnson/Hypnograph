@@ -128,7 +128,7 @@ struct AppCommands: Commands {
                 .disabled(isTyping)
 
                 Toggle("Watch", isOn: Binding(
-                    get: { state.settings.watch },
+                    get: { state.settings.watchMode },
                     set: { _ in state.toggleWatchMode() }
                 ))
                 .keyboardShortcut("w", modifiers: [])

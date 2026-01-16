@@ -142,17 +142,6 @@ final class Dream: ObservableObject {
             }
             .store(in: &playerSubscriptions)
 
-        // Set up watch timer callback
-        state.onWatchTimerFired = { [weak self] in
-            self?.new()
-        }
-        state.watchIntervalProvider = { [weak self] in
-            guard let self else { return 60.0 }
-            let playRate = Double(max(0.01, self.activePlayer.playRate))
-            return self.activePlayer.targetDuration.seconds / playRate
-        }
-        state.scheduleWatchTimer()
-
         // Restore last recipe if available
         restorePersistedRecipe()
 
@@ -245,9 +234,6 @@ final class Dream: ObservableObject {
 
         player.effectManager.invalidateBlendAnalysis()
         player.effectManager.onEffectChanged?()
-
-        // Note: watch timing now uses state.watchIntervalProvider, so we no longer
-        // persist recipes just to synchronize the watch timer interval.
     }
 
     /// Add a source to the given player
@@ -339,6 +325,12 @@ final class Dream: ObservableObject {
                 clip: player.currentClip,
                 aspectRatio: player.config.aspectRatio,
                 displayResolution: player.config.playerResolution,
+                watchMode: state.settings.watchMode,
+                onClipEnded: { [weak self] in
+                    guard let self else { return }
+                    guard self.state.settings.watchMode else { return }
+                    self.new()
+                },
                 currentSourceIndex: Binding(
                     get: { player.currentSourceIndex },
                     set: { player.currentSourceIndex = $0 }
