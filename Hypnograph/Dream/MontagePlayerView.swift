@@ -10,6 +10,7 @@ struct MontagePlayerView: NSViewRepresentable {
     let clip: HypnogramClip
     let aspectRatio: AspectRatio
     let displayResolution: OutputResolution
+    let sourceFraming: SourceFraming
     let watchMode: Bool
     let onClipEnded: (() -> Void)?
     @Binding var currentSourceIndex: Int
@@ -105,7 +106,8 @@ struct MontagePlayerView: NSViewRepresentable {
                 let config = RenderEngine.Config(
                     outputSize: outputSize,
                     frameRate: 30,
-                    enableEffects: true
+                    enableEffects: true,
+                    sourceFraming: sourceFraming
                 )
 
                 let result = await engine.makePlayerItem(
@@ -285,7 +287,8 @@ struct MontagePlayerView: NSViewRepresentable {
             return "\(name)|\(start)|\(dur)|\(transformsStr)"
         }
         let durationPart = "dur=\(clip.targetDuration.seconds)"
-        return pairs.joined(separator: ";;") + "||" + durationPart
+        let framingPart = "framing=\(sourceFraming.rawValue)"
+        return pairs.joined(separator: ";;") + "||" + durationPart + "||" + framingPart
     }
 
     // MARK: - Observer setup

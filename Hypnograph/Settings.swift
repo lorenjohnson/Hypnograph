@@ -59,6 +59,9 @@ struct Settings: Codable, MediaLibrarySettings {
     /// Output resolution for disk rendering
     var outputResolution: OutputResolution
 
+    /// Global source framing behavior (Fill vs Fit)
+    var sourceFraming: SourceFraming
+
     /// Player configuration for the preview deck
     var playerConfig: PlayerConfiguration
 
@@ -98,6 +101,7 @@ struct Settings: Codable, MediaLibrarySettings {
         static let outputResolution: OutputResolution = .p1080
         static let playerResolution: OutputResolution = .p1080
         static let maxLayers = 5
+        static let sourceFraming: SourceFraming = .fill
         static let sourceMediaTypes: Set<MediaType> = [.images, .videos]
         static let effectsListCollapsed: Bool = false
         // Audio defaults: nil UID = system default, volume = 1.0
@@ -113,7 +117,7 @@ struct Settings: Codable, MediaLibrarySettings {
         case clipLengthMinSeconds, clipLengthMaxSeconds
         case historyLimit
         case activeLibraries
-        case outputResolution, sourceMediaTypes
+        case outputResolution, sourceFraming, sourceMediaTypes
         case effectsListCollapsed
         case previewAudioDeviceUID, previewVolume
         case liveAudioDeviceUID, liveVolume
@@ -134,6 +138,7 @@ struct Settings: Codable, MediaLibrarySettings {
         historyLimit: Int = Defaults.historyLimit,
         activeLibraries: [String] = Defaults.activeLibraries,
         outputResolution: OutputResolution = Defaults.outputResolution,
+        sourceFraming: SourceFraming = Defaults.sourceFraming,
         sourceMediaTypes: Set<MediaType> = Defaults.sourceMediaTypes,
         effectsListCollapsed: Bool = Defaults.effectsListCollapsed,
         previewAudioDeviceUID: String? = Defaults.previewAudioDeviceUID,
@@ -151,6 +156,7 @@ struct Settings: Codable, MediaLibrarySettings {
         self.historyLimit = historyLimit
         self.activeLibraries = activeLibraries
         self.outputResolution = outputResolution
+        self.sourceFraming = sourceFraming
         self.sourceMediaTypes = sourceMediaTypes
         self.effectsListCollapsed = effectsListCollapsed
         self.previewAudioDeviceUID = previewAudioDeviceUID
@@ -188,6 +194,8 @@ struct Settings: Codable, MediaLibrarySettings {
             ?? Defaults.activeLibraries
         outputResolution = try c.decodeIfPresent(OutputResolution.self, forKey: .outputResolution)
             ?? Defaults.outputResolution
+        sourceFraming = try c.decodeIfPresent(SourceFraming.self, forKey: .sourceFraming)
+            ?? Defaults.sourceFraming
         if let types = try c.decodeIfPresent([MediaType].self, forKey: .sourceMediaTypes) {
             sourceMediaTypes = Set(types)
         } else {
@@ -226,6 +234,7 @@ struct Settings: Codable, MediaLibrarySettings {
         try c.encode(historyLimit, forKey: .historyLimit)
         try c.encode(activeLibraries, forKey: .activeLibraries)
         try c.encode(outputResolution, forKey: .outputResolution)
+        try c.encode(sourceFraming, forKey: .sourceFraming)
         try c.encode(Array(sourceMediaTypes), forKey: .sourceMediaTypes)
         try c.encode(effectsListCollapsed, forKey: .effectsListCollapsed)
         try c.encodeIfPresent(previewAudioDeviceUID, forKey: .previewAudioDeviceUID)
