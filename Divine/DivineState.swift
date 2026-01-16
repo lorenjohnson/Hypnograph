@@ -17,7 +17,6 @@ final class DivineState: ObservableObject {
     // MARK: - Library Management
 
     let exclusionStore: ExclusionStore
-    let deleteStore: DeleteStore
 
     @Published private(set) var currentLibraryKey: String
     @Published private(set) var activeLibraryKeys: Set<String>
@@ -39,9 +38,7 @@ final class DivineState: ObservableObject {
 
         // Initialize stores
         let exclusionStore = ExclusionStore(url: coreConfig.exclusionsURL)
-        let deleteStore = DeleteStore(url: coreConfig.deletionsURL)
         self.exclusionStore = exclusionStore
-        self.deleteStore = deleteStore
 
         // Local alias for init (self.settings is a computed property that can't be used yet)
         let settings = settingsStore.value
@@ -75,8 +72,7 @@ final class DivineState: ObservableObject {
             keys: activeKeys,
             settings: settings,
             customPhotosAssetIds: loadedCustomIds,
-            exclusionStore: exclusionStore,
-            deleteStore: deleteStore
+            exclusionStore: exclusionStore
         )
     }
 
@@ -108,8 +104,7 @@ final class DivineState: ObservableObject {
             keys: keys,
             settings: settings,
             customPhotosAssetIds: customPhotosAssetIds,
-            exclusionStore: exclusionStore,
-            deleteStore: deleteStore
+            exclusionStore: exclusionStore
         )
 
         // Save to settings
@@ -149,8 +144,7 @@ final class DivineState: ObservableObject {
         availableLibraries = MediaLibraryBuilder.buildAvailableLibraries(
             settings: settings,
             customPhotosAssetIds: customPhotosAssetIds,
-            exclusionStore: exclusionStore,
-            deleteStore: deleteStore
+            exclusionStore: exclusionStore
         )
     }
 
@@ -210,8 +204,7 @@ final class DivineState: ObservableObject {
             keys: activeLibraryKeys,
             settings: settings,
             customPhotosAssetIds: customPhotosAssetIds,
-            exclusionStore: exclusionStore,
-            deleteStore: deleteStore
+            exclusionStore: exclusionStore
         )
     }
 

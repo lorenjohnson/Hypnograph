@@ -12,9 +12,8 @@ This document describes settings storage, defaults, and related persistent state
 - `Hypnograph/Environment.swift`
 - `Hypnograph/HypnographState.swift`
 - `Hypnograph/PlayerConfiguration.swift`
-- `Hypnograph/MediaSources/ExclusionStore.swift`
-- `Hypnograph/MediaSources/DeleteStore.swift`
-- `Hypnograph/MediaSources/FavoriteStore.swift`
+- `HypnoCore/HypnoCoreConfig.swift`
+- `HypnoCore/Cache/PersistentIdentifierStore.swift` (ExclusionStore, SourceFavoritesStore)
 
 ## Settings File
 
@@ -64,9 +63,9 @@ This document describes settings storage, defaults, and related persistent state
 - Stored in `custom-photos-selection.json` under Application Support.
 - Managed by `HypnographState.setCustomPhotosAssets()`.
 
-### Exclusions, Favorites, Deletions
+### Exclusions and Favorites
 - `exclusions.json` via `ExclusionStore`.
-- `deletions.json` via `DeleteStore`.
+- `source-favorites.json` via `SourceFavoritesStore`.
 
 ### Effects Libraries
 - Stored in `~/Library/Application Support/Hypnograph/effect-libraries/` and

@@ -28,7 +28,6 @@ final class HypnographState: ObservableObject {
     var settings: Settings { settingsStore.value }
 
     let exclusionStore: ExclusionStore
-    let deleteStore: DeleteStore
     let sourceFavoritesStore: SourceFavoritesStore
 
     @Published private(set) var currentLibraryKey: String
@@ -56,12 +55,10 @@ final class HypnographState: ObservableObject {
 
     init(settingsStore: SettingsStore, coreConfig: HypnoCoreConfig) {
         let exclusionStore = ExclusionStore(url: coreConfig.exclusionsURL)
-        let deleteStore = DeleteStore(url: coreConfig.deletionsURL)
         let sourceFavoritesStore = SourceFavoritesStore(url: coreConfig.sourceFavoritesURL)
 
         self.settingsStore = settingsStore
         self.exclusionStore = exclusionStore
-        self.deleteStore = deleteStore
         self.sourceFavoritesStore = sourceFavoritesStore
 
         // Local alias for init (self.settings is a computed property that can't be used yet)
@@ -95,8 +92,7 @@ final class HypnographState: ObservableObject {
             keys: activeKeys,
             settings: settings,
             customPhotosAssetIds: loadedCustomIds,
-            exclusionStore: exclusionStore,
-            deleteStore: deleteStore
+            exclusionStore: exclusionStore
         )
 
         self.isTyping = textFieldFocusMonitor.isEditing
@@ -165,8 +161,7 @@ final class HypnographState: ObservableObject {
             keys: keys,
             settings: settings,
             customPhotosAssetIds: customPhotosAssetIds,
-            exclusionStore: exclusionStore,
-            deleteStore: deleteStore
+            exclusionStore: exclusionStore
         )
 
         // Save to settings if requested
@@ -215,8 +210,7 @@ final class HypnographState: ObservableObject {
         availableLibraries = MediaLibraryBuilder.buildAvailableLibraries(
             settings: settings,
             customPhotosAssetIds: customPhotosAssetIds,
-            exclusionStore: exclusionStore,
-            deleteStore: deleteStore
+            exclusionStore: exclusionStore
         )
     }
 

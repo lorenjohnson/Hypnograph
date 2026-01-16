@@ -13,7 +13,7 @@ folders and external sources (e.g., Apple Photos).
 - `HypnoCore/Media/MediaModels.swift` (MediaSource, MediaFile, VideoClip)
 - `HypnoCore/Media/MediaLibrary.swift`
 - `HypnoCore/Media/MediaLibraryBuilder.swift`
-- `HypnoCore/Cache/PersistentIdentifierStore.swift` (ExclusionStore, DeleteStore)
+- `HypnoCore/Cache/PersistentIdentifierStore.swift` (ExclusionStore)
 - `HypnoCore/Renderer/Core/SourceLoader.swift`
 - `HypnoCore/Media/HypnoCoreHooks.swift`
 - `HypnoCore/Media/ApplePhotosHooks.swift`
@@ -63,8 +63,8 @@ folders and external sources (e.g., Apple Photos).
 - Video sources get randomized clip start times within duration.
 - Image sources create a short-duration `VideoClip` with `startTime = .zero`.
 
-### Exclusions and Deletions
-- `applyExclusions()` filters out items in `ExclusionStore` and `DeleteStore`.
+### Exclusions
+- `applyExclusions()` filters out items in `ExclusionStore` and the Apple Photos "Hypnograph/Excluded" album.
 - Photos hidden assets are filtered via `ApplePhotos.cachedHiddenUUIDs`.
 
 ## SourceLoader
@@ -107,8 +107,7 @@ folders and external sources (e.g., Apple Photos).
 - Cache is unbounded and must be cleared explicitly if needed.
 
 ## Persistence
-- Exclusions: `Environment.exclusionsURL`.
-- Deletions: `Environment.deletionsURL`.
+- Exclusions: `HypnoCoreConfig.exclusionsURL`.
 
 ## HypnographState Integration
 - Tracks per-module library selections (`activeLibraryKeys`).

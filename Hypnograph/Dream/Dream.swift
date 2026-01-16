@@ -357,11 +357,11 @@ final class Dream: ObservableObject {
         applyClipSelectionChanged(manual: false)
     }
 
-    private func replaceCurrentClipWithNewClip() {
+    private func replaceCurrentClipWithNewClip(manual: Bool = false) {
         let clip = makeRandomClip(preservingGlobalEffectFrom: player.currentClip)
         player.currentClip = clip
         player.currentSourceIndex = -1
-        applyClipSelectionChanged(manual: false)
+        applyClipSelectionChanged(manual: manual)
     }
 
     private func appendNewClipAndSelect(manual: Bool) {
@@ -608,13 +608,34 @@ final class Dream: ObservableObject {
     }
 
     func removeCurrentLayer() {
-        let idx = activePlayer.currentSourceIndex
+        let idx: Int
+        if activePlayer.currentSourceIndex == -1 {
+            if activePlayer.sources.count == 1 {
+                idx = 0
+            } else {
+                if activePlayer.sources.isEmpty {
+                    AppNotifications.show("No layers selected", flash: true, duration: 1.25)
+                } else {
+                    AppNotifications.show("Select a layer (1-9)", flash: true, duration: 1.25)
+                }
+                return
+            }
+        } else {
+            idx = activePlayer.currentSourceIndex
+        }
+
         guard idx >= 0, idx < activePlayer.sources.count else { return }
+
+        // If this is the only source, "delete source" should behave like other
+        // per-layer curation: replace the layer with a new random source.
+        if activePlayer.sources.count == 1 {
+            replaceClip(forSourceIndex: idx)
+            return
+        }
+
         activePlayer.sources.remove(at: idx)
-        // Adjust currentSourceIndex
-        if activePlayer.sources.isEmpty {
-            activePlayer.currentSourceIndex = 0
-        } else if idx >= activePlayer.sources.count {
+
+        if idx >= activePlayer.sources.count {
             activePlayer.currentSourceIndex = activePlayer.sources.count - 1
         }
     }
@@ -850,24 +871,17 @@ final class Dream: ObservableObject {
         curateCurrentSource(.excluded)
     }
 
-    /// Mark current source for deletion
-    func markCurrentSourceForDeletion() {
-        curateCurrentSource(.deleted)
-    }
-
     func favoriteCurrentSource() {
         curateCurrentSource(.favorited)
     }
 
     private enum SourceCurationAction {
         case excluded
-        case deleted
         case favorited
 
         var notification: String {
             switch self {
             case .excluded: return "Source excluded"
-            case .deleted: return "Source marked for deletion"
             case .favorited: return "Favorite added"
             }
         }
@@ -875,7 +889,6 @@ final class Dream: ObservableObject {
         var failureNotification: String {
             switch self {
             case .excluded: return "Failed to exclude source"
-            case .deleted: return "Failed to mark source for deletion"
             case .favorited: return "Failed to add favorite"
             }
         }
@@ -914,9 +927,6 @@ final class Dream: ObservableObject {
             case .excluded:
                 state.library.exclude(file: file)
                 replaceClip(forSourceIndex: idx)
-            case .deleted:
-                state.library.markForDeletion(file: file)
-                replaceClip(forSourceIndex: idx)
             case .favorited:
                 state.sourceFavoritesStore.add(file.source)
             }
@@ -936,7 +946,7 @@ final class Dream: ObservableObject {
                 return
             }
 
-            if action == .excluded || action == .deleted {
+            if action == .excluded {
                 replaceClip(forSourceIndex: idx)
                 state.library.removeFromIndex(source: file.source)
             }
@@ -946,8 +956,6 @@ final class Dream: ObservableObject {
                 switch action {
                 case .excluded:
                     success = await ApplePhotos.shared.addAssetToExcludedAlbumInHypnographFolder(localIdentifier: identifier)
-                case .deleted:
-                    success = await ApplePhotos.shared.addAssetToDeletedAlbumInHypnographFolder(localIdentifier: identifier)
                 case .favorited:
                     success = await ApplePhotos.shared.addAssetToFavoritesAlbumInHypnographFolder(localIdentifier: identifier)
                 }

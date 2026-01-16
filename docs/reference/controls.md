@@ -59,9 +59,8 @@ Source of truth: `Hypnograph/HypnographApp.swift`, `Hypnograph/Dream/Dream.swift
 | --- | --- | --- |
 | Cycle Blend Mode | `M` | Disabled while typing |
 | New Random Clip | `.` | Disabled while typing |
-| Delete | `Delete` | Disabled while typing |
+| Delete Source | `Delete` | Disabled while typing |
 | Add to Exclude List | `Shift+X` | |
-| Mark for Deletion | `Shift+D` | |
 | Toggle Favorite | `Shift+F` | |
 
 ### Divine Mode (Composition menu, `Hypnograph/Modules/Divine/Divine.swift`)

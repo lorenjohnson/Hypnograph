@@ -34,7 +34,7 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
 ### Core Library Extraction Targets
 | Library | Responsibilities | Key sources today | Notes |
 | --- | --- | --- | --- |
-| **HypnoCore** | Media models, media sourcing, Photos integration, exclusion/deletion stores, shared path config, asset loading/caching/still grabs | `MediaLibrary.swift`, `MediaLibraryBuilder.swift`, `ApplePhotos.swift`, `StillImageCache.swift`, `PersistentIdentifierStore.swift` (ExclusionStore, DeleteStore, FavoriteStore), `HypnoCoreConfig.swift`, video thumbnail helpers inside `DivineCardManager`/`Renderer` | Stage 1 keeps this intentionally focused on media + stores; recipes/settings can remain app-owned until needed. |
+| **HypnoCore** | Media models, media sourcing, Photos integration, exclusion/favorites stores, shared path config, asset loading/caching/still grabs | `MediaLibrary.swift`, `MediaLibraryBuilder.swift`, `ApplePhotos.swift`, `StillImageCache.swift`, `PersistentIdentifierStore.swift` (ExclusionStore, SourceFavoritesStore), `HypnoCoreConfig.swift`, video thumbnail helpers inside `DivineCardManager`/`Renderer` | Stage 1 keeps this intentionally focused on media + stores; recipes/settings can remain app-owned until needed. |
 | **HypnoRenderer** | Composition building, frame compositing, export queue, AVPlayer creation, transition helpers | `Renderer/Core/*`, `Renderer/FrameInterpolation`, `Renderer/Effects/*` (metal kernels stay in a Resources bundle), `RenderEngine.ExportQueue` | LivePlayer stays in the app (AppKit/windowing); Divine does not need export immediately but should compile against the same module so it can add rendering later. |
 | **HypnoEffects** | Effect registry/session/editor plumbing shared by Dream preview, Live display, and future Divine editing | `EffectLibrary/*.swift`, `Renderer/Effects/*.swift`, effect JSON templates under `EffectLibrary` | Keep effect metadata + shader management encapsulated; exposes safe APIs for UI to mutate chains. |
 | **HypnoAudio** | Audio routing + monitoring | `Audio/AudioDeviceManager.swift`, audio helpers in `LivePlayer` | Divine currently just plays through default device; factoring this allows future per-card audio output options without reimplementing. |
@@ -78,7 +78,7 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
 2. **Stage 1 – Extract HypnoCore**  
    - **Status: Complete**  
    - Create a `HypnoCore` framework target at the repo root focused on media sourcing (not the full recipe/settings surface yet).  
-   - Move media sourcing + cache + store files into `HypnoCore`: `MediaLibrary`, `ApplePhotos`, `StillImageCache`, `PersistentIdentifierStore` (ExclusionStore, DeleteStore, FavoriteStore).  
+   - Move media sourcing + cache + store files into `HypnoCore`: `MediaLibrary`, `ApplePhotos`, `StillImageCache`, `PersistentIdentifierStore` (ExclusionStore, SourceFavoritesStore).  
    - Extract `MediaKind`, `MediaFile`, `VideoClip`, `CodableCMTime`, and `CodableCGAffineTransform` into `HypnoCore` (e.g., `MediaModels.swift`). Keep `HypnogramSource.swift` in the app, updated to import `HypnoCore`.  
    - Move `SourceMediaType` into `HypnoCore`; keep `Settings.swift` in the app but import `HypnoCore` for the enum.  
    - Introduce `HypnoCoreConfig` for shared paths (app support, Photos hidden cache) and initialize it from the app; keep `Environment` inside the Hypnograph app.  
@@ -100,7 +100,7 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
    - *Verification*: macOS build + unit tests for render pipeline entry points; manual playback smoke test pending.
 5. **Stage 2.8 – Parameterize core stores (remove singleton + global config ordering hazards)**
    - **Status: Complete**  
-   - Replace `FavoriteStore.shared`, `ExclusionStore.shared`, and `DeleteStore.shared` with explicit instances owned by app state (`HypnographState`, `DivineState`).  
+   - Replace `SourceFavoritesStore.shared` and `ExclusionStore.shared` with explicit instances owned by app state (`HypnographState`, `DivineState`).  
    - Avoid disk IO at singleton init time; store instances should be constructed with explicit URLs/config so they cannot accidentally read/write to the wrong app support directory.  
    - Keep `HypnoCoreConfig` for shared path calculation, but treat it as an input when creating store instances rather than global mutable state that stores implicitly depend on.  
    - *Verification*: Unit tests can point stores at a temporary directory; Hypnograph runtime behavior unchanged.

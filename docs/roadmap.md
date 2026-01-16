@@ -14,6 +14,8 @@ last_reviewed: 2026-01-07
 - Move Divine into its own product
 
 ## Research & Development
+- [ ] Add a Volume leveling option in Player Settings (keeps relative db same across all shown Hypnograms). Can protype maybe by apply a SoundSource effect first (to see if we might want to apply compression or something as a more sophisticated way to level volume)
+- [ ] Make Player View a bottom of screen strip instead of a side quarter window. Play with "light up punch buttons" for turning and and off sources and a different color to indicate the currently selected source.
 - [ ] Explore how some watch sort of mode where individual sources in a layered montage hypnogram change one by one randomly might work. Start with prototype just to see how the experience feels and if it is worth integrating.
 - [ ] Custom Metal blends modes for better destructive shaders/effects. How to integrate our own Metal shaders as Blend Mode options.
 - [ ] Auto blend mode sensing (like based on the relative brightiness of the source images). I think I am already doing something like that.
@@ -34,24 +36,20 @@ any effects load operation were done first
 - [ ] First load of app seemed to not connect to apple photos but relauches were fine, in both apps
 
 ## Minor Projects:
-- [ ] We can do away with lastRecipe, if there is no history or a failure on load we just generate a new hypnogram on start and start a new history
 - [ ] Right arrow key should create a New Hypnogram when in Player view
+- [ ] We can do away with lastRecipe, if there is no history or a failure on load we just generate a new hypnogram on start and start a new history
 - [ ] Confirm the Add Source functionality (which should be mapped to ".") still works.
-- [ ] To simplify the UX let's for now entirely remove the delete store and deleted collection and just rely on Exclude which as I user I can review later in Apple Photos for any assets that I actually just want to fully delete. As part of this we can again map the Delete key to Current Source / Source > "Delete Source" such that it for the current composition removes the current source. Make sure that Delete Source still works (including if it is the only source for a Hypnogram in which case it just either goes back in history or generates a new Hypnogram if there is no history to go back to. The goal of this task is simplifcation so note any extra complexity in the code you find along the way. 
-- [ ] Add a Volume leveling option in Player Settings (keeps relative db same across all shown Hypnograms). Can protype maybe by apply a SoundSource effect first (to see if we might want to apply compression or something as a more sophisticated way to level volume)
+- [ ] Hypnograph: Put what is in HUD view into the top of the Player Settings modal, eliminating the HUD View. Player Settings may get retitled, not sure. But it now takes up more vertical space and goes to top left of screen. We may need to iterate on the styling and what actually stays, as some things in the HUD may just go away or move elsewhere. 
+- [ ] Flash of image before processed in Player should be avoided/eliminated. Add a Transitions setting for what happens between Hypnograms. Maybe a Player setting for Transition Style with options: None, Fade, Punk (random dissolve)?
 - [ ] Window state not saved in Hypnograph. Maybe save it. Also tab when there are no windows shown or to restore, shows a default set of Player Settings and Effects.
-- [ ] Transitions between Hypnograms. Maybe a Player setting for Transition Style with options: None, Fade, Punk (random dissolve)?
-- [ ] Flash of image before processed in Player should be avoided/eliminated.
 - [ ] Feature flag Live mode as a possible optional feature... to eventually be a paid add on? 
 - [ ] Add "Player Settings" style control panel for Divine with settings: Allow Reversed toggle, Max Card (int)
 - [ ] Add a "+ New Hypnogram" button on the player view
-- [ ] Make Player View a bottom of screen strip instead of a side quarter window. Play with "light up punch buttons" for turning and and off sources and a different color to indicate the currently selected source.
 - [ ] Tweaks to the IFrame Compress effect, because I like it:
   - [ ] Make the period between iframe freezes more jittery by default and maybe add a setitng after trying it out
   - [ ] Same with the other params, more jitter by default but with anticipation of adding a param
   - [ ] When it is done sticking to a mask or whatever you'd call it, it releases seemingly suddenly. Make it more of a fade or erosion.
 - [ ] Divine: Save layouts somehow (Snapshots are a good start), but saving a recipe for restore would be a better first step probably
-- [ ] Hypnograph: Combine more of what is in HUD into Player Settings modal
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)
 - [ ] Game Controller mapping revamp back to essentials only
 
