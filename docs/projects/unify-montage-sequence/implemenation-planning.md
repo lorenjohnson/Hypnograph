@@ -1,7 +1,7 @@
 # Unify Montage/Sequence: Implementation Planning
 
 **Created**: 2026-01-15  
-**Status**: In progress (Phase 5 next)
+**Status**: Completed
 
 This is an implementation-oriented plan derived from `docs/projects/unify-montage-sequence/overview.md`.
 
@@ -138,42 +138,11 @@ User-facing behaviors to implement:
 Notes:
 - This phase should primarily be UI/commands + small state glue; the clip list + index should already exist from Phase 2.
 - `historyLimit` changes: on load/save, trim oldest to limit and adjust `currentClipIndex` accordingly.
+## Out of scope: Sequence saving / export ranges
 
-## Phase 5: Render from clip history (minimal UI)
-
-Goal: export a concatenation of materialized clips (hard cuts), matching preview.
-
-**Status**: Pending
-
-Minimal render UX:
-
-- Ask for `renderClipCount` (N) each time (or remember last value).
-- Default selection comes from history only:
-  - If there are at least N clips starting at the current clip, render that forward slice.
-  - Otherwise render the last N clips available (ending at the end of history).
-
-Note: Phase 2 made `HypnogramRecipe` multi-clip. Phase 5 should export from the materialized clip list (`recipe.clips`) so “preview == render”.
-
-Selection model (export source):
-
-- Default export source is always history (there is no “randomize on export” mode).
-- In/out points (likely menu commands, Phase 5+):
-  - Add “Set In” / “Set Out” commands to mark the clip range for export.
-  - Store points as **clip ids** (not indices) so deletes/trimming don’t silently change the selection.
-  - Default: both in/out point to the current clip so export/recipe-save stays “current clip only” unless the user expands the range.
-- Loading a multi-clip recipe (future) should append all clips and set/reset in/out points to the loaded range.
-
-Recipe file behaviors (for this project):
-
-- “Save .hypno” saves **current clip only** (consistent with “hypnogram”).
-- Later, once in/out exists, saving/exporting should use the in/out range; the default in=out=current preserves current behavior.
-
-Render architecture direction:
-
-- First pass can enqueue N renders and stitch, or build a single composition that concatenates clip compositions.
-- Longer-term goal (not required in MVP): one “render history” path that handles:
-  - layering within each clip, and
-  - concatenation across clips
+Saving/rendering a range of clips from history is intentionally **out of scope** for this project.
+It is tracked as a separate project:
+`docs/projects/20250116-save-sequences/overview.md`
 
 ## What else to do early (high leverage)
 

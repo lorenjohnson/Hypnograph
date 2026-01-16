@@ -1,62 +1,31 @@
-# Hypnograph North Star: Persistent Clip Tape + Layered Clips
+# Unify Montage/Sequence: Overview
 
 **Created**: 2026-01-15  
-**Status**: Proposal / Planning
+**Status**: Completed
 
-The app is one machine:
-
-You watch and author a persistent **clip tape** (an ordered history of clips). Each **clip** is a layered montage (1…N layers). Preview plays clips in order. Render exports clips in order. No separate “montage mode” or “sequence mode”.
-
-If `layers = 1`, the machine becomes “single clips in sequence”.
+This project unified the user model and code paths by:
+- Removing “Sequence mode” as a concept and implementation path.
+- Making Preview always a layered clip (1…N layers).
+- Adding persistent **clip history** (ordered clips + current index) with navigation and deletion.
 
 ## The model
 
 Clip = one authored unit: duration + play rate + layers + effects.  
 Layer = one simultaneously-playing source within a clip (media slice + blend + effects).  
-Clip tape (history) = the ordered list of clips you can go back to, edit, delete, and render.
+Clip history = the ordered list of clips you can go back to, edit, delete, and render (rendering a range is handled in a separate project).
 
 The sequence you care about is a sequence of **clips**, not a sequence of **sources**.
 
-## The knobs (UI-level decisions)
-
-Clip count: `N` or `∞`  
-History size: keep last `K` clips (default 100–200), persisted  
-Clip length: min/max range (default 2s–15s; randomized per new clip)  
-Layers: max layers (and optionally randomize layer count per new clip)  
-Blend modes for new clips: Default (Screen) vs Randomize  
-Global effects for new clips: Randomize Global Effect (toggle; OFF = carry forward previous clip’s global chain; ON = random from all templates)  
-
-Per-clip play rate is part of the clip, not global.
-
-Aspect ratio, resolution, and audio are global output settings (apply to preview/live/render).
-
-Clip transitions are hard cuts for now (future transition styles are out of scope).
-
 ## Playback and history behavior
 
-There is no separate Watch toggle. “Endless watching” is `clipCount = ∞`.
-
-The tape is always retained (up to `K`):
+The history is always retained (up to `historyLimit`):
 
 - If you jump back, play continues forward through already-generated future clips.
 - If playback reaches the end of the tape, the app generates a new clip and appends it.
 - If the tape is at capacity, the oldest clips drop off the front.
 - Editing overwrites that clip in place; it does not prune future clips.
 - Deleting a clip removes it from the tape; past and future clips remain.
-- Provide a menu item: “Clear Clip History” (resets tape to empty and generates a fresh clip).
-
-Finite `clipCount = N` behaves like a predictable run:
-- The system ensures there are `N` clips materialized for the run.
-- Playback loops within those `N` (same clips, same choices).
-- If clips are deleted and the run drops below `N`, new clips are generated to fill back to `N`.
-
-## Render behavior (preview == render)
-
-Render exports the exact materialized clips from the tape (same layers, blends, effects, play rates), concatenated in order.
-
-Keep render UI minimal at first:
-- For `clipCount = N`: render the current `N`-clip run.
-- For `clipCount = ∞`: render the last `N` clips (prompt for `N`).
+- Provide a menu item: “Clear Clip History” (keeps the current clip only).
 
 ## Why this collapses the codebase
 
@@ -78,13 +47,10 @@ Output (global)
 Effects (separate window, as today)
 - edits whichever target is selected for the current clip (global or a specific layer)
 
-## Keep in mind (renderer direction, not a commitment yet)
+## Out of scope (moved to its own project)
 
-Long-term, the render pipeline likely wants to be “render a clip tape”:
-
-Layered composition inside each clip, and sequential concatenation across clips, handled by one export path.
-
-That suggests eventually collapsing “montage timeline” vs “sequence timeline”, but we don’t need to decide internal renderer architecture to adopt this top-level model.
+Saving/rendering a *range* of clips (sequence saving) is tracked separately in:
+`docs/projects/20250116-save-sequences/overview.md`
 
 ---
 
@@ -95,25 +61,24 @@ This is a reference list to help map today’s implementation onto the model abo
 ### Preview-affecting parameters (today)
 
 Global
-- `Settings.watch` (enables watch timer)
-- `Settings.watchInterval` (derived from montage recipe duration)
+- `Settings.watchMode` (advance/generate on clip end)
 
 Per-player / generation
 - `PlayerConfiguration.maxLayers` (max simultaneous layers when generating new clips)
 - `Settings.clipLengthMinSeconds`, `Settings.clipLengthMaxSeconds` (target duration range for newly generated clips)
-- `HypnogramRecipe.targetDuration` (realized per-clip duration; influences random clip slice length)
-- `HypnogramRecipe.playRate`
+- `HypnogramClip.targetDuration` (per-clip duration; influences random clip slice length)
+- `HypnogramClip.playRate`
 
 Per-source / content
-- `HypnogramRecipe.sources[]` (files, clip start/duration, transforms, blend modes, per-source effect chains)
-- `HypnogramRecipe.effectChain` (global effects)
+- `HypnogramClip.sources[]` (files, clip start/duration, transforms, blend modes, per-source effect chains)
+- `HypnogramClip.effectChain` (global effects)
 
 Display / routing
 - `PlayerConfiguration.aspectRatio`
 - `PlayerConfiguration.playerResolution`
 - `Dream.liveMode` (preview vs live target)
 - Preview audio device + volume
-- Pause/navigation: `currentSourceIndex`, `currentClipTimeOffset`, `isPaused`
+- Pause/navigation: `currentSourceIndex`, `currentClipTimeOffset`, `isPaused`, `currentClipIndex`
 - Temporary preview overrides: global effect suspend, flash solo
 
 ### Render-affecting parameters (today)
@@ -124,5 +89,5 @@ Export setup
 - Frame rate (currently 30)
 
 Export content / duration
-- Render uses a copied recipe (so all sources/transforms/effects apply)
-- Duration uses `HypnogramRecipe.targetDuration`
+- Render uses a copied clip (so all sources/transforms/effects apply)
+- Duration uses `HypnogramClip.targetDuration`

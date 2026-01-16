@@ -24,7 +24,7 @@ last_reviewed: 2026-01-07
 
 ## Known Issues / Bugs
 - [ ] Rendering/saving some Hypnograms results in an error: "🔴 RenderEngine.export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn’t be completed. (Hypnograph.RenderError error 6.)"
-- [ ] Window state not saved in Hypnograph
+- [ ] Explore how some watch sort of mode where individual sources in a layered montage hypnogram change one by one randomly might work. Start with prototype just to see how the experience feels and if it is worth integrating.
 - [ ] Increase XcodeBuild MCP timeout to >60s (UI tests time out).
 - [ ] **Effect name editing broken** - Opens edit mode but can't type. `isTyping` focus disconnect once any effects load operation were done first
 - [ ] **Sequence mode saving** - Fails silently or incorrectly.
@@ -33,15 +33,14 @@ last_reviewed: 2026-01-07
 - [ ] First load of app seemed to not connect to apple photos but relauches were fine, in both apps
 
 ## Minor Projects:
+- [ ] Right arrow key should create a New Hypnogram when in Player view
+- [ ] Confirm the Add Source functionality (which should be mapped to ".") still works.
+- [ ] Let's remove the delete store and deleted collection and just rely on Exclude which as I user I can review later in Apple Photos for any assets that I actually just want to fully delete. This means the Delete key should now map again to Current Source / Source > "Delete Source" such that it for the current composition removes the current source. 
+- [ ] Add a Volume leveling option in Player Settings (keeps relative db same across all shown Hypnograms). Can protype maybe by apply a SoundSource effect first (to see if we might want to apply compression or something as a more sophisticated way to level volume)
+- [ ] Window state not saved in Hypnograph. Maybe save it. Also tab when there are no windows shown or to restore, shows a default set of Player Settings and Effects.
 - [ ] Transitions between Hypnograms. Maybe a Player setting for Transition Style with options: None, Fade, Punk (random dissolve)?
+- [ ] Flash of image before processed in Player should be avoided/eliminated.
 - [ ] Feature flag Live mode as a possible optional feature... to eventually be a paid add on? 
-- [ ] Watch mode to be more watchable...
-  - [ ] Blend between subsequent Hypnograms like by overlapping sources... R&D but so curious.
-  - [ ] Looping: Make it optional such that when it is off and you're in watch mode a new Hypnogram is generated when the previous one ends, unless the clip was shorter than a predetermined minimum length (2s?) in which case it will either be skipped or looped. The play length of a recipe is the length of the  longest running clip in the sources (up to the max duration of course). I guess this should be a player setting in the Watch toggle area.
-  - [ ] Flash of image before processed in Player should be avoided/eliminated. A transition to black before the next image is shown would be better. A fade out and fade in would extra nice with a new Player Setting for "Transition Style" (none, fade, punk)
-  - [ ] Volume leveling (optional)
-- [ ] Bring back Favorites store for saving favorites (by file path or Apple Photos ID?. Pressing F when viewing an Apple Photos asset it should be added to the FavoritesStore as well as to the HypnogramFavorites album in Apple Photos. This keystroke only works when in Sequence mode on any curently playing asset or when in Montage mone on a particular source (not global). Otherwse it gives a short flash message notice "Select a source to favorite" (we should add a basic style for notice vs warning flash messages and this is a warning). Maybe just use an emoji for the warnings and the rest stay the same. In Divine mode this also works for the active card and adds to DivineFavorites in Apple Photos if it is a Photos asset.
-- [ ] The DeleteStore functionality should also put the photo or video in the HypnogramDeletions album in Apple Photos if it is an ApplePhotos aset.
 - [ ] Add "Player Settings" style control panel for Divine with settings: Allow Reversed toggle, Max Card (int)
 - [ ] Add a "+ New Hypnogram" button on the player view
 - [ ] Make Player View a bottom of screen strip instead of a side quarter window. Play with "light up punch buttons" for turning and and off sources and a different color to indicate the currently selected source.
@@ -53,6 +52,9 @@ last_reviewed: 2026-01-07
 - [ ] Hypnograph: Combine more of what is in HUD into Player Settings modal
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)
 - [ ] Game Controller mapping revamp back to essentials only
+
+## Projects: Sequence saving
+Add back a way to save a Hypnogram recipe and render as a sequence of clips instead of just the current clip. We need to design a way to set the in and out points, and for when to prompt or not for this style vs single clip with layers render...
 
 ## Project: Basic Library Manager view for managing sets of items (for use by and modeld after current Effects Manager)
 - [ ] Abstract for use by both the Effects Chains Library and Hypnogram Sets
