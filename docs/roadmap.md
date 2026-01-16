@@ -53,8 +53,15 @@ last_reviewed: 2026-01-07
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)
 - [ ] Game Controller mapping revamp back to essentials only
 
-## Projects: Sequence saving
-Add back a way to save a Hypnogram recipe and render as a sequence of clips instead of just the current clip. We need to design a way to set the in and out points, and for when to prompt or not for this style vs single clip with layers render...
+## Project: Save Sequences
+- Goal: save and render a contiguous range of clips from clip history (In/Out selection by clip id), without re-introducing “Sequence mode”.
+- Docs: `docs/projects/20250116-save-sequences/overview.md`
+- Plan: `docs/projects/20250116-save-sequences/implementation-planning.md`
+
+## Project: Add Global Source Framing Setting
+- Goal: add global Source Framing (Fit/Fill per source layer) that is separate from Output Aspect Ratio, with transparent padding for Fit so lower layers show through.
+- Docs: `docs/projects/2025-add-source-framing-setting/overview.md`
+- Plan: `docs/projects/2025-add-source-framing-setting/implementation-planning.md`
 
 ## Project: Basic Library Manager view for managing sets of items (for use by and modeld after current Effects Manager)
 - [ ] Abstract for use by both the Effects Chains Library and Hypnogram Sets
