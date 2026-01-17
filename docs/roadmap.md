@@ -14,7 +14,7 @@ last_reviewed: 2026-01-07
 - Move Divine into its own product
 
 ## Research & Development
-- [ ] Add a Volume leveling option in Player Settings (keeps relative db same across all shown Hypnograms). Can protype maybe by apply a SoundSource effect first (to see if we might want to apply compression or something as a more sophisticated way to level volume)
+
 - [ ] Make Player View a bottom of screen strip instead of a side quarter window. Play with "light up punch buttons" for turning and and off sources and a different color to indicate the currently selected source.
 - [ ] Explore how some watch sort of mode where individual sources in a layered montage hypnogram change one by one randomly might work. Start with prototype just to see how the experience feels and if it is worth integrating.
 - [ ] Custom Metal blends modes for better destructive shaders/effects. How to integrate our own Metal shaders as Blend Mode options.
@@ -50,11 +50,32 @@ any effects load operation were done first
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)
 - [ ] Game Controller mapping revamp back to essentials only
 
+## Project: Unified Player Architecture
+
+Shared A/B player infrastructure for Preview and Live with smooth transitions. Foundational work for transitions and volume leveling.
+
+- Docs: `docs/projects/20260116-unified-player-architecture/overview.md`
+- Plan: `docs/projects/20260116-unified-player-architecture/implementation-planning.md`
+
+## Project: Hypnogram Transitions
+
+Visual transitions between clip changes (Preview + Live). Depends on: Unified Player Architecture.
+
+- Docs: `docs/projects/20260116-hypnogram-transitions/overview.md`
+- Plan: `docs/projects/20260116-hypnogram-transitions/implementation-planning.md`
+
+## Project: Volume Leveling
+
+Volume leveling option in Player Settings (keeps relative db same across all shown Hypnograms). Depends on: Unified Player Architecture.
+
+- Docs: `docs/projects/20260116-volume-leveling/overview.md`
+- Plan: `docs/projects/20260116-volume-leveling/implementation-planning.md`
+
 ## Project: Save Sequences
-- Goal: save and render a contiguous range of clips from clip history (In/Out selection by clip id), without re-introducing “Sequence mode”.
+
+- Goal: save and render a contiguous range of clips from clip history (In/Out selection by clip id), without re-introducing "Sequence mode".
 - Docs: `docs/projects/20250116-save-sequences/overview.md`
 - Plan: `docs/projects/20250116-save-sequences/implementation-planning.md`
-
 
 ## Project: Basic Library Manager view for managing sets of items (for use by and modeld after current Effects Manager)
 - [ ] Abstract for use by both the Effects Chains Library and Hypnogram Sets
