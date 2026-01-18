@@ -28,6 +28,13 @@ final class PlayerContentView: NSView {
     /// Which source is currently active
     private var activeSlot: PlayerSlot = .a
 
+    /// Target output volume for this content view (0.0 to 1.0)
+    private var baseVolume: Float = 1.0
+
+    /// Slot that is fading out during an active transition.
+    /// During transitions, `activeSlot` is updated immediately to the incoming slot.
+    private var outgoingSlotDuringTransition: PlayerSlot?
+
     /// Active frame source
     var activeFrameSource: AVPlayerFrameSource? {
         activeSlot == .a ? sourceA : sourceB
@@ -79,6 +86,9 @@ final class PlayerContentView: NSView {
 
         // Set initial primary source
         playerView.primarySource = sourceA
+
+        // Default: only the active slot should be audible.
+        applyAudioMix(progress: nil)
     }
 
     required init?(coder: NSCoder) {
@@ -101,7 +111,8 @@ final class PlayerContentView: NSView {
         playRate: Float? = nil,
         completion: (() -> Void)? = nil
     ) {
-        let nextSlot = activeSlot.opposite
+        let outgoingSlot = activeSlot
+        let nextSlot = outgoingSlot.opposite
         let nextSource = nextSlot == .a ? sourceA : sourceB
 
         guard let nextSource = nextSource else {
@@ -119,14 +130,18 @@ final class PlayerContentView: NSView {
 
         // Handle instant cut (no transition)
         if transitionType == .none {
+            outgoingSlotDuringTransition = nil
+            playerView.onTransitionProgress = nil
+
             // Stop the outgoing player's audio
-            let outgoingSource = activeSlot == .a ? sourceA : sourceB
+            let outgoingSource = outgoingSlot == .a ? sourceA : sourceB
             outgoingSource?.player.pause()
             outgoingSource?.player.replaceCurrentItem(with: nil)
 
             playerView.cancelTransition()
             playerView.primarySource = nextSource
             activeSlot = nextSlot
+            applyAudioMix(progress: nil)
             notifyMirrors()
             print("🎬 PlayerContentView: Instant cut (no transition)")
             completion?()
@@ -134,12 +149,21 @@ final class PlayerContentView: NSView {
         }
 
         // Start the shader transition
-        guard let currentSource = activeSlot == .a ? sourceA : sourceB else {
+        guard let currentSource = outgoingSlot == .a ? sourceA : sourceB else {
             // No current source - just set as primary
             playerView.primarySource = nextSource
             activeSlot = nextSlot
+            applyAudioMix(progress: nil)
             completion?()
             return
+        }
+
+        outgoingSlotDuringTransition = outgoingSlot
+        activeSlot = nextSlot
+
+        // Audio: fade out outgoing while fading in incoming.
+        playerView.onTransitionProgress = { [weak self] progress in
+            self?.applyAudioMix(progress: progress)
         }
 
         playerView.primarySource = currentSource
@@ -148,15 +172,20 @@ final class PlayerContentView: NSView {
             guard let self = self else { return }
 
             // Stop the outgoing player's audio
-            let outgoingSource = self.activeSlot == .a ? self.sourceA : self.sourceB
-            outgoingSource?.player.pause()
-            outgoingSource?.player.replaceCurrentItem(with: nil)
+            if let outgoingSlot = self.outgoingSlotDuringTransition {
+                let outgoingSource = outgoingSlot == .a ? self.sourceA : self.sourceB
+                outgoingSource?.player.pause()
+                outgoingSource?.player.replaceCurrentItem(with: nil)
+            }
 
-            self.activeSlot = nextSlot
+            self.outgoingSlotDuringTransition = nil
+            self.playerView.onTransitionProgress = nil
+            self.applyAudioMix(progress: nil)
             self.notifyMirrors()
             completion?()
         }
         playerView.startTransition(to: nextSource, type: transitionType, duration: duration)
+        applyAudioMix(progress: 0)
         notifyMirrors()
 
         print("🎬 PlayerContentView: Starting \(transitionType.rawValue) transition over \(duration)s")
@@ -167,6 +196,8 @@ final class PlayerContentView: NSView {
         playerView.cancelTransition()
         playerView.primarySource = nil
         playerView.secondarySource = nil
+        playerView.onTransitionProgress = nil
+        outgoingSlotDuringTransition = nil
 
         sourceA?.player.pause()
         sourceA?.player.replaceCurrentItem(with: nil)
@@ -181,8 +212,8 @@ final class PlayerContentView: NSView {
 
     /// Set volume on both players
     func setVolume(_ volume: Float) {
-        sourceA?.volume = volume
-        sourceB?.volume = volume
+        baseVolume = volume
+        applyAudioMix(progress: playerView.activeTransition != nil ? playerView.transitionProgress : nil)
     }
 
     /// Set mute on both players
@@ -195,6 +226,38 @@ final class PlayerContentView: NSView {
     func setAudioOutputDevice(_ deviceUID: String?) {
         sourceA?.audioOutputDeviceUniqueID = deviceUID
         sourceB?.audioOutputDeviceUniqueID = deviceUID
+    }
+
+    private func applyAudioMix(progress: Float?) {
+        let clampedBase = max(0, min(baseVolume, 1))
+
+        // No transition: only the active slot should be audible.
+        guard let outgoingSlot = outgoingSlotDuringTransition, let progress else {
+            if activeSlot == .a {
+                sourceA?.volume = clampedBase
+                sourceB?.volume = 0
+            } else {
+                sourceA?.volume = 0
+                sourceB?.volume = clampedBase
+            }
+            return
+        }
+
+        let t = max(0, min(progress, 1))
+        let incomingSlot = activeSlot
+
+        let outgoingVolume = clampedBase * (1 - t)
+        let incomingVolume = clampedBase * t
+
+        func setVolume(_ volume: Float, for slot: PlayerSlot) {
+            switch slot {
+            case .a: sourceA?.volume = volume
+            case .b: sourceB?.volume = volume
+            }
+        }
+
+        setVolume(outgoingVolume, for: outgoingSlot)
+        setVolume(incomingVolume, for: incomingSlot)
     }
 
     // MARK: - Content Mode
@@ -216,17 +279,26 @@ final class PlayerContentView: NSView {
     /// Create a mirror view that displays the same content
     /// The mirror shares the same frame sources, so it shows identical content
     func createMirrorView() -> PlayerContentMirrorView {
+        guard let sourceA, let sourceB else {
+            return PlayerContentMirrorView(
+                playerA: AVPlayer(),
+                playerB: AVPlayer(),
+                transitionStateProvider: { (.a, nil, nil, 0, 0) }
+            )
+        }
+
         let mirror = PlayerContentMirrorView(
-            sourceA: sourceA,
-            sourceB: sourceB,
-            activeSlotProvider: { [weak self] in self?.activeSlot ?? .a },
+            playerA: sourceA.player,
+            playerB: sourceB.player,
             transitionStateProvider: { [weak self] in
-                guard let self = self else { return (nil, nil, 0, 0) }
+                guard let self else { return (.a, nil, nil, 0, 0) }
+                let outgoingSlot = self.outgoingSlotDuringTransition ?? self.activeSlot
                 return (
-                    self.playerView.primarySource,
-                    self.playerView.secondarySource,
-                    self.playerView.transitionProgress,
-                    self.playerView.transitionDuration
+                    outgoingSlot,
+                    self.playerView.activeTransition,
+                    self.playerView.transitionStartTime,
+                    self.playerView.transitionDuration,
+                    self.playerView.transitionSeed
                 )
             }
         )
@@ -252,21 +324,18 @@ final class PlayerContentView: NSView {
 final class PlayerContentMirrorView: NSView {
 
     private let playerView: PlayerView
-    private weak var sourceA: AVPlayerFrameSource?
-    private weak var sourceB: AVPlayerFrameSource?
-    private let activeSlotProvider: () -> PlayerContentView.PlayerSlot
-    private let transitionStateProvider: () -> (FrameSource?, FrameSource?, Float, CFTimeInterval)
+    private let sourceA: AVPlayerFrameSource
+    private let sourceB: AVPlayerFrameSource
+    private let transitionStateProvider: () -> (PlayerContentView.PlayerSlot, TransitionRenderer.TransitionType?, CFTimeInterval?, CFTimeInterval, UInt32)
 
     init(
-        sourceA: AVPlayerFrameSource?,
-        sourceB: AVPlayerFrameSource?,
-        activeSlotProvider: @escaping () -> PlayerContentView.PlayerSlot,
-        transitionStateProvider: @escaping () -> (FrameSource?, FrameSource?, Float, CFTimeInterval)
+        playerA: AVPlayer,
+        playerB: AVPlayer,
+        transitionStateProvider: @escaping () -> (PlayerContentView.PlayerSlot, TransitionRenderer.TransitionType?, CFTimeInterval?, CFTimeInterval, UInt32)
     ) {
-        self.sourceA = sourceA
-        self.sourceB = sourceB
-        self.activeSlotProvider = activeSlotProvider
         self.transitionStateProvider = transitionStateProvider
+        self.sourceA = AVPlayerFrameSource(player: playerA)
+        self.sourceB = AVPlayerFrameSource(player: playerB)
         self.playerView = PlayerView(frame: .zero, device: SharedRenderer.metalDevice)
 
         super.init(frame: .zero)
@@ -284,35 +353,37 @@ final class PlayerContentMirrorView: NSView {
             playerView.trailingAnchor.constraint(equalTo: trailingAnchor)
         ])
 
-        // Set initial source
-        updateSource()
+        // Mirror should follow, not mutate, transition state.
+        playerView.autoCompleteTransitions = false
+
+        // Set initial state
+        syncTransitionState()
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    /// Update the primary source based on the active slot
-    func updateSource() {
-        let activeSlot = activeSlotProvider()
-        playerView.primarySource = activeSlot == .a ? sourceA : sourceB
-    }
-
     /// Sync transition state from the main content view
     func syncTransitionState() {
-        let (primary, secondary, progress, duration) = transitionStateProvider()
+        let (activeSlot, transitionType, startTime, duration, seed) = transitionStateProvider()
 
-        if secondary != nil && progress < 1.0 {
-            // Transition is in progress - use the incoming source as primary
-            // since we're not rendering the transition blend ourselves
-            playerView.primarySource = secondary
-            playerView.secondarySource = nil
+        let outgoing = activeSlot == .a ? sourceA : sourceB
+        let incoming = activeSlot == .a ? sourceB : sourceA
+
+        playerView.primarySource = outgoing
+
+        if let transitionType, let startTime {
+            playerView.setTransitionState(
+                secondarySource: incoming,
+                type: transitionType,
+                startTime: startTime,
+                duration: duration,
+                seed: seed
+            )
         } else {
-            // No transition or transition complete - use primary
-            playerView.primarySource = primary
-            playerView.secondarySource = nil
+            playerView.cancelTransition()
         }
-        playerView.transitionDuration = duration
     }
 
     /// Set the content display mode

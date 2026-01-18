@@ -1,5 +1,5 @@
 ---
-last_reviewed: 2026-01-07T00:00:00Z
+last_reviewed: 2026-01-18T00:00:00Z
 ---
 
 # Effects System Architecture
@@ -109,7 +109,7 @@ metatypes and provides:
   avoid sharing mutable effect state.
 
 ## Persistence Locations
-- Bundled defaults: `HypnoEffects/EffectLibrary/effects-default.json` (in HypnoEffects bundle).
+- Bundled defaults: `HypnoCore/Renderer/Effects/Library/effects-default.json` (bundled with HypnoCore).
 - Session file:
   - `effects-library.json`
 

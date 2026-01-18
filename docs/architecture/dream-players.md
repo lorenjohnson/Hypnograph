@@ -1,5 +1,5 @@
 ---
-last_reviewed: 2026-01-03T21:17:01Z
+last_reviewed: 2026-01-18T00:00:00Z
 ---
 
 # Dream Players Architecture
@@ -44,13 +44,18 @@ performance display pipeline.
 
 ## Live Display (LivePlayer)
 - Owns its own `EffectManager` and shares the global `EffectsSession` (`effects-library.json`).
-- Uses two internal `AVPlayer` instances (A/B) with crossfade transitions.
-- Can render to a fullscreen external monitor or a windowed preview.
+- Uses a unified Metal display pipeline:
+  - `PlayerContentView` owns two `AVPlayer`s (A/B) and drives clip changes.
+  - `AVPlayerItemVideoOutput` is used to pull frames (host-time driven) for display.
+  - `PlayerView` (`MTKView`) renders frames and applies shader-based transitions.
+- Can render to a fullscreen external monitor or a windowed live display (`LiveWindow` + `PlayerContentView`).
+- In-app mirrors (`LivePreviewPanel`, `LivePlayerScreen`) use `PlayerContentMirrorView`.
 
 ## Audio Routing
 - Preview and performance output have independent audio devices and volumes.
 - Dream persists device UIDs and volumes in `Settings`.
 - Audio device changes fall back to system default when devices disconnect.
+- During clip transitions, audio fades from outgoing to incoming for all transition styles.
 
 ## View Naming Conventions
 
@@ -63,8 +68,9 @@ The codebase uses consistent suffixes to distinguish view types:
 | `View`   | General-purpose reusable view component            | `PreviewPlayerView`                       |
 
 Note: `PreviewPlayerView` is an `NSViewRepresentable` bridge
-to AppKit's `AVPlayerView`, but from the file/naming perspective they're treated as
-regular views since the implementation detail isn't meaningful at that level.
+to AppKit's Metal-backed `PlayerContentView` (`MTKView`), but from the file/naming
+perspective they're treated as regular views since the implementation detail isn't
+meaningful at that level.
 
 ## Integration Points
 
@@ -73,3 +79,13 @@ regular views since the implementation detail isn't meaningful at that level.
 - `HypnographState.onWatchTimerFired` is wired to `Dream.new()` for auto-generation.
 - `EffectsEditorView` edits the `EffectsSession` used by the active player or
   live mode.
+
+## Backend Seams (Planned Flexibility)
+
+The current architecture has a clear seam for swapping **frame providers**, but not a fully abstracted seam
+for swapping the entire **display backend**:
+
+- **Swappable**: `FrameSource` (`AVPlayerFrameSource` today) can be replaced with another decoded-frame provider
+  as long as it can supply `DecodedFrame` (`CVPixelBuffer`) at a given host time.
+- **Not yet swappable**: `PlayerView` is Metal/`MTKView`-based and `PlayerContentView` is AVFoundation/`AVPlayerItem`-based.
+  Supporting multiple end-to-end backends would require introducing a higher-level backend interface above these types.

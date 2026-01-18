@@ -1,5 +1,5 @@
 ---
-last_reviewed: 2026-01-07T00:00:00Z
+last_reviewed: 2026-01-18T00:00:00Z
 ---
 
 # Rendering System Architecture
@@ -8,24 +8,26 @@ last_reviewed: 2026-01-07T00:00:00Z
 This document describes the preview, performance display, and export rendering pipeline.
 
 ## Sources
-- `HypnoRenderer/Core/RenderEngine.swift`
-- `HypnoRenderer/Core/CompositionBuilder.swift` (internal)
-- `HypnoRenderer/Core/RenderInstruction.swift` (internal)
-- `HypnoRenderer/Core/FrameCompositor.swift` (internal)
-- `HypnoEffects/Core/FrameBuffer.swift`
-- `HypnoEffects/Core/RenderContext.swift`
-- `HypnoEffects/Core/FrameBufferPreloader.swift`
-- `HypnoRenderer/Core/PhotoMontage.swift` (internal)
-- `HypnoRenderer/Core/RendererImageUtils.swift` (internal)
-- `HypnoRenderer/Models/AspectRatio.swift`
-- `HypnoRenderer/Models/RenderErrors.swift`
-- `HypnoRenderer/Models/RenderSize.swift`
-- `HypnoEffects/Core/SharedRenderer.swift`
-- `Hypnograph/Modules/LivePlayer/LivePlayer.swift`
+- `HypnoCore/Renderer/Core/RenderEngine.swift`
+- `HypnoCore/Renderer/Core/CompositionBuilder.swift` (internal)
+- `HypnoCore/Renderer/Core/RenderInstruction.swift` (internal)
+- `HypnoCore/Renderer/Core/FrameCompositor.swift` (internal)
+- `HypnoCore/Renderer/Core/FrameBuffer.swift`
+- `HypnoCore/Renderer/Core/RenderContext.swift`
+- `HypnoCore/Renderer/Core/FrameBufferPreloader.swift`
+- `HypnoCore/Renderer/Core/PhotoMontage.swift` (internal)
+- `HypnoCore/Renderer/Core/RendererImageUtils.swift` (internal)
+- `HypnoCore/Renderer/Core/SharedRenderer.swift`
+- `HypnoCore/Renderer/FrameSource/FrameSource.swift`
+- `HypnoCore/Renderer/FrameSource/AVPlayerFrameSource.swift`
+- `HypnoCore/Renderer/Display/PlayerView.swift`
+- `HypnoCore/Renderer/Transitions/TransitionRenderer.swift`
+- `Hypnograph/Dream/PreviewPlayerView.swift`
+- `Hypnograph/Dream/LivePlayer.swift`
 
 ## Core Components
 
-### Public API (HypnoRenderer)
+### Public API (HypnoCore)
 - `RenderEngine` is the primary entry point for preview and export.
 - `RenderEngine.ExportQueue` handles async export jobs and progress callbacks.
 - Models: `AspectRatio`, `RenderError`, and `renderSize(...)` are public sizing/error helpers.
@@ -78,11 +80,13 @@ This document describes the preview, performance display, and export rendering p
 1. Dream or LivePlayer constructs a `HypnogramRecipe`.
 2. `RenderEngine.makePlayerItem()` builds an `AVPlayerItem` and configures the internal compositor.
 3. `FrameCompositor` renders frames using the `EffectManager` passed through internal instructions.
+4. `PreviewPlayerView` displays the result via `AVPlayerFrameSource` → `PlayerView` (`MTKView`), enabling shader transitions.
 
 ### Live Display (LivePlayer)
 - LivePlayer owns its own `EffectManager` and `EffectsSession`.
-- It builds `AVPlayerItem` objects via `RenderEngine` and crossfades between two
-  internal players (A/B) for smooth transitions.
+- It builds `AVPlayerItem` objects via `RenderEngine` and displays them through the Metal playback pipeline:
+  `AVPlayerFrameSource` (pull frames via `AVPlayerItemVideoOutput`) → `PlayerView` (`MTKView`) with shader transitions.
+- Live in-app previews mirror the same A/B state using `PlayerContentMirrorView`.
 
 ### Export
 1. `RenderEngine.ExportQueue` calls `RenderEngine.export()`.
@@ -120,3 +124,11 @@ This document describes the preview, performance display, and export rendering p
 - `FrameCompositor` runs on a `.userInitiated` queue to avoid starving audio.
 - `FrameProcessor` is a secondary app-level CIImage pipeline used for non-AVFoundation paths
   (e.g., still image rendering); the core path is `FrameCompositor`.
+
+## Backend Seams (Planned Flexibility)
+
+- The `FrameSource` protocol is the main extensibility point for **frame providers** (e.g., AVPlayer-based vs. AVAssetReader-based).
+- The **display backend** is not fully abstracted today:
+  - `PlayerView` is Metal/`MTKView`-based.
+  - Playback orchestration (`PlayerContentView`) is AVFoundation/`AVPlayerItem`-based.
+  - Supporting multiple end-to-end backends would require a higher-level backend interface above these types.

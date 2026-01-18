@@ -50,6 +50,15 @@ any effects load operation were done first
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)
 - [ ] Game Controller mapping revamp back to essentials only
 
+## Project: Split Docs by App + Shared Frameworks
+
+Clarify docs ownership now that we have two distinct apps (Hypnograph + Divine) sharing `HypnoCore` and other frameworks.
+
+- Goal: keep shared/core docs in `docs/`, and move app-specific docs to:
+  - `Hypnograph/docs/`
+  - `Divine/docs/`
+- Scope: docs-only refactor (move files + update links); no code changes required.
+
 ## Project: Unified Player Architecture
 
 Shared A/B player infrastructure for Preview and Live with smooth transitions. Foundational work for transitions and volume leveling.

@@ -51,14 +51,14 @@ PlayerView (MTKView) ← TransitionRenderer (shader blending)
 | File | Purpose |
 |------|---------|
 | `Renderer/Display/PlayerView.swift` | MTKView subclass for Metal rendering |
-| `Renderer/Display/MetalPlayerController.swift` | AVPlayer-to-Metal bridge |
 | `Renderer/FrameSource/FrameSource.swift` | Protocol + DecodedFrame struct |
 | `Renderer/FrameSource/AVPlayerFrameSource.swift` | AVPlayer + VideoOutput wrapper |
 | `Renderer/FrameSource/TextureCache.swift` | CVMetalTextureCache wrapper |
 | `Renderer/Transitions/TransitionRenderer.swift` | Shader transition driver |
 | `Renderer/Transitions/TransitionCommon.h` | Shared transition shader header |
 | `Renderer/Transitions/Implementations/*.metal` | Individual transition shaders |
-| `Renderer/Shaders/PlayerShaders.metal` | Passthrough + YUV conversion |
+| `Renderer/Display/Passthrough.metal` | Passthrough vertex/fragment shaders |
+| `Renderer/Display/YUVConversion.metal` | YUV→RGB conversion shaders |
 
 ### Hypnograph App
 

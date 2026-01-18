@@ -1,5 +1,5 @@
 ---
-last_reviewed: 2026-01-03T21:17:01Z
+last_reviewed: 2026-01-18T00:00:00Z
 ---
 
 # Recipe and Hypnogram Persistence Architecture
@@ -9,12 +9,12 @@ This document covers recipe data structures, save/load flows, and persistent
 storage for hypnograms.
 
 ## Sources
-- `HypnoEffects/Models/HypnogramRecipe.swift`
-- `HypnoEffects/Models/HypnogramSource.swift`
+- `HypnoCore/Recipes/HypnogramRecipe.swift`
+- `HypnoCore/Recipes/HypnogramSource.swift`
 - `Hypnograph/RecipeStore.swift`
 - `Hypnograph/RecipeFileActions.swift`
 - `Hypnograph/HypnogramStore.swift`
-- `Hypnograph/EffectLibrary/EffectChainLibraryActions.swift`
+- `Hypnograph/EffectChainLibraryActions.swift`
 
 ## Core Data Model
 
