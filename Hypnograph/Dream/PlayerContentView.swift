@@ -172,6 +172,11 @@ final class PlayerContentView: NSView {
             }
         }
 
+        // Ensure both players are actually running during the transition (visual "both clips playing").
+        if let rate = playRate {
+            currentSource.player.playImmediately(atRate: rate)
+        }
+
         playerView.primarySource = currentSource
         playerView.transitionDuration = duration
         playerView.onTransitionComplete = { [weak self] in
