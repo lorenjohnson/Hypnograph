@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import AVKit
 import AVFoundation
 import CoreMedia
 import HypnoCore
