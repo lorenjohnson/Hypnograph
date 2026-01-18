@@ -5,11 +5,6 @@
 //  Dream feature: video/image composition with a single preview path.
 //
 
-// MARK: - Metal Pipeline Testing Flag
-// Set to true to use the new Metal-based playback pipeline (Direction A)
-// This flag enables MetalPreviewPlayerView instead of the standard AVPlayerView-based PreviewPlayerView
-private let useMetalPlayer = true
-
 import Foundation
 import CoreGraphics
 import CoreMedia
@@ -155,6 +150,23 @@ final class Dream: ObservableObject {
             .removeDuplicates()
             .sink { [weak self] framing in
                 self?.livePlayer.setSourceFraming(framing)
+            }
+            .store(in: &playerSubscriptions)
+
+        // Wire transition settings to LivePlayer
+        state.settingsStore.$value
+            .map(\.transitionStyle)
+            .removeDuplicates()
+            .sink { [weak self] style in
+                self?.livePlayer.transitionType = style
+            }
+            .store(in: &playerSubscriptions)
+
+        state.settingsStore.$value
+            .map(\.transitionDuration)
+            .removeDuplicates()
+            .sink { [weak self] duration in
+                self?.livePlayer.crossfadeDuration = duration
             }
             .store(in: &playerSubscriptions)
 
@@ -554,47 +566,26 @@ final class Dream: ObservableObject {
         )
         let viewID = "dream-preview-\(player.config.viewID)-\(player.playRate)"
 
-        if useMetalPlayer {
-            // Metal-based playback pipeline (Direction A)
-            return AnyView(
-                MetalPreviewPlayerView(
-                    clip: clip,
-                    aspectRatio: aspectRatio,
-                    displayResolution: displayResolution,
-                    sourceFraming: sourceFraming,
-                    watchMode: watchMode,
-                    onClipEnded: onClipEnded,
-                    currentSourceIndex: currentSourceIndexBinding,
-                    currentSourceTime: currentSourceTimeBinding,
-                    isPaused: player.isPaused,
-                    effectsChangeCounter: player.effectsChangeCounter,
-                    effectManager: player.effectManager,
-                    volume: previewVolume,
-                    audioDeviceUID: previewAudioDeviceUID
-                )
-                .id(viewID)
+        return AnyView(
+            PreviewPlayerView(
+                clip: clip,
+                aspectRatio: aspectRatio,
+                displayResolution: displayResolution,
+                sourceFraming: sourceFraming,
+                watchMode: watchMode,
+                onClipEnded: onClipEnded,
+                currentSourceIndex: currentSourceIndexBinding,
+                currentSourceTime: currentSourceTimeBinding,
+                isPaused: player.isPaused,
+                effectsChangeCounter: player.effectsChangeCounter,
+                effectManager: player.effectManager,
+                volume: previewVolume,
+                audioDeviceUID: previewAudioDeviceUID,
+                transitionStyle: state.settings.transitionStyle,
+                transitionDuration: state.settings.transitionDuration
             )
-        } else {
-            // Standard AVPlayerView-based playback
-            return AnyView(
-                PreviewPlayerView(
-                    clip: clip,
-                    aspectRatio: aspectRatio,
-                    displayResolution: displayResolution,
-                    sourceFraming: sourceFraming,
-                    watchMode: watchMode,
-                    onClipEnded: onClipEnded,
-                    currentSourceIndex: currentSourceIndexBinding,
-                    currentSourceTime: currentSourceTimeBinding,
-                    isPaused: player.isPaused,
-                    effectsChangeCounter: player.effectsChangeCounter,
-                    effectManager: player.effectManager,
-                    volume: previewVolume,
-                    audioDeviceUID: previewAudioDeviceUID
-                )
-                .id(viewID)
-            )
-        }
+            .id(viewID)
+        )
     }
 
     /// The live recipe from the active player - use for direct access/mutation

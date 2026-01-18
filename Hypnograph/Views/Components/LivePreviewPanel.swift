@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import AVKit
 import AppKit
 import HypnoCore
 
@@ -101,9 +100,8 @@ struct LivePreviewPanel: View {
                 Color.black
 
                 if livePlayer.hasContent {
-                    // Show wrapped AVPlayerView from live display
-                    LivePlayerWrapper(livePlayer: livePlayer)
-                        .aspectRatio(previewAspectRatio, contentMode: .fit)
+                    // Show Metal mirror of live display content
+                    LiveContentViewWrapper(livePlayer: livePlayer)
                 } else {
                     // Placeholder when no source assigned
                     VStack(spacing: 8) {
@@ -154,29 +152,5 @@ struct LivePreviewPanel: View {
         .frame(width: 500)
         .background(Color.black.opacity(0.6))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-}
-
-/// NSViewRepresentable to show current live player content
-struct LivePlayerWrapper: NSViewRepresentable {
-    @ObservedObject var livePlayer: LivePlayer
-
-    func makeNSView(context: Context) -> AVPlayerView {
-        // Use HitTransparentPlayerView so keyboard shortcuts still work
-        let playerView = HitTransparentPlayerView()
-        playerView.controlsStyle = .none
-        playerView.videoGravity = livePlayer.config.aspectRatio.isFillWindow ? .resizeAspectFill : .resizeAspect
-        return playerView
-    }
-
-    func updateNSView(_ nsView: AVPlayerView, context: Context) {
-        // Mirror the active player from live display
-        nsView.player = livePlayer.activeAVPlayer
-        nsView.videoGravity = livePlayer.config.aspectRatio.isFillWindow ? .resizeAspectFill : .resizeAspect
-    }
-
-    /// AVPlayerView that forwards mouse/keyboard events so SwiftUI and menu shortcuts still work
-    private final class HitTransparentPlayerView: AVPlayerView {
-        override func hitTest(_ point: NSPoint) -> NSView? { nil }
     }
 }

@@ -71,6 +71,14 @@ struct Settings: Codable, MediaLibrarySettings {
     /// Whether the effects list column is collapsed in the Effects Editor
     var effectsListCollapsed: Bool
 
+    // MARK: - Transition Settings
+
+    /// Transition style for playback (shared by Preview and Live)
+    var transitionStyle: TransitionRenderer.TransitionType
+
+    /// Duration of transitions in seconds
+    var transitionDuration: Double
+
     // MARK: - Audio Settings
 
     /// Preview audio device UID (nil = None/muted)
@@ -104,6 +112,9 @@ struct Settings: Codable, MediaLibrarySettings {
         static let sourceFraming: SourceFraming = .fill
         static let sourceMediaTypes: Set<MediaType> = [.images, .videos]
         static let effectsListCollapsed: Bool = false
+        // Transition defaults
+        static let transitionStyle: TransitionRenderer.TransitionType = .crossfade
+        static let transitionDuration: Double = 1.5
         // Audio defaults: nil UID = system default, volume = 1.0
         static let previewAudioDeviceUID: String? = nil
         static let previewVolume: Float = 1.0
@@ -119,6 +130,7 @@ struct Settings: Codable, MediaLibrarySettings {
         case activeLibraries
         case outputResolution, sourceFraming, sourceMediaTypes
         case effectsListCollapsed
+        case transitionStyle, transitionDuration
         case previewAudioDeviceUID, previewVolume
         case liveAudioDeviceUID, liveVolume
         case playerConfig
@@ -141,6 +153,8 @@ struct Settings: Codable, MediaLibrarySettings {
         sourceFraming: SourceFraming = Defaults.sourceFraming,
         sourceMediaTypes: Set<MediaType> = Defaults.sourceMediaTypes,
         effectsListCollapsed: Bool = Defaults.effectsListCollapsed,
+        transitionStyle: TransitionRenderer.TransitionType = Defaults.transitionStyle,
+        transitionDuration: Double = Defaults.transitionDuration,
         previewAudioDeviceUID: String? = Defaults.previewAudioDeviceUID,
         previewVolume: Float = Defaults.previewVolume,
         liveAudioDeviceUID: String? = Defaults.liveAudioDeviceUID,
@@ -159,6 +173,8 @@ struct Settings: Codable, MediaLibrarySettings {
         self.sourceFraming = sourceFraming
         self.sourceMediaTypes = sourceMediaTypes
         self.effectsListCollapsed = effectsListCollapsed
+        self.transitionStyle = transitionStyle
+        self.transitionDuration = transitionDuration
         self.previewAudioDeviceUID = previewAudioDeviceUID
         self.previewVolume = previewVolume
         self.liveAudioDeviceUID = liveAudioDeviceUID
@@ -203,6 +219,10 @@ struct Settings: Codable, MediaLibrarySettings {
         }
         effectsListCollapsed = try c.decodeIfPresent(Bool.self, forKey: .effectsListCollapsed)
             ?? Defaults.effectsListCollapsed
+        transitionStyle = try c.decodeIfPresent(TransitionRenderer.TransitionType.self, forKey: .transitionStyle)
+            ?? Defaults.transitionStyle
+        transitionDuration = try c.decodeIfPresent(Double.self, forKey: .transitionDuration)
+            ?? Defaults.transitionDuration
         previewAudioDeviceUID = try c.decodeIfPresent(String.self, forKey: .previewAudioDeviceUID)
             ?? Defaults.previewAudioDeviceUID
         previewVolume = try c.decodeIfPresent(Float.self, forKey: .previewVolume)
@@ -237,6 +257,8 @@ struct Settings: Codable, MediaLibrarySettings {
         try c.encode(sourceFraming, forKey: .sourceFraming)
         try c.encode(Array(sourceMediaTypes), forKey: .sourceMediaTypes)
         try c.encode(effectsListCollapsed, forKey: .effectsListCollapsed)
+        try c.encode(transitionStyle, forKey: .transitionStyle)
+        try c.encode(transitionDuration, forKey: .transitionDuration)
         try c.encodeIfPresent(previewAudioDeviceUID, forKey: .previewAudioDeviceUID)
         try c.encode(previewVolume, forKey: .previewVolume)
         try c.encodeIfPresent(liveAudioDeviceUID, forKey: .liveAudioDeviceUID)

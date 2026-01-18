@@ -512,6 +512,60 @@ struct PlayerSettingsView: View {
                 .background(Color.white.opacity(0.3))
                 .padding(.vertical, 4)
 
+            Text("Transitions")
+                .font(.system(.headline, design: .monospaced))
+                .foregroundColor(.white)
+
+            HStack {
+                Text("Style:")
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.8))
+
+                Spacer()
+
+                Picker("", selection: Binding(
+                    get: { dream.state.settings.transitionStyle },
+                    set: { newValue in
+                        dream.state.settingsStore.update { $0.transitionStyle = newValue }
+                    }
+                )) {
+                    ForEach(TransitionRenderer.TransitionType.allCases, id: \.self) { style in
+                        Text(style.displayName).tag(style)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(width: 120)
+            }
+
+            HStack {
+                Text("Duration:")
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.8))
+
+                Spacer()
+
+                Text(String(format: "%.1fs", dream.state.settings.transitionDuration))
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(.white)
+                    .frame(minWidth: 40)
+
+                Slider(
+                    value: Binding(
+                        get: { dream.state.settings.transitionDuration },
+                        set: { newValue in
+                            dream.state.settingsStore.update { $0.transitionDuration = newValue }
+                        }
+                    ),
+                    in: 0.1...3.0
+                )
+                .frame(width: 100)
+                .controlSize(.small)
+            }
+
+            Divider()
+                .background(Color.white.opacity(0.3))
+                .padding(.vertical, 4)
+
             Text("Audio")
                 .font(.system(.headline, design: .monospaced))
                 .foregroundColor(.white)

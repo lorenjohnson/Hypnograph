@@ -1,9 +1,9 @@
 //
-//  MetalPreviewPlayerView.swift
+//  PreviewPlayerView.swift
 //  Hypnograph
 //
-//  Metal-based preview player using the new Metal playback pipeline.
-//  Drop-in replacement for PreviewPlayerView for testing Direction A.
+//  Preview player using the Metal playback pipeline.
+//  Uses PlayerContentView for A/B player transitions with shader effects.
 //
 
 import SwiftUI
@@ -12,9 +12,9 @@ import AVFoundation
 import CoreMedia
 import HypnoCore
 
-/// Metal-based player view for Dream module layered playback.
-/// Uses MetalPlayerController for GPU-accelerated frame display.
-struct MetalPreviewPlayerView: NSViewRepresentable {
+/// Preview player view for Dream module layered playback.
+/// Uses PlayerContentView for GPU-accelerated frame display with shader transitions.
+struct PreviewPlayerView: NSViewRepresentable {
     let clip: HypnogramClip
     let aspectRatio: AspectRatio
     let displayResolution: OutputResolution
@@ -30,13 +30,16 @@ struct MetalPreviewPlayerView: NSViewRepresentable {
     let volume: Float
     /// Audio output device UID (nil = system default)
     var audioDeviceUID: String? = nil
+    /// Transition style for clip changes
+    var transitionStyle: TransitionRenderer.TransitionType = .crossfade
+    /// Transition duration in seconds
+    var transitionDuration: Double = 1.5
 
     @MainActor
     class Coordinator {
-        var metalController: MetalPlayerController?
+        var contentView: PlayerContentView?
         var containerView: NSView?
         var stillClipTimer: Timer?
-        var statusObserver: NSKeyValueObservation?
         var compositionID: String?
         var currentTask: Task<Void, Never>?
         var lastPauseState: Bool?
@@ -47,13 +50,24 @@ struct MetalPreviewPlayerView: NSViewRepresentable {
         var watchMode: Bool = false
         var onClipEnded: (() -> Void)?
         var isAllStillImages: Bool = false
+        /// Whether this is the first clip load (no transition needed)
+        var isFirstLoad: Bool = true
         /// Use a sentinel to distinguish "never set" from "set to nil (system default)"
         private static let notSetSentinel = "___NOT_SET___"
         var lastAudioDeviceUID: String? = notSetSentinel
+        /// Observers for player item end notifications
+        var playbackEndObservers: [Any] = []
 
         func audioDeviceChanged(to newUID: String?) -> Bool {
             if lastAudioDeviceUID == Self.notSetSentinel { return true }
             return lastAudioDeviceUID != newUID
+        }
+
+        func removePlaybackEndObservers() {
+            for observer in playbackEndObservers {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            playbackEndObservers.removeAll()
         }
     }
 
@@ -81,7 +95,7 @@ struct MetalPreviewPlayerView: NSViewRepresentable {
 
         guard !clip.sources.isEmpty else {
             // Just pause, don't tear down - sources might be added back immediately
-            c.metalController?.pause()
+            c.contentView?.activeAVPlayer?.pause()
             c.currentTask?.cancel()
             c.currentTask = nil
             c.compositionID = nil
@@ -99,6 +113,7 @@ struct MetalPreviewPlayerView: NSViewRepresentable {
         let newID = compositionIdentity(for: clip)
 
         if newID != c.compositionID {
+            let previousID = c.compositionID
             c.currentTask?.cancel()
             c.compositionID = newID
 
@@ -129,85 +144,80 @@ struct MetalPreviewPlayerView: NSViewRepresentable {
 
                 switch result {
                 case .success(let playerItem):
-                    // Create or reuse Metal controller
-                    let controller: MetalPlayerController
-                    if let existing = c.metalController {
-                        controller = existing
+                    // Create or reuse content view
+                    let content: PlayerContentView
+                    if let existing = c.contentView {
+                        content = existing
                     } else {
-                        controller = MetalPlayerController()
-                        c.metalController = controller
+                        content = PlayerContentView(frame: nsView.bounds)
+                        content.autoresizingMask = [.width, .height]
+                        c.contentView = content
+                        c.isFirstLoad = true
                     }
 
                     // Set content mode based on aspect ratio
-                    let contentMode: MetalPlayerView.ContentMode = aspectRatio.isFillWindow ? .aspectFill : .aspectFit
-                    controller.setContentMode(contentMode)
+                    let contentMode: PlayerView.ContentMode = aspectRatio.isFillWindow ? .aspectFill : .aspectFit
+                    content.setContentMode(contentMode)
 
-                    // Add Metal view to container if needed
-                    let metalView = controller.view
-                    if metalView.superview != nsView {
-                        metalView.translatesAutoresizingMaskIntoConstraints = false
-                        nsView.addSubview(metalView)
+                    // Add content view to container if needed
+                    if content.superview != nsView {
+                        content.translatesAutoresizingMaskIntoConstraints = false
+                        nsView.addSubview(content)
                         NSLayoutConstraint.activate([
-                            metalView.topAnchor.constraint(equalTo: nsView.topAnchor),
-                            metalView.bottomAnchor.constraint(equalTo: nsView.bottomAnchor),
-                            metalView.leadingAnchor.constraint(equalTo: nsView.leadingAnchor),
-                            metalView.trailingAnchor.constraint(equalTo: nsView.trailingAnchor)
+                            content.topAnchor.constraint(equalTo: nsView.topAnchor),
+                            content.bottomAnchor.constraint(equalTo: nsView.bottomAnchor),
+                            content.leadingAnchor.constraint(equalTo: nsView.leadingAnchor),
+                            content.trailingAnchor.constraint(equalTo: nsView.trailingAnchor)
                         ])
                     }
 
                     // Use high-quality audio time pitch algorithm
                     playerItem.audioTimePitchAlgorithm = .timeDomain
 
-                    // Configure looping (handled by MetalPlayerController)
-                    // For watch mode, we need custom end handling
-                    controller.setLooping(!self.watchMode)
-
-                    // Load the player item into Metal controller
-                    controller.load(playerItem: playerItem)
-
-                    c.currentPlayerItem = playerItem
-
-                    // Apply volume and audio device immediately
-                    controller.volume = self.volume
-                    controller.audioOutputDeviceUniqueID = self.audioDeviceUID
+                    // Apply volume and audio device
+                    content.setVolume(self.volume)
+                    content.setAudioOutputDevice(self.audioDeviceUID)
                     c.lastVolume = self.volume
                     c.lastAudioDeviceUID = self.audioDeviceUID
-                    print("🔊 MetalPreviewPlayerView: Setup - Audio device = \(self.audioDeviceUID ?? "System Default"), volume=\(self.volume)")
 
-                    c.lastPauseState = nil
+                    // Determine transition type:
+                    // - First load: no transition (instant)
+                    // - Subsequent loads: use configured transition
+                    let effectiveTransition: TransitionRenderer.TransitionType
+                    if c.isFirstLoad || previousID == nil {
+                        effectiveTransition = .none
+                        c.isFirstLoad = false
+                    } else {
+                        effectiveTransition = self.transitionStyle
+                    }
+
+                    // Determine play rate (nil if paused or all still images)
+                    let playRate: Float? = (self.isPaused || c.isAllStillImages) ? nil : c.playRate
+
+                    // Load with transition - this starts playback on the incoming player
+                    content.loadAndTransition(
+                        playerItem: playerItem,
+                        transitionType: effectiveTransition,
+                        duration: self.transitionDuration,
+                        playRate: playRate
+                    ) {
+                        // Transition complete - nothing special needed
+                    }
+
+                    c.currentPlayerItem = playerItem
+                    c.lastPauseState = self.isPaused
                     c.lastEffectsCounter = effectsChangeCounter
 
-                    // Wait for player item to be ready before starting playback
-                    c.statusObserver?.invalidate()
-                    c.statusObserver = playerItem.observe(\.status, options: [.initial, .new]) { [weak controller, weak c] item, _ in
-                        guard let controller = controller, let c = c else { return }
-                        if item.status == .readyToPlay {
-                            c.statusObserver?.invalidate()
-                            c.statusObserver = nil
-
-                            Task { @MainActor in
-                                if c.isAllStillImages {
-                                    // All-still clips don't advance time; keep paused on frame 0
-                                    controller.seek(to: .zero)
-                                    controller.pause()
-                                    if c.lastPauseState != true {
-                                        self.scheduleStillClipTimer(coordinator: c)
-                                    }
-                                } else if c.lastPauseState != true {
-                                    controller.play(rate: c.playRate)
-                                }
-                            }
-                        }
+                    // For still images, schedule the timer for watch mode advancement
+                    if c.isAllStillImages && !self.isPaused {
+                        self.scheduleStillClipTimer(coordinator: c)
                     }
 
-                    if self.isPaused {
-                        c.lastPauseState = true
-                    } else {
-                        c.lastPauseState = false
-                    }
+                    // Setup looping or clip-ended callback
+                    self.setupPlaybackEndHandling(content: content, coordinator: c)
 
                 case .failure(let error):
-                    error.log(context: "MetalPreviewPlayerView")
+                    error.log(context: "PreviewPlayerView")
                     c.compositionID = nil
                     if currentSourceTime != nil {
                         currentSourceTime = nil
@@ -224,22 +234,24 @@ struct MetalPreviewPlayerView: NSViewRepresentable {
                         scheduleStillClipTimer(coordinator: c)
                     }
                 } else if isPaused {
-                    c.metalController?.pause()
+                    c.contentView?.activeAVPlayer?.pause()
                 } else {
-                    c.metalController?.play(rate: clip.playRate)
+                    c.contentView?.activeAVPlayer?.playImmediately(atRate: clip.playRate)
                 }
                 c.lastPauseState = isPaused
             }
 
             if c.lastEffectsCounter != effectsChangeCounter {
                 c.lastEffectsCounter = effectsChangeCounter
-                if let controller = c.metalController {
+                if let content = c.contentView {
                     if c.isAllStillImages {
                         // Force redraw of still frame at t=0
-                        controller.seek(to: .zero)
+                        content.activeAVPlayer?.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
                     } else if isPaused {
                         // Only force redraw when paused
-                        controller.seek(to: controller.currentTime)
+                        if let currentTime = content.activeAVPlayer?.currentTime() {
+                            content.activeAVPlayer?.seek(to: currentTime, toleranceBefore: .zero, toleranceAfter: .zero)
+                        }
                     }
                 }
             }
@@ -247,15 +259,55 @@ struct MetalPreviewPlayerView: NSViewRepresentable {
 
         // Apply volume
         if c.lastVolume != volume {
-            c.metalController?.volume = volume
+            c.contentView?.setVolume(volume)
             c.lastVolume = volume
         }
 
         // Apply audio output device routing
         if c.audioDeviceChanged(to: audioDeviceUID) {
-            c.metalController?.audioOutputDeviceUniqueID = audioDeviceUID
+            c.contentView?.setAudioOutputDevice(audioDeviceUID)
             c.lastAudioDeviceUID = audioDeviceUID
-            print("🔊 MetalPreviewPlayerView: Audio device = \(audioDeviceUID ?? "System Default")")
+        }
+    }
+
+    /// Setup looping or clip-ended notification handling for all players
+    @MainActor
+    private func setupPlaybackEndHandling(content: PlayerContentView, coordinator c: Coordinator) {
+        // Remove any existing observers
+        c.removePlaybackEndObservers()
+
+        // Register observer for each player's current item
+        for player in content.allPlayers {
+            guard let playerItem = player.currentItem else { continue }
+
+            let observer = NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemDidPlayToEndTime,
+                object: playerItem,
+                queue: .main
+            ) { [weak c, weak player] _ in
+                guard let c = c, let player = player else { return }
+
+                if c.watchMode {
+                    // Watch mode: only advance when the ACTIVE player ends
+                    // (not when the outgoing transition player loops)
+                    if player === c.contentView?.activeAVPlayer {
+                        c.onClipEnded?()
+                    } else {
+                        // Outgoing player during transition - just loop it
+                        player.seek(to: .zero)
+                        if c.lastPauseState != true {
+                            player.playImmediately(atRate: c.playRate)
+                        }
+                    }
+                } else {
+                    // Loop mode: seek to beginning and continue
+                    player.seek(to: .zero)
+                    if c.lastPauseState != true {
+                        player.playImmediately(atRate: c.playRate)
+                    }
+                }
+            }
+            c.playbackEndObservers.append(observer)
         }
     }
 
@@ -300,14 +352,13 @@ struct MetalPreviewPlayerView: NSViewRepresentable {
 
     @MainActor
     private static func tearDown(coordinator c: Coordinator) {
-        c.statusObserver?.invalidate()
-        c.statusObserver = nil
-
         c.stillClipTimer?.invalidate()
         c.stillClipTimer = nil
 
-        c.metalController?.stop()
-        c.metalController = nil
+        c.removePlaybackEndObservers()
+
+        c.contentView?.stop()
+        c.contentView = nil
         c.currentPlayerItem = nil
         c.compositionID = nil
     }
