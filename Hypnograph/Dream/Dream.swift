@@ -5,6 +5,11 @@
 //  Dream feature: video/image composition with a single preview path.
 //
 
+// MARK: - Metal Pipeline Testing Flag
+// Set to true to use the new Metal-based playback pipeline (Direction A)
+// This flag enables MetalPreviewPlayerView instead of the standard AVPlayerView-based PreviewPlayerView
+private let useMetalPlayer = true
+
 import Foundation
 import CoreGraphics
 import CoreMedia
@@ -528,34 +533,68 @@ final class Dream: ObservableObject {
 
         let player = activePlayer
 
-        return AnyView(
-            PreviewPlayerView(
-                clip: player.currentClip,
-                aspectRatio: player.config.aspectRatio,
-                displayResolution: player.config.playerResolution,
-                sourceFraming: state.settings.sourceFraming,
-                watchMode: state.settings.watchMode,
-                onClipEnded: { [weak self] in
-                    guard let self else { return }
-                    guard self.state.settings.watchMode else { return }
-                    self.advanceOrGenerateOnClipEnded()
-                },
-                currentSourceIndex: Binding(
-                    get: { player.currentSourceIndex },
-                    set: { player.currentSourceIndex = $0 }
-                ),
-                currentSourceTime: Binding(
-                    get: { player.currentClipTimeOffset },
-                    set: { player.currentClipTimeOffset = $0 }
-                ),
-                isPaused: player.isPaused,
-                effectsChangeCounter: player.effectsChangeCounter,
-                effectManager: player.effectManager,
-                volume: previewVolume,
-                audioDeviceUID: previewAudioDeviceUID
-            )
-            .id("dream-preview-\(player.config.viewID)-\(player.playRate)")
+        // Common view parameters
+        let clip = player.currentClip
+        let aspectRatio = player.config.aspectRatio
+        let displayResolution = player.config.playerResolution
+        let sourceFraming = state.settings.sourceFraming
+        let watchMode = state.settings.watchMode
+        let onClipEnded: (() -> Void)? = { [weak self] in
+            guard let self else { return }
+            guard self.state.settings.watchMode else { return }
+            self.advanceOrGenerateOnClipEnded()
+        }
+        let currentSourceIndexBinding = Binding(
+            get: { player.currentSourceIndex },
+            set: { player.currentSourceIndex = $0 }
         )
+        let currentSourceTimeBinding = Binding(
+            get: { player.currentClipTimeOffset },
+            set: { player.currentClipTimeOffset = $0 }
+        )
+        let viewID = "dream-preview-\(player.config.viewID)-\(player.playRate)"
+
+        if useMetalPlayer {
+            // Metal-based playback pipeline (Direction A)
+            return AnyView(
+                MetalPreviewPlayerView(
+                    clip: clip,
+                    aspectRatio: aspectRatio,
+                    displayResolution: displayResolution,
+                    sourceFraming: sourceFraming,
+                    watchMode: watchMode,
+                    onClipEnded: onClipEnded,
+                    currentSourceIndex: currentSourceIndexBinding,
+                    currentSourceTime: currentSourceTimeBinding,
+                    isPaused: player.isPaused,
+                    effectsChangeCounter: player.effectsChangeCounter,
+                    effectManager: player.effectManager,
+                    volume: previewVolume,
+                    audioDeviceUID: previewAudioDeviceUID
+                )
+                .id(viewID)
+            )
+        } else {
+            // Standard AVPlayerView-based playback
+            return AnyView(
+                PreviewPlayerView(
+                    clip: clip,
+                    aspectRatio: aspectRatio,
+                    displayResolution: displayResolution,
+                    sourceFraming: sourceFraming,
+                    watchMode: watchMode,
+                    onClipEnded: onClipEnded,
+                    currentSourceIndex: currentSourceIndexBinding,
+                    currentSourceTime: currentSourceTimeBinding,
+                    isPaused: player.isPaused,
+                    effectsChangeCounter: player.effectsChangeCounter,
+                    effectManager: player.effectManager,
+                    volume: previewVolume,
+                    audioDeviceUID: previewAudioDeviceUID
+                )
+                .id(viewID)
+            )
+        }
     }
 
     /// The live recipe from the active player - use for direct access/mutation
