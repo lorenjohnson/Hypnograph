@@ -2,7 +2,7 @@
 
 **Created**: 2026-01-18
 **Updated**: 2026-01-18
-**Status**: Core Implementation Complete - Integration Pending
+**Status**: Phase 7 Complete - Ready for Testing
 **Approach**: AVPlayerItemVideoOutput + MTKView
 
 ## Implementation Progress
@@ -15,8 +15,8 @@
 | 4. Effect pipeline integration | ✅ Complete | Kept in AVVideoComposition |
 | 5. TransitionRenderer | ✅ Complete | 7 transition types |
 | 6. Dual-source transitions | ✅ Complete | Built into MetalPlayerView |
-| 7. PreviewPlayerView integration | 🔲 Pending | MetalPlayerController ready |
-| 8. LivePlayer integration | 🔲 Pending | Requires Phase 7 first |
+| 7. PreviewPlayerView integration | ✅ Complete | MetalPreviewPlayerView + feature flag |
+| 8. LivePlayer integration | 🔲 Pending | Requires testing Phase 7 first |
 | 9. Cleanup and polish | 🔲 Pending | After integration testing |
 
 ---
