@@ -1,8 +1,25 @@
 # Metal Playback Pipeline: Implementation Plan (Direction A)
 
 **Created**: 2026-01-18
-**Status**: Ready for Review
+**Updated**: 2026-01-18
+**Status**: Core Implementation Complete - Integration Pending
 **Approach**: AVPlayerItemVideoOutput + MTKView
+
+## Implementation Progress
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 1. MetalPlayerView foundation | ✅ Complete | MTKView + Passthrough shader |
+| 2. AVPlayerFrameSource + TextureCache | ✅ Complete | FrameSource protocol, YUV support |
+| 3. YUV→RGB conversion | ✅ Complete | BT.709/BT.601, video/full range |
+| 4. Effect pipeline integration | ✅ Complete | Kept in AVVideoComposition |
+| 5. TransitionRenderer | ✅ Complete | 7 transition types |
+| 6. Dual-source transitions | ✅ Complete | Built into MetalPlayerView |
+| 7. PreviewPlayerView integration | 🔲 Pending | MetalPlayerController ready |
+| 8. LivePlayer integration | 🔲 Pending | Requires Phase 7 first |
+| 9. Cleanup and polish | 🔲 Pending | After integration testing |
+
+---
 
 This document details the implementation plan for Direction A: using AVPlayer for decode/sync while rendering through a unified Metal surface.
 
@@ -819,18 +836,19 @@ final class LivePlayer: ObservableObject {
 
 ## File Summary
 
-### New Files
+### New Files (Created)
 
 | File | Purpose | Phase |
 |------|---------|-------|
-| `HypnoCore/Renderer/Display/MetalPlayerView.swift` | MTKView display surface | 1 |
-| `HypnoCore/Renderer/Shaders/Passthrough.metal` | Simple texture blit | 1 |
-| `HypnoCore/Renderer/FrameSource/FrameSource.swift` | Protocol + DecodedFrame | 2 |
-| `HypnoCore/Renderer/FrameSource/AVPlayerFrameSource.swift` | AVPlayer wrapper | 2 |
-| `HypnoCore/Renderer/FrameSource/TextureCache.swift` | CVMetalTextureCache wrapper | 2 |
-| `HypnoCore/Renderer/Shaders/YUVConversion.metal` | YUV→RGB compute shader | 3 |
+| `HypnoCore/Renderer/Display/MetalPlayerView.swift` | MTKView display surface with YUV + transitions | 1,3,6 |
+| `HypnoCore/Renderer/Display/Passthrough.metal` | Texture-to-screen vertex/fragment shaders | 1 |
+| `HypnoCore/Renderer/Display/YUVConversion.metal` | YUV→RGB compute + fragment shaders | 3 |
+| `HypnoCore/Renderer/Display/MetalPlayerController.swift` | AVPlayer-to-Metal bridge controller | 7 |
+| `HypnoCore/Renderer/FrameSource/FrameSource.swift` | Protocol + DecodedFrame struct | 2 |
+| `HypnoCore/Renderer/FrameSource/AVPlayerFrameSource.swift` | AVPlayer + VideoOutput wrapper | 2 |
+| `HypnoCore/Renderer/FrameSource/TextureCache.swift` | CVMetalTextureCache wrapper (BGRA + YUV) | 2 |
 | `HypnoCore/Renderer/Transitions/TransitionRenderer.swift` | Shader transition driver | 5 |
-| `HypnoCore/Renderer/Shaders/Transitions.metal` | Transition compute shaders | 5 |
+| `HypnoCore/Renderer/Transitions/Transitions.metal` | 7 transition compute shaders | 5 |
 
 ### Modified Files
 
