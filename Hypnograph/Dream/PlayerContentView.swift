@@ -162,8 +162,14 @@ final class PlayerContentView: NSView {
         activeSlot = nextSlot
 
         // Audio: fade out outgoing while fading in incoming.
+        var didNotifyMirrorsForTransitionStart = false
         playerView.onTransitionProgress = { [weak self] progress in
-            self?.applyAudioMix(progress: progress)
+            guard let self else { return }
+            self.applyAudioMix(progress: progress)
+            if !didNotifyMirrorsForTransitionStart {
+                didNotifyMirrorsForTransitionStart = true
+                self.notifyMirrors()
+            }
         }
 
         playerView.primarySource = currentSource
@@ -186,7 +192,6 @@ final class PlayerContentView: NSView {
         }
         playerView.startTransition(to: nextSource, type: transitionType, duration: duration)
         applyAudioMix(progress: 0)
-        notifyMirrors()
 
         print("🎬 PlayerContentView: Starting \(transitionType.rawValue) transition over \(duration)s")
     }
