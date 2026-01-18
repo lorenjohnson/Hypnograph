@@ -529,7 +529,7 @@ final class Dream: ObservableObject {
         let player = activePlayer
 
         return AnyView(
-            MontagePlayerView(
+            PreviewPlayerView(
                 clip: player.currentClip,
                 aspectRatio: player.config.aspectRatio,
                 displayResolution: player.config.playerResolution,

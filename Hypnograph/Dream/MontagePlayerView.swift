@@ -6,7 +6,7 @@ import HypnoCore
 
 /// Player view for Dream module layered playback.
 /// All sources are composited together, looping at targetDuration.
-struct MontagePlayerView: NSViewRepresentable {
+struct PreviewPlayerView: NSViewRepresentable {
     let clip: HypnogramClip
     let aspectRatio: AspectRatio
     let displayResolution: OutputResolution
@@ -180,7 +180,7 @@ struct MontagePlayerView: NSViewRepresentable {
                         player.audioOutputDeviceUniqueID = self.audioDeviceUID
                         c.lastVolume = self.volume
                         c.lastAudioDeviceUID = self.audioDeviceUID
-                        print("🔊 MontagePlayerView: Setup - Audio device = \(self.audioDeviceUID ?? "System Default"), volume=\(self.volume)")
+                        print("🔊 PreviewPlayerView: Setup - Audio device = \(self.audioDeviceUID ?? "System Default"), volume=\(self.volume)")
 
                         c.lastPauseState = nil
                         c.lastEffectsCounter = effectsChangeCounter
@@ -214,7 +214,7 @@ struct MontagePlayerView: NSViewRepresentable {
                         }
 
                     case .failure(let error):
-                        error.log(context: "MontagePlayerView")
+                        error.log(context: "PreviewPlayerView")
                         c.compositionID = nil
                         if currentSourceTime != nil {
                             currentSourceTime = nil
@@ -264,7 +264,7 @@ struct MontagePlayerView: NSViewRepresentable {
         if c.audioDeviceChanged(to: audioDeviceUID) {
             c.player?.audioOutputDeviceUniqueID = audioDeviceUID
             c.lastAudioDeviceUID = audioDeviceUID
-            print("🔊 MontagePlayerView: Audio device = \(audioDeviceUID ?? "System Default")")
+            print("🔊 PreviewPlayerView: Audio device = \(audioDeviceUID ?? "System Default")")
         }
     }
 
