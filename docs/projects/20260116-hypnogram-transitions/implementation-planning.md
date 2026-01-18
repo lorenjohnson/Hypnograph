@@ -36,7 +36,7 @@ Acceptance:
 
 ## Phase 2: Add the same transition mechanism to Preview
 
-Preview (`MontagePlayerView`) currently uses one `AVPlayerView` and replaces its item.
+Preview (`PreviewPlayerView`) currently uses one `AVPlayerView` and replaces its item.
 
 Goal: implement the same A/B approach as Live:
 - Maintain two player views (A/B) stacked in the same container view.

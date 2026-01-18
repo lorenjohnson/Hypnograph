@@ -60,15 +60,15 @@ The codebase uses consistent suffixes to distinguish view types:
 | -------- | -------------------------------------------------- | ----------------------------------------- |
 | `Screen` | Full-screen SwiftUI view (takes over main content) | `LivePlayerScreen`                        |
 | `Panel`  | Partial UI element (sidebar, popover)              | `LivePreviewPanel`                        |
-| `View`   | General-purpose reusable view component            | `MontagePlayerView`                       |
+| `View`   | General-purpose reusable view component            | `PreviewPlayerView`                       |
 
-Note: `MontagePlayerView` is an `NSViewRepresentable` bridge
+Note: `PreviewPlayerView` is an `NSViewRepresentable` bridge
 to AppKit's `AVPlayerView`, but from the file/naming perspective they're treated as
 regular views since the implementation detail isn't meaningful at that level.
 
 ## Integration Points
 
-- `MontagePlayerView` and `LivePlayer` build `AVPlayerItem`s via `RenderEngine.makePlayerItem()`.
+- `PreviewPlayerView` and `LivePlayer` build `AVPlayerItem`s via `RenderEngine.makePlayerItem()`.
 - Dream export uses `RenderEngine.ExportQueue` with per-player sizing/timeline.
 - `HypnographState.onWatchTimerFired` is wired to `Dream.new()` for auto-generation.
 - `EffectsEditorView` edits the `EffectsSession` used by the active player or
