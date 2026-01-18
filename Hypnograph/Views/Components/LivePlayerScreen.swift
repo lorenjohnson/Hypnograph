@@ -22,7 +22,7 @@ struct LivePlayerScreen: View {
                 .ignoresSafeArea()
 
             if livePlayer.hasContent {
-                LiveModeAVPlayerView(livePlayer: livePlayer)
+                LiveContentViewWrapper(livePlayer: livePlayer)
                     .ignoresSafeArea()
             } else {
                 // Placeholder when no content
@@ -42,27 +42,53 @@ struct LivePlayerScreen: View {
     }
 }
 
-/// NSViewRepresentable wrapper for AVPlayerView that mirrors Live Display
-struct LiveModeAVPlayerView: NSViewRepresentable {
+/// NSViewRepresentable wrapper that creates a mirror of the LivePlayer's content
+struct LiveContentViewWrapper: NSViewRepresentable {
     @ObservedObject var livePlayer: LivePlayer
 
-    func makeNSView(context: Context) -> AVPlayerView {
-        // Use HitTransparentPlayerView so keyboard shortcuts still work
-        let playerView = HitTransparentPlayerView()
-        playerView.controlsStyle = .none
-        playerView.videoGravity = livePlayer.config.aspectRatio.isFillWindow ? .resizeAspectFill : .resizeAspect
-        playerView.player = livePlayer.activeAVPlayer
-        return playerView
+    @MainActor
+    class Coordinator {
+        var mirrorView: PlayerContentMirrorView?
     }
 
-    func updateNSView(_ nsView: AVPlayerView, context: Context) {
-        // Mirror the active player from live display
-        nsView.player = livePlayer.activeAVPlayer
-        nsView.videoGravity = livePlayer.config.aspectRatio.isFillWindow ? .resizeAspectFill : .resizeAspect
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
     }
 
-    /// AVPlayerView that forwards mouse/keyboard events so SwiftUI and menu shortcuts still work
-    private final class HitTransparentPlayerView: AVPlayerView {
+    func makeNSView(context: Context) -> NSView {
+        let container = HitTransparentView()
+        container.wantsLayer = true
+        container.layer?.backgroundColor = NSColor.black.cgColor
+        return container
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        let c = context.coordinator
+
+        // Create mirror view if needed
+        if c.mirrorView == nil, let mirror = livePlayer.createMirrorView() {
+            c.mirrorView = mirror
+            mirror.translatesAutoresizingMaskIntoConstraints = false
+            nsView.addSubview(mirror)
+
+            NSLayoutConstraint.activate([
+                mirror.topAnchor.constraint(equalTo: nsView.topAnchor),
+                mirror.bottomAnchor.constraint(equalTo: nsView.bottomAnchor),
+                mirror.leadingAnchor.constraint(equalTo: nsView.leadingAnchor),
+                mirror.trailingAnchor.constraint(equalTo: nsView.trailingAnchor)
+            ])
+        }
+
+        // Sync transition state (handles both active transitions and steady state)
+        c.mirrorView?.syncTransitionState()
+
+        // Update content mode
+        let contentMode: PlayerView.ContentMode = livePlayer.config.aspectRatio.isFillWindow ? .aspectFill : .aspectFit
+        c.mirrorView?.setContentMode(contentMode)
+    }
+
+    /// NSView that forwards mouse/keyboard events so SwiftUI and menu shortcuts still work
+    private final class HitTransparentView: NSView {
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
     }
 }

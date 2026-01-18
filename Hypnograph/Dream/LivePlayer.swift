@@ -3,7 +3,7 @@
 //  Hypnograph
 //
 //  Live player for live output to an external monitor.
-//  Uses A/B player crossfading for smooth transitions between hypnograms.
+//  Uses Metal-based A/B player with shader transitions between hypnograms.
 //
 
 import Foundation
@@ -12,14 +12,17 @@ import AppKit
 import Combine
 import HypnoCore
 
-/// Live player for clean output to external monitor with smooth crossfades
+/// Live player for clean output to external monitor with smooth transitions
 @MainActor
 final class LivePlayer: ObservableObject {
 
     // MARK: - Configuration
 
-    /// Duration of crossfade between hypnograms (seconds)
+    /// Duration of transitions between hypnograms (seconds)
     var crossfadeDuration: TimeInterval = 1.5
+
+    /// Transition type for shader-based transitions
+    var transitionType: TransitionRenderer.TransitionType = .crossfade
 
     /// Per-player settings (aspect ratio, resolution, generation settings)
     @Published var config: PlayerConfiguration
@@ -35,16 +38,19 @@ final class LivePlayer: ObservableObject {
     @Published private(set) var isTransitioning: Bool = false
     @Published private(set) var currentRecipeDescription: String = ""
     @Published private(set) var activeSourceCount: Int = 0
-
-    /// Whether we have content loaded and playing
-    var hasContent: Bool {
-        activeAVPlayer != nil
-    }
+    @Published private(set) var hasContent: Bool = false
 
     /// The currently active AVPlayer (for preview mirroring)
     var activeAVPlayer: AVPlayer? {
-        guard let content = contentView else { return nil }
-        return activePlayer == .a ? content.playerA.player : content.playerB.player
+        return contentView?.activeAVPlayer
+    }
+
+    /// Create a mirror view for the in-app Live preview
+    /// The mirror shares the same frame sources as the main content view,
+    /// so both windows show identical content simultaneously
+    func createMirrorView() -> PlayerContentMirrorView? {
+        ensureContentView()
+        return contentView?.createMirrorView()
     }
 
     // MARK: - Audio
@@ -66,30 +72,20 @@ final class LivePlayer: ObservableObject {
 
     /// Apply volume to the currently active player only (not the fading-out player)
     private func applyVolumeToActivePlayer() {
-        guard let content = contentView else {
-            print("⚠️ LivePlayer: No contentView for volume")
-            return
-        }
-        let activePlayerView = activePlayer == .a ? content.playerA : content.playerB
-        activePlayerView.player?.volume = currentVolume
-        print("🔊 LivePlayer: Applied volume \(currentVolume) to player \(activePlayer)")
+        contentView?.setVolume(currentVolume)
+        print("🔊 LivePlayer: Applied volume \(currentVolume)")
     }
 
     /// Apply audio device to all players (so new player during crossfade gets correct device)
     private func applyAudioDeviceToAllPlayers() {
-        guard let content = contentView else {
-            print("⚠️ LivePlayer: No contentView for audio device")
-            return
-        }
-        content.playerA.player?.audioOutputDeviceUniqueID = currentAudioDeviceUID
-        content.playerB.player?.audioOutputDeviceUniqueID = currentAudioDeviceUID
-        print("🔊 LivePlayer: Applied device to both players")
+        contentView?.setAudioOutputDevice(currentAudioDeviceUID)
+        print("🔊 LivePlayer: Applied audio device")
     }
 
     // MARK: - Private
 
     private var window: LiveWindow?
-    private var contentView: LiveContentView?
+    private var contentView: PlayerContentView?
 
     /// Current volume level (0.0 to 1.0)
     private var currentVolume: Float = 1.0
@@ -97,18 +93,14 @@ final class LivePlayer: ObservableObject {
     /// Current audio device UID (nil = system default)
     private var currentAudioDeviceUID: String?
 
-    /// Which player is currently active (A or B)
-    private var activePlayer: PlayerSlot = .a
-
     /// Build task for the pending recipe
     private var pendingBuildTask: Task<Void, Never>?
 
     /// Render engine for building compositions
     private let renderEngine = RenderEngine()
 
-    /// End observers for notification-based looping (matching preview behavior)
-    private var endObserverA: Any?
-    private var endObserverB: Any?
+    /// End observer for notification-based looping
+    private var endObserver: Any?
 
     /// This display's own EffectManager - independent of preview
     let effectManager = EffectManager()
@@ -119,16 +111,13 @@ final class LivePlayer: ObservableObject {
     /// The current clip being displayed (mutable for live effect changes)
     private var currentClip: HypnogramClip?
 
-    enum PlayerSlot {
-        case a, b
-        var opposite: PlayerSlot { self == .a ? .b : .a }
-    }
-
     // MARK: - Init
 
     init(settings: Settings, effectsSession: EffectsSession) {
         self.config = PlayerConfiguration(from: settings)
         self.sourceFraming = settings.sourceFraming
+        self.crossfadeDuration = settings.transitionDuration
+        self.transitionType = settings.transitionStyle
         self.effectsSession = effectsSession
         setupEffectManager()
         setupEffectsSession()
@@ -138,11 +127,11 @@ final class LivePlayer: ObservableObject {
         guard sourceFraming != newValue else { return }
         sourceFraming = newValue
 
-        guard let content = contentView, currentClip != nil else { return }
+        guard currentClip != nil, contentView != nil else { return }
 
         pendingBuildTask?.cancel()
         pendingBuildTask = Task {
-            await buildAndTransition(content: content)
+            await buildAndTransitionMetal()
         }
     }
 
@@ -197,9 +186,10 @@ final class LivePlayer: ObservableObject {
 
         // Create content view at a reasonable default size
         let contentFrame = NSRect(origin: .zero, size: NSSize(width: 1920, height: 1080))
-        let content = LiveContentView(frame: contentFrame)
-        content.autoresizingMask = [.width, .height]
-        contentView = content
+
+        let playerContent = PlayerContentView(frame: contentFrame)
+        playerContent.autoresizingMask = [.width, .height]
+        contentView = playerContent
 
         print("🎬 LivePlayer: Created content view (no window)")
     }
@@ -284,16 +274,16 @@ final class LivePlayer: ObservableObject {
         }
 
         // Reuse existing content view if available, otherwise create new one
-        let content: LiveContentView
+        let playerContent: PlayerContentView
         if let existingContent = contentView {
-            content = existingContent
-            content.frame = contentFrame
+            playerContent = existingContent
+            playerContent.frame = contentFrame
         } else {
-            content = LiveContentView(frame: contentFrame)
-            content.autoresizingMask = [.width, .height]
-            contentView = content
+            playerContent = PlayerContentView(frame: contentFrame)
+            playerContent.autoresizingMask = [.width, .height]
+            contentView = playerContent
         }
-        win.contentView = content
+        win.contentView = playerContent
 
         // Show without activating (don't steal focus)
         win.orderFront(nil)
@@ -320,7 +310,7 @@ final class LivePlayer: ObservableObject {
         print("🎬 LivePlayer: Window hidden (playback continues)")
     }
 
-    /// Stop playback and reset all state
+    /// Stop playback and reset all state (also hides window)
     func stop() {
         print("🎬 LivePlayer: Stopping...")
 
@@ -334,26 +324,24 @@ final class LivePlayer: ObservableObject {
         // Hide window first
         hide()
 
-        // Stop and clear players
-        if let content = contentView {
-            content.playerA.player?.pause()
-            content.playerA.player?.replaceCurrentItem(with: nil)
-            content.playerA.player = nil
+        // Clear content
+        clearContent()
 
-            content.playerB.player?.pause()
-            content.playerB.player?.replaceCurrentItem(with: nil)
-            content.playerB.player = nil
-        }
+        print("🎬 LivePlayer: Stopped and reset")
+    }
+
+    /// Clear all content without affecting window visibility
+    private func clearContent() {
+        // Stop and clear players
+        contentView?.stop()
 
         // Reset state
         contentView = nil
         isTransitioning = false
-        activePlayer = .a
         currentRecipeDescription = ""
         activeSourceCount = 0
         currentClip = nil
-
-        print("🎬 LivePlayer: Stopped and reset")
+        hasContent = false
     }
 
     /// Toggle visibility (also serves as reset if stuck)
@@ -365,17 +353,21 @@ final class LivePlayer: ObservableObject {
         }
     }
 
-    /// Force reset - stops everything and optionally reopens
+    /// Clear content without affecting window visibility
     func reset() {
-        print("🎬 LivePlayer: Force reset")
-        let wasVisible = isVisible
-        stop()
-        if wasVisible {
-            // Small delay to ensure cleanup completes
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                self?.show()
-            }
-        }
+        print("🎬 LivePlayer: Clearing content...")
+
+        // Cancel any pending build
+        pendingBuildTask?.cancel()
+        pendingBuildTask = nil
+
+        // Remove notification observers
+        NotificationCenter.default.removeObserver(self)
+
+        // Clear content but don't touch window
+        clearContent()
+
+        print("🎬 LivePlayer: Content cleared")
     }
     
     /// Send a recipe to the live display
@@ -387,7 +379,7 @@ final class LivePlayer: ObservableObject {
         // Ensure we have a content view for playback
         ensureContentView()
 
-        guard let content = contentView else {
+        guard contentView != nil else {
             print("⚠️ LivePlayer: No content view, ignoring send")
             return
         }
@@ -413,18 +405,18 @@ final class LivePlayer: ObservableObject {
         print("🎬 LivePlayer: Building live display with \(sourceCount) layers...")
 
         pendingBuildTask = Task {
-            await buildAndTransition(content: content)
+            await buildAndTransitionMetal()
         }
     }
 
     // MARK: - Private Methods
 
-    private func buildAndTransition(content: LiveContentView) async {
-        guard let clip = currentClip else { return }
+    /// Build and transition using Metal shader transitions
+    private func buildAndTransitionMetal() async {
+        guard let clip = currentClip, let metalContent = contentView else { return }
         let outputSize = renderSize(aspectRatio: config.aspectRatio, maxDimension: config.playerResolution.maxDimension)
 
         // Build composition using LivePlayer's own EffectManager
-        // This makes effects completely independent of the main preview
         let config = RenderEngine.Config(
             outputSize: outputSize,
             frameRate: 30,
@@ -435,7 +427,7 @@ final class LivePlayer: ObservableObject {
         let result = await renderEngine.makePlayerItem(
             clip: clip,
             config: config,
-            effectManager: effectManager  // Use LivePlayer's own EffectManager
+            effectManager: effectManager
         )
 
         guard !Task.isCancelled else {
@@ -445,111 +437,61 @@ final class LivePlayer: ObservableObject {
 
         switch result {
         case .success(let playerItem):
-            await performCrossfade(
-                to: playerItem,
-                content: content
-            )
+            isTransitioning = true
+
+            // Configure player item
+            playerItem.audioTimePitchAlgorithm = .timeDomain
+
+            // Setup looping for video content
+            let isAllStillImages = clip.sources.allSatisfy { $0.clip.file.mediaKind == .image }
+            if !isAllStillImages {
+                setupLooping(for: playerItem, playRate: clip.playRate)
+            }
+
+            // Apply audio settings
+            metalContent.setVolume(currentVolume)
+            metalContent.setAudioOutputDevice(currentAudioDeviceUID)
+
+            // Determine play rate (nil for still images = don't auto-start)
+            let playRate: Float? = isAllStillImages ? nil : clip.playRate
+
+            // Start shader transition with playback
+            metalContent.loadAndTransition(
+                playerItem: playerItem,
+                transitionType: transitionType,
+                duration: crossfadeDuration,
+                playRate: playRate
+            ) { [weak self] in
+                guard let self = self else { return }
+                self.isTransitioning = false
+                print("✅ LivePlayer: Metal transition complete")
+            }
+
+            hasContent = true
+            print("🎬 LivePlayer: Starting Metal \(transitionType.rawValue) transition over \(crossfadeDuration)s")
 
         case .failure(let error):
             print("🔴 LivePlayer: Build failed - \(error)")
         }
     }
 
-    private func performCrossfade(
-        to playerItem: AVPlayerItem,
-        content: LiveContentView
-    ) async {
-        isTransitioning = true
-
-        // Determine which player to use next
-        let nextSlot = activePlayer.opposite
-        let nextPlayerView = nextSlot == .a ? content.playerA : content.playerB
-        let currentPlayerView = activePlayer == .a ? content.playerA : content.playerB
-
-        playerItem.audioTimePitchAlgorithm = .timeDomain
-
-        // Setup player - simple AVPlayer like preview
-        let player: AVPlayer
-        if let existing = nextPlayerView.player {
-            existing.replaceCurrentItem(with: playerItem)
-            player = existing
-        } else {
-            player = AVPlayer(playerItem: playerItem)
-            nextPlayerView.player = player
-        }
-
-        // Setup notification-based looping (same as preview)
-        let isAllStillImages = currentClip?.sources.allSatisfy { $0.clip.file.mediaKind == .image } ?? false
-        if !isAllStillImages {
-            setupLooping(for: player, item: playerItem, slot: nextSlot)
-        }
-
-        // Mute old player immediately before starting new one
-        currentPlayerView.player?.volume = 0.0
-
-        // Start new player with correct volume and audio device
-        player.volume = currentVolume
-        player.audioOutputDeviceUniqueID = currentAudioDeviceUID
-        nextPlayerView.alphaValue = 0
-        if isAllStillImages {
-            await player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
-            player.pause()
-        } else {
-            player.playImmediately(atRate: currentClip?.playRate ?? 0.8)
-        }
-
-        // Visual crossfade
-        let duration = crossfadeDuration
-
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = duration
-            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            nextPlayerView.animator().alphaValue = 1.0
-            currentPlayerView.animator().alphaValue = 0.0
-        } completionHandler: { [weak self] in
-            guard let self = self else { return }
-
-            // Stop old player completely and release composition
-            currentPlayerView.player?.pause()
-            currentPlayerView.player?.replaceCurrentItem(with: nil)
-
-            // Update active slot
-            self.activePlayer = nextSlot
-            self.isTransitioning = false
-
-            print("✅ LivePlayer: Crossfade complete")
-        }
-
-        print("🎬 LivePlayer: Crossfading over \(duration)s")
-    }
-
-    /// Setup notification-based looping for a player (same approach as preview)
-    private func setupLooping(for player: AVPlayer, item: AVPlayerItem, slot: PlayerSlot) {
-        // Remove old observer for this slot
-        if slot == .a, let observer = endObserverA {
+    /// Setup looping for Metal player
+    private func setupLooping(for playerItem: AVPlayerItem, playRate: Float) {
+        // Remove old end observer
+        if let observer = endObserver {
             NotificationCenter.default.removeObserver(observer)
-            endObserverA = nil
-        } else if slot == .b, let observer = endObserverB {
-            NotificationCenter.default.removeObserver(observer)
-            endObserverB = nil
+            endObserver = nil
         }
 
         // Add new observer
-        let playRate = currentClip?.playRate ?? 0.8
-        let observer = NotificationCenter.default.addObserver(
+        endObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
-            object: item,
+            object: playerItem,
             queue: .main
-        ) { [weak player] _ in
-            player?.seek(to: .zero)
-            player?.playImmediately(atRate: playRate)
-        }
-
-        // Store observer reference
-        if slot == .a {
-            endObserverA = observer
-        } else {
-            endObserverB = observer
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            self.contentView?.activeAVPlayer?.seek(to: .zero)
+            self.contentView?.activeAVPlayer?.playImmediately(atRate: playRate)
         }
     }
 }
