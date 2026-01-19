@@ -10,7 +10,7 @@
 Replaced AVPlayerView-based rendering with a unified Metal pipeline for both Preview and Live displays. Key benefits:
 
 - Single MTKView surface per display (no view hierarchy for transitions)
-- GPU-accelerated shader transitions (crossfade, destroy)
+- GPU-accelerated shader transitions (crossfade, shuffle)
 - A/B player architecture for seamless clip changes
 - Shared frame sources enable mirror views
 
@@ -38,7 +38,7 @@ PlayerView (MTKView) ← TransitionRenderer (shader blending)
 | 2. AVPlayerFrameSource + TextureCache | ✅ Complete | FrameSource protocol, YUV support |
 | 3. YUV→RGB conversion | ✅ Complete | BT.709/BT.601, video/full range |
 | 4. Effect pipeline integration | ✅ Complete | Kept in AVVideoComposition |
-| 5. TransitionRenderer | ✅ Complete | crossfade, destroy transitions |
+| 5. TransitionRenderer | ✅ Complete | crossfade, shuffle transitions |
 | 6. Dual-source transitions | ✅ Complete | Built into PlayerView |
 | 7. PreviewPlayerView integration | ✅ Complete | Uses PlayerContentView |
 | 8. LivePlayer integration | ✅ Complete | Uses PlayerContentView + mirrors |
@@ -74,7 +74,7 @@ PlayerView (MTKView) ← TransitionRenderer (shader blending)
 Two transition types implemented:
 
 - **Crossfade** (`transitionCrossfade`): Simple linear blend
-- **Destroy** (`transitionDestroy`): Datamosh/glitch effect with block displacement, RGB separation
+- **Shuffle** (`transitionDestroy`): Datamosh/glitch effect with block displacement, RGB separation
 
 Each transition is a separate Metal compute shader in `Transitions/Implementations/`.
 
