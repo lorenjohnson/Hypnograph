@@ -45,6 +45,7 @@ struct PreviewPlayerView: NSViewRepresentable {
         var lastEffectsCounter: Int?
         var currentPlayerItem: AVPlayerItem?
         var playRate: Float = 0.8
+        var transitionDuration: Double = 1.5
         var lastVolume: Float?
         var watchMode: Bool = false
         var onClipEnded: (() -> Void)?
@@ -56,6 +57,10 @@ struct PreviewPlayerView: NSViewRepresentable {
         var lastAudioDeviceUID: String? = notSetSentinel
         /// Observers for player item end notifications
         var playbackEndObservers: [Any] = []
+        /// Observers for per-player time updates (used for pre-end advancing)
+        var playbackTimeObservers: [Any] = []
+        /// Guard so we request a watch-mode advance at most once per active clip.
+        var didRequestPreEndAdvance: Bool = false
 
         func audioDeviceChanged(to newUID: String?) -> Bool {
             if lastAudioDeviceUID == Self.notSetSentinel { return true }
@@ -67,6 +72,22 @@ struct PreviewPlayerView: NSViewRepresentable {
                 NotificationCenter.default.removeObserver(observer)
             }
             playbackEndObservers.removeAll()
+        }
+
+        func removePlaybackTimeObservers() {
+            guard let contentView else { return }
+            for (idx, observer) in playbackTimeObservers.enumerated() {
+                // Observers were registered for each player in `contentView.allPlayers` order.
+                // If counts don't match (due to a re-init), just attempt removal on both players.
+                if idx < contentView.allPlayers.count {
+                    contentView.allPlayers[idx].removeTimeObserver(observer)
+                } else {
+                    for player in contentView.allPlayers {
+                        player.removeTimeObserver(observer)
+                    }
+                }
+            }
+            playbackTimeObservers.removeAll()
         }
     }
 
@@ -88,6 +109,7 @@ struct PreviewPlayerView: NSViewRepresentable {
 
         // Always update playRate so closures use current value
         c.playRate = clip.playRate
+        c.transitionDuration = transitionDuration
         c.watchMode = watchMode
         c.onClipEnded = onClipEnded
         c.isAllStillImages = clip.sources.allSatisfy { $0.clip.file.mediaKind == .image }
@@ -115,6 +137,7 @@ struct PreviewPlayerView: NSViewRepresentable {
             let previousID = c.compositionID
             c.currentTask?.cancel()
             c.compositionID = newID
+            c.didRequestPreEndAdvance = false
 
             // Clear old player item references
             c.currentPlayerItem = nil
@@ -274,6 +297,7 @@ struct PreviewPlayerView: NSViewRepresentable {
     private func setupPlaybackEndHandling(content: PlayerContentView, coordinator c: Coordinator) {
         // Remove any existing observers
         c.removePlaybackEndObservers()
+        c.removePlaybackTimeObservers()
 
         // Register observer for each player's current item
         for player in content.allPlayers {
@@ -318,6 +342,45 @@ struct PreviewPlayerView: NSViewRepresentable {
                 }
             }
             c.playbackEndObservers.append(observer)
+        }
+
+        // In watch mode, request the next clip before the current one ends so the transition
+        // can complete before playback reaches the end of the outgoing clip (avoids a pause).
+        //
+        // We base this on *real time* remaining (video seconds / playRate).
+        for player in content.allPlayers {
+            let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
+            let token = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak c, weak player] _ in
+                guard let c, let player, let contentView = c.contentView else { return }
+                guard c.watchMode else { return }
+                guard c.lastPauseState != true else { return }
+                guard !c.didRequestPreEndAdvance else { return }
+                guard contentView.playerView.activeTransition == nil else { return }
+                guard player === contentView.activeAVPlayer else { return }
+
+                guard let item = player.currentItem,
+                      item.status == .readyToPlay,
+                      item.duration.isValid,
+                      item.duration.isNumeric else {
+                    return
+                }
+
+                let dur = item.duration.seconds
+                let now = player.currentTime().seconds
+                guard dur.isFinite, now.isFinite, dur > 0 else { return }
+
+                let remainingVideoSeconds = max(0.0, dur - now)
+                let rate = max(0.0001, Double(c.playRate))
+                let remainingRealSeconds = remainingVideoSeconds / rate
+
+                // Trigger next clip build/transition slightly before the desired transition window.
+                let threshold = max(0.05, c.transitionDuration)
+                if remainingRealSeconds <= threshold {
+                    c.didRequestPreEndAdvance = true
+                    c.onClipEnded?()
+                }
+            }
+            c.playbackTimeObservers.append(token)
         }
     }
 
