@@ -296,15 +296,18 @@ struct PreviewPlayerView: NSViewRepresentable {
                     }
                 }
 
+                // If a transition is in progress, never loop the outgoing player.
+                // Restarting the outgoing clip mid-transition is visually jarring.
+                if c.contentView?.playerView.activeTransition != nil,
+                   player !== c.contentView?.activeAVPlayer {
+                    return
+                }
+
                 if c.watchMode {
                     // Watch mode: only advance when the ACTIVE player ends
                     // (not when the outgoing transition player loops)
                     if player === c.contentView?.activeAVPlayer {
                         c.onClipEnded?()
-                        // Keep playing the current clip while the next clip is being built/prepared.
-                        // Otherwise you'll see a visible/audio "pause" at end-of-item before the
-                        // transition can start.
-                        seekToStartAndPlayIfNeeded()
                     } else {
                         // Outgoing player during transition - just loop it
                         seekToStartAndPlayIfNeeded()
