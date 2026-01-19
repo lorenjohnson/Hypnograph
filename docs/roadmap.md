@@ -59,6 +59,11 @@ Clarify docs ownership now that we have two distinct apps (Hypnograph + Divine) 
   - `Divine/docs/`
 - Scope: docs-only refactor (move files + update links); no code changes required.
 
+## Project: Export entire History to an open standard timeline format (for import by a NLE)
+
+- [ ] Add a Hypnograph menu item to Export entire History to an open standard timeline format (for import by a NLE), default name is H
+
+
 ## Project: Unified Player Architecture
 
 Shared A/B player infrastructure for Preview and Live with smooth transitions. Foundational work for transitions and volume leveling.
