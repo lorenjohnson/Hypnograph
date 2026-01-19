@@ -374,7 +374,11 @@ struct PreviewPlayerView: NSViewRepresentable {
                 let remainingRealSeconds = remainingVideoSeconds / rate
 
                 // Trigger next clip build/transition slightly before the desired transition window.
-                let threshold = max(0.05, c.transitionDuration)
+                // Add a small lead-in to account for:
+                // - transition start deferral until incoming has a frame
+                // - AVPlayer end-of-item rounding (a few frames early)
+                // - render/build scheduling jitter
+                let threshold = max(0.05, c.transitionDuration + 0.25)
                 if remainingRealSeconds <= threshold {
                     c.didRequestPreEndAdvance = true
                     c.onClipEnded?()
