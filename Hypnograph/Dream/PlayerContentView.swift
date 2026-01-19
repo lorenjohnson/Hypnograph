@@ -35,6 +35,11 @@ final class PlayerContentView: NSView {
     /// During transitions, `activeSlot` is updated immediately to the incoming slot.
     private var outgoingSlotDuringTransition: PlayerSlot?
 
+    /// Monotonically increasing token used to ignore stale transition callbacks.
+    /// This prevents an older transition completion from pausing/replacing items
+    /// during a newer transition (e.g., when transitions are triggered rapidly).
+    private var transitionToken: UInt64 = 0
+
     /// Active frame source
     var activeFrameSource: AVPlayerFrameSource? {
         activeSlot == .a ? sourceA : sourceB
@@ -111,6 +116,9 @@ final class PlayerContentView: NSView {
         playRate: Float? = nil,
         completion: (() -> Void)? = nil
     ) {
+        transitionToken &+= 1
+        let token = transitionToken
+
         let outgoingSlot = activeSlot
         let nextSlot = outgoingSlot.opposite
         let nextSource = nextSlot == .a ? sourceA : sourceB
@@ -132,6 +140,8 @@ final class PlayerContentView: NSView {
         if transitionType == .none {
             outgoingSlotDuringTransition = nil
             playerView.onTransitionProgress = nil
+            // Invalidate any pending transition completions/progress callbacks.
+            transitionToken &+= 1
 
             // Stop the outgoing player's audio
             let outgoingSource = outgoingSlot == .a ? sourceA : sourceB
@@ -165,6 +175,7 @@ final class PlayerContentView: NSView {
         var didNotifyMirrorsForTransitionStart = false
         playerView.onTransitionProgress = { [weak self] progress in
             guard let self else { return }
+            guard self.transitionToken == token else { return }
             self.applyAudioMix(progress: progress)
             if !didNotifyMirrorsForTransitionStart {
                 didNotifyMirrorsForTransitionStart = true
@@ -181,6 +192,7 @@ final class PlayerContentView: NSView {
         playerView.transitionDuration = duration
         playerView.onTransitionComplete = { [weak self] in
             guard let self = self else { return }
+            guard self.transitionToken == token else { return }
 
             // Stop the outgoing player's audio
             if let outgoingSlot = self.outgoingSlotDuringTransition {
