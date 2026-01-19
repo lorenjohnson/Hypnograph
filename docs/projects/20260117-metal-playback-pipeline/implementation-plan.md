@@ -74,7 +74,7 @@ PlayerView (MTKView) ← TransitionRenderer (shader blending)
 Two transition types implemented:
 
 - **Crossfade** (`transitionCrossfade`): Simple linear blend
-- **Shuffle** (`transitionDestroy`): Datamosh/glitch effect with block displacement, RGB separation
+- **Shuffle** (`transitionShuffle`): Datamosh/glitch effect with block displacement, RGB separation
 
 Each transition is a separate Metal compute shader in `Transitions/Implementations/`.
 
