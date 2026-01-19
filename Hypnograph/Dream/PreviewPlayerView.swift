@@ -286,6 +286,16 @@ struct PreviewPlayerView: NSViewRepresentable {
             ) { [weak c, weak player] _ in
                 guard let c = c, let player = player else { return }
 
+                let shouldPlay = (c.lastPauseState != true)
+                let rate = c.playRate
+                let seekToStartAndPlayIfNeeded = {
+                    player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
+                        guard finished else { return }
+                        guard shouldPlay else { return }
+                        player.playImmediately(atRate: rate)
+                    }
+                }
+
                 if c.watchMode {
                     // Watch mode: only advance when the ACTIVE player ends
                     // (not when the outgoing transition player loops)
@@ -293,17 +303,11 @@ struct PreviewPlayerView: NSViewRepresentable {
                         c.onClipEnded?()
                     } else {
                         // Outgoing player during transition - just loop it
-                        player.seek(to: .zero)
-                        if c.lastPauseState != true {
-                            player.playImmediately(atRate: c.playRate)
-                        }
+                        seekToStartAndPlayIfNeeded()
                     }
                 } else {
                     // Loop mode: seek to beginning and continue
-                    player.seek(to: .zero)
-                    if c.lastPauseState != true {
-                        player.playImmediately(atRate: c.playRate)
-                    }
+                    seekToStartAndPlayIfNeeded()
                 }
             }
             c.playbackEndObservers.append(observer)

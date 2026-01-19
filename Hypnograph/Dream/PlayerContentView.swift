@@ -185,7 +185,22 @@ final class PlayerContentView: NSView {
 
         // Ensure both players are actually running during the transition (visual "both clips playing").
         if let rate = playRate {
-            currentSource.player.playImmediately(atRate: rate)
+            if let item = currentSource.player.currentItem,
+               item.status == .readyToPlay,
+               item.duration.isValid,
+               item.duration.isNumeric {
+                let remaining = item.duration.seconds - currentSource.player.currentTime().seconds
+                if remaining.isFinite, remaining <= 0.05 {
+                    currentSource.player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
+                        guard finished else { return }
+                        currentSource.player.playImmediately(atRate: rate)
+                    }
+                } else {
+                    currentSource.player.playImmediately(atRate: rate)
+                }
+            } else {
+                currentSource.player.playImmediately(atRate: rate)
+            }
         }
 
         playerView.primarySource = currentSource
