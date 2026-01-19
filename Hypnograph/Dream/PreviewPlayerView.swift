@@ -301,6 +301,10 @@ struct PreviewPlayerView: NSViewRepresentable {
                     // (not when the outgoing transition player loops)
                     if player === c.contentView?.activeAVPlayer {
                         c.onClipEnded?()
+                        // Keep playing the current clip while the next clip is being built/prepared.
+                        // Otherwise you'll see a visible/audio "pause" at end-of-item before the
+                        // transition can start.
+                        seekToStartAndPlayIfNeeded()
                     } else {
                         // Outgoing player during transition - just loop it
                         seekToStartAndPlayIfNeeded()

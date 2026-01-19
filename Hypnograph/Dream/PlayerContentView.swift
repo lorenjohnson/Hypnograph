@@ -86,6 +86,11 @@ final class PlayerContentView: NSView {
         let playerA = AVPlayer()
         let playerB = AVPlayer()
 
+        // Avoid the default "pause at end" behavior which can cause a visible/audio
+        // hitch when looping near clip boundaries (especially during transitions).
+        playerA.actionAtItemEnd = .none
+        playerB.actionAtItemEnd = .none
+
         sourceA = AVPlayerFrameSource(player: playerA)
         sourceB = AVPlayerFrameSource(player: playerB)
 
