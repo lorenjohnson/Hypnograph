@@ -259,37 +259,7 @@ final class Dream: ObservableObject {
             player.effectManager.clearFrameBuffer()
             EffectChainLibraryActions.importChainsFromRecipe(recipe, into: player.effectsSession)
             player.notifyRecipeChanged()
-            // Ensure we don't keep persisting legacy recipe blobs in settings.
-            if state.settings.playerConfig.lastRecipe != nil {
-                state.settingsStore.update { $0.playerConfig.lastRecipe = nil }
-            }
-            if player.config.lastRecipe != nil {
-                player.config.lastRecipe = nil
-            }
             print("📼 Restored clip history (\(history.clips.count) clips)")
-            return
-        }
-
-        // One-time migration from legacy settings persistence.
-        if let persisted = state.settings.playerConfig.lastRecipe, !persisted.clips.isEmpty {
-            var recipe = persisted
-            recipe.ensureEffectChainNames()
-            player.recipe = recipe
-            player.currentClipIndex = 0
-            player.notifyRecipeMutated()
-            player.currentSourceIndex = -1
-            player.effectManager.clearFrameBuffer()
-            EffectChainLibraryActions.importChainsFromRecipe(recipe, into: player.effectsSession)
-            player.notifyRecipeChanged()
-
-            // Stop persisting recipe blobs in settings going forward.
-            state.settingsStore.update { $0.playerConfig.lastRecipe = nil }
-            if player.config.lastRecipe != nil {
-                player.config.lastRecipe = nil
-            }
-            scheduleClipHistorySave()
-
-            print("📼 Migrated legacy lastRecipe into clip history (\(recipe.clips.count) clips)")
             return
         }
 
