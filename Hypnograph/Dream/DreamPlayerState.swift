@@ -103,7 +103,7 @@ final class DreamPlayerState: ObservableObject {
 
     init(config: PlayerConfiguration, effectsSession: EffectsSession) {
         self.config = config
-        // Recipe starts with defaults; restored from lastRecipe on app launch
+        // Recipe starts with defaults; restored from clip history on app launch.
         self.recipe = HypnogramRecipe(
             sources: [],
             targetDuration: CMTime(seconds: 60, preferredTimescale: 600),

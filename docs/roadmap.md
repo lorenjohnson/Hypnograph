@@ -4,17 +4,9 @@ last_reviewed: 2026-01-07
 
 # Roadmap
 
-## Recently Completed
-- Hold `0` in Montage mode to temporarily suspend global effect chain
-- Hold `1-9` in Montage mode to solo source and suspend global effects (keeps source effect for preview)
-- Add global Source Framing setting (Fill/Fit) persisted in `hypnograph-settings.json` and applied to preview/live/export
-- Change the default location of stored Hypnograms to ~/Movies/Hypnograph ?
-- I would like the window state to restore including whether clean screen is currently enabled
-- When there were no windows in the saved window state then Tab toggles on all windows... may change this to just being a special keystroke for show all windows but not sure yet
-- Move Divine into its own product
-
 ## Research & Development
 
+- [ ] Vision smart framing: detect a person (e.g. `VNDetectHumanRectanglesRequest`) and bias aspect-fill framing so the head sits near the top of the window (analyze first frame or a few early frames).
 - [ ] Make Player View a bottom of screen strip instead of a side quarter window. Play with "light up punch buttons" for turning and and off sources and a different color to indicate the currently selected source.
 - [ ] Explore how some watch sort of mode where individual sources in a layered montage hypnogram change one by one randomly might work. Start with prototype just to see how the experience feels and if it is worth integrating.
 - [ ] Custom Metal blends modes for better destructive shaders/effects. How to integrate our own Metal shaders as Blend Mode options.
@@ -34,7 +26,7 @@ any effects load operation were done first
 - [ ] Finder action not installing - Automator action fails.
 
 ## Minor Projects:
-- [ ] We can do away with lastRecipe, if there is no history or a failure on load we just generate a new hypnogram on start and start a new history
+- [x] Can do away with lastRecipe, if there is no history or a failure on load we just generate a new hypnogram on start and start a new history
 - [ ] Confirm the Add Source functionality (which should be mapped to ".") still works.
 - [ ] Hypnograph: Put what is in HUD view into the top of the Player Settings modal, eliminating the HUD View. Player Settings may get retitled, not sure. But it now takes up more vertical space and goes to top left of screen. We may need to iterate on the styling and what actually stays, as some things in the HUD may just go away or move elsewhere. 
 - [ ] Flash of image before processed in Player should be avoided/eliminated. Add a Transitions setting for what happens between Hypnograms. Maybe a Player setting for Transition Style with options: None, Fade, Punk (random dissolve)?
@@ -61,22 +53,7 @@ Clarify docs ownership now that we have two distinct apps (Hypnograph + Divine) 
 
 ## Project: Export entire History to an open standard timeline format (for import by a NLE)
 
-- [ ] Add a Hypnograph menu item to Export entire History to an open standard timeline format (for import by a NLE), default name is H
-
-
-## Project: Unified Player Architecture
-
-Shared A/B player infrastructure for Preview and Live with smooth transitions. Foundational work for transitions and volume leveling.
-
-- Docs: `docs/projects/20260116-unified-player-architecture/overview.md`
-- Plan: `docs/projects/20260116-unified-player-architecture/implementation-planning.md`
-
-## Project: Hypnogram Transitions
-
-Visual transitions between clip changes (Preview + Live). Depends on: Unified Player Architecture.
-
-- Docs: `docs/projects/20260116-hypnogram-transitions/overview.md`
-- Plan: `docs/projects/20260116-hypnogram-transitions/implementation-planning.md`
+- [ ] Add a Hypnograph menu item to Export entire History to an open standard timeline format (for import by a NLE)
 
 ## Project: Volume Leveling
 
@@ -118,3 +95,26 @@ Volume leveling option in Player Settings (keeps relative db same across all sho
 ## Project: Prepare for Beta Release/TestFlight
 - [ ] Apple Developer signup, App Store Connect, TestFlight release
 - [ ] Collect testers, sort paths, finalize icon
+
+---
+
+## RECENTLY COMPLETED
+- Hold `0` in Montage mode to temporarily suspend global effect chain
+- Hold `1-9` in Montage mode to solo source and suspend global effects (keeps source effect for preview)
+- Add global Source Framing setting (Fill/Fit) persisted in `hypnograph-settings.json` and applied to preview/live/export
+- Change the default location of stored Hypnograms to ~/Movies/Hypnograph ?
+- I would like the window state to restore including whether clean screen is currently enabled
+- When there were no windows in the saved window state then Tab toggles on all windows... may change this to just being a special keystroke for show all windows but not sure yet
+- Move Divine into its own product
+
+## Project: Unified Player Architecture
+Status: Completed
+Shared A/B player infrastructure for Preview and Live with smooth transitions. Foundational work for transitions and volume leveling.
+- Docs: `docs/projects/20260116-unified-player-architecture/overview.md`
+- Plan: `docs/projects/20260116-unified-player-architecture/implementation-planning.md`
+
+## Project: Hypnogram Transitions
+Status: Completed
+Visual transitions between clip changes (Preview + Live). Depends on: Unified Player Architecture.
+- Docs: `docs/projects/20260116-hypnogram-transitions/overview.md`
+- Plan: `docs/projects/20260116-hypnogram-transitions/implementation-planning.md`

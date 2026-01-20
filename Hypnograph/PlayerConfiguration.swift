@@ -6,7 +6,6 @@
 //  Groups related display and generation settings into a single, cohesive structure.
 //
 //  Note: targetDuration and playRate are stored in HypnogramRecipe, not here.
-//  The last used recipe persists these values.
 //
 
 import Foundation
@@ -16,7 +15,6 @@ import HypnoCore
 /// Each player maintains its own independent configuration.
 ///
 /// Note: `targetDuration` and `playRate` live on the recipe, not here.
-/// `lastRecipe` persists these values.
 struct PlayerConfiguration: Codable {
 
     // MARK: - Display Settings
@@ -32,11 +30,6 @@ struct PlayerConfiguration: Codable {
     /// Max layers when generating new random clips (each layer is one simultaneously-playing source)
     var maxLayers: Int
 
-    // MARK: - Recipe Persistence
-
-    /// Last recipe for this mode (persists targetDuration, playRate, sources, effects)
-    var lastRecipe: HypnogramRecipe?
-
     // MARK: - Initialization
 
     /// Initialize with global defaults from Settings
@@ -48,17 +41,15 @@ struct PlayerConfiguration: Codable {
     init(
         aspectRatio: AspectRatio,
         playerResolution: OutputResolution,
-        maxLayers: Int,
-        lastRecipe: HypnogramRecipe? = nil
+        maxLayers: Int
     ) {
         self.aspectRatio = aspectRatio
         self.playerResolution = playerResolution
         self.maxLayers = maxLayers
-        self.lastRecipe = lastRecipe
     }
 
     private enum CodingKeys: String, CodingKey {
-        case aspectRatio, playerResolution, maxLayers, lastRecipe
+        case aspectRatio, playerResolution, maxLayers
         // Legacy (pre-unify): maxSourcesForNew
         case maxSourcesForNew
     }
@@ -70,7 +61,6 @@ struct PlayerConfiguration: Codable {
         maxLayers = try container.decodeIfPresent(Int.self, forKey: .maxLayers)
             ?? container.decodeIfPresent(Int.self, forKey: .maxSourcesForNew)
             ?? 5
-        lastRecipe = try container.decodeIfPresent(HypnogramRecipe.self, forKey: .lastRecipe)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -78,7 +68,6 @@ struct PlayerConfiguration: Codable {
         try container.encode(aspectRatio, forKey: .aspectRatio)
         try container.encode(playerResolution, forKey: .playerResolution)
         try container.encode(maxLayers, forKey: .maxLayers)
-        try container.encodeIfPresent(lastRecipe, forKey: .lastRecipe)
     }
 
     // MARK: - View Identity

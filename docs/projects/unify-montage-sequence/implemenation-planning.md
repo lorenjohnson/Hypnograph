@@ -150,9 +150,9 @@ It is tracked as a separate project:
 - Stabilize identity: give each clip a stable id so edits/deletes don’t cause weird UI state.
   - Implemented as `HypnogramClip.id`.
 - Persist history separately from preferences so `hypnograph-settings.json` stays clean (e.g., `clip-history.json`).
-  - Phase 2 moved us to `recipe.clips`, which will grow once we persist history; we likely do not want a 200-clip “lastRecipe” blob living inside `hypnograph-settings.json`.
+  - Phase 2 moved us to `recipe.clips`, which will grow once we persist history; avoid persisting large recipe blobs inside `hypnograph-settings.json` (use `clip-history.json` instead).
   - `hypnograph-settings.json` (preferences-only): `watchMode`, `historyLimit`, `clipLengthMinSeconds`, `clipLengthMaxSeconds`, `outputFolder`, `snapshotsFolder`, `sources`, `activeLibraries`, `sourceMediaTypes`, `outputResolution`, `playerConfig.aspectRatio`, `playerConfig.playerResolution`, `playerConfig.maxLayers`, `effectsListCollapsed`, `previewAudioDeviceUID`, `previewVolume`, `liveAudioDeviceUID`, `liveVolume`.
   - history file (state): `clips`, `currentClipIndex` (and later in/out points).
   - Corruption handling: if history file fails to decode, rename it to something like `clip-history.corrupt-<timestamp>.json` and start a new history.
 - Ensure Effects window scopes to “current clip + selected layer/global” as the history index changes (avoid accidental edits to the wrong clip).
-- Consider flattening `Settings.playerConfig` if it reduces type/JSON complexity once `lastRecipe` is removed (optional cleanup).
+- Consider flattening `Settings.playerConfig` if it reduces type/JSON complexity now that `lastRecipe` is removed (optional cleanup).
