@@ -45,6 +45,7 @@ struct PreviewPlayerView: NSViewRepresentable {
         var lastEffectsCounter: Int?
         var currentPlayerItem: AVPlayerItem?
         var playRate: Float = 0.8
+        var lastAppliedPlayRate: Float?
         var transitionDuration: Double = 1.5
         var lastVolume: Float?
         var watchMode: Bool = false
@@ -229,6 +230,7 @@ struct PreviewPlayerView: NSViewRepresentable {
                     c.currentPlayerItem = playerItem
                     c.lastPauseState = self.isPaused
                     c.lastEffectsCounter = effectsChangeCounter
+                    c.lastAppliedPlayRate = playRate
 
                     // For still images, schedule the timer for watch mode advancement
                     if c.isAllStillImages && !self.isPaused {
@@ -257,10 +259,18 @@ struct PreviewPlayerView: NSViewRepresentable {
                     }
                 } else if isPaused {
                     c.contentView?.activeAVPlayer?.pause()
+                    c.lastAppliedPlayRate = nil
                 } else {
                     c.contentView?.activeAVPlayer?.playImmediately(atRate: clip.playRate)
+                    c.lastAppliedPlayRate = clip.playRate
                 }
                 c.lastPauseState = isPaused
+            }
+
+            // If play rate changes while playing, apply it immediately without rebuilding the composition.
+            if !c.isAllStillImages, !isPaused, c.lastAppliedPlayRate != clip.playRate {
+                c.contentView?.activeAVPlayer?.rate = clip.playRate
+                c.lastAppliedPlayRate = clip.playRate
             }
 
             if c.lastEffectsCounter != effectsChangeCounter {
@@ -433,6 +443,7 @@ struct PreviewPlayerView: NSViewRepresentable {
         c.stillClipTimer = nil
 
         c.removePlaybackEndObservers()
+        c.removePlaybackTimeObservers()
 
         c.contentView?.stop()
         c.contentView = nil
