@@ -60,8 +60,10 @@ final class GameControllerManager {
             queue: .main
         ) { [weak self] notification in
             guard let controller = notification.object as? GCController else { return }
-            self?.setupController(controller)
-            print("🎮 Game controller connected: \(controller.vendorName ?? "Unknown")")
+            Task { @MainActor [weak self] in
+                self?.setupController(controller)
+                print("🎮 Game controller connected: \(controller.vendorName ?? "Unknown")")
+            }
         }
 
         NotificationCenter.default.addObserver(
@@ -70,9 +72,12 @@ final class GameControllerManager {
             queue: .main
         ) { [weak self] notification in
             guard let controller = notification.object as? GCController else { return }
-            if self?.connectedController == controller {
-                self?.connectedController = nil
-                print("🎮 Game controller disconnected")
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if self.connectedController == controller {
+                    self.connectedController = nil
+                    print("🎮 Game controller disconnected")
+                }
             }
         }
     }

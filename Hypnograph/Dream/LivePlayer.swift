@@ -489,10 +489,13 @@ final class LivePlayer: ObservableObject {
             object: playerItem,
             queue: .main
         ) { [weak self] _ in
-            guard let self = self else { return }
-            self.contentView?.activeAVPlayer?.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
-                guard finished else { return }
-                self.contentView?.activeAVPlayer?.playImmediately(atRate: playRate)
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                guard let player = self.contentView?.activeAVPlayer else { return }
+                player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
+                    guard finished else { return }
+                    player.playImmediately(atRate: playRate)
+                }
             }
         }
     }

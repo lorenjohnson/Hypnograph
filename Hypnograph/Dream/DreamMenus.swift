@@ -135,8 +135,8 @@ extension Dream {
         }
 
         ForEach(0..<9, id: \.self) { [self] idx in
-            Button("Select Source \(idx + 1)") {
-                selectSource(index: idx)
+            Button("Select Source \(idx + 1)") { [self] in
+                self.selectSource(index: idx)
             }
             .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
             .disabled(isTyping)

@@ -176,14 +176,14 @@ final class EffectsEditorViewModel: ObservableObject {
             if let defIndex = effectDefIndex {
                 // Update parameter in a child effect
                 guard defIndex >= 0 && defIndex < chain.effects.count else { return chain }
-                var updatedChain = chain
+                let updatedChain = chain
                 var params = updatedChain.effects[defIndex].params ?? [:]
                 params[paramName] = value
                 updatedChain.effects[defIndex].params = params
                 return updatedChain
             } else {
                 // Update parameter on the chain itself (future: chain-level params)
-                var updatedChain = chain
+                let updatedChain = chain
                 var params = updatedChain.params ?? [:]
                 params[paramName] = value
                 updatedChain.params = params

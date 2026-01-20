@@ -94,7 +94,7 @@ Deliver Divine (tarot-style card table now inside `Hypnograph/Modules/Divine`) a
    - *Verification*: macOS build + focused unit tests covering `RenderEngine.makePlayerItem`, still-image export, and `EffectManager` lookback.
 4. **Stage 2.5.1 – HypnoRenderer API cleanup**  
    - **Status: Complete**  
-   - Move UI-only helpers back into the app: `MetalImageView`, `TransitionManager`, `ImageUtils`, and `FrameProcessor`.  
+   - Move UI-only helpers back into the app: `MetalImageView`, `ImageUtils`, and `FrameProcessor` (snapshot-based `TransitionManager` removed).  
    - Hide pipeline internals (`CompositionBuilder`, `RenderInstruction`, `FrameCompositor`) and route app usage through `RenderEngine` only.  
    - Replace `RenderQueue`/`HypnogramRenderer` with `RenderEngine.ExportQueue`.  
    - *Verification*: macOS build + unit tests for render pipeline entry points; manual playback smoke test pending.

@@ -96,7 +96,7 @@ v1 policy should be **strict**:
 
 - Exporting Hypnograph effects/effect chains to NLE equivalents.
 - Perfect fidelity of custom blend modes across every NLE.
-- Exporting metal shader transitions (Scoot/Shuffle/etc.) to NLE transitions.
+- Exporting metal shader transitions (Slide/Shuffle/etc.) to NLE transitions.
 - Audio leveling, fades, or mixdown (unless explicitly added as an option later).
 
 ## Output Format Choice
