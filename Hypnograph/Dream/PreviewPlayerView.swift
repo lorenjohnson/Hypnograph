@@ -62,6 +62,9 @@ struct PreviewPlayerView: NSViewRepresentable {
         var playbackTimeObservers: [Any] = []
         /// Guard so we request a watch-mode advance at most once per active clip.
         var didRequestPreEndAdvance: Bool = false
+        /// Prevent runaway watch-mode advancement while a new clip is being built/transitioned in.
+        /// (If the current clip ends again before the next clip is ready, we loop the current clip.)
+        var isWatchAdvanceInFlight: Bool = false
 
         func audioDeviceChanged(to newUID: String?) -> Bool {
             if lastAudioDeviceUID == Self.notSetSentinel { return true }
@@ -114,6 +117,10 @@ struct PreviewPlayerView: NSViewRepresentable {
         c.watchMode = watchMode
         c.onClipEnded = onClipEnded
         c.isAllStillImages = clip.sources.allSatisfy { $0.clip.file.mediaKind == .image }
+        if !watchMode || isPaused {
+            c.isWatchAdvanceInFlight = false
+            c.didRequestPreEndAdvance = false
+        }
 
         guard !clip.sources.isEmpty else {
             // Just pause, don't tear down - sources might be added back immediately
@@ -126,6 +133,8 @@ struct PreviewPlayerView: NSViewRepresentable {
             }
             c.stillClipTimer?.invalidate()
             c.stillClipTimer = nil
+            c.isWatchAdvanceInFlight = false
+            c.didRequestPreEndAdvance = false
             return
         }
 
@@ -224,7 +233,9 @@ struct PreviewPlayerView: NSViewRepresentable {
                         duration: self.transitionDuration,
                         playRate: playRate
                     ) {
-                        // Transition complete - nothing special needed
+                        Task { @MainActor in
+                            c.isWatchAdvanceInFlight = false
+                        }
                     }
 
                     c.currentPlayerItem = playerItem
@@ -243,6 +254,7 @@ struct PreviewPlayerView: NSViewRepresentable {
                 case .failure(let error):
                     error.log(context: "PreviewPlayerView")
                     c.compositionID = nil
+                    c.isWatchAdvanceInFlight = false
                     if currentSourceTime != nil {
                         currentSourceTime = nil
                     }
@@ -342,6 +354,12 @@ struct PreviewPlayerView: NSViewRepresentable {
                         // Watch mode: only advance when the ACTIVE player ends
                         // (not when the outgoing transition player loops)
                         if player === c.contentView?.activeAVPlayer {
+                            if c.isWatchAdvanceInFlight {
+                                seekToStartAndPlayIfNeeded()
+                                return
+                            }
+                            c.isWatchAdvanceInFlight = true
+                            c.didRequestPreEndAdvance = true
                             c.onClipEnded?()
                         } else {
                             // Outgoing player during transition - just loop it
@@ -368,6 +386,7 @@ struct PreviewPlayerView: NSViewRepresentable {
                     guard c.watchMode else { return }
                     guard c.lastPauseState != true else { return }
                     guard !c.didRequestPreEndAdvance else { return }
+                    guard !c.isWatchAdvanceInFlight else { return }
                     guard contentView.playerView.activeTransition == nil else { return }
                     guard player === contentView.activeAVPlayer else { return }
 
@@ -394,6 +413,7 @@ struct PreviewPlayerView: NSViewRepresentable {
                     let threshold = max(0.05, c.transitionDuration + 0.25)
                     if remainingRealSeconds <= threshold {
                         c.didRequestPreEndAdvance = true
+                        c.isWatchAdvanceInFlight = true
                         c.onClipEnded?()
                     }
                 }
@@ -448,6 +468,7 @@ struct PreviewPlayerView: NSViewRepresentable {
 
         c.removePlaybackEndObservers()
         c.removePlaybackTimeObservers()
+        c.isWatchAdvanceInFlight = false
 
         c.contentView?.stop()
         c.contentView = nil
