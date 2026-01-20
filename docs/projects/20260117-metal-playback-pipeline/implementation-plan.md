@@ -67,14 +67,18 @@ PlayerView (MTKView) ← TransitionRenderer (shader blending)
 | `Dream/PlayerContentView.swift` | A/B player with shader transitions |
 | `Dream/PreviewPlayerView.swift` | SwiftUI wrapper for preview display |
 | `Dream/LivePlayer.swift` | Live output management |
-| `Dream/MetalLiveContentView.swift` | Live display using PlayerContentView |
 
 ## Transitions
 
-Two transition types implemented:
+Transition types implemented:
 
-- **Crossfade** (`transitionCrossfade`): Simple linear blend
-- **Shuffle** (`transitionShuffle`): Datamosh/glitch effect with block displacement, RGB separation
+- **None**: instant cut
+- **Crossfade** (`transitionCrossfade`): simple linear blend
+- **Blur** (`transitionBlur`): blur-to-next
+- **Dissolve** (`transitionDissolve`): noise dissolve
+- **Slide Up** (`transitionSlideUp`): film-strip vertical slide
+- **Slide Left** (`transitionSlideLeft`): film-strip horizontal slide
+- **Shuffle** (`transitionShuffle`): datamosh/glitch tear
 
 Each transition is a separate Metal compute shader in `Transitions/Implementations/`.
 
@@ -87,6 +91,5 @@ Each transition is a separate Metal compute shader in `Transitions/Implementatio
 
 ## Known Issues / TODOs
 
-- Transition settings UI not yet wired (style/duration selection)
-- Debug logging still present in TransitionRenderer and PlayerView
-- Legacy feature flags can be removed once stable
+- Transition settings UI is wired in Player Settings; remaining work is polish and stabilization.
+- Logging is mostly informational; consider standardizing on a logger and reducing noisy prints once stable.

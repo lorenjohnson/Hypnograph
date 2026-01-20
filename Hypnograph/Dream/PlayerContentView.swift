@@ -306,19 +306,20 @@ final class PlayerContentView: NSView {
     }
 
     /// Create a mirror view that displays the same content
-    /// The mirror shares the same frame sources, so it shows identical content
+    /// The mirror shares the same `FrameSource` instances, so it shows identical content
+    /// without attaching a second AVPlayerItemVideoOutput to the same AVPlayer.
     func createMirrorView() -> PlayerContentMirrorView {
         guard let sourceA, let sourceB else {
             return PlayerContentMirrorView(
-                playerA: AVPlayer(),
-                playerB: AVPlayer(),
+                sourceA: AVPlayerFrameSource(player: AVPlayer()),
+                sourceB: AVPlayerFrameSource(player: AVPlayer()),
                 transitionStateProvider: { (.a, nil, nil, 0, 0) }
             )
         }
 
         let mirror = PlayerContentMirrorView(
-            playerA: sourceA.player,
-            playerB: sourceB.player,
+            sourceA: sourceA,
+            sourceB: sourceB,
             transitionStateProvider: { [weak self] in
                 guard let self else { return (.a, nil, nil, 0, 0) }
                 let outgoingSlot = self.outgoingSlotDuringTransition ?? self.activeSlot
@@ -353,18 +354,18 @@ final class PlayerContentView: NSView {
 final class PlayerContentMirrorView: NSView {
 
     private let playerView: PlayerView
-    private let sourceA: AVPlayerFrameSource
-    private let sourceB: AVPlayerFrameSource
+    private let sourceA: FrameSource
+    private let sourceB: FrameSource
     private let transitionStateProvider: () -> (PlayerContentView.PlayerSlot, TransitionRenderer.TransitionType?, CFTimeInterval?, CFTimeInterval, UInt32)
 
     init(
-        playerA: AVPlayer,
-        playerB: AVPlayer,
+        sourceA: FrameSource,
+        sourceB: FrameSource,
         transitionStateProvider: @escaping () -> (PlayerContentView.PlayerSlot, TransitionRenderer.TransitionType?, CFTimeInterval?, CFTimeInterval, UInt32)
     ) {
         self.transitionStateProvider = transitionStateProvider
-        self.sourceA = AVPlayerFrameSource(player: playerA)
-        self.sourceB = AVPlayerFrameSource(player: playerB)
+        self.sourceA = sourceA
+        self.sourceB = sourceB
         self.playerView = PlayerView(frame: .zero, device: SharedRenderer.metalDevice)
 
         super.init(frame: .zero)

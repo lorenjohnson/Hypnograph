@@ -1,7 +1,7 @@
 # Hypnogram Transitions (Preview + Live): Overview
 
 **Created**: 2026-01-16
-**Status**: Proposal / Planning
+**Status**: Implemented (superseded by Metal playback pipeline)
 **Depends on**: [Unified Player Architecture](../20260116-unified-player-architecture/overview.md)
 
 Goal: add a **player/render setting** that controls how we visually (and eventually sonically) transition **between hypnograms** when:
@@ -13,10 +13,10 @@ Goal: add a **player/render setting** that controls how we visually (and eventua
 
 This setting should apply to both **Preview** and **Live**. A future option may allow suppressing transitions in Preview, but that is out of scope for v1 unless it proves necessary.
 
-## Current behavior (as of 2026-01-16)
+## Current behavior (as of 2026-01-20)
 
-- **Preview**: hard cut between hypnograms (new `AVPlayerItem` replaces the old one).
-- **Live**: already uses an A/B player system to **crossfade** between hypnograms (`LivePlayer.crossfadeDuration`).
+- **Preview**: uses `PlayerContentView` + `PlayerView` (`MTKView`) with shader-based transitions between textures.
+- **Live**: uses the same Metal surface + shader transition path as Preview.
 
 ## Do we need "two players" in Preview?
 

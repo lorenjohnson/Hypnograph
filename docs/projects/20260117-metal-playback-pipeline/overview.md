@@ -1,8 +1,8 @@
 # Metal Playback Pipeline: Overview
 
 **Created**: 2026-01-17
-**Status**: Planning / Decision Required
-**Supersedes**: 20260116-unified-player-architecture (shelved)
+**Status**: Implemented (Direction A)
+**Notes**: Direction B remains a future option; the current codebase uses Direction A.
 
 ## Goal
 

@@ -257,7 +257,6 @@ final class Dream: ObservableObject {
             player.notifyRecipeMutated()
             player.currentSourceIndex = -1
             player.effectManager.clearFrameBuffer()
-            EffectChainLibraryActions.importChainsFromRecipe(recipe, into: player.effectsSession)
             player.notifyRecipeChanged()
             print("📼 Restored clip history (\(history.clips.count) clips)")
             return
