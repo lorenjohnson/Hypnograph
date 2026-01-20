@@ -3,6 +3,8 @@
 **Created**: 2026-01-16
 **Status**: Proposal / Planning
 **Depends on**: [Unified Player Architecture](../20260116-unified-player-architecture/overview.md) (for boundary hooks)
+**Planning notes**: We’re experimenting with Ollama using Qwen 3:30b for this planning (see `overview-roo-qwen.md` and `implementation-plan-roo-qwen.md`).
+**Branch note**: `feature/volume-leveling` currently branches from `feature/metal-playback-pipeline` (in-progress; not yet merged).
 
 Goal: add an optional **Volume Leveling** feature that makes audio loudness feel **more consistent across hypnograms** while you browse (Preview) and perform (Live), without destroying creative dynamics within a single hypnogram.
 
