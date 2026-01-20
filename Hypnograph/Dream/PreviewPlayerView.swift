@@ -9,6 +9,7 @@
 import SwiftUI
 import AVFoundation
 import CoreMedia
+import QuartzCore
 import HypnoCore
 
 /// Preview player view for Dream module layered playback.
@@ -81,6 +82,14 @@ struct PreviewPlayerView: NSViewRepresentable {
         var isAllStillImages: Bool = false
         /// Whether this is the first clip load (no transition needed)
         var isFirstLoad: Bool = true
+        /// Used to ignore stale background Vision framing results.
+        var contentFocusRequestID: UUID = UUID()
+        var pendingContentFocus: PlayerView.ContentFocus?
+        var smartFramingTimer: DispatchSourceTimer?
+        var smartFramingRequestID: UUID?
+        var smartFramingInFlight: Bool = false
+        var lastFocusAnchor: CGPoint?
+        var consecutiveMisses: Int = 0
         /// Use a sentinel to distinguish "never set" from "set to nil (system default)"
         private static let notSetSentinel = "___NOT_SET___"
         var lastAudioDeviceUID: String? = notSetSentinel
@@ -122,6 +131,16 @@ struct PreviewPlayerView: NSViewRepresentable {
                 }
             }
             playbackTimeObservers.removeAll()
+        }
+
+        func stopSmartFramingTimer() {
+            smartFramingTimer?.setEventHandler {}
+            smartFramingTimer?.cancel()
+            smartFramingTimer = nil
+            smartFramingRequestID = nil
+            smartFramingInFlight = false
+            lastFocusAnchor = nil
+            consecutiveMisses = 0
         }
     }
 
@@ -265,8 +284,50 @@ struct PreviewPlayerView: NSViewRepresentable {
                     ) {
                         Task { @MainActor in
                             c.isWatchAdvanceInFlight = false
+                            if let pending = c.pendingContentFocus {
+                                c.pendingContentFocus = nil
+                                c.contentView?.setContentFocus(pending)
+                            }
                         }
                     }
+
+                    // Content-aware framing (Vision): detect a person and bias framing so the head
+                    // sits near the top of the window when using aspect-fill display.
+                    if contentMode == .aspectFill {
+                        content.setContentFocus(nil)
+                        c.pendingContentFocus = nil
+                        c.contentFocusRequestID = UUID()
+                        c.stopSmartFramingTimer()
+                        let requestID = c.contentFocusRequestID
+                        let asset = playerItem.asset
+                        let videoComposition = playerItem.videoComposition
+                        DispatchQueue.global(qos: .utility).async { [weak c, weak content] in
+                            let analysis = HumanRectanglesFraming.analyze(
+                                asset: asset,
+                                videoComposition: videoComposition
+                            )
+                            DispatchQueue.main.async {
+                                guard let c, c.contentFocusRequestID == requestID else { return }
+                                guard let content else { return }
+                                if content.playerView.activeTransition == nil {
+                                    c.pendingContentFocus = nil
+                                    content.setContentFocus(analysis.contentFocus)
+                                } else {
+                                    c.pendingContentFocus = analysis.contentFocus
+                                }
+                            }
+                        }
+                    } else {
+                        content.setContentFocus(nil)
+                        c.pendingContentFocus = nil
+                        c.stopSmartFramingTimer()
+                    }
+
+                    self.updateSmartFramingTimer(
+                        coordinator: c,
+                        content: content,
+                        enabled: (contentMode == .aspectFill && !self.isPaused && !c.isAllStillImages)
+                    )
 
                     c.currentPlayerItem = playerItem
                     c.lastPauseState = self.isPaused
@@ -313,6 +374,15 @@ struct PreviewPlayerView: NSViewRepresentable {
             if !c.isAllStillImages, !isPaused, c.lastAppliedPlayRate != clip.playRate {
                 c.contentView?.activeAVPlayer?.rate = clip.playRate
                 c.lastAppliedPlayRate = clip.playRate
+            }
+
+            if let content = c.contentView {
+                let contentMode: PlayerView.ContentMode = aspectRatio.isFillWindow ? .aspectFill : .aspectFit
+                updateSmartFramingTimer(
+                    coordinator: c,
+                    content: content,
+                    enabled: (contentMode == .aspectFill && !isPaused && !c.isAllStillImages)
+                )
             }
 
             if c.lastEffectsCounter != effectsChangeCounter {
@@ -452,6 +522,110 @@ struct PreviewPlayerView: NSViewRepresentable {
         }
     }
 
+    @MainActor
+    private func updateSmartFramingTimer(
+        coordinator c: Coordinator,
+        content: PlayerContentView,
+        enabled: Bool
+    ) {
+        guard enabled else {
+            c.stopSmartFramingTimer()
+            content.setContentFocus(nil)
+            return
+        }
+
+        if c.smartFramingTimer != nil, c.smartFramingRequestID == c.contentFocusRequestID {
+            return
+        }
+
+        if c.smartFramingTimer != nil, c.smartFramingRequestID != c.contentFocusRequestID {
+            c.stopSmartFramingTimer()
+        }
+
+        let requestID = c.contentFocusRequestID
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        let interval: TimeInterval = 0.25
+        timer.schedule(deadline: .now() + interval, repeating: interval)
+
+        timer.setEventHandler { [weak c, weak content] in
+            guard let c, let content else { return }
+            guard c.contentFocusRequestID == requestID else { return }
+            guard !c.smartFramingInFlight else { return }
+            c.smartFramingInFlight = true
+
+            // Capture current frame from the active AVPlayer-backed frame source.
+            guard let frame = content.activeFrameSource?.bestFrame(forHostTime: CACurrentMediaTime()) else {
+                c.smartFramingInFlight = false
+                return
+            }
+
+            let pixelBuffer = frame.pixelBuffer
+
+            DispatchQueue.global(qos: .utility).async {
+                let analysis = HumanRectanglesFraming.analyze(pixelBuffer: pixelBuffer, config: .init())
+
+                DispatchQueue.main.async { [weak c, weak content] in
+                    guard let c, let content else { return }
+                    defer { c.smartFramingInFlight = false }
+                    guard c.contentFocusRequestID == requestID else { return }
+
+                    // Never update framing mid-transition; defer until completion.
+                    let isTransitioning = (content.playerView.activeTransition != nil)
+
+                    if let focus = analysis.contentFocus {
+                        c.consecutiveMisses = 0
+
+                        // Smooth anchor to reduce jitter.
+                        let newAnchor = focus.anchorNormalized
+                        // Portrait->landscape expectation: bias should be primarily vertical; keep X centered.
+                        let newAnchorVerticalOnly = CGPoint(x: 0.5, y: newAnchor.y)
+                        let smoothed: CGPoint
+                        if let last = c.lastFocusAnchor {
+                            let alpha: CGFloat = 0.25
+                            smoothed = CGPoint(
+                                x: last.x * (1 - alpha) + newAnchorVerticalOnly.x * alpha,
+                                y: last.y * (1 - alpha) + newAnchorVerticalOnly.y * alpha
+                            )
+                        } else {
+                            smoothed = newAnchorVerticalOnly
+                        }
+                        c.lastFocusAnchor = smoothed
+
+                        let smoothedFocus = PlayerView.ContentFocus(
+                            anchorNormalized: smoothed,
+                            targetNDC: focus.targetNDC,
+                            boundsNormalized: focus.boundsNormalized,
+                            paddingNDC: focus.paddingNDC,
+                            overscrollMode: focus.overscrollMode
+                        )
+
+                        if isTransitioning {
+                            c.pendingContentFocus = smoothedFocus
+                        } else {
+                            c.pendingContentFocus = nil
+                            content.setContentFocus(smoothedFocus)
+                        }
+                    } else {
+                        c.consecutiveMisses += 1
+                        // If we miss several times in a row, release back to centered framing.
+                        if c.consecutiveMisses >= 3 {
+                            c.lastFocusAnchor = nil
+                            if isTransitioning {
+                                c.pendingContentFocus = nil
+                            } else {
+                                content.setContentFocus(nil)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        c.smartFramingTimer = timer
+        c.smartFramingRequestID = requestID
+        timer.resume()
+    }
+
     static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
         Task { @MainActor in
             tearDown(coordinator: coordinator)
@@ -495,6 +669,7 @@ struct PreviewPlayerView: NSViewRepresentable {
     private static func tearDown(coordinator c: Coordinator) {
         c.stillClipTimer?.invalidate()
         c.stillClipTimer = nil
+        c.stopSmartFramingTimer()
 
         c.removePlaybackEndObservers()
         c.removePlaybackTimeObservers()
