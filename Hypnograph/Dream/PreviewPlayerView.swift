@@ -318,37 +318,39 @@ struct PreviewPlayerView: NSViewRepresentable {
                 object: playerItem,
                 queue: .main
             ) { [weak c, weak player] _ in
-                guard let c = c, let player = player else { return }
+                Task { @MainActor [weak c, weak player] in
+                    guard let c = c, let player = player else { return }
 
-                let shouldPlay = (c.lastPauseState != true)
-                let rate = c.playRate
-                let seekToStartAndPlayIfNeeded = {
-                    player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
-                        guard finished else { return }
-                        guard shouldPlay else { return }
-                        player.playImmediately(atRate: rate)
+                    let shouldPlay = (c.lastPauseState != true)
+                    let rate = c.playRate
+                    let seekToStartAndPlayIfNeeded = {
+                        player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
+                            guard finished else { return }
+                            guard shouldPlay else { return }
+                            player.playImmediately(atRate: rate)
+                        }
                     }
-                }
 
-                // If a transition is in progress, never loop the outgoing player.
-                // Restarting the outgoing clip mid-transition is visually jarring.
-                if c.contentView?.playerView.activeTransition != nil,
-                   player !== c.contentView?.activeAVPlayer {
-                    return
-                }
+                    // If a transition is in progress, never loop the outgoing player.
+                    // Restarting the outgoing clip mid-transition is visually jarring.
+                    if c.contentView?.playerView.activeTransition != nil,
+                       player !== c.contentView?.activeAVPlayer {
+                        return
+                    }
 
-                if c.watchMode {
-                    // Watch mode: only advance when the ACTIVE player ends
-                    // (not when the outgoing transition player loops)
-                    if player === c.contentView?.activeAVPlayer {
-                        c.onClipEnded?()
+                    if c.watchMode {
+                        // Watch mode: only advance when the ACTIVE player ends
+                        // (not when the outgoing transition player loops)
+                        if player === c.contentView?.activeAVPlayer {
+                            c.onClipEnded?()
+                        } else {
+                            // Outgoing player during transition - just loop it
+                            seekToStartAndPlayIfNeeded()
+                        }
                     } else {
-                        // Outgoing player during transition - just loop it
+                        // Loop mode: seek to beginning and continue
                         seekToStartAndPlayIfNeeded()
                     }
-                } else {
-                    // Loop mode: seek to beginning and continue
-                    seekToStartAndPlayIfNeeded()
                 }
             }
             c.playbackEndObservers.append(observer)
@@ -361,37 +363,39 @@ struct PreviewPlayerView: NSViewRepresentable {
         for player in content.allPlayers {
             let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
             let token = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak c, weak player] _ in
-                guard let c, let player, let contentView = c.contentView else { return }
-                guard c.watchMode else { return }
-                guard c.lastPauseState != true else { return }
-                guard !c.didRequestPreEndAdvance else { return }
-                guard contentView.playerView.activeTransition == nil else { return }
-                guard player === contentView.activeAVPlayer else { return }
+                Task { @MainActor [weak c, weak player] in
+                    guard let c, let player, let contentView = c.contentView else { return }
+                    guard c.watchMode else { return }
+                    guard c.lastPauseState != true else { return }
+                    guard !c.didRequestPreEndAdvance else { return }
+                    guard contentView.playerView.activeTransition == nil else { return }
+                    guard player === contentView.activeAVPlayer else { return }
 
-                guard let item = player.currentItem,
-                      item.status == .readyToPlay,
-                      item.duration.isValid,
-                      item.duration.isNumeric else {
-                    return
-                }
+                    guard let item = player.currentItem,
+                          item.status == .readyToPlay,
+                          item.duration.isValid,
+                          item.duration.isNumeric else {
+                        return
+                    }
 
-                let dur = item.duration.seconds
-                let now = player.currentTime().seconds
-                guard dur.isFinite, now.isFinite, dur > 0 else { return }
+                    let dur = item.duration.seconds
+                    let now = player.currentTime().seconds
+                    guard dur.isFinite, now.isFinite, dur > 0 else { return }
 
-                let remainingVideoSeconds = max(0.0, dur - now)
-                let rate = max(0.0001, Double(c.playRate))
-                let remainingRealSeconds = remainingVideoSeconds / rate
+                    let remainingVideoSeconds = max(0.0, dur - now)
+                    let rate = max(0.0001, Double(c.playRate))
+                    let remainingRealSeconds = remainingVideoSeconds / rate
 
-                // Trigger next clip build/transition slightly before the desired transition window.
-                // Add a small lead-in to account for:
-                // - transition start deferral until incoming has a frame
-                // - AVPlayer end-of-item rounding (a few frames early)
-                // - render/build scheduling jitter
-                let threshold = max(0.05, c.transitionDuration + 0.25)
-                if remainingRealSeconds <= threshold {
-                    c.didRequestPreEndAdvance = true
-                    c.onClipEnded?()
+                    // Trigger next clip build/transition slightly before the desired transition window.
+                    // Add a small lead-in to account for:
+                    // - transition start deferral until incoming has a frame
+                    // - AVPlayer end-of-item rounding (a few frames early)
+                    // - render/build scheduling jitter
+                    let threshold = max(0.05, c.transitionDuration + 0.25)
+                    if remainingRealSeconds <= threshold {
+                        c.didRequestPreEndAdvance = true
+                        c.onClipEnded?()
+                    }
                 }
             }
             c.playbackTimeObservers.append(token)
