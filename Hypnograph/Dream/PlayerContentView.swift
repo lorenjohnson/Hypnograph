@@ -296,6 +296,16 @@ final class PlayerContentView: NSView {
         playerView.contentMode = mode
     }
 
+    /// Set a content-aware focus point (e.g. human head) used to offset aspect-fill framing.
+    /// Pass `nil` to clear and return to centered framing.
+    func setContentFocus(_ focus: PlayerView.ContentFocus?) {
+        playerView.contentFocus = focus
+        mirrorViews.removeAll { $0.view == nil }
+        for ref in mirrorViews {
+            ref.view?.setContentFocus(focus)
+        }
+    }
+
     // MARK: - Mirror View Support
 
     /// Registered mirror views that should sync with this content view
@@ -419,5 +429,9 @@ final class PlayerContentMirrorView: NSView {
     /// Set the content display mode
     func setContentMode(_ mode: PlayerView.ContentMode) {
         playerView.contentMode = mode
+    }
+
+    func setContentFocus(_ focus: PlayerView.ContentFocus?) {
+        playerView.contentFocus = focus
     }
 }
