@@ -678,15 +678,15 @@ final class Dream: ObservableObject {
         // Get the current recipe with effects library snapshot
         let recipe = makeDisplayRecipe().copyForExport()
 
-        // Save as .hypno file (PNG with embedded recipe)
-        if let savedURL = RecipeStore.save(recipe, snapshot: cgImage) {
-            print("✅ Dream: Hypnogram saved to \(savedURL.path)")
+        // Save as .hypno and record in HypnogramStore (powers Favorites/Recents panel).
+        if let entry = HypnogramStore.shared.add(recipe: recipe, snapshot: cgImage, isFavorite: false) {
+            print("✅ Dream: Hypnogram saved to \(entry.recipeURL.path)")
             AppNotifications.show("Hypnogram saved", flash: true)
 
             // Also save to Apple Photos if write access is available
             if ApplePhotos.shared.status.canWrite {
                 Task {
-                    let success = await ApplePhotos.shared.saveImage(at: savedURL)
+                    let success = await ApplePhotos.shared.saveImage(at: entry.recipeURL)
                     if success {
                         print("✅ Dream: Hypnogram added to Apple Photos")
                     }
