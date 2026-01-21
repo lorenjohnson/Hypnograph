@@ -38,6 +38,17 @@ struct ContentView: View {
         return nil
     }
 
+    private var shouldAutoHideCursor: Bool {
+        if dream.isLiveMode {
+            guard let player = dream.livePlayer.activeAVPlayer else { return false }
+            return player.rate != 0
+        }
+
+        let clip = dream.activePlayer.currentClip
+        let hasVideo = clip.sources.contains { $0.clip.file.mediaKind == .video }
+        return hasVideo && (dream.activePlayer.isPaused == false)
+    }
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             // Solid black backing for the entire window
@@ -47,6 +58,9 @@ struct ContentView: View {
             // Dream display
             dream.makeDisplayView()
                 .ignoresSafeArea()
+
+            CursorAutoHideView(isEnabled: shouldAutoHideCursor, idleSeconds: 3.0)
+                .allowsHitTesting(false)
 
             // HUD and Hypnogram List - top left (below LIVE if visible)
             VStack(alignment: .leading, spacing: 8) {

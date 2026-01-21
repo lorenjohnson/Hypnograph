@@ -1,9 +1,5 @@
 # Feature: Window Fullscreen Mode
 
-## Decision: Use Native macOS Fullscreen
-
-After exploration, we decided to embrace native macOS fullscreen (green button / ⌃⌘F) rather than the custom "borderless" fullscreen that stays on the desktop. Native fullscreen is more familiar to users and integrates properly with Mission Control.
-
 ## Current Behavior
 
 **Both apps** now use standard SwiftUI windowing with native macOS fullscreen support (green button / ⌃⌘F).
@@ -11,10 +7,6 @@ After exploration, we decided to embrace native macOS fullscreen (green button /
 ## Outstanding Issue: Fullscreen State Persistence
 
 SwiftUI windows automatically remember their size/position between launches, but **do not** automatically remember fullscreen state.
-
-### Why No Native Solution?
-
-macOS window restoration handles frames but not the fullscreen toggle. Manual tracking is required.
 
 ### Implementation Options
 
@@ -37,7 +29,3 @@ if state.windowState.mainWindowFullScreen {
 ```
 
 **Default to fullscreen on first launch:** Set `mainWindowFullScreen = true` as the default value in `WindowState`.
-
-## Legacy Code: Borderless Fullscreen
-
-The `makeBorderlessHypnoWindow` extension is kept in `HypnoCore/Extensions/AppKit.swift` in case we want to return to this approach. It creates a fullscreen window that stays on the current desktop/Space rather than creating a new Space like native fullscreen.

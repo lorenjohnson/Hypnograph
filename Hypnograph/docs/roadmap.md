@@ -106,25 +106,6 @@ Volume leveling option in Player Settings (keeps relative db same across all sho
 
 ---
 
-## RECENTLY COMPLETED
-- Hold `0` in Montage mode to temporarily suspend global effect chain
-- Hold `1-9` in Montage mode to solo source and suspend global effects (keeps source effect for preview)
-- Add global Source Framing setting (Fill/Fit) persisted in `hypnograph-settings.json` and applied to preview/live/export
-- Change the default location of stored Hypnograms to ~/Movies/Hypnograph ?
-- I would like the window state to restore including whether clean screen is currently enabled
-- When there were no windows in the saved window state then Tab toggles on all windows... may change this to just being a special keystroke for show all windows but not sure yet
-- Move Divine into its own product
+## Completed / Archived
 
-## Project: Unified Player Architecture
-Status: Completed
-Shared A/B player infrastructure for Preview and Live with smooth transitions. Foundational work for transitions and volume leveling.
-- Docs: `docs/projects/20260116-unified-player-architecture/overview.md`
-- Plan: `docs/projects/20260116-unified-player-architecture/implementation-planning.md`
-
-## Project: Hypnogram Transitions
-Status: Completed
-Visual transitions between clip changes (Preview + Live). Depends on: Unified Player Architecture.
-- Docs: `docs/projects/20260116-hypnogram-transitions/overview.md`
-- Plan: `docs/projects/20260116-hypnogram-transitions/implementation-planning.md`
-
-- [x] Can do away with lastRecipe, if there is no history or a failure on load we just generate a new hypnogram on start and start a new history
+Completed roadmap items are archived in `docs/_archive/index.md`.
