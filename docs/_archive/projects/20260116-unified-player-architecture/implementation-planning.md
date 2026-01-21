@@ -1,7 +1,12 @@
 # Unified Player Architecture: Implementation Planning
 
 **Created**: 2026-01-16
-**Status**: Draft
+**Updated**: 2026-01-21
+**Status**: Completed (Superseded by Metal Playback Pipeline)
+
+This plan was executed for the AVPlayerView-based unified player work, but the codebase has since moved to the Metal Playback Pipeline (Direction A). This document remains as historical implementation notes.
+
+- See: `docs/projects/20260117-metal-playback-pipeline/overview.md`
 
 This plan details the code-level implementation for unifying Preview and Live player infrastructure.
 

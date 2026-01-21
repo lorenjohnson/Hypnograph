@@ -28,7 +28,7 @@ We want clip-to-clip audio to feel smooth. There are two places we can hook this
 
 This is important because most perceived “spikes” happen right at the boundary.
 
-Related project: `docs/projects/20260116-hypnogram-transitions/overview.md`.
+Related project: `docs/_archive/projects/20260116-hypnogram-transitions/overview.md`.
 
 ## Phase 1: Settings + UI surface
 
