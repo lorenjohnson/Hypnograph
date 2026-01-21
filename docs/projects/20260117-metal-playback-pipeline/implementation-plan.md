@@ -1,8 +1,8 @@
 # Metal Playback Pipeline: Implementation Plan (Direction A)
 
 **Created**: 2026-01-17
-**Updated**: 2026-01-18
-**Status**: Complete - In Testing
+**Updated**: 2026-01-21
+**Status**: Complete
 **Approach**: AVPlayerItemVideoOutput + MTKView
 
 ## Summary
@@ -42,7 +42,7 @@ PlayerView (MTKView) ← TransitionRenderer (shader blending)
 | 6. Dual-source transitions | ✅ Complete | Built into PlayerView |
 | 7. PreviewPlayerView integration | ✅ Complete | Uses PlayerContentView |
 | 8. LivePlayer integration | ✅ Complete | Uses PlayerContentView + mirrors |
-| 9. Cleanup and polish | 🔄 In Progress | Removing legacy code |
+| 9. Cleanup and polish | ✅ Complete | Removed legacy AVPlayerView-based rendering path |
 
 ## Key Files
 
@@ -87,7 +87,7 @@ Each transition is a separate Metal compute shader in `Transitions/Implementatio
 - During transitions, outgoing clip loops to maintain smooth visuals
 - Playback end observers registered for all active players
 
-## Known Issues / TODOs
+## Follow-ups (Non-blocking)
 
 - Transition settings UI is wired in Player Settings; remaining work is polish and stabilization.
 - Logging is mostly informational; consider standardizing on a logger and reducing noisy prints once stable.

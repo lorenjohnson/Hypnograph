@@ -1,7 +1,8 @@
 # Metal Playback Pipeline: Overview
 
 **Created**: 2026-01-17
-**Status**: Implemented (Direction A)
+**Updated**: 2026-01-21
+**Status**: Complete (Direction A)
 **Notes**: Direction B remains a future option; the current codebase uses Direction A.
 
 ## Goal
@@ -270,42 +271,44 @@ Renderer consumes `DecodedFrame` as textures + metadata; does not care whether f
 
 ---
 
-## Migration Strategy (Direction A)
+## Implementation (Completed)
 
-### Phase 1: MetalPlayerView Skeleton
+The phases below are complete; they are kept for historical reference.
+
+### ✅ Phase 1: MetalPlayerView Skeleton
 - Create MTKView subclass that renders a test texture
 - Add to Preview alongside existing player (hidden, feature flag)
 - Wire up DisplayLink-driven draw loop
 
-### Phase 2: AVPlayerItemVideoOutput Integration
+### ✅ Phase 2: AVPlayerItemVideoOutput Integration
 - Add VideoOutput to existing AVPlayer
 - Pull CVPixelBuffer at display cadence
 - Convert to Metal textures via CVMetalTextureCache
 - Render in MetalPlayerView
 
-### Phase 3: Multi-Layer Compositing
+### ✅ Phase 3: Multi-Layer Compositing
 - Adapt FrameCompositor for MTLTexture input/output
 - Add YUV→RGB conversion in compositor shader
 - Verify effects still work
 - Handle multiple sources
 
-### Phase 4: Transitions
+### ✅ Phase 4: Transitions
 - Implement TransitionRenderer
 - During transition: two AVPlayers, each with VideoOutput
 - Shader-based crossfade between textures
 - Pre-roll incoming clip before transition starts
 
-### Phase 5: Audio (mostly free with Direction A)
+### ✅ Phase 5: Audio (mostly free with Direction A)
 - AVPlayer handles audio sync
 - Volume/device routing as before
 - Audio crossfade: adjust volumes during transition
 
-### Phase 6: Live Integration
+### ✅ Phase 6: Live Integration
 - LivePlayer uses MetalPlayerView
 - Remove LiveContentView/dual AVPlayerViews
 - Window management unchanged
 
-### Phase 7: Cleanup
+### ✅ Phase 7: Cleanup
 - Remove view-level transition code
 - Remove ABPlayerCoordinator, HypnogramPlayer
 - Remove feature flag
@@ -328,33 +331,29 @@ Renderer consumes `DecodedFrame` as textures + metadata; does not care whether f
 
 ## Success Criteria
 
-- [ ] Single MTKView displays composited video with effects
-- [ ] Transitions are smooth, no black flashes
-- [ ] Preview and Live use same rendering code
-- [ ] Simpler architecture (fewer abstractions than A/B player approach)
-- [ ] Performance equal or better than current
-- [ ] No regression in existing functionality
-- [ ] FrameSource abstraction allows future Direction B swap if needed
+- [x] Single MTKView displays composited video with effects
+- [x] Transitions are smooth, no black flashes
+- [x] Preview and Live use same rendering code
+- [x] Simpler architecture (fewer abstractions than A/B player approach)
+- [x] Performance equal or better than current
+- [x] No regression in existing functionality
+- [x] FrameSource abstraction allows future Direction B swap if needed
 
 ---
 
-## Files (Estimated)
+## Key Files (Implemented)
 
-| New File | Purpose |
-|----------|---------|
-| `FrameSource.swift` | Protocol + DecodedFrame struct |
-| `AVPlayerFrameSource.swift` | Direction A implementation |
-| `TextureCache.swift` | CVMetalTextureCache wrapper |
-| `TransitionRenderer.swift` | Metal shader transitions |
-| `MetalPlayerView.swift` | MTKView display surface |
-| `Transitions.metal` | Transition shaders |
-
-| Modified File | Change |
-|---------------|--------|
-| `FrameCompositor.swift` | Add MTLTexture path, YUV→RGB shader |
-| `PreviewPlayerView.swift` | Wrap MetalPlayerView instead of AVPlayerView |
-| `LivePlayer.swift` | Use MetalPlayerView, simplify significantly |
-| `Dream.swift` | Remove factory patterns, simplify clip loading |
+| File | Purpose |
+|------|---------|
+| `HypnoCore/Renderer/Display/PlayerView.swift` | MTKView-based render surface used by Preview & Live |
+| `HypnoCore/Renderer/FrameSource/FrameSource.swift` | FrameSource protocol + DecodedFrame |
+| `HypnoCore/Renderer/FrameSource/AVPlayerFrameSource.swift` | AVPlayerItemVideoOutput-backed FrameSource |
+| `HypnoCore/Renderer/FrameSource/TextureCache.swift` | CVMetalTextureCache wrapper (YUV plane textures) |
+| `HypnoCore/Renderer/Transitions/TransitionRenderer.swift` | Transition driver |
+| `HypnoCore/Renderer/Transitions/TransitionCommon.h` | Shared transition shader header |
+| `HypnoCore/Renderer/Transitions/Implementations/*.metal` | Individual transition shaders |
+| `HypnoCore/Renderer/Display/Passthrough.metal` | Passthrough shaders |
+| `HypnoCore/Renderer/Display/YUVConversion.metal` | YUV→RGB conversion shaders |
 
 ---
 
