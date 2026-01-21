@@ -34,6 +34,34 @@ struct PreviewPlayerView: NSViewRepresentable {
     /// Transition duration in seconds
     var transitionDuration: Double = 1.5
 
+    // MARK: - Coordinator
+    //
+    // Watch-mode state machine:
+    // ─────────────────────────
+    // The coordinator manages automatic clip advancement in "watch mode" where clips
+    // play through once and then advance to the next clip. The key challenge is
+    // coordinating the timing so transitions start before the current clip ends,
+    // while avoiding runaway advancement if the next clip isn't ready yet.
+    //
+    // State flags:
+    // - `didRequestPreEndAdvance`: Set when we've requested the next clip via
+    //   `onClipEnded()`. Prevents duplicate requests during the same clip.
+    // - `isWatchAdvanceInFlight`: Set when a clip change is in progress (building
+    //   composition + transitioning). If the current clip ends again while this
+    //   is true, we loop the current clip instead of requesting another advance.
+    //
+    // Flow:
+    // 1. Time observer fires when remaining time <= transitionDuration + 0.25s
+    // 2. If not already advancing, set both flags and call `onClipEnded()`
+    // 3. Parent builds new composition and calls `loadAndTransition()`
+    // 4. Transition completes → `isWatchAdvanceInFlight` cleared
+    // 5. New clip plays → `didRequestPreEndAdvance` reset when compositionID changes
+    //
+    // Edge cases:
+    // - If clip is very short, end notification may fire before transition completes
+    //   → we loop the outgoing clip to maintain smooth visuals
+    // - Pausing or disabling watch mode resets both flags
+
     @MainActor
     class Coordinator {
         var contentView: PlayerContentView?
@@ -61,9 +89,11 @@ struct PreviewPlayerView: NSViewRepresentable {
         /// Observers for per-player time updates (used for pre-end advancing)
         var playbackTimeObservers: [Any] = []
         /// Guard so we request a watch-mode advance at most once per active clip.
+        /// Reset when compositionID changes (new clip loaded).
         var didRequestPreEndAdvance: Bool = false
         /// Prevent runaway watch-mode advancement while a new clip is being built/transitioned in.
-        /// (If the current clip ends again before the next clip is ready, we loop the current clip.)
+        /// If the current clip ends again before the next clip is ready, we loop the current clip
+        /// instead of requesting another advance. Cleared when transition completes.
         var isWatchAdvanceInFlight: Bool = false
 
         func audioDeviceChanged(to newUID: String?) -> Bool {
