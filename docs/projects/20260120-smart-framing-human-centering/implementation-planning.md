@@ -7,6 +7,8 @@ status: Draft
 
 This plan describes how to move from the current prototype (on `feature/smart-framing-human-centering`, split from `feature/metal-playback-pipeline`) to a mergeable, well-encapsulated feature on `main`.
 
+Core requirement: Preview and Export must share the same framing logic. Any “monitoring” / re-centering behavior must run in the render path (per-source `SourceFraming.fill`), not in display/window-global framing (`PlayerView.contentFocus`).
+
 ## Phase 0 — Name the hook surface + decide wiring
 
 Decide the canonical place for render-lifecycle hooks.
@@ -47,7 +49,7 @@ Acceptance:
 - Renderer can call the hook without importing Vision.
 - No human-specific naming in the core API.
 
-## Phase 2 — Move crop math behind the hook (single call site)
+## Phase 2 — Move crop math behind the hook (single call site, render-parity)
 
 Refactor `RendererImageUtils.applySourceFraming` so:
 - It builds a `FramingRequest` when `sourceFraming == .fill`
@@ -58,6 +60,7 @@ Refactor `RendererImageUtils.applySourceFraming` so:
 Acceptance:
 - Crop behavior remains deterministic and edge-clamped by default (“no blank edges”).
 - The renderer does not need to know anything about humans/faces.
+- No display/window-level framing is required to get the behavior in Preview.
 
 ## Phase 3 — Implement HumanCentering as a FramingHook
 
@@ -68,7 +71,7 @@ Add `HypnoCore/Renderer/Framing/Implementations/HumanCentering`:
 - Tuning parameters (target head position, headroom factor, confidence/area thresholds)
 - Caching:
   - still images: cache by source id + transforms + output aspect (or request signature)
-  - video: cache by source id + sampled time(s) + request signature
+  - video: cache by source id + sampled time(s) + request signature (time-bucketed so Export and Preview make the same decisions)
 
 Acceptance:
 - All Vision code lives under `Framing/Implementations/HumanCentering`.
@@ -77,21 +80,22 @@ Acceptance:
 ## Phase 4 — Replace prototype plumbing with the hook implementation
 
 Remove prototype-specific wiring that spread across:
-- composition builder sampling helpers
-- render instruction “person bounds” plumbing
-- preview player “tracking” that calls directly into analysis helpers
+- composition builder sampling helpers and/or early-frame analysis
+- render instruction “person bounds” plumbing (`layerPersonBounds`)
+- preview player “tracking” that calls directly into analysis helpers (and uses `PlayerView.contentFocus`)
 
 Replace with:
 - A single hook registration + an enable/disable toggle.
 
 Decision point:
-- Keep preview-time continuous tracking?
-  - If yes, it should call the same `HumanCentering` module via a “frame-based request” adapter.
-  - If no, rely on initial sampling/caching (cheaper, more stable).
+Keep time-varying framing for video (“monitoring” / re-centering)?
+- If yes, it must run inside the `FramingHook` and be driven by `FramingRequest.time` so Preview and Export behave identically (same sampling cadence and caching keys).
+- If no, rely on initial sampling/caching (cheaper, more stable) while still staying render-parity.
 
 Acceptance:
 - “Smart framing” can be toggled without touching rendering internals.
 - Feature code lives in one module/folder.
+- Preview and Export produce the same framing outcome for the same inputs (source, transforms, output size, time policy).
 
 ## Phase 5 — UX + settings surface
 
@@ -102,6 +106,7 @@ Add a user-facing setting (or a feature flag) so this is not “always on” by 
 Acceptance:
 - Defaults are conservative.
 - Behavior is predictable (no blank edges; stable framing).
+- This setting affects per-source `SourceFraming.fill` only (not window fill / display framing).
 
 ## Phase 6 — Validation, performance, and merge readiness
 
