@@ -1,6 +1,7 @@
 ---
 created: 2026-01-20
-status: Draft (refactor needed)
+updated: 2026-01-21
+status: Implemented (hook-based; tuning TBD)
 ---
 
 # Smart Framing (Human Centering): Overview
@@ -18,59 +19,54 @@ Today, many sources are portrait-oriented (or portrait-like compositions) but di
 Desired behavior:
 - If a subject is detected and there is slack on an axis after scaling (usually vertical slack in portrait→landscape), shift the crop to keep the head in-frame and show more body.
 - Prefer stable behavior (no jitter) and predictable bounds (no blank edges).
-- Work for still images and videos (initial sampling is OK; continuous tracking is optional).
+- Work for still images and videos
 
 ## Current status (what exists today)
 
-Some prototype behavior exists in `main`, but it is currently split across multiple layers:
+Smart framing is implemented as a **render-parity** system:
 
-- Renderer-time detection and per-layer bounds plumbing (used to bias `SourceFraming.fill`).
-- Preview-time “monitoring” via `PlayerView.contentFocus` (window/display-level framing), which is **not export-parity** and is therefore a smell.
-
-The behavior is valuable, but the implementation shape needs to change so Preview and Export share a single framing decision path.
+- A `FramingHook` runs in the compositor for per-source `SourceFraming.fill`.
+- The default `HumanCenteringFramingHook` uses Vision-based detection and caches results per render session/time bucket.
+- Preview and Export share the same framing decision path (no preview-only display/window framing).
 
 ## Dolphin Diagrams
 
-### NOW (current main)
+### NOW (hook-based, render-parity)
 
 ```mermaid
 flowchart LR
-  subgraph NOW["NOW (current main)"]
+  subgraph NOW["NOW (hook-based, render-parity)"]
     A["Settings.sourceFraming\n(Hypnograph)"] --> B["RenderEngine / CompositionBuilder\n(HypnoCore)"]
-    B --> C["HumanRectanglesFraming (Vision)\n(HypnoCore/Renderer/Analysis)"]
-    C --> D["RenderInstruction.layerPersonBounds\n(plumbed through AVVideoComposition)"]
+    B --> D["RenderInstruction.framingHook + renderID\n(HypnoCore)"]
     D --> E["FrameCompositor\n(HypnoCore)"]
-    E --> F["RendererImageUtils.applySourceFraming(..., personBounds)\n(per-source crop bias)"]
-
-    P["PreviewPlayerView\n(Hypnograph)"] --> C
-    P --> Q["PlayerView.contentFocus + timer\n(window/display-level recentering)\nNOT export-parity (smell)"]
+    E --> I["FramingHook.framingBias(request)\n(HypnoCore/Renderer/Framing/Core)"]
+    I --> J["HumanCenteringFramingHook\n(HypnoCore/Renderer/Framing/Implementations/HumanCentering)\nVision + caching"]
+    I --> F["RendererImageUtils.applySourceFraming(..., bias)\n(per-source crop bias)"]
   end
 ```
 
-### TARGET (framing hooks; Preview == Export)
+### TARGET (extensible stages + hook pipelines)
 
 ```mermaid
 flowchart LR
-  subgraph TARGET["TARGET (framing hooks; Preview == Export)"]
-    A2["Settings.smartFramingMode\nOff / HumanCentering"] --> H["RenderEngine.Config (or RendererHooks)\nprovides FramingHook"]
-    H --> I["FramingHook.framingBias(request)\n(HypnoCore/Renderer/Framing/Core)"]
-    I --> J["HumanCenteringFramingHook\n(HypnoCore/Renderer/Framing/Implementations/HumanCentering)\nVision + caching + heuristics"]
-    I --> K["RendererImageUtils.applySourceFraming(..., bias)\n(single apply site; per-source fill)"]
-    K --> L["FrameCompositor / Live / Export / Preview\n(all share the same path)"]
+  subgraph TARGET["TARGET (extensible stages + hook pipelines)"]
+    A2["Settings.smartFramingMode\nOff / HumanCentering / ..."] --> H["RenderEngine.Config\nprovides a FramingHook pipeline"]
+    H --> P["FramingPipelineHook\n([FramingHook])"]
+    P --> I["FramingHook.framingBias(request)\n(one per stage)"]
+    I --> K["RendererImageUtils.applySourceFraming(..., bias)\n(frames the source)"]
+    K --> L["FrameCompositor / Live / Export / Preview\n(render-parity)"]
 
-    J --> K
-    M["PlayerView.display\n(no contentFocus smart framing)"] -.-> L
+    %% Future: independent sizing stage (zoom/crop policy)
+    I -. future .-> S["SizingHook (optional)\n(zoom/crop rect policy)"]
   end
 ```
 
 ## What’s wrong with the current shape (why it shouldn’t merge yet)
 
-The behavior is useful, but the implementation is not sufficiently encapsulated and does not guarantee Preview == Export:
-- Logic is spread across renderer utilities, composition building, compositing, and preview playback glue.
-- Preview currently applies additional display/window-level framing (`contentFocus`) that export does not have.
-- There is not yet a coherent “hook API” for framing decisions that future features can reuse.
-- Enable/disable is not expressed at a clear pipeline boundary.
-- Caching / invalidation policy is not expressed as a dedicated module with clear ownership.
+Remaining work is primarily productization/tuning rather than architecture:
+- Expose an explicit enable/disable surface (setting/flag) if this should not be “always on”.
+- Decide/tune sampling cadence for video time buckets (currently designed for frequent sampling).
+- Performance guardrails: keep analysis downscaled and caching bounded; verify multi-layer cases.
 
 ## Target architecture (what we want before merging)
 

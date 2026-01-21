@@ -1,6 +1,7 @@
 ---
 created: 2026-01-20
-status: Draft
+updated: 2026-01-21
+status: Implemented (core refactor); follow-ups pending
 ---
 
 # Smart Framing (Human Centering): Implementation Planning
@@ -8,6 +9,11 @@ status: Draft
 This plan describes how to move from the current prototype (on `feature/smart-framing-human-centering`, split from `feature/metal-playback-pipeline`) to a mergeable, well-encapsulated feature on `main`.
 
 Core requirement: Preview and Export must share the same framing logic. Any “monitoring” / re-centering behavior must run in the render path (per-source `SourceFraming.fill`), not in display/window-global framing (`PlayerView.contentFocus`).
+
+## Status (as of 2026-01-21)
+
+- Phases 1–4 are implemented in code (hook API + compositor wiring + HumanCentering hook).
+- Remaining work is mainly settings/UX, tuning, and performance validation.
 
 ## Phase 0 — Name the hook surface + decide wiring
 
