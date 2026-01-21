@@ -26,8 +26,10 @@ any effects load operation were done first
 - [ ] Finder action not installing - Automator action fails.
 
 ## Minor Projects:
+- [ ] Clip slicing: for video sources, preserve a random `startTime` when it can play continuously for `targetDuration` without hitting the end; otherwise clamp `startTime` back so it can play to the end without looping; if the asset is shorter than `targetDuration`, use `startTime = 0` and loop the full asset.
 - [ ] Confirm the Add Source functionality (which should be mapped to ".") still works.
-- [ ] Hypnograph: Put what is in HUD view into the top of the Player Settings modal, eliminating the HUD View. Player Settings may get retitled, not sure. But it now takes up more vertical space and goes to top left of screen. We may need to iterate on the styling and what actually stays, as some things in the HUD may just go away or move elsewhere. 
+- [ ] Hypnograph: Put what is in HUD view into the top of the Player Settings modal, eliminating the HUD View. Player Settings may get retitled, not sure. But it now takes up more vertical space and goes to top left of screen. We may need to iterate on the styling and what actually stays, as some things in the HUD may just go away or move elsewhere.
+- [ ] Hypnograph Favorites/Recents window. Recents should just be a list of the history items. Favorite should be ordered from newest to oldest?
 - [ ] Flash of image before processed in Player should be avoided/eliminated. Add a Transitions setting for what happens between Hypnograms. Maybe a Player setting for Transition Style with options: None, Fade, Punk (random dissolve)?
 - [ ] Window state not saved in Hypnograph. Maybe save it. Also tab when there are no windows shown or to restore, shows a default set of Player Settings and Effects.
 - [ ] Feature flag Live mode as a possible optional feature... to eventually be a paid add on? 
