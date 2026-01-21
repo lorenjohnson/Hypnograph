@@ -26,7 +26,9 @@ enum RendererImageUtils {
     }
 
     /// Scale and crop an image to fill the target size while maintaining aspect ratio.
-    static func aspectFill(image: CIImage, to size: CGSize) -> CIImage {
+    /// If a `FramingBias` is provided, the crop translation is biased toward the focus anchor
+    /// while keeping edges opaque (no blank edges).
+    static func aspectFill(image: CIImage, to size: CGSize, bias: FramingBias? = nil) -> CIImage {
         var img = normalizeOrigin(image)
         let imageSize = img.extent.size
         guard imageSize.width > 0, imageSize.height > 0, size.width > 0, size.height > 0 else {
@@ -38,8 +40,46 @@ enum RendererImageUtils {
         let scaledImage = img.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         let scaledSize = scaledImage.extent.size
 
-        let x = (size.width - scaledSize.width) / 2
-        let y = (size.height - scaledSize.height) / 2
+        let slackX = scaledSize.width - size.width
+        let slackY = scaledSize.height - size.height
+
+        // Default: centered crop.
+        var x = -slackX / 2
+        var y = -slackY / 2
+
+        if let bias {
+            // Convert target from NDC to output pixel coordinates.
+            let targetX = ((bias.targetNDC.x + 1) * 0.5) * size.width
+            let targetY = ((bias.targetNDC.y + 1) * 0.5) * size.height
+
+            // Focus anchor in scaled image pixel coordinates.
+            let anchor = CGPoint(
+                x: max(0, min(1, bias.anchorNormalized.x)) * scaledSize.width,
+                y: max(0, min(1, bias.anchorNormalized.y)) * scaledSize.height
+            )
+
+            // Desired translation so the anchor lands at the target.
+            let desiredX = targetX - anchor.x
+            let desiredY = targetY - anchor.y
+
+            switch bias.axisPolicy {
+            case .verticalOnly:
+                if slackY > 0 {
+                    y = max(-slackY, min(0, desiredY))
+                }
+            case .horizontalOnly:
+                if slackX > 0 {
+                    x = max(-slackX, min(0, desiredX))
+                }
+            case .both:
+                if slackX > 0 {
+                    x = max(-slackX, min(0, desiredX))
+                }
+                if slackY > 0 {
+                    y = max(-slackY, min(0, desiredY))
+                }
+            }
+        }
 
         let translated = scaledImage.transformed(by: CGAffineTransform(translationX: x, y: y))
 
@@ -72,10 +112,15 @@ enum RendererImageUtils {
         return composited.cropped(to: CGRect(origin: .zero, size: size))
     }
 
-    static func applySourceFraming(image: CIImage, to size: CGSize, framing: SourceFraming) -> CIImage {
+    static func applySourceFraming(
+        image: CIImage,
+        to size: CGSize,
+        framing: SourceFraming,
+        bias: FramingBias? = nil
+    ) -> CIImage {
         switch framing {
         case .fill:
-            return aspectFill(image: image, to: size)
+            return aspectFill(image: image, to: size, bias: bias)
         case .fit:
             return aspectFit(image: image, to: size)
         }

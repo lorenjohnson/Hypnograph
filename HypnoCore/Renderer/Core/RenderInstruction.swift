@@ -45,6 +45,12 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol, 
     /// How each source should be mapped into the output frame.
     public let sourceFraming: SourceFraming
 
+    /// Optional hook for per-source framing decisions (smart framing).
+    public let framingHook: (any FramingHook)?
+
+    /// Identifies the render session for caching (one AVPlayerItem / export run).
+    public let renderID: UUID
+
     /// The EffectManager to use for effects processing.
     /// - Preview: passes state.effectManager (mutable, changes affect playback)
     /// - Live Display: passes livePlayer.effectManager (isolated instance)
@@ -62,6 +68,8 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol, 
         enableEffects: Bool = false,
         stillImages: [CIImage?] = [],
         sourceFraming: SourceFraming = .fill,
+        framingHook: (any FramingHook)? = nil,
+        renderID: UUID = UUID(),
         effectManager: EffectManager? = nil
     ) {
         self.timeRange = timeRange
@@ -72,6 +80,8 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol, 
         self.enableEffects = enableEffects
         self.stillImages = stillImages
         self.sourceFraming = sourceFraming
+        self.framingHook = framingHook
+        self.renderID = renderID
         self.effectManager = effectManager
 
         // Required track IDs for AVFoundation

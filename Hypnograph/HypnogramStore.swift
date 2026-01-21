@@ -18,14 +18,22 @@ struct HypnogramEntry: Identifiable, Codable {
     let id: UUID
     let name: String
     let createdAt: Date
+    var favoritedAt: Date?
     let recipeURL: URL
     var thumbnailBase64: String?
     var isFavorite: Bool
 
-    init(name: String, recipeURL: URL, thumbnailBase64: String? = nil, isFavorite: Bool = false) {
+    init(
+        name: String,
+        recipeURL: URL,
+        thumbnailBase64: String? = nil,
+        isFavorite: Bool = false,
+        favoritedAt: Date? = nil
+    ) {
         self.id = UUID()
         self.name = name
         self.createdAt = Date()
+        self.favoritedAt = favoritedAt ?? (isFavorite ? Date() : nil)
         self.recipeURL = recipeURL
         self.thumbnailBase64 = thumbnailBase64
         self.isFavorite = isFavorite
@@ -51,7 +59,9 @@ final class HypnogramStore: ObservableObject {
 
     /// Filtered list of favorites only
     var favorites: [HypnogramEntry] {
-        entries.filter { $0.isFavorite }
+        entries
+            .filter { $0.isFavorite }
+            .sorted { ($0.favoritedAt ?? $0.createdAt) > ($1.favoritedAt ?? $1.createdAt) }
     }
 
     /// Recent entries (sorted by date, newest first)
@@ -127,6 +137,7 @@ final class HypnogramStore: ObservableObject {
     func toggleFavorite(_ entry: HypnogramEntry) {
         guard let index = entries.firstIndex(where: { $0.id == entry.id }) else { return }
         entries[index].isFavorite.toggle()
+        entries[index].favoritedAt = entries[index].isFavorite ? Date() : nil
         save()
     }
 

@@ -75,7 +75,7 @@ These docs are currently a mix of shared (`HypnoCore`) and app-specific (Hypnogr
 
 ## Module Coordinator Pattern
 
-Each feature module (`Dream`, `Divine`, `LivePlayer`) is a coordinator class that:
+Each feature module (`Dream`, `LivePlayer`) is a coordinator class that:
 
 ```swift
 @MainActor

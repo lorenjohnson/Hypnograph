@@ -9,6 +9,7 @@
 import SwiftUI
 import AVFoundation
 import CoreMedia
+import QuartzCore
 import HypnoCore
 
 /// Preview player view for Dream module layered playback.
@@ -123,6 +124,7 @@ struct PreviewPlayerView: NSViewRepresentable {
             }
             playbackTimeObservers.removeAll()
         }
+
     }
 
     func makeCoordinator() -> Coordinator {
