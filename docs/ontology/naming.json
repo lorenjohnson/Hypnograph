@@ -62,27 +62,6 @@
         ]
       },
       {
-        "key": "HypnoCore.HypnogramSource",
-        "name": "HypnogramSource",
-        "qualified_name": "HypnogramSource",
-        "module": "HypnoCore",
-        "kind": "struct",
-        "file": "HypnoCore/Recipes/HypnogramSource.swift",
-        "imports": [
-          "CoreGraphics",
-          "Foundation"
-        ],
-        "conforms_raw": [
-          "Codable"
-        ],
-        "conforms_internal": [],
-        "uses_internal": [
-          "HypnoCore.CodableCGAffineTransform",
-          "HypnoCore.EffectChain",
-          "HypnoCore.VideoClip"
-        ]
-      },
-      {
         "key": "HypnoCore.LoadedSource",
         "name": "LoadedSource",
         "qualified_name": "LoadedSource",
@@ -125,31 +104,9 @@
     ],
     "Clip": [
       {
-        "key": "HypnoCore.HypnogramClip",
-        "name": "HypnogramClip",
-        "qualified_name": "HypnogramClip",
-        "module": "HypnoCore",
-        "kind": "struct",
-        "file": "HypnoCore/Recipes/HypnogramRecipe.swift",
-        "imports": [
-          "CoreMedia",
-          "Foundation"
-        ],
-        "conforms_raw": [
-          "Codable"
-        ],
-        "conforms_internal": [],
-        "uses_internal": [
-          "HypnoCore.CodableCMTime",
-          "HypnoCore.EffectChain",
-          "HypnoCore.EffectConfigLoader.LoadResult.Source",
-          "HypnoCore.HypnogramSource"
-        ]
-      },
-      {
-        "key": "HypnoCore.VideoClip",
-        "name": "VideoClip",
-        "qualified_name": "VideoClip",
+        "key": "HypnoCore.MediaClip",
+        "name": "MediaClip",
+        "qualified_name": "MediaClip",
         "module": "HypnoCore",
         "kind": "struct",
         "file": "HypnoCore/Media/MediaModels.swift",
@@ -170,30 +127,7 @@
         ]
       }
     ],
-    "Recipe": [
-      {
-        "key": "HypnoCore.HypnogramRecipe",
-        "name": "HypnogramRecipe",
-        "qualified_name": "HypnogramRecipe",
-        "module": "HypnoCore",
-        "kind": "struct",
-        "file": "HypnoCore/Recipes/HypnogramRecipe.swift",
-        "imports": [
-          "CoreMedia",
-          "Foundation"
-        ],
-        "conforms_raw": [
-          "Codable"
-        ],
-        "conforms_internal": [],
-        "uses_internal": [
-          "HypnoCore.CodableCMTime",
-          "HypnoCore.EffectChain",
-          "HypnoCore.HypnogramClip",
-          "HypnoCore.HypnogramSource"
-        ]
-      }
-    ],
+    "Recipe": [],
     "Engine": [
       {
         "key": "HypnoCore.RenderEngine",
@@ -218,7 +152,7 @@
           "HypnoCore.FramingHook",
           "HypnoCore.HumanCenteringFramingHook",
           "HypnoCore.HypnoCoreHooks",
-          "HypnoCore.HypnogramClip",
+          "HypnoCore.Hypnogram",
           "HypnoCore.Int",
           "HypnoCore.PhotoMontage",
           "HypnoCore.RenderEngine.Config",
@@ -251,15 +185,15 @@
           "HypnoCore.EffectManager",
           "HypnoCore.FramingHook",
           "HypnoCore.HumanCenteringFramingHook",
-          "HypnoCore.HypnogramClip",
-          "HypnoCore.HypnogramSource",
+          "HypnoCore.Hypnogram",
+          "HypnoCore.HypnogramLayer",
           "HypnoCore.Int",
           "HypnoCore.LoadedSource",
+          "HypnoCore.MediaClip",
           "HypnoCore.RenderError",
           "HypnoCore.RenderInstruction",
           "HypnoCore.SourceFraming",
-          "HypnoCore.SourceLoader",
-          "HypnoCore.VideoClip"
+          "HypnoCore.SourceLoader"
         ]
       },
       {
@@ -330,7 +264,7 @@
         "uses_internal": [
           "HypnoCore.CGSize",
           "HypnoCore.HypnoCoreHooks",
-          "HypnoCore.HypnogramSource",
+          "HypnoCore.HypnogramLayer",
           "HypnoCore.LoadedSource",
           "HypnoCore.RenderError",
           "HypnoCore.RendererImageUtils",
@@ -402,7 +336,7 @@
           "Divine.DivineState",
           "HypnoCore.CGSize",
           "HypnoCore.Int",
-          "HypnoCore.VideoClip"
+          "HypnoCore.MediaClip"
         ]
       },
       {
@@ -473,7 +407,7 @@
           "HypnoCore.EffectsSession",
           "HypnoCore.FrameBuffer",
           "HypnoCore.FrameBufferPreloader",
-          "HypnoCore.HypnogramClip",
+          "HypnoCore.Hypnogram",
           "HypnoCore.Int",
           "HypnoCore.NoNormalization",
           "HypnoCore.NormalizationStrategy",
@@ -548,6 +482,28 @@
           "HypnoCore.HypnoCoreConfig",
           "HypnoCore.HypnoEffectsBundle",
           "HypnoCore.Int"
+        ]
+      },
+      {
+        "key": "HypnoCore.HypnographSession",
+        "name": "HypnographSession",
+        "qualified_name": "HypnographSession",
+        "module": "HypnoCore",
+        "kind": "struct",
+        "file": "HypnoCore/Recipes/HypnographSession.swift",
+        "imports": [
+          "CoreMedia",
+          "Foundation"
+        ],
+        "conforms_raw": [
+          "Codable"
+        ],
+        "conforms_internal": [],
+        "uses_internal": [
+          "HypnoCore.CodableCMTime",
+          "HypnoCore.EffectChain",
+          "HypnoCore.Hypnogram",
+          "HypnoCore.HypnogramLayer"
         ]
       }
     ],
@@ -693,20 +649,21 @@
         ],
         "conforms_internal": [],
         "uses_internal": [
-          "HypnoCore.HypnogramRecipe",
+          "HypnoCore.Hypnogram",
+          "HypnoCore.HypnographSession",
           "Hypnograph.DateFormatter",
           "Hypnograph.Environment",
           "Hypnograph.HypnogramEntry",
-          "Hypnograph.RecipeStore"
+          "Hypnograph.SessionStore"
         ]
       },
       {
-        "key": "Hypnograph.RecipeStore",
-        "name": "RecipeStore",
-        "qualified_name": "RecipeStore",
+        "key": "Hypnograph.SessionStore",
+        "name": "SessionStore",
+        "qualified_name": "SessionStore",
         "module": "Hypnograph",
         "kind": "enum",
-        "file": "Hypnograph/RecipeStore.swift",
+        "file": "Hypnograph/SessionStore.swift",
         "imports": [
           "AppKit",
           "Foundation",
@@ -715,9 +672,10 @@
         "conforms_raw": [],
         "conforms_internal": [],
         "uses_internal": [
-          "HypnoCore.HypnogramRecipe",
+          "HypnoCore.HypnographSession",
           "HypnoCore.Int",
-          "Hypnograph.Environment"
+          "Hypnograph.Environment",
+          "Hypnograph.LegacySessionMigration"
         ]
       },
       {
@@ -1052,7 +1010,7 @@
           "Hypnograph.View"
         ],
         "uses_internal": [
-          "HypnoCore.HypnogramSource",
+          "HypnoCore.HypnogramLayer",
           "HypnoCore.Int",
           "Hypnograph.Dream",
           "Hypnograph.HUDItem",
@@ -1236,7 +1194,7 @@
         "uses_internal": [
           "HypnoCore.AspectRatio",
           "HypnoCore.EffectManager",
-          "HypnoCore.HypnogramClip",
+          "HypnoCore.Hypnogram",
           "HypnoCore.Int",
           "HypnoCore.NSColor",
           "HypnoCore.PlayerView.ContentMode",
@@ -1441,12 +1399,12 @@
           "HypnoCore.ApplePhotosLibraryKeys",
           "HypnoCore.ExclusionStore",
           "HypnoCore.HypnoCoreConfig",
+          "HypnoCore.MediaClip",
           "HypnoCore.MediaFile",
           "HypnoCore.MediaLibrary",
           "HypnoCore.MediaLibraryBuilder",
           "HypnoCore.MediaType",
-          "HypnoCore.SourceLibraryInfo",
-          "HypnoCore.VideoClip"
+          "HypnoCore.SourceLibraryInfo"
         ]
       },
       {
@@ -1487,12 +1445,12 @@
           "HypnoCore.EffectConfigLoader.LoadResult.Source",
           "HypnoCore.EffectManager",
           "HypnoCore.EffectsSession",
-          "HypnoCore.HypnogramClip",
-          "HypnoCore.HypnogramRecipe",
-          "HypnoCore.HypnogramSource",
+          "HypnoCore.Hypnogram",
+          "HypnoCore.HypnogramLayer",
+          "HypnoCore.HypnographSession",
           "HypnoCore.Int",
+          "HypnoCore.MediaClip",
           "HypnoCore.PhotoMontage.Layer",
-          "HypnoCore.VideoClip",
           "Hypnograph.PlayerConfiguration"
         ]
       },
@@ -1521,6 +1479,7 @@
           "HypnoCore.ApplePhotosLibraryKeys",
           "HypnoCore.ExclusionStore",
           "HypnoCore.HypnoCoreConfig",
+          "HypnoCore.Hypnogram",
           "HypnoCore.MediaLibrary",
           "HypnoCore.MediaLibraryBuilder",
           "HypnoCore.MediaType",
@@ -1629,6 +1588,29 @@
   "by_prefix": {
     "Media": [
       {
+        "key": "HypnoCore.MediaClip",
+        "name": "MediaClip",
+        "qualified_name": "MediaClip",
+        "module": "HypnoCore",
+        "kind": "struct",
+        "file": "HypnoCore/Media/MediaModels.swift",
+        "imports": [
+          "AVFoundation",
+          "CoreGraphics",
+          "CoreImage",
+          "CoreMedia",
+          "Foundation"
+        ],
+        "conforms_raw": [
+          "Codable"
+        ],
+        "conforms_internal": [],
+        "uses_internal": [
+          "HypnoCore.CodableCMTime",
+          "HypnoCore.MediaFile"
+        ]
+      },
+      {
         "key": "HypnoCore.MediaFile",
         "name": "MediaFile",
         "qualified_name": "MediaFile",
@@ -1696,13 +1678,13 @@
           "HypnoCore.ApplePhotos",
           "HypnoCore.ExclusionStore",
           "HypnoCore.Int",
+          "HypnoCore.MediaClip",
           "HypnoCore.MediaFile",
           "HypnoCore.MediaKind",
           "HypnoCore.MediaLibrary.SourceEntry",
           "HypnoCore.MediaSource",
           "HypnoCore.MediaType",
-          "HypnoCore.StillImageCache",
-          "HypnoCore.VideoClip"
+          "HypnoCore.StillImageCache"
         ]
       },
       {
@@ -1807,12 +1789,12 @@
     ],
     "Hypnogram": [
       {
-        "key": "HypnoCore.HypnogramClip",
-        "name": "HypnogramClip",
-        "qualified_name": "HypnogramClip",
+        "key": "HypnoCore.Hypnogram",
+        "name": "Hypnogram",
+        "qualified_name": "Hypnogram",
         "module": "HypnoCore",
         "kind": "struct",
-        "file": "HypnoCore/Recipes/HypnogramRecipe.swift",
+        "file": "HypnoCore/Recipes/HypnographSession.swift",
         "imports": [
           "CoreMedia",
           "Foundation"
@@ -1825,38 +1807,16 @@
           "HypnoCore.CodableCMTime",
           "HypnoCore.EffectChain",
           "HypnoCore.EffectConfigLoader.LoadResult.Source",
-          "HypnoCore.HypnogramSource"
+          "HypnoCore.HypnogramLayer"
         ]
       },
       {
-        "key": "HypnoCore.HypnogramRecipe",
-        "name": "HypnogramRecipe",
-        "qualified_name": "HypnogramRecipe",
+        "key": "HypnoCore.HypnogramLayer",
+        "name": "HypnogramLayer",
+        "qualified_name": "HypnogramLayer",
         "module": "HypnoCore",
         "kind": "struct",
-        "file": "HypnoCore/Recipes/HypnogramRecipe.swift",
-        "imports": [
-          "CoreMedia",
-          "Foundation"
-        ],
-        "conforms_raw": [
-          "Codable"
-        ],
-        "conforms_internal": [],
-        "uses_internal": [
-          "HypnoCore.CodableCMTime",
-          "HypnoCore.EffectChain",
-          "HypnoCore.HypnogramClip",
-          "HypnoCore.HypnogramSource"
-        ]
-      },
-      {
-        "key": "HypnoCore.HypnogramSource",
-        "name": "HypnogramSource",
-        "qualified_name": "HypnogramSource",
-        "module": "HypnoCore",
-        "kind": "struct",
-        "file": "HypnoCore/Recipes/HypnogramSource.swift",
+        "file": "HypnoCore/Recipes/HypnogramLayer.swift",
         "imports": [
           "CoreGraphics",
           "Foundation"
@@ -1868,7 +1828,7 @@
         "uses_internal": [
           "HypnoCore.CodableCGAffineTransform",
           "HypnoCore.EffectChain",
-          "HypnoCore.VideoClip"
+          "HypnoCore.MediaClip"
         ]
       },
       {
@@ -1977,11 +1937,12 @@
         ],
         "conforms_internal": [],
         "uses_internal": [
-          "HypnoCore.HypnogramRecipe",
+          "HypnoCore.Hypnogram",
+          "HypnoCore.HypnographSession",
           "Hypnograph.DateFormatter",
           "Hypnograph.Environment",
           "Hypnograph.HypnogramEntry",
-          "Hypnograph.RecipeStore"
+          "Hypnograph.SessionStore"
         ]
       }
     ],
@@ -2030,7 +1991,7 @@
           "HypnoCore.FramingHook",
           "HypnoCore.HumanCenteringFramingHook",
           "HypnoCore.HypnoCoreHooks",
-          "HypnoCore.HypnogramClip",
+          "HypnoCore.Hypnogram",
           "HypnoCore.Int",
           "HypnoCore.PhotoMontage",
           "HypnoCore.RenderEngine.Config",
@@ -2263,7 +2224,7 @@
           "HypnoCore.EffectsSession",
           "HypnoCore.FrameBuffer",
           "HypnoCore.FrameBufferPreloader",
-          "HypnoCore.HypnogramClip",
+          "HypnoCore.Hypnogram",
           "HypnoCore.Int",
           "HypnoCore.NoNormalization",
           "HypnoCore.NormalizationStrategy",
@@ -2364,11 +2325,12 @@
         "uses_internal": [
           "HypnoCore.EffectChain",
           "HypnoCore.EffectConfigLoader",
-          "HypnoCore.EffectConfigLoader.LoadResult.Source",
           "HypnoCore.EffectsSession",
-          "HypnoCore.HypnogramRecipe",
+          "HypnoCore.Hypnogram",
+          "HypnoCore.HypnographSession",
+          "HypnoCore.PhotoMontage.Layer",
           "HypnoUI.AppNotifications",
-          "Hypnograph.RecipeStore"
+          "Hypnograph.SessionStore"
         ]
       },
       {
@@ -2538,9 +2500,9 @@
           "HypnoCore.EffectConfigLoader.LoadResult.Source",
           "HypnoCore.EffectManager",
           "HypnoCore.EffectsSession",
-          "HypnoCore.HypnogramClip",
-          "HypnoCore.HypnogramRecipe",
-          "HypnoCore.HypnogramSource",
+          "HypnoCore.Hypnogram",
+          "HypnoCore.HypnogramLayer",
+          "HypnoCore.HypnographSession",
           "HypnoCore.Int",
           "HypnoCore.RecentEffectChainsStore",
           "HypnoCore.RenderEngine.ExportQueue",
@@ -2560,7 +2522,7 @@
           "Hypnograph.LivePlayerScreen",
           "Hypnograph.OutputResolution",
           "Hypnograph.PreviewPlayerView",
-          "Hypnograph.RecipeFileActions"
+          "Hypnograph.SessionFileActions"
         ]
       },
       {
@@ -2609,12 +2571,12 @@
           "HypnoCore.EffectConfigLoader.LoadResult.Source",
           "HypnoCore.EffectManager",
           "HypnoCore.EffectsSession",
-          "HypnoCore.HypnogramClip",
-          "HypnoCore.HypnogramRecipe",
-          "HypnoCore.HypnogramSource",
+          "HypnoCore.Hypnogram",
+          "HypnoCore.HypnogramLayer",
+          "HypnoCore.HypnographSession",
           "HypnoCore.Int",
+          "HypnoCore.MediaClip",
           "HypnoCore.PhotoMontage.Layer",
-          "HypnoCore.VideoClip",
           "Hypnograph.PlayerConfiguration"
         ]
       }
@@ -2845,27 +2807,6 @@
         ]
       },
       {
-        "key": "HypnoCore.HypnogramSource",
-        "name": "HypnogramSource",
-        "qualified_name": "HypnogramSource",
-        "module": "HypnoCore",
-        "kind": "struct",
-        "file": "HypnoCore/Recipes/HypnogramSource.swift",
-        "imports": [
-          "CoreGraphics",
-          "Foundation"
-        ],
-        "conforms_raw": [
-          "Codable"
-        ],
-        "conforms_internal": [],
-        "uses_internal": [
-          "HypnoCore.CodableCGAffineTransform",
-          "HypnoCore.EffectChain",
-          "HypnoCore.VideoClip"
-        ]
-      },
-      {
         "key": "HypnoCore.LoadedSource",
         "name": "LoadedSource",
         "qualified_name": "LoadedSource",
@@ -3024,7 +2965,7 @@
         "uses_internal": [
           "HypnoCore.CGSize",
           "HypnoCore.HypnoCoreHooks",
-          "HypnoCore.HypnogramSource",
+          "HypnoCore.HypnogramLayer",
           "HypnoCore.LoadedSource",
           "HypnoCore.RenderError",
           "HypnoCore.RendererImageUtils",
@@ -3058,31 +2999,9 @@
     ],
     "Clip": [
       {
-        "key": "HypnoCore.HypnogramClip",
-        "name": "HypnogramClip",
-        "qualified_name": "HypnogramClip",
-        "module": "HypnoCore",
-        "kind": "struct",
-        "file": "HypnoCore/Recipes/HypnogramRecipe.swift",
-        "imports": [
-          "CoreMedia",
-          "Foundation"
-        ],
-        "conforms_raw": [
-          "Codable"
-        ],
-        "conforms_internal": [],
-        "uses_internal": [
-          "HypnoCore.CodableCMTime",
-          "HypnoCore.EffectChain",
-          "HypnoCore.EffectConfigLoader.LoadResult.Source",
-          "HypnoCore.HypnogramSource"
-        ]
-      },
-      {
-        "key": "HypnoCore.VideoClip",
-        "name": "VideoClip",
-        "qualified_name": "VideoClip",
+        "key": "HypnoCore.MediaClip",
+        "name": "MediaClip",
+        "qualified_name": "MediaClip",
         "module": "HypnoCore",
         "kind": "struct",
         "file": "HypnoCore/Media/MediaModels.swift",
@@ -3118,7 +3037,7 @@
         ],
         "conforms_internal": [],
         "uses_internal": [
-          "HypnoCore.HypnogramClip",
+          "HypnoCore.Hypnogram",
           "HypnoCore.Int"
         ]
       },
@@ -3575,7 +3494,7 @@
           "HypnoCore.EffectsSession",
           "HypnoCore.FrameBuffer",
           "HypnoCore.FrameBufferPreloader",
-          "HypnoCore.HypnogramClip",
+          "HypnoCore.Hypnogram",
           "HypnoCore.Int",
           "HypnoCore.NoNormalization",
           "HypnoCore.NormalizationStrategy",
@@ -4250,11 +4169,12 @@
         "uses_internal": [
           "HypnoCore.EffectChain",
           "HypnoCore.EffectConfigLoader",
-          "HypnoCore.EffectConfigLoader.LoadResult.Source",
           "HypnoCore.EffectsSession",
-          "HypnoCore.HypnogramRecipe",
+          "HypnoCore.Hypnogram",
+          "HypnoCore.HypnographSession",
+          "HypnoCore.PhotoMontage.Layer",
           "HypnoUI.AppNotifications",
-          "Hypnograph.RecipeStore"
+          "Hypnograph.SessionStore"
         ]
       },
       {
@@ -4432,15 +4352,17 @@
     ]
   },
   "base_variants": {
-    "Hypnogram": [
-      "HypnogramClip",
-      "HypnogramRecipe",
-      "HypnogramSource",
-      "HypnogramStore"
-    ],
     "Divine": [
       "DivineState",
       "DivineView"
+    ],
+    "Hypnograph": [
+      "HypnographSession",
+      "HypnographState"
+    ],
+    "Media": [
+      "MediaClip",
+      "MediaSource"
     ],
     "RecentEffectChains": [
       "RecentEffectChainsConfig",

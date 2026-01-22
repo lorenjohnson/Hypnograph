@@ -192,7 +192,7 @@ final class Divine: ObservableObject {
 
     func excludeCurrentCardSource() {
         guard let card = cardManager.selectedCard else { return }
-        state.exclude(file: card.clip.file)
+        state.exclude(file: card.mediaClip.file)
         // Replace with new random card
         cardManager.replaceCurrentCard()
     }

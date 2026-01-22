@@ -3,7 +3,7 @@
 //  Hypnograph
 //
 //  Clean unified state: no “candidate” concept, no mirrors,
-//  one authoritative list of HypnogramSource objects.
+//  one authoritative list of HypnogramLayer objects.
 //
 //  Created by Loren Johnson on 15.11.25.
 //

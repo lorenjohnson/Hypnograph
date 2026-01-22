@@ -15,7 +15,7 @@ import HypnoCore
 /// Preview player view for Dream module layered playback.
 /// Uses PlayerContentView for GPU-accelerated frame display with shader transitions.
 struct PreviewPlayerView: NSViewRepresentable {
-    let clip: HypnogramClip
+    let clip: Hypnogram
     let aspectRatio: AspectRatio
     let displayResolution: OutputResolution
     let sourceFraming: SourceFraming
@@ -148,13 +148,13 @@ struct PreviewPlayerView: NSViewRepresentable {
         c.transitionDuration = transitionDuration
         c.watchMode = watchMode
         c.onClipEnded = onClipEnded
-        c.isAllStillImages = clip.sources.allSatisfy { $0.clip.file.mediaKind == .image }
+        c.isAllStillImages = clip.layers.allSatisfy { $0.mediaClip.file.mediaKind == .image }
         if !watchMode || isPaused {
             c.isWatchAdvanceInFlight = false
             c.didRequestPreEndAdvance = false
         }
 
-        guard !clip.sources.isEmpty else {
+        guard !clip.layers.isEmpty else {
             // Just pause, don't tear down - sources might be added back immediately
             c.contentView?.activeAVPlayer?.pause()
             c.currentTask?.cancel()
@@ -462,12 +462,12 @@ struct PreviewPlayerView: NSViewRepresentable {
 
     // MARK: - Helpers
 
-    private func compositionIdentity(for clip: HypnogramClip) -> String {
-        let pairs: [String] = clip.sources.enumerated().map { index, source in
-            let name = source.clip.file.displayName
-            let start = source.clip.startTime.seconds
-            let dur = source.clip.duration.seconds
-            let transformsStr = source.transforms.map { t in
+    private func compositionIdentity(for clip: Hypnogram) -> String {
+        let pairs: [String] = clip.layers.enumerated().map { index, layer in
+            let name = layer.mediaClip.file.displayName
+            let start = layer.mediaClip.startTime.seconds
+            let dur = layer.mediaClip.duration.seconds
+            let transformsStr = layer.transforms.map { t in
                 "\(t.a),\(t.b),\(t.c),\(t.d),\(t.tx),\(t.ty)"
             }.joined(separator: ";")
             return "\(name)|\(start)|\(dur)|\(transformsStr)"

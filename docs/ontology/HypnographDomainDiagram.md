@@ -13,12 +13,12 @@ graph TD
   %% Media models (origin of bytes)
   MediaSource["HypnoCore.MediaSource<br/>(url | external)"]
   MediaFile["HypnoCore.MediaFile<br/>(selectable asset)"]
-  VideoClip["HypnoCore.VideoClip<br/>(media slice of MediaFile)"]
+  MediaClip["HypnoCore.MediaClip<br/>(media slice of MediaFile)"]
 
   %% Recipe models (what to render)
-  HypnogramSource["HypnoCore.HypnogramSource<br/>(LAYER: media slice + transforms + blend + effects)"]
-  HypnogramClip["HypnoCore.HypnogramClip<br/>(CLIP (sequence item): layers + global effects + duration)"]
-  HypnogramRecipe["HypnoCore.HypnogramRecipe<br/>(SEQUENCE/RECIPE: ordered clips + snapshot)"]
+  HypnogramLayer["HypnoCore.HypnogramLayer<br/>(LAYER: media slice + transforms + blend + effects)"]
+  Hypnogram["HypnoCore.Hypnogram<br/>(CLIP (sequence item): layers + global effects + duration)"]
+  HypnographSession["HypnoCore.HypnographSession<br/>(SESSION: ordered hypnograms + snapshot)"]
   EffectChain["HypnoCore.EffectChain"]
 
   %% Renderer pipeline (how it renders)
@@ -31,26 +31,26 @@ graph TD
   Dream["Hypnograph.Dream"]
 
   MediaSource -->|backs| MediaFile
-  MediaFile -->|sliced by| VideoClip
+  MediaFile -->|sliced by| MediaClip
 
-  VideoClip -->|is the clip of| HypnogramSource
-  HypnogramSource -->|per-layer| EffectChain
-  HypnogramClip -->|contains many| HypnogramSource
-  HypnogramClip -->|global| EffectChain
-  HypnogramRecipe -->|contains many| HypnogramClip
+  MediaClip -->|is the clip of| HypnogramLayer
+  HypnogramLayer -->|per-layer| EffectChain
+  Hypnogram -->|contains many| HypnogramLayer
+  Hypnogram -->|global| EffectChain
+  HypnographSession -->|contains many| Hypnogram
 
-  HypnogramSource -->|loaded by| SourceLoader
+  HypnogramLayer -->|loaded by| SourceLoader
   SourceLoader -->|produces| LoadedSource
-  HypnogramClip -->|built by| CompositionBuilder
+  Hypnogram -->|built by| CompositionBuilder
   CompositionBuilder -->|uses| SourceLoader
   RenderEngine -->|drives| CompositionBuilder
 
-  Dream -->|owns| HypnogramRecipe
+  Dream -->|owns| HypnographSession
 ```
 
-## Ideal vocabulary overlay (proposed)
+## Vocabulary summary
 
-This keeps the *structure* identical to current code, but swaps in the “more memorable” nouns:
+Core domain nouns (implemented 2026-01-22):
 
 - **HypnographSession** = sequence/container of playable items
 - **Hypnogram** = one playable item (1..N layers)
@@ -59,18 +59,18 @@ This keeps the *structure* identical to current code, but swaps in the “more m
 
 ```mermaid
 graph TD
-  %% Media models (proposed nouns)
-  MediaOrigin["MediaOrigin<br/>(= MediaSource)"]
-  MediaAsset["MediaAsset<br/>(= MediaFile)"]
-  MediaClip["MediaClip<br/>(= VideoClip)"]
+  %% Media models
+  MediaSource["MediaSource"]
+  MediaFile["MediaFile"]
+  MediaClip["MediaClip"]
 
-  %% Composition models (proposed nouns)
-  HypnogramLayer["HypnogramLayer<br/>(= HypnogramSource)"]
-  Hypnogram["Hypnogram<br/>(= HypnogramClip)"]
-  HypnographSession["HypnographSession<br/>(= HypnogramRecipe)"]
+  %% Composition models
+  HypnogramLayer["HypnogramLayer"]
+  Hypnogram["Hypnogram"]
+  HypnographSession["HypnographSession"]
 
-  MediaOrigin --> MediaAsset
-  MediaAsset --> MediaClip
+  MediaSource --> MediaFile
+  MediaFile --> MediaClip
 
   MediaClip --> HypnogramLayer
   Hypnogram -->|contains many| HypnogramLayer

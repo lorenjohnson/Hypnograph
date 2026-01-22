@@ -26,11 +26,11 @@ final class DivinePlayerManager: ObservableObject {
             return existing
         }
 
-        guard let asset = await card.clip.file.loadAsset() else {
+        guard let asset = await card.mediaClip.file.loadAsset() else {
             return nil
         }
         let item = AVPlayerItem(asset: asset)
-        let endTime = CMTimeAdd(card.clip.startTime, card.clip.duration)
+        let endTime = CMTimeAdd(card.mediaClip.startTime, card.mediaClip.duration)
         item.forwardPlaybackEndTime = endTime
 
         let player = AVPlayer(playerItem: item)

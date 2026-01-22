@@ -202,10 +202,10 @@ final class DivineCardManager: ObservableObject {
         var card = cards[newIdx]
 
         // Images: just reveal (no playback)
-        if card.clip.file.mediaKind == .image {
+        if card.mediaClip.file.mediaKind == .image {
             if card.cgImage == nil {
                 Task { @MainActor in
-                    self.cards[newIdx].cgImage = await self.grabStill(from: card.clip)
+                    self.cards[newIdx].cgImage = await self.grabStill(from: card.mediaClip)
                 }
             }
             card.isRevealed = true
@@ -220,7 +220,7 @@ final class DivineCardManager: ObservableObject {
 
         Task { @MainActor [weak self] in
             guard let self = self else { return }
-            let seekTime = card.lastSnapshotTime ?? card.clip.startTime
+            let seekTime = card.lastSnapshotTime ?? card.mediaClip.startTime
             guard let player = await self.playerManager.player(for: card, onPlaybackEnd: { [weak self] in
                 self?.handlePlaybackEnded(for: card.id)
             }) else {
@@ -261,7 +261,7 @@ final class DivineCardManager: ObservableObject {
         guard index >= 0 && index < cards.count else { return }
 
         var card = cards[index]
-        let isVideo = card.clip.file.mediaKind == .video
+        let isVideo = card.mediaClip.file.mediaKind == .video
         let player = playerManager.player(forID: card.id)
 
         switch (card.isRevealed, card.isPlaying) {
@@ -273,7 +273,7 @@ final class DivineCardManager: ObservableObject {
 
             if isVideo {
                 // Create player (paused) - it will show the first frame
-                let seekTime = card.lastSnapshotTime ?? card.clip.startTime
+                let seekTime = card.lastSnapshotTime ?? card.mediaClip.startTime
                 Task { @MainActor [weak self] in
                     guard let self = self else { return }
                     guard let player = await self.playerManager.player(for: card, onPlaybackEnd: { [weak self] in
@@ -286,7 +286,7 @@ final class DivineCardManager: ObservableObject {
                 // Image: load cgImage
                 if card.cgImage == nil {
                     Task { @MainActor in
-                        self.cards[index].cgImage = await self.grabStill(from: card.clip)
+                        self.cards[index].cgImage = await self.grabStill(from: card.mediaClip)
                     }
                 }
             }
@@ -318,7 +318,7 @@ final class DivineCardManager: ObservableObject {
     private func handlePlaybackEnded(for id: UUID) {
         updateCard(id: id) { card, _ in
             // Player stays visible showing the end frame, just mark as not playing
-            card.lastSnapshotTime = card.clip.startTime
+            card.lastSnapshotTime = card.mediaClip.startTime
             card.isPlaying = false
             card.isRevealed = true
         }
@@ -326,22 +326,22 @@ final class DivineCardManager: ObservableObject {
 
     private func makeCard(offset: CGSize) -> DivineCard? {
         // Get all source identifiers currently on the table
-        let usedSources = Set(cards.map { $0.clip.file.source.identifier })
+        let usedSources = Set(cards.map { $0.mediaClip.file.source.identifier })
 
         // Try to get a unique clip (not already on the table)
-        var clip: VideoClip?
+        var mediaClip: MediaClip?
         let maxAttempts = 100
 
         for _ in 0..<maxAttempts {
             if let candidate = state.randomClip() {
                 if !usedSources.contains(candidate.file.source.identifier) {
-                    clip = candidate
+                    mediaClip = candidate
                     break
                 }
             }
         }
 
-        guard let clip = clip else {
+        guard let mediaClip = mediaClip else {
             // Silently fail - no unique sources available
             return nil
         }
@@ -350,26 +350,26 @@ final class DivineCardManager: ObservableObject {
 
         // Create card with nil image initially - will be loaded async
         return DivineCard(
-            clip: clip,
+            mediaClip: mediaClip,
             cgImage: nil,
             isRevealed: false,
             isPlaying: false,
             isFlipped: flipped,
             offset: offset,
             dragOffset: .zero,
-            lastSnapshotTime: clip.startTime
+            lastSnapshotTime: mediaClip.startTime
         )
     }
 
     /// Load the thumbnail image for image-only cards asynchronously
     private func loadCardImage(at index: Int) {
         guard index < cards.count else { return }
-        let clip = cards[index].clip
+        let mediaClip = cards[index].mediaClip
         // Only pre-load for images; videos use AVPlayer to show frames
-        guard clip.file.mediaKind == .image else { return }
+        guard mediaClip.file.mediaKind == .image else { return }
         Task { @MainActor in
-            let cgImage = await grabStill(from: clip)
-            if index < cards.count, cards[index].clip.file.id == clip.file.id {
+            let cgImage = await grabStill(from: mediaClip)
+            if index < cards.count, cards[index].mediaClip.file.id == mediaClip.file.id {
                 cards[index].cgImage = cgImage
             }
         }
@@ -377,8 +377,8 @@ final class DivineCardManager: ObservableObject {
 
     // MARK: - Still grabbing
 
-    private func grabStill(from clip: VideoClip, at time: CMTime? = nil) async -> CGImage? {
-        let file = clip.file
+    private func grabStill(from mediaClip: MediaClip, at time: CMTime? = nil) async -> CGImage? {
+        let file = mediaClip.file
 
         // Image-backed sources: use MediaFile's loadCGImage()
         if file.mediaKind == .image {
@@ -392,7 +392,7 @@ final class DivineCardManager: ObservableObject {
         }
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
-        let t = time ?? clip.startTime
+        let t = time ?? mediaClip.startTime
 
         do {
             var actual = CMTime.zero

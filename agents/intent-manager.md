@@ -1,0 +1,1 @@
+Before any action if it is at all uncertain my intent ask for clarification for any role or task. 

@@ -17,7 +17,7 @@ Outputs:
 - `docs/ontology/hypnograph-ontology.mmd`: Filtered Mermaid graph for readability.
 - `docs/ontology/hypnograph-ontology-full.mmd`: Full Mermaid graph (can be very large).
 - `docs/ontology/HypnographDomainDiagram.md`: Curated domain diagram for naming/consistency checks.
-- `docs/Hypnograph/projects/20260121-more-clear-naming/overview.md`: Naming cleanup planning notes.
+- `docs/Hypnograph/_archive/projects/20260121-more-clear-naming/overview.md`: Naming cleanup planning notes.
 
 ## Viewing diagrams
 

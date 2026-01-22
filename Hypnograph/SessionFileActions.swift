@@ -1,8 +1,8 @@
 //
-//  RecipeFileActions.swift
+//  SessionFileActions.swift
 //  Hypnograph
 //
-//  UI helpers for opening and saving recipe files.
+//  UI helpers for opening and saving session files.
 //
 
 import AppKit
@@ -11,46 +11,46 @@ import UniformTypeIdentifiers
 import HypnoCore
 
 @MainActor
-enum RecipeFileActions {
+enum SessionFileActions {
     static func saveAs(
-        recipe: HypnogramRecipe,
+        session: HypnographSession,
         snapshot: CGImage,
         onSaved: (() -> Void)? = nil
     ) {
         let panel = NSSavePanel()
         panel.allowedContentTypes = allowedContentTypes()
-        panel.nameFieldStringValue = RecipeStore.defaultFilename()
-        panel.directoryURL = RecipeStore.recipesDirectory
+        panel.nameFieldStringValue = SessionStore.defaultFilename()
+        panel.directoryURL = SessionStore.sessionsDirectory
 
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
-            if RecipeStore.save(recipe, snapshot: snapshot, to: url) != nil {
+            if SessionStore.save(session, snapshot: snapshot, to: url) != nil {
                 onSaved?()
             }
         }
     }
 
-    static func openRecipe(
-        onLoaded: @escaping (HypnogramRecipe) -> Void,
+    static func openSession(
+        onLoaded: @escaping (HypnographSession) -> Void,
         onFailure: (() -> Void)? = nil
     ) {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = allowedContentTypes()
-        panel.directoryURL = RecipeStore.recipesDirectory
+        panel.directoryURL = SessionStore.sessionsDirectory
         panel.allowsMultipleSelection = false
 
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
-            guard let recipe = RecipeStore.load(from: url) else {
+            guard let session = SessionStore.load(from: url) else {
                 onFailure?()
                 return
             }
-            onLoaded(recipe)
+            onLoaded(session)
         }
     }
 
     private static func allowedContentTypes() -> [UTType] {
-        let types = RecipeStore.fileExtensions.compactMap { UTType(filenameExtension: $0) }
+        let types = SessionStore.fileExtensions.compactMap { UTType(filenameExtension: $0) }
         return types.isEmpty ? [UTType.data] : types
     }
 }

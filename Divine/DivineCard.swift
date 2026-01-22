@@ -10,7 +10,7 @@ import HypnoCore
 
 struct DivineCard: Identifiable {
     let id: UUID
-    var clip: VideoClip
+    var mediaClip: MediaClip
     var cgImage: CGImage?
     var isRevealed: Bool
     var isPlaying: Bool
@@ -21,7 +21,7 @@ struct DivineCard: Identifiable {
 
     init(
         id: UUID = UUID(),
-        clip: VideoClip,
+        mediaClip: MediaClip,
         cgImage: CGImage? = nil,
         isRevealed: Bool = false,
         isPlaying: Bool = false,
@@ -31,7 +31,7 @@ struct DivineCard: Identifiable {
         lastSnapshotTime: CMTime? = nil
     ) {
         self.id = id
-        self.clip = clip
+        self.mediaClip = mediaClip
         self.cgImage = cgImage
         self.isRevealed = isRevealed
         self.isPlaying = isPlaying

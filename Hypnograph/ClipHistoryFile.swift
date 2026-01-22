@@ -9,8 +9,8 @@ import Foundation
 import HypnoCore
 
 struct ClipHistoryFile: Codable {
-    var clips: [HypnogramClip]
-    var currentClipIndex: Int
+    var hypnograms: [Hypnogram]
+    var currentHypnogramIndex: Int
 }
 
 enum ClipHistoryIO {
@@ -37,22 +37,22 @@ enum ClipHistoryIO {
     }
 
     private static func sanitize(_ history: ClipHistoryFile, historyLimit: Int) -> ClipHistoryFile {
-        var clips = history.clips
-        var index = history.currentClipIndex
+        var hypnograms = history.hypnograms
+        var index = history.currentHypnogramIndex
 
         let limit = max(1, historyLimit)
-        if clips.count > limit {
-            let overflow = clips.count - limit
-            clips.removeFirst(overflow)
+        if hypnograms.count > limit {
+            let overflow = hypnograms.count - limit
+            hypnograms.removeFirst(overflow)
             index = max(0, index - overflow)
         }
 
-        if clips.isEmpty {
-            return ClipHistoryFile(clips: [], currentClipIndex: 0)
+        if hypnograms.isEmpty {
+            return ClipHistoryFile(hypnograms: [], currentHypnogramIndex: 0)
         }
 
-        index = max(0, min(index, clips.count - 1))
-        return ClipHistoryFile(clips: clips, currentClipIndex: index)
+        index = max(0, min(index, hypnograms.count - 1))
+        return ClipHistoryFile(hypnograms: hypnograms, currentHypnogramIndex: index)
     }
 
     private static func backupCorruptFile(at url: URL) {
@@ -73,4 +73,3 @@ enum ClipHistoryIO {
         }
     }
 }
-

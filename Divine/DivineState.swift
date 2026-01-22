@@ -225,7 +225,7 @@ final class DivineState: ObservableObject {
 
     // MARK: - Media Access (for Divine module)
 
-    func randomClip() -> VideoClip? {
+    func randomClip() -> MediaClip? {
         library.randomClip()
     }
 

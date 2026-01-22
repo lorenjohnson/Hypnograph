@@ -2,6 +2,8 @@
 
 This project captures a naming cleanup aimed at making the core “hypnograph/hypnogram/layer/media” model easier to reason about.
 
+**Status:** Complete (2026-01-22)
+
 Primary reference: `docs/ontology/HypnographDomainDiagram.md`. Supporting data: `docs/ontology/types.json` / `docs/ontology/naming.json`.
 
 ## Current structure (today)

@@ -17,19 +17,19 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Callback to check if typing is active (injected by app)
     var isTypingActive: (() -> Bool)?
 
-    /// Callback to open a recipe file (injected by app)
-    var openRecipeFile: ((URL) -> Void)? {
+    /// Callback to open a session file (injected by app)
+    var openSessionFile: ((URL) -> Void)? {
         didSet {
             // Process any pending URL that arrived before callback was wired
-            if let url = pendingRecipeURL, openRecipeFile != nil {
-                pendingRecipeURL = nil
-                openRecipeFile?(url)
+            if let url = pendingSessionURL, openSessionFile != nil {
+                pendingSessionURL = nil
+                openSessionFile?(url)
             }
         }
     }
 
-    /// URL received before openRecipeFile callback was wired up
-    private var pendingRecipeURL: URL?
+    /// URL received before openSessionFile callback was wired up
+    private var pendingSessionURL: URL?
 
     /// Callback to check if any session has unsaved changes (injected by app)
     var hasUnsavedEffectChanges: (() -> Bool)?
@@ -231,17 +231,17 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
 
     /// Handle files opened via double-click or drag-drop onto the app
     func application(_ application: NSApplication, open urls: [URL]) {
-        // Filter for supported recipe files
-        let hypnogramURLs = urls.filter { RecipeStore.isSupportedExtension($0.pathExtension) }
+        // Filter for supported session files
+        let sessionURLs = urls.filter { SessionStore.isSupportedExtension($0.pathExtension) }
 
-        // Open the first hypnogram file
-        if let url = hypnogramURLs.first {
+        // Open the first session file
+        if let url = sessionURLs.first {
             print("Hypnograph: Opening file \(url.lastPathComponent)")
-            if let openRecipeFile = openRecipeFile {
-                openRecipeFile(url)
+            if let openSessionFile = openSessionFile {
+                openSessionFile(url)
             } else {
                 // Callback not wired yet - queue for later
-                pendingRecipeURL = url
+                pendingSessionURL = url
             }
         }
     }
@@ -339,19 +339,19 @@ struct HypnographApp: App {
                     guard let dream = dream, !dream.isLiveMode else { return false }
                     // Only set flash solo if the source exists, otherwise ignore
                     if let index = sourceIndex {
-                        guard index < dream.player.sources.count else { return false }
+                        guard index < dream.player.layers.count else { return false }
                     }
                     dream.player.effectManager.setFlashSolo(sourceIndex)
                     return true
                 }
 
-                // Wire up recipe file opening
-                appDelegate.openRecipeFile = { [weak dream] url in
-                    guard let recipe = RecipeStore.load(from: url) else {
-                        AppNotifications.show("Failed to load recipe", flash: true)
+                // Wire up session file opening
+                appDelegate.openSessionFile = { [weak dream] url in
+                    guard let session = SessionStore.load(from: url) else {
+                        AppNotifications.show("Failed to load session", flash: true)
                         return
                     }
-                    dream?.appendRecipeToHistory(recipe)
+                    dream?.appendSessionToHistory(session)
                     AppNotifications.show("Loaded \(url.lastPathComponent)", flash: true)
                 }
 

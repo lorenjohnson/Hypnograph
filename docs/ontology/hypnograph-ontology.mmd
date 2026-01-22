@@ -35,22 +35,22 @@ subgraph HypnoCore
   HypnoCore_Params["Params (struct)"]
   HypnoCore_EffectChain["EffectChain (class)"]
   HypnoCore_EffectsSession["EffectsSession (class)"]
+  HypnoCore_Hypnogram["Hypnogram (struct)"]
   HypnoCore_RenderEngine["RenderEngine (class)"]
   HypnoCore_CompositionBuilder["CompositionBuilder (class)"]
   HypnoCore_MetalEffect["MetalEffect (class)"]
-  HypnoCore_EffectConfigLoader_LoadResult_Source["EffectConfigLoader.LoadResult.Source (enum)"]
-  HypnoCore_HypnogramClip["HypnogramClip (struct)"]
   HypnoCore_PlayerView["PlayerView (class)"]
   HypnoCore_TextOverlayEffect["TextOverlayEffect (class)"]
   HypnoCore_ApplePhotos["ApplePhotos (class)"]
   HypnoCore_DatamoshMetalEffect["DatamoshMetalEffect (class)"]
   HypnoCore_EffectConfigLoader["EffectConfigLoader (enum)"]
+  HypnoCore_EffectConfigLoader_LoadResult_Source["EffectConfigLoader.LoadResult.Source (enum)"]
   HypnoCore_HumanCenteringFramingHook["HumanCenteringFramingHook (class)"]
   HypnoCore_MediaLibrary["MediaLibrary (class)"]
   HypnoCore_SourceFraming["SourceFraming (enum)"]
   HypnoCore_BasicEffect["BasicEffect (class)"]
   HypnoCore_RenderEngine_ExportQueue["RenderEngine.ExportQueue (class)"]
-  HypnoCore_FrameCompositor["FrameCompositor (class)"]
+  HypnoCore_HypnographSession["HypnographSession (struct)"]
 end
 
 subgraph HypnoUI
@@ -83,14 +83,14 @@ subgraph Hypnograph
   Hypnograph_EffectChainLibraryActions["EffectChainLibraryActions (enum)"]
   Hypnograph_Environment["Environment (enum)"]
   Hypnograph_HUDView["HUDView (struct)"]
+  Hypnograph_HypnogramStore["HypnogramStore (class)"]
   Hypnograph_HypnographAppDelegate["HypnographAppDelegate (class)"]
+  Hypnograph_SessionStore["SessionStore (enum)"]
   Hypnograph_Settings_Defaults["Settings.Defaults (enum)"]
   Hypnograph_HypnogramListView["HypnogramListView (struct)"]
-  Hypnograph_HypnogramStore["HypnogramStore (class)"]
   Hypnograph_LiveContentViewWrapper["LiveContentViewWrapper (struct)"]
   Hypnograph_ParameterSliderRow["ParameterSliderRow (struct)"]
   Hypnograph_PlayerConfiguration["PlayerConfiguration (struct)"]
-  Hypnograph_RecipeStore["RecipeStore (enum)"]
 end
 
   Divine_CanvasScrollHandler --> Divine_CanvasScrollHandler_CanvasScrollNSView
@@ -144,7 +144,7 @@ end
   HypnoCore_BasicEffect --> HypnoCore_RenderContext
   HypnoCore_CompositionBuilder --> HypnoCore_EffectManager
   HypnoCore_CompositionBuilder --> HypnoCore_HumanCenteringFramingHook
-  HypnoCore_CompositionBuilder --> HypnoCore_HypnogramClip
+  HypnoCore_CompositionBuilder --> HypnoCore_Hypnogram
   HypnoCore_CompositionBuilder --> HypnoCore_SourceFraming
   HypnoCore_DatamoshMetalEffect --> HypnoCore_AnyCodableValue
   HypnoCore_DatamoshMetalEffect --> HypnoCore_Effect
@@ -167,7 +167,7 @@ end
   HypnoCore_EffectManager --> HypnoCore_EffectChain
   HypnoCore_EffectManager --> HypnoCore_EffectRegistry
   HypnoCore_EffectManager --> HypnoCore_EffectsSession
-  HypnoCore_EffectManager --> HypnoCore_HypnogramClip
+  HypnoCore_EffectManager --> HypnoCore_Hypnogram
   HypnoCore_EffectManager --> HypnoCore_RenderContext
   HypnoCore_EffectRegistry --> HypnoCore_AnyCodableValue
   HypnoCore_EffectRegistry --> HypnoCore_BasicEffect
@@ -180,8 +180,10 @@ end
   HypnoCore_EffectsSession --> HypnoCore_Effect
   HypnoCore_EffectsSession --> HypnoCore_EffectChain
   HypnoCore_EffectsSession --> HypnoCore_EffectRegistry
-  HypnoCore_HypnogramClip --> HypnoCore_EffectChain
-  HypnoCore_HypnogramClip --> HypnoCore_EffectConfigLoader_LoadResult_Source
+  HypnoCore_Hypnogram --> HypnoCore_EffectChain
+  HypnoCore_Hypnogram --> HypnoCore_EffectConfigLoader_LoadResult_Source
+  HypnoCore_HypnographSession --> HypnoCore_EffectChain
+  HypnoCore_HypnographSession --> HypnoCore_Hypnogram
   HypnoCore_MediaLibrary --> HypnoCore_ApplePhotos
   HypnoCore_MetalEffect --> HypnoCore_AnyCodableValue
   HypnoCore_MetalEffect --> HypnoCore_Effect
@@ -192,12 +194,11 @@ end
   HypnoCore_Params --> HypnoCore_ParameterSpec
   HypnoCore_RenderEngine --> HypnoCore_CompositionBuilder
   HypnoCore_RenderEngine --> HypnoCore_EffectManager
-  HypnoCore_RenderEngine --> HypnoCore_FrameCompositor
   HypnoCore_RenderEngine --> HypnoCore_HumanCenteringFramingHook
-  HypnoCore_RenderEngine --> HypnoCore_HypnogramClip
+  HypnoCore_RenderEngine --> HypnoCore_Hypnogram
   HypnoCore_RenderEngine --> HypnoCore_RenderEngine_ExportQueue
   HypnoCore_RenderEngine --> HypnoCore_SourceFraming
-  HypnoCore_RenderEngine_ExportQueue --> HypnoCore_HypnogramClip
+  HypnoCore_RenderEngine_ExportQueue --> HypnoCore_Hypnogram
   HypnoCore_RenderEngine_ExportQueue --> HypnoCore_RenderEngine
   HypnoCore_RenderEngine_ExportQueue --> HypnoCore_SourceFraming
   HypnoCore_TextOverlayEffect --> HypnoCore_AnyCodableValue
@@ -210,6 +211,7 @@ end
   HypnoUI_AppNotifications --> HypnoUI_NotificationItem
   HypnoUI_NotificationBubble --> HypnoUI_NotificationItem
   Hypnograph_AppCommands --> HypnoCore_EffectConfigLoader_LoadResult_Source
+  Hypnograph_AppCommands --> HypnoCore_Hypnogram
   Hypnograph_AppCommands --> Hypnograph_Dream
   Hypnograph_AppCommands --> Hypnograph_Environment
   Hypnograph_AppCommands --> Hypnograph_HypnographAppDelegate
@@ -228,7 +230,8 @@ end
   Hypnograph_Dream --> HypnoCore_EffectConfigLoader_LoadResult_Source
   Hypnograph_Dream --> HypnoCore_EffectManager
   Hypnograph_Dream --> HypnoCore_EffectsSession
-  Hypnograph_Dream --> HypnoCore_HypnogramClip
+  Hypnograph_Dream --> HypnoCore_Hypnogram
+  Hypnograph_Dream --> HypnoCore_HypnographSession
   Hypnograph_Dream --> HypnoCore_RenderEngine_ExportQueue
   Hypnograph_Dream --> HypnoUI_AppNotifications
   Hypnograph_Dream --> Hypnograph_DreamPlayerState
@@ -242,14 +245,16 @@ end
   Hypnograph_DreamPlayerState --> HypnoCore_EffectConfigLoader_LoadResult_Source
   Hypnograph_DreamPlayerState --> HypnoCore_EffectManager
   Hypnograph_DreamPlayerState --> HypnoCore_EffectsSession
-  Hypnograph_DreamPlayerState --> HypnoCore_HypnogramClip
+  Hypnograph_DreamPlayerState --> HypnoCore_Hypnogram
+  Hypnograph_DreamPlayerState --> HypnoCore_HypnographSession
   Hypnograph_DreamPlayerState --> Hypnograph_PlayerConfiguration
   Hypnograph_EffectChainLibraryActions --> HypnoCore_EffectChain
   Hypnograph_EffectChainLibraryActions --> HypnoCore_EffectConfigLoader
-  Hypnograph_EffectChainLibraryActions --> HypnoCore_EffectConfigLoader_LoadResult_Source
   Hypnograph_EffectChainLibraryActions --> HypnoCore_EffectsSession
+  Hypnograph_EffectChainLibraryActions --> HypnoCore_Hypnogram
+  Hypnograph_EffectChainLibraryActions --> HypnoCore_HypnographSession
   Hypnograph_EffectChainLibraryActions --> HypnoUI_AppNotifications
-  Hypnograph_EffectChainLibraryActions --> Hypnograph_RecipeStore
+  Hypnograph_EffectChainLibraryActions --> Hypnograph_SessionStore
   Hypnograph_EffectsEditorView --> HypnoCore_Effect
   Hypnograph_EffectsEditorView --> HypnoCore_EffectChain
   Hypnograph_EffectsEditorView --> HypnoCore_EffectConfigLoader_LoadResult_Source
@@ -268,8 +273,10 @@ end
   Hypnograph_HUDView --> Hypnograph_Dream
   Hypnograph_HUDView --> Hypnograph_HypnographState
   Hypnograph_HypnogramListView --> Hypnograph_HypnogramStore
+  Hypnograph_HypnogramStore --> HypnoCore_Hypnogram
+  Hypnograph_HypnogramStore --> HypnoCore_HypnographSession
   Hypnograph_HypnogramStore --> Hypnograph_Environment
-  Hypnograph_HypnogramStore --> Hypnograph_RecipeStore
+  Hypnograph_HypnogramStore --> Hypnograph_SessionStore
   Hypnograph_HypnographApp --> HypnoCore_RenderEngine_ExportQueue
   Hypnograph_HypnographApp --> HypnoUI_AppNotifications
   Hypnograph_HypnographApp --> Hypnograph_AppCommands
@@ -278,13 +285,14 @@ end
   Hypnograph_HypnographApp --> Hypnograph_Environment
   Hypnograph_HypnographApp --> Hypnograph_HypnographAppDelegate
   Hypnograph_HypnographApp --> Hypnograph_HypnographState
-  Hypnograph_HypnographApp --> Hypnograph_RecipeStore
+  Hypnograph_HypnographApp --> Hypnograph_SessionStore
   Hypnograph_HypnographAppDelegate --> HypnoCore_ApplePhotos
   Hypnograph_HypnographAppDelegate --> HypnoCore_Effect
   Hypnograph_HypnographAppDelegate --> HypnoCore_RenderEngine_ExportQueue
   Hypnograph_HypnographAppDelegate --> HypnoUI_AppNotifications
-  Hypnograph_HypnographAppDelegate --> Hypnograph_RecipeStore
+  Hypnograph_HypnographAppDelegate --> Hypnograph_SessionStore
   Hypnograph_HypnographState --> HypnoCore_ApplePhotos
+  Hypnograph_HypnographState --> HypnoCore_Hypnogram
   Hypnograph_HypnographState --> HypnoCore_MediaLibrary
   Hypnograph_HypnographState --> HypnoUI_AppNotifications
   Hypnograph_HypnographState --> HypnoUI_TextFieldFocusMonitor
@@ -296,7 +304,7 @@ end
   Hypnograph_LivePlayer --> HypnoCore_EffectChain
   Hypnograph_LivePlayer --> HypnoCore_EffectManager
   Hypnograph_LivePlayer --> HypnoCore_EffectsSession
-  Hypnograph_LivePlayer --> HypnoCore_HypnogramClip
+  Hypnograph_LivePlayer --> HypnoCore_Hypnogram
   Hypnograph_LivePlayer --> HypnoCore_RenderEngine
   Hypnograph_LivePlayer --> HypnoCore_SourceFraming
   Hypnograph_LivePlayer --> Hypnograph_PlayerConfiguration
@@ -317,11 +325,12 @@ end
   Hypnograph_PlayerSettingsView --> Hypnograph_PlayerConfiguration
   Hypnograph_PlayerSettingsView --> Hypnograph_Settings
   Hypnograph_PreviewPlayerView --> HypnoCore_EffectManager
-  Hypnograph_PreviewPlayerView --> HypnoCore_HypnogramClip
+  Hypnograph_PreviewPlayerView --> HypnoCore_Hypnogram
   Hypnograph_PreviewPlayerView --> HypnoCore_RenderEngine
   Hypnograph_PreviewPlayerView --> HypnoCore_SourceFraming
   Hypnograph_PreviewPlayerView --> Hypnograph_PlayerContentView
-  Hypnograph_RecipeStore --> Hypnograph_Environment
+  Hypnograph_SessionStore --> HypnoCore_HypnographSession
+  Hypnograph_SessionStore --> Hypnograph_Environment
   Hypnograph_Settings --> HypnoCore_SourceFraming
   Hypnograph_Settings --> Hypnograph_PlayerConfiguration
   Hypnograph_Settings --> Hypnograph_Settings_Defaults

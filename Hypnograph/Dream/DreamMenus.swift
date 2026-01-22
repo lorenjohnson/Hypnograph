@@ -39,8 +39,8 @@ extension Dream {
         // Source-specific info (only when on a source layer, not global)
         if !activePlayer.isOnGlobalLayer {
             items.append(.text("Blend mode (M): \(currentBlendModeDisplayName())", order: 26))
-            if let clip = activePlayer.currentVideoClip {
-                items.append(.text("Layer clip: \(String(format: "%.1fs", clip.duration.seconds))", order: 27))
+            if let mediaClip = activePlayer.currentMediaClip {
+                items.append(.text("Layer clip: \(String(format: "%.1fs", mediaClip.duration.seconds))", order: 27))
             }
 
         }
