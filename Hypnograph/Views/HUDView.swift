@@ -78,21 +78,21 @@ struct HUDView: View {
             // Source file list section
             Spacer().frame(height: 12)
 
-            Text("Sources (\(formattedDuration))")
+            Text("Layers (\(formattedDuration))")
                     .font(.subheadline)
                     .foregroundColor(.white)
 
-                if dream.activePlayer.sources.isEmpty {
-                    Text("No sources")
+                if dream.activePlayer.layers.isEmpty {
+                    Text("No layers")
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.7))
                 } else {
-                    ForEach(Array(dream.activePlayer.sources.enumerated()), id: \.offset) { index, source in
+                    ForEach(Array(dream.activePlayer.layers.enumerated()), id: \.offset) { index, layer in
                         HStack(spacing: 4) {
                             Text("\(index + 1):")
                                 .font(.system(.caption, design: .monospaced))
                                 .foregroundColor(index == dream.activePlayer.currentSourceIndex ? .cyan : .white.opacity(0.7))
-                            Text(shortenedPath(source))
+                            Text(shortenedPath(layer))
                                 .font(.system(.caption, design: .monospaced))
                                 .foregroundColor(index == dream.activePlayer.currentSourceIndex ? .cyan : .white)
                                 .lineLimit(1)
@@ -134,8 +134,8 @@ struct HUDView: View {
     }
 
     /// Shorten path by replacing home directory with ~/
-    private func shortenedPath(_ source: HypnogramSource) -> String {
-        switch source.clip.file.source {
+    private func shortenedPath(_ source: HypnogramLayer) -> String {
+        switch source.mediaClip.file.source {
         case .url(let url):
             let path = url.path
             let homeDir = FileManager.default.homeDirectoryForCurrentUser.path

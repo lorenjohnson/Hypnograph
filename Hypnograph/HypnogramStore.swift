@@ -18,17 +18,61 @@ struct HypnogramEntry: Identifiable, Codable {
     let id: UUID
     let name: String
     let createdAt: Date
-    let recipeURL: URL
+    var favoritedAt: Date?
+    let sessionURL: URL
     var thumbnailBase64: String?
     var isFavorite: Bool
 
-    init(name: String, recipeURL: URL, thumbnailBase64: String? = nil, isFavorite: Bool = false) {
+    private enum CodingKeys: String, CodingKey {
+        case id, name, createdAt, favoritedAt, sessionURL, thumbnailBase64, isFavorite
+
+        // Legacy key (Phase 1–3 schema)
+        case recipeURL
+    }
+
+    init(
+        name: String,
+        sessionURL: URL,
+        thumbnailBase64: String? = nil,
+        isFavorite: Bool = false,
+        favoritedAt: Date? = nil
+    ) {
         self.id = UUID()
         self.name = name
         self.createdAt = Date()
-        self.recipeURL = recipeURL
+        self.favoritedAt = favoritedAt ?? (isFavorite ? Date() : nil)
+        self.sessionURL = sessionURL
         self.thumbnailBase64 = thumbnailBase64
         self.isFavorite = isFavorite
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        favoritedAt = try container.decodeIfPresent(Date.self, forKey: .favoritedAt)
+        thumbnailBase64 = try container.decodeIfPresent(String.self, forKey: .thumbnailBase64)
+        isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+
+        if let url = try container.decodeIfPresent(URL.self, forKey: .sessionURL) {
+            sessionURL = url
+        } else {
+            // Temporary migration support (Phase 4, Option A):
+            // Older store entries used `recipeURL`.
+            sessionURL = try container.decode(URL.self, forKey: .recipeURL)
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encodeIfPresent(favoritedAt, forKey: .favoritedAt)
+        try container.encode(sessionURL, forKey: .sessionURL)
+        try container.encodeIfPresent(thumbnailBase64, forKey: .thumbnailBase64)
+        try container.encode(isFavorite, forKey: .isFavorite)
     }
 
     /// Decode thumbnail from base64 to NSImage
@@ -51,7 +95,9 @@ final class HypnogramStore: ObservableObject {
 
     /// Filtered list of favorites only
     var favorites: [HypnogramEntry] {
-        entries.filter { $0.isFavorite }
+        entries
+            .filter { $0.isFavorite }
+            .sorted { ($0.favoritedAt ?? $0.createdAt) > ($1.favoritedAt ?? $1.createdAt) }
     }
 
     /// Recent entries (sorted by date, newest first)
@@ -70,15 +116,15 @@ final class HypnogramStore: ObservableObject {
 
     /// Add a new hypnogram entry
     /// - Parameters:
-    ///   - recipe: The recipe to save
+    ///   - session: The session to save
     ///   - snapshot: CGImage snapshot of the current frame (required for .hypno/.hypnogram format)
     ///   - name: Display name for the entry
     ///   - isFavorite: Whether to mark as favorite
     /// - Returns: The created entry, or nil if save failed
     @discardableResult
-    func add(recipe: HypnogramRecipe, snapshot: CGImage, name: String? = nil, isFavorite: Bool = false) -> HypnogramEntry? {
-        // Save recipe + snapshot as .hypno file (JPEG with embedded recipe)
-        guard let recipeURL = RecipeStore.save(recipe, snapshot: snapshot) else {
+    func add(session: HypnographSession, snapshot: CGImage, name: String? = nil, isFavorite: Bool = false) -> HypnogramEntry? {
+        // Save session + snapshot as .hypno file (JPEG with embedded session)
+        guard let sessionURL = SessionStore.save(session, snapshot: snapshot) else {
             return nil
         }
 
@@ -88,7 +134,7 @@ final class HypnogramStore: ObservableObject {
         let displayName = name ?? "Hypnogram \(DateFormatter.shortDateTime.string(from: Date()))"
         let entry = HypnogramEntry(
             name: displayName,
-            recipeURL: recipeURL,
+            sessionURL: sessionURL,
             thumbnailBase64: thumbnailBase64,
             isFavorite: isFavorite
         )
@@ -104,7 +150,7 @@ final class HypnogramStore: ObservableObject {
         let displayName = name ?? url.deletingPathExtension().lastPathComponent
         let entry = HypnogramEntry(
             name: displayName,
-            recipeURL: url,
+            sessionURL: url,
             thumbnailBase64: nil,
             isFavorite: isFavorite
         )
@@ -119,7 +165,7 @@ final class HypnogramStore: ObservableObject {
     func remove(_ entry: HypnogramEntry) {
         entries.removeAll { $0.id == entry.id }
         // Optionally delete the recipe file
-        // RecipeStore.delete(at: entry.recipeURL)
+        // SessionStore.delete(at: entry.sessionURL)
         save()
     }
 
@@ -127,12 +173,13 @@ final class HypnogramStore: ObservableObject {
     func toggleFavorite(_ entry: HypnogramEntry) {
         guard let index = entries.firstIndex(where: { $0.id == entry.id }) else { return }
         entries[index].isFavorite.toggle()
+        entries[index].favoritedAt = entries[index].isFavorite ? Date() : nil
         save()
     }
 
-    /// Load recipe from an entry
-    func loadRecipe(from entry: HypnogramEntry) -> HypnogramRecipe? {
-        RecipeStore.load(from: entry.recipeURL)
+    /// Load session from an entry
+    func loadSession(from entry: HypnogramEntry) -> HypnographSession? {
+        SessionStore.load(from: entry.sessionURL)
     }
 
     // MARK: - Persistence

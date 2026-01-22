@@ -3,7 +3,7 @@
 //  Hypnograph
 //
 //  Independent player state for Dream module.
-//  Holds the current recipe, effects, and settings for the preview deck.
+//  Holds the current session, effects, and settings for the preview deck.
 //
 
 import Foundation
@@ -12,21 +12,21 @@ import Combine
 import HypnoCore
 
 /// Independent player state for the Dream preview deck.
-/// Maintains its own recipe, playback state, and generation settings.
+/// Maintains its own session, playback state, and generation settings.
 @MainActor
 final class DreamPlayerState: ObservableObject {
 
-    // MARK: - Recipe (the composition)
+    // MARK: - Session (the composition)
 
-    /// The current hypnogram recipe - sources, effects, duration
-    @Published var recipe: HypnogramRecipe
+    /// The current hypnograph session - hypnograms, effects, duration
+    @Published var session: HypnographSession
 
-    /// The active clip index in `recipe.clips`
-    @Published var currentClipIndex: Int = 0
+    /// The active hypnogram index in `session.hypnograms`
+    @Published var currentHypnogramIndex: Int = 0
 
-    /// Bumps when the recipe or any of its clips are mutated.
+    /// Bumps when the session or any of its hypnograms are mutated.
     /// Use this for persistence triggers (mutating nested fields of a struct doesn't reliably publish).
-    @Published private(set) var recipeRevision: Int = 0
+    @Published private(set) var sessionRevision: Int = 0
 
     // MARK: - Playback State
 
@@ -61,41 +61,41 @@ final class DreamPlayerState: ObservableObject {
     /// This player's own effect manager - independent effects per deck
     let effectManager = EffectManager()
 
-    // MARK: - Recipe Properties (convenience accessors)
+    // MARK: - Session Properties (convenience accessors)
 
-    /// The currently selected clip (materialized).
-    var currentClip: HypnogramClip {
+    /// The currently selected hypnogram (materialized).
+    var currentHypnogram: Hypnogram {
         get {
-            let index = max(0, min(currentClipIndex, recipe.clips.count - 1))
-            return recipe.clips[index]
+            let index = max(0, min(currentHypnogramIndex, session.hypnograms.count - 1))
+            return session.hypnograms[index]
         }
         set {
-            let index = max(0, min(currentClipIndex, recipe.clips.count - 1))
-            recipe.clips[index] = newValue
-            recipeRevision &+= 1
+            let index = max(0, min(currentHypnogramIndex, session.hypnograms.count - 1))
+            session.hypnograms[index] = newValue
+            sessionRevision &+= 1
             objectWillChange.send()
         }
     }
 
-    private func updateCurrentClip(_ update: (inout HypnogramClip) -> Void) {
-        var clip = currentClip
-        update(&clip)
-        currentClip = clip
+    private func updateCurrentHypnogram(_ update: (inout Hypnogram) -> Void) {
+        var hypnogram = currentHypnogram
+        update(&hypnogram)
+        currentHypnogram = hypnogram
     }
 
-    /// Playback rate - reads/writes directly to recipe
+    /// Playback rate - reads/writes directly to the current hypnogram
     var playRate: Float {
-        get { currentClip.playRate }
+        get { currentHypnogram.playRate }
         set {
-            updateCurrentClip { $0.playRate = newValue }
+            updateCurrentHypnogram { $0.playRate = newValue }
         }
     }
 
-    /// Target duration - reads/writes directly to recipe
+    /// Target duration - reads/writes directly to the current hypnogram
     var targetDuration: CMTime {
-        get { currentClip.targetDuration }
+        get { currentHypnogram.targetDuration }
         set {
-            updateCurrentClip { $0.targetDuration = newValue }
+            updateCurrentHypnogram { $0.targetDuration = newValue }
         }
     }
 
@@ -103,9 +103,9 @@ final class DreamPlayerState: ObservableObject {
 
     init(config: PlayerConfiguration, effectsSession: EffectsSession) {
         self.config = config
-        // Recipe starts with defaults; restored from clip history on app launch.
-        self.recipe = HypnogramRecipe(
-            sources: [],
+        // Session starts with defaults; restored from clip history on app launch.
+        self.session = HypnographSession(
+            layers: [],
             targetDuration: CMTime(seconds: 60, preferredTimescale: 600),
             playRate: 1.0
         )
@@ -126,29 +126,29 @@ final class DreamPlayerState: ObservableObject {
 
         // Recipe provider
         effectManager.clipProvider = { [weak self] in
-            self?.currentClip
+            self?.currentHypnogram
         }
 
         // Global effect chain setter
         effectManager.globalEffectChainSetter = { [weak self] chain in
-            self?.updateCurrentClip { $0.effectChain = chain }
+            self?.updateCurrentHypnogram { $0.effectChain = chain }
         }
 
         // Source effect chain setter
         effectManager.sourceEffectChainSetter = { [weak self] sourceIndex, chain in
             guard let self else { return }
-            self.updateCurrentClip { clip in
-                guard sourceIndex < clip.sources.count else { return }
-                clip.sources[sourceIndex].effectChain = chain
+            self.updateCurrentHypnogram { hypnogram in
+                guard sourceIndex < hypnogram.layers.count else { return }
+                hypnogram.layers[sourceIndex].effectChain = chain
             }
         }
 
         // Blend mode setter (getter is via recipeProvider reading source.blendMode)
         effectManager.blendModeSetter = { [weak self] sourceIndex, blendMode in
             guard let self else { return }
-            self.updateCurrentClip { clip in
-                guard sourceIndex < clip.sources.count else { return }
-                clip.sources[sourceIndex].blendMode = blendMode
+            self.updateCurrentHypnogram { hypnogram in
+                guard sourceIndex < hypnogram.layers.count else { return }
+                hypnogram.layers[sourceIndex].blendMode = blendMode
             }
         }
     }
@@ -160,62 +160,62 @@ final class DreamPlayerState: ObservableObject {
         effectsSession.onReloaded = nil
     }
 
-    // MARK: - Recipe Management
+    // MARK: - Session Management
 
-    /// Replace the entire recipe (used when loading from file)
-    func setRecipe(_ newRecipe: HypnogramRecipe) {
-        recipe = newRecipe
-        currentClipIndex = 0
-        recipeRevision &+= 1
+    /// Replace the entire session (used when loading from file)
+    func setSession(_ newSession: HypnographSession) {
+        session = newSession
+        currentHypnogramIndex = 0
+        sessionRevision &+= 1
     }
 
-    /// Notify that recipe has changed (triggers re-render)
-    func notifyRecipeChanged() {
+    /// Notify that session has changed (triggers re-render)
+    func notifySessionChanged() {
         effectsChangeCounter += 1
     }
 
-    /// Notify that recipe has changed (triggers persistence).
-    func notifyRecipeMutated() {
-        recipeRevision &+= 1
+    /// Notify that session has changed (triggers persistence).
+    func notifySessionMutated() {
+        sessionRevision &+= 1
     }
 
     // MARK: - Convenience Accessors
 
-    var sources: [HypnogramSource] {
-        get { currentClip.sources }
-        set { updateCurrentClip { $0.sources = newValue } }
+    var layers: [HypnogramLayer] {
+        get { currentHypnogram.layers }
+        set { updateCurrentHypnogram { $0.layers = newValue } }
     }
 
     var effectChain: EffectChain {
-        get { currentClip.effectChain }
-        set { updateCurrentClip { $0.effectChain = newValue } }
+        get { currentHypnogram.effectChain }
+        set { updateCurrentHypnogram { $0.effectChain = newValue } }
     }
     
-    var activeSourceCount: Int { sources.count }
+    var activeLayerCount: Int { layers.count }
     
-    var currentSource: HypnogramSource? {
-        guard currentSourceIndex >= 0, currentSourceIndex < sources.count else { return nil }
-        return sources[currentSourceIndex]
+    var currentLayer: HypnogramLayer? {
+        guard currentSourceIndex >= 0, currentSourceIndex < layers.count else { return nil }
+        return layers[currentSourceIndex]
     }
     
-    var currentVideoClip: VideoClip? {
-        currentSource?.clip
+    var currentMediaClip: MediaClip? {
+        currentLayer?.mediaClip
     }
 
     // MARK: - Navigation
 
     func nextSource() {
-        guard !sources.isEmpty else { return }
-        currentSourceIndex = (currentSourceIndex + 1) % sources.count
+        guard !layers.isEmpty else { return }
+        currentSourceIndex = (currentSourceIndex + 1) % layers.count
     }
 
     func previousSource() {
-        guard !sources.isEmpty else { return }
-        currentSourceIndex = currentSourceIndex > 0 ? currentSourceIndex - 1 : sources.count - 1
+        guard !layers.isEmpty else { return }
+        currentSourceIndex = currentSourceIndex > 0 ? currentSourceIndex - 1 : layers.count - 1
     }
 
     func selectSource(_ index: Int) {
-        guard index >= -1, index < sources.count else { return }
+        guard index >= -1, index < layers.count else { return }
         currentSourceIndex = index
     }
 
@@ -232,7 +232,7 @@ final class DreamPlayerState: ObservableObject {
     /// Ensure `currentSourceIndex` is valid for the current clip.
     func clampCurrentSourceIndex() {
         if currentSourceIndex == -1 { return }
-        let maxIndex = sources.count - 1
+        let maxIndex = layers.count - 1
         if maxIndex < 0 {
             currentSourceIndex = -1
             return
@@ -255,18 +255,18 @@ final class DreamPlayerState: ObservableObject {
         effectManager.clearFrameBuffer()
 
         // Save the effect chain (source of truth) before clearing
-        let savedEffectChain = preserveGlobalEffect ? currentClip.effectChain.clone() : nil
+        let savedEffectChain = preserveGlobalEffect ? currentHypnogram.effectChain.clone() : nil
 
-        updateCurrentClip { clip in
-            clip.sources.removeAll()
-            clip.effectChain = EffectChain()
+        updateCurrentHypnogram { hypnogram in
+            hypnogram.layers.removeAll()
+            hypnogram.effectChain = EffectChain()
         }
         currentSourceIndex = -1  // Reset to global layer
         currentClipTimeOffset = nil
 
         // Restore effect chain (it will lazily re-instantiate effects when apply() is called)
         if preserveGlobalEffect, let chain = savedEffectChain {
-            updateCurrentClip { $0.effectChain = chain }
+            updateCurrentHypnogram { $0.effectChain = chain }
         }
     }
 
@@ -275,7 +275,7 @@ final class DreamPlayerState: ObservableObject {
         if isOnGlobalLayer {
             return "Layer: Global"
         } else {
-            return "Layer: Source \(currentSourceIndex + 1)/\(sources.count)"
+            return "Layer: Source \(currentSourceIndex + 1)/\(layers.count)"
         }
     }
 }

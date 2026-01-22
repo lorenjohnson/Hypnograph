@@ -200,14 +200,14 @@ final class Dream: ObservableObject {
             }
         }
 
-        player.$recipeRevision
+        player.$sessionRevision
             .dropFirst()
             .sink { [weak self] _ in
                 self?.scheduleClipHistorySave()
             }
             .store(in: &clipHistorySaveCancellables)
 
-        player.$currentClipIndex
+        player.$currentHypnogramIndex
             .dropFirst()
             .sink { [weak self] _ in
                 self?.scheduleClipHistorySave()
@@ -226,7 +226,10 @@ final class Dream: ObservableObject {
 
     func saveClipHistory(synchronous: Bool) {
         let url = Environment.clipHistoryURL
-        let history = ClipHistoryFile(clips: player.recipe.clips, currentClipIndex: player.currentClipIndex)
+        let history = ClipHistoryFile(
+            hypnograms: player.session.hypnograms,
+            currentHypnogramIndex: player.currentHypnogramIndex
+        )
 
         if synchronous {
             do {
@@ -250,15 +253,15 @@ final class Dream: ObservableObject {
     /// Restore persisted clip history (preview deck).
     private func restoreClipHistory() {
         if let history = ClipHistoryIO.load(url: Environment.clipHistoryURL, historyLimit: state.settings.historyLimit),
-           !history.clips.isEmpty {
-            let recipe = HypnogramRecipe(clips: history.clips)
-            player.recipe = recipe
-            player.currentClipIndex = history.currentClipIndex
-            player.notifyRecipeMutated()
+           !history.hypnograms.isEmpty {
+            let session = HypnographSession(hypnograms: history.hypnograms)
+            player.session = session
+            player.currentHypnogramIndex = history.currentHypnogramIndex
+            player.notifySessionMutated()
             player.currentSourceIndex = -1
             player.effectManager.clearFrameBuffer()
-            player.notifyRecipeChanged()
-            print("📼 Restored clip history (\(history.clips.count) clips)")
+            player.notifySessionChanged()
+            print("📼 Restored clip history (\(history.hypnograms.count) hypnograms)")
             return
         }
 
@@ -277,7 +280,7 @@ final class Dream: ObservableObject {
 
     // MARK: - Shared helpers
 
-    private var sourceCount: Int { activePlayer.activeSourceCount }
+    private var sourceCount: Int { activePlayer.activeLayerCount }
 
     private var currentDisplayIndex: Int {
         sourceCount > 0 ? activePlayer.currentSourceIndex + 1 : 0
@@ -285,7 +288,7 @@ final class Dream: ObservableObject {
 
     // MARK: - Clip History
 
-    private func makeRandomClip(preservingGlobalEffectFrom previous: HypnogramClip?) -> HypnogramClip {
+    private func makeRandomClip(preservingGlobalEffectFrom previous: Hypnogram?) -> Hypnogram {
         let clipLengthMin = max(0.1, state.settings.clipLengthMinSeconds)
         let clipLengthMax = max(clipLengthMin, state.settings.clipLengthMaxSeconds)
         let clipLengthSeconds = Double.random(in: clipLengthMin...clipLengthMax)
@@ -294,17 +297,17 @@ final class Dream: ObservableObject {
         let maxLayers = max(1, player.config.maxLayers)
         let layerCount = Int.random(in: 1...maxLayers)
 
-        var sources: [HypnogramSource] = []
-        sources.reserveCapacity(layerCount)
+        var layers: [HypnogramLayer] = []
+        layers.reserveCapacity(layerCount)
 
         for i in 0..<layerCount {
-            guard let clip = state.library.randomClip(clipLength: targetDuration.seconds) else { continue }
+            guard let mediaClip = state.library.randomClip(clipLength: targetDuration.seconds) else { continue }
             let blendMode = (i == 0) ? BlendMode.sourceOver : BlendMode.defaultMontage
-            sources.append(HypnogramSource(clip: clip, blendMode: blendMode))
+            layers.append(HypnogramLayer(mediaClip: mediaClip, blendMode: blendMode))
         }
 
-        return HypnogramClip(
-            sources: sources,
+        return Hypnogram(
+            layers: layers,
             targetDuration: targetDuration,
             playRate: previous?.playRate ?? 1.0,
             effectChain: previous?.effectChain.clone(),
@@ -314,12 +317,12 @@ final class Dream: ObservableObject {
 
     private func enforceHistoryLimit() {
         let limit = max(1, state.settings.historyLimit)
-        let overflow = max(0, player.recipe.clips.count - limit)
+        let overflow = max(0, player.session.hypnograms.count - limit)
         guard overflow > 0 else { return }
 
-        player.recipe.clips.removeFirst(overflow)
-        player.currentClipIndex = max(0, player.currentClipIndex - overflow)
-        player.notifyRecipeMutated()
+        player.session.hypnograms.removeFirst(overflow)
+        player.currentHypnogramIndex = max(0, player.currentHypnogramIndex - overflow)
+        player.notifySessionMutated()
     }
 
     private func applyClipSelectionChanged(manual: Bool) {
@@ -327,7 +330,7 @@ final class Dream: ObservableObject {
         player.currentClipTimeOffset = nil
         player.effectManager.clearFrameBuffer()
         player.effectManager.invalidateBlendAnalysis()
-        player.notifyRecipeChanged()
+        player.notifySessionChanged()
 
         if manual {
             flashClipHistoryIndicator()
@@ -335,27 +338,27 @@ final class Dream: ObservableObject {
     }
 
     private func replaceHistoryWithNewClip() {
-        let clip = makeRandomClip(preservingGlobalEffectFrom: nil)
-        player.recipe = HypnogramRecipe(clips: [clip])
-        player.currentClipIndex = 0
+        let hypnogram = makeRandomClip(preservingGlobalEffectFrom: nil)
+        player.session = HypnographSession(hypnograms: [hypnogram])
+        player.currentHypnogramIndex = 0
         player.currentSourceIndex = -1
-        player.notifyRecipeMutated()
+        player.notifySessionMutated()
         applyClipSelectionChanged(manual: false)
     }
 
     private func replaceCurrentClipWithNewClip(manual: Bool = false) {
-        let clip = makeRandomClip(preservingGlobalEffectFrom: player.currentClip)
-        player.currentClip = clip
+        let hypnogram = makeRandomClip(preservingGlobalEffectFrom: player.currentHypnogram)
+        player.currentHypnogram = hypnogram
         player.currentSourceIndex = -1
         applyClipSelectionChanged(manual: manual)
     }
 
     private func appendNewClipAndSelect(manual: Bool) {
-        let clip = makeRandomClip(preservingGlobalEffectFrom: player.currentClip)
-        player.recipe.clips.append(clip)
-        player.currentClipIndex = player.recipe.clips.count - 1
+        let hypnogram = makeRandomClip(preservingGlobalEffectFrom: player.currentHypnogram)
+        player.session.hypnograms.append(hypnogram)
+        player.currentHypnogramIndex = player.session.hypnograms.count - 1
         player.currentSourceIndex = -1
-        player.notifyRecipeMutated()
+        player.notifySessionMutated()
         enforceHistoryLimit()
         applyClipSelectionChanged(manual: manual)
     }
@@ -363,9 +366,9 @@ final class Dream: ObservableObject {
     private func advanceOrGenerateOnClipEnded() {
         guard state.settings.watchMode else { return }
 
-        let nextIndex = player.currentClipIndex + 1
-        if nextIndex < player.recipe.clips.count {
-            player.currentClipIndex = nextIndex
+        let nextIndex = player.currentHypnogramIndex + 1
+        if nextIndex < player.session.hypnograms.count {
+            player.currentHypnogramIndex = nextIndex
             applyClipSelectionChanged(manual: false)
         } else {
             appendNewClipAndSelect(manual: false)
@@ -373,15 +376,15 @@ final class Dream: ObservableObject {
     }
 
     func previousClip() {
-        guard player.currentClipIndex > 0 else { return }
-        player.currentClipIndex -= 1
+        guard player.currentHypnogramIndex > 0 else { return }
+        player.currentHypnogramIndex -= 1
         applyClipSelectionChanged(manual: true)
     }
 
     func nextClip() {
-        let nextIndex = player.currentClipIndex + 1
-        if nextIndex < player.recipe.clips.count {
-            player.currentClipIndex = nextIndex
+        let nextIndex = player.currentHypnogramIndex + 1
+        if nextIndex < player.session.hypnograms.count {
+            player.currentHypnogramIndex = nextIndex
             applyClipSelectionChanged(manual: true)
         } else {
             // At end of history: treat "next" as "new hypnogram"
@@ -390,34 +393,34 @@ final class Dream: ObservableObject {
     }
 
     func deleteCurrentClip() {
-        guard !player.recipe.clips.isEmpty else { return }
+        guard !player.session.hypnograms.isEmpty else { return }
 
-        if player.recipe.clips.count == 1 {
+        if player.session.hypnograms.count == 1 {
             replaceHistoryWithNewClip()
             applyClipSelectionChanged(manual: true)
             return
         }
 
-        let index = player.currentClipIndex
-        player.recipe.clips.remove(at: index)
-        if player.currentClipIndex >= player.recipe.clips.count {
-            player.currentClipIndex = max(0, player.recipe.clips.count - 1)
+        let index = player.currentHypnogramIndex
+        player.session.hypnograms.remove(at: index)
+        if player.currentHypnogramIndex >= player.session.hypnograms.count {
+            player.currentHypnogramIndex = max(0, player.session.hypnograms.count - 1)
         }
-        player.notifyRecipeMutated()
+        player.notifySessionMutated()
         applyClipSelectionChanged(manual: true)
     }
 
     func clearClipHistory() {
-        let clip = player.currentClip
-        player.recipe = HypnogramRecipe(clips: [clip])
-        player.currentClipIndex = 0
-        player.notifyRecipeMutated()
+        let hypnogram = player.currentHypnogram
+        player.session = HypnographSession(hypnograms: [hypnogram])
+        player.currentHypnogramIndex = 0
+        player.notifySessionMutated()
         applyClipSelectionChanged(manual: true)
     }
 
     private func flashClipHistoryIndicator() {
-        guard !player.recipe.clips.isEmpty else { return }
-        clipHistoryIndicatorText = "\(player.currentClipIndex + 1)/\(player.recipe.clips.count)"
+        guard !player.session.hypnograms.isEmpty else { return }
+        clipHistoryIndicatorText = "\(player.currentHypnogramIndex + 1)/\(player.session.hypnograms.count)"
 
         clipHistoryIndicatorClearWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in
@@ -431,11 +434,11 @@ final class Dream: ObservableObject {
     private func addSourceToPlayer(_ player: DreamPlayerState, length: Double? = nil) {
         // Use default clip length if not provided
         let clipLength = length ?? player.targetDuration.seconds
-        guard let clip = state.library.randomClip(clipLength: clipLength) else { return }
-        let blendMode = player.sources.isEmpty ? BlendMode.sourceOver : BlendMode.defaultMontage
-        let source = HypnogramSource(clip: clip, blendMode: blendMode)
-        player.sources.append(source)
-        player.currentSourceIndex = player.sources.count - 1
+        guard let mediaClip = state.library.randomClip(clipLength: clipLength) else { return }
+        let blendMode = player.layers.isEmpty ? BlendMode.sourceOver : BlendMode.defaultMontage
+        let layer = HypnogramLayer(mediaClip: mediaClip, blendMode: blendMode)
+        player.layers.append(layer)
+        player.currentSourceIndex = player.layers.count - 1
     }
 
     // MARK: - Layer Navigation
@@ -505,9 +508,9 @@ final class Dream: ObservableObject {
             )
         }
 
-        if activePlayer.recipe.clips.isEmpty {
+        if activePlayer.session.hypnograms.isEmpty {
             replaceHistoryWithNewClip()
-        } else if activePlayer.sources.isEmpty {
+        } else if activePlayer.layers.isEmpty {
             // Defensive: keep history shape, just replace the current clip if it is empty.
             replaceCurrentClipWithNewClip()
         }
@@ -515,7 +518,7 @@ final class Dream: ObservableObject {
         let player = activePlayer
 
         // Common view parameters
-        let clip = player.currentClip
+        let clip = player.currentHypnogram
         let aspectRatio = player.config.aspectRatio
         let displayResolution = player.config.playerResolution
         let sourceFraming = state.settings.sourceFraming
@@ -557,18 +560,18 @@ final class Dream: ObservableObject {
         )
     }
 
-    /// The live recipe from the active player - use for direct access/mutation
-    var currentRecipe: HypnogramRecipe {
-        get { activePlayer.recipe }
-        set { activePlayer.recipe = newValue }
+    /// The live session from the active player - use for direct access/mutation
+    var currentSession: HypnographSession {
+        get { activePlayer.session }
+        set { activePlayer.session = newValue }
     }
 
-    /// Build a recipe snapshot for display/export (sets mode, timestamp, effects library snapshot)
-    func makeDisplayRecipe() -> HypnogramRecipe {
+    /// Build a session snapshot for display/export (timestamp + effects library snapshot)
+    func makeDisplaySession() -> HypnographSession {
         let createdAt = Date()
-        var clip = activePlayer.currentClip
-        clip.createdAt = createdAt
-        return HypnogramRecipe(clips: [clip], createdAt: createdAt)
+        var hypnogram = activePlayer.currentHypnogram
+        hypnogram.createdAt = createdAt
+        return HypnographSession(hypnograms: [hypnogram], createdAt: createdAt)
     }
 
     // MARK: - Lifecycle
@@ -589,7 +592,7 @@ final class Dream: ObservableObject {
     /// Send current hypnogram to live display
     func sendToLivePlayer() {
         livePlayer.send(
-            clip: activePlayer.currentClip.copyForExport(),
+            clip: activePlayer.currentHypnogram.copyForExport(),
             config: activePlayer.config
         )
     }
@@ -613,10 +616,10 @@ final class Dream: ObservableObject {
     func removeCurrentLayer() {
         let idx: Int
         if activePlayer.currentSourceIndex == -1 {
-            if activePlayer.sources.count == 1 {
+            if activePlayer.layers.count == 1 {
                 idx = 0
             } else {
-                if activePlayer.sources.isEmpty {
+                if activePlayer.layers.isEmpty {
                     AppNotifications.show("No layers selected", flash: true, duration: 1.25)
                 } else {
                     AppNotifications.show("Select a layer (1-9)", flash: true, duration: 1.25)
@@ -627,19 +630,19 @@ final class Dream: ObservableObject {
             idx = activePlayer.currentSourceIndex
         }
 
-        guard idx >= 0, idx < activePlayer.sources.count else { return }
+        guard idx >= 0, idx < activePlayer.layers.count else { return }
 
         // If this is the only source, "delete source" should behave like other
         // per-layer curation: replace the layer with a new random source.
-        if activePlayer.sources.count == 1 {
+        if activePlayer.layers.count == 1 {
             replaceClip(forSourceIndex: idx)
             return
         }
 
-        activePlayer.sources.remove(at: idx)
+        activePlayer.layers.remove(at: idx)
 
-        if idx >= activePlayer.sources.count {
-            activePlayer.currentSourceIndex = activePlayer.sources.count - 1
+        if idx >= activePlayer.layers.count {
+            activePlayer.currentSourceIndex = activePlayer.layers.count - 1
         }
     }
 
@@ -650,9 +653,9 @@ final class Dream: ObservableObject {
     }
 
     private func replaceClip(forSourceIndex idx: Int) {
-        guard idx >= 0, idx < activePlayer.sources.count else { return }
-        guard let clip = state.library.randomClip(clipLength: activePlayer.targetDuration.seconds) else { return }
-        activePlayer.sources[idx].clip = clip
+        guard idx >= 0, idx < activePlayer.layers.count else { return }
+        guard let mediaClip = state.library.randomClip(clipLength: activePlayer.targetDuration.seconds) else { return }
+        activePlayer.layers[idx].mediaClip = mediaClip
     }
 
     /// Save current hypnogram: snapshot with embedded recipe (.hypno file)
@@ -675,18 +678,18 @@ final class Dream: ObservableObject {
             return
         }
 
-        // Get the current recipe with effects library snapshot
-        let recipe = makeDisplayRecipe().copyForExport()
+        // Get the current session with effects library snapshot
+        let session = makeDisplaySession().copyForExport()
 
-        // Save as .hypno file (PNG with embedded recipe)
-        if let savedURL = RecipeStore.save(recipe, snapshot: cgImage) {
-            print("✅ Dream: Hypnogram saved to \(savedURL.path)")
+        // Save as .hypno and record in HypnogramStore (powers Favorites/Recents panel).
+        if let entry = HypnogramStore.shared.add(session: session, snapshot: cgImage, isFavorite: false) {
+            print("✅ Dream: Hypnogram saved to \(entry.sessionURL.path)")
             AppNotifications.show("Hypnogram saved", flash: true)
 
             // Also save to Apple Photos if write access is available
             if ApplePhotos.shared.status.canWrite {
                 Task {
-                    let success = await ApplePhotos.shared.saveImage(at: savedURL)
+                    let success = await ApplePhotos.shared.saveImage(at: entry.sessionURL)
                     if success {
                         print("✅ Dream: Hypnogram added to Apple Photos")
                     }
@@ -701,22 +704,22 @@ final class Dream: ObservableObject {
     /// Render and save the hypnogram as a video file (enqueue to render queue)
     /// This is the legacy save behavior - available in menu without hotkey
     func renderAndSaveVideo() {
-        guard !activePlayer.sources.isEmpty else {
+        guard !activePlayer.layers.isEmpty else {
             print("Dream: no sources to render.")
             return
         }
 
         // Deep copy clip with fresh effect instances to avoid sharing state with preview
-        let renderClip = activePlayer.currentClip.copyForExport()
+        let renderHypnogram = activePlayer.currentHypnogram.copyForExport()
 
         // Create renderer with current settings (aspect ratio + resolution)
         let outputSize = exportSettings()
 
-        print("Dream: enqueueing clip with \(renderClip.sources.count) layer(s), duration: \(renderClip.targetDuration.seconds)s")
+        print("Dream: enqueueing clip with \(renderHypnogram.layers.count) layer(s), duration: \(renderHypnogram.targetDuration.seconds)s")
 
         // Enqueue immediately (don't defer - the renderer handles async internally)
         renderQueue.enqueue(
-            clip: renderClip,
+            clip: renderHypnogram,
             outputFolder: state.settings.outputURL,
             outputSize: outputSize,
             sourceFraming: state.settings.sourceFraming
@@ -749,17 +752,17 @@ final class Dream: ObservableObject {
             return
         }
 
-        let recipe = makeDisplayRecipe().copyForExport()
-        RecipeFileActions.saveAs(recipe: recipe, snapshot: cgImage) {
+        let session = makeDisplaySession().copyForExport()
+        SessionFileActions.saveAs(session: session, snapshot: cgImage) {
             AppNotifications.show("Hypnogram saved", flash: true)
         }
     }
 
     /// Open a .hypno or .hypnogram recipe file
     func openRecipe() {
-        RecipeFileActions.openRecipe(
-            onLoaded: { [weak self] recipe in
-                self?.appendRecipeToHistory(recipe)
+        SessionFileActions.openSession(
+            onLoaded: { [weak self] session in
+                self?.appendSessionToHistory(session)
                 AppNotifications.show("Recipe loaded", flash: true)
             },
             onFailure: {
@@ -769,33 +772,33 @@ final class Dream: ObservableObject {
     }
 
     /// Load a recipe into the current player by appending its clips to history.
-    func appendRecipeToHistory(_ recipe: HypnogramRecipe) {
+    func appendSessionToHistory(_ session: HypnographSession) {
         // Ensure effect chains have names (required for library matching)
-        var mutableRecipe = recipe
-        mutableRecipe.ensureEffectChainNames()
+        var mutableSession = session
+        mutableSession.ensureEffectChainNames()
 
         // Ensure we're editing the preview deck
         liveMode = .edit
 
-        let clipsToAppend = mutableRecipe.clips
-        guard !clipsToAppend.isEmpty else { return }
+        let hypnogramsToAppend = mutableSession.hypnograms
+        guard !hypnogramsToAppend.isEmpty else { return }
 
         // Import effect chains used in the recipe into the session
         // (adds missing chains, replaces same-named chains with recipe versions)
-        EffectChainLibraryActions.importChainsFromRecipe(mutableRecipe, into: effectsSession)
+        EffectChainLibraryActions.importChainsFromSession(mutableSession, into: effectsSession)
 
-        let oldCount = activePlayer.recipe.clips.count
-        activePlayer.recipe.clips.append(contentsOf: clipsToAppend)
-        activePlayer.currentClipIndex = oldCount
+        let oldCount = activePlayer.session.hypnograms.count
+        activePlayer.session.hypnograms.append(contentsOf: hypnogramsToAppend)
+        activePlayer.currentHypnogramIndex = oldCount
         activePlayer.currentSourceIndex = -1
-        activePlayer.notifyRecipeMutated()
+        activePlayer.notifySessionMutated()
         enforceHistoryLimit()
         applyClipSelectionChanged(manual: true)
     }
 
     /// Favorite the current hypnogram (save to store as favorite)
     func favoriteCurrentHypnogram() {
-        guard !activePlayer.sources.isEmpty else {
+        guard !activePlayer.layers.isEmpty else {
             print("Dream: no sources to favorite")
             return
         }
@@ -816,7 +819,7 @@ final class Dream: ObservableObject {
         }
 
         if let entry = HypnogramStore.shared.add(
-            recipe: makeDisplayRecipe(),
+            session: makeDisplaySession(),
             snapshot: cgImage,
             isFavorite: true
         ) {
@@ -827,8 +830,8 @@ final class Dream: ObservableObject {
     // MARK: - Montage blend modes
 
     private func blendModeForSourceIndex(_ idx: Int) -> String {
-        guard idx >= 0, idx < activePlayer.sources.count else { return BlendMode.sourceOver }
-        return activePlayer.sources[idx].blendMode ?? (idx == 0 ? BlendMode.sourceOver : BlendMode.defaultMontage)
+        guard idx >= 0, idx < activePlayer.layers.count else { return BlendMode.sourceOver }
+        return activePlayer.layers[idx].blendMode ?? (idx == 0 ? BlendMode.sourceOver : BlendMode.defaultMontage)
     }
 
     func currentBlendModeDisplayName() -> String {
@@ -839,7 +842,7 @@ final class Dream: ObservableObject {
 
     func cycleBlendMode(at index: Int? = nil) {
         let idx = index ?? activePlayer.currentSourceIndex
-        guard idx > 0, idx < activePlayer.sources.count else { return } // bottom layer stays SourceOver
+        guard idx > 0, idx < activePlayer.layers.count else { return } // bottom layer stays SourceOver
 
         // Cycle blend mode - this writes directly to sources via the setter closure
         activePlayer.effectManager.cycleBlendMode(for: idx)
@@ -855,14 +858,14 @@ final class Dream: ObservableObject {
 
         // Get source count from appropriate context
         let sourceCount = isLiveMode
-            ? livePlayer.activeSourceCount
-            : activePlayer.activeSourceCount
+            ? livePlayer.activeLayerCount
+            : activePlayer.activeLayerCount
 
         for i in 0..<sourceCount {
             activeEffectManager.clearEffect(for: i)
             // Reset blend mode on source (keep first one as SourceOver) - only in Edit mode
-            if !isLiveMode && i > 0 && i < activePlayer.sources.count {
-                activePlayer.sources[i].blendMode = BlendMode.defaultMontage
+            if !isLiveMode && i > 0 && i < activePlayer.layers.count {
+                activePlayer.layers[i].blendMode = BlendMode.defaultMontage
             }
         }
     }
@@ -899,7 +902,7 @@ final class Dream: ObservableObject {
 
     private func resolveSelectedSourceIndexForCuration() -> Int? {
         if activePlayer.currentSourceIndex == -1 {
-            if activePlayer.sources.count == 1 {
+            if activePlayer.layers.count == 1 {
                 return 0
             }
             return nil
@@ -909,7 +912,7 @@ final class Dream: ObservableObject {
 
     private func curateCurrentSource(_ action: SourceCurationAction) {
         guard let idx = resolveSelectedSourceIndexForCuration() else {
-            if activePlayer.sources.isEmpty {
+            if activePlayer.layers.isEmpty {
                 AppNotifications.show("No layers selected", flash: true, duration: 1.25)
             } else {
                 AppNotifications.show("Select a layer (1-9)", flash: true, duration: 1.25)
@@ -917,12 +920,12 @@ final class Dream: ObservableObject {
             return
         }
 
-        guard idx >= 0, idx < activePlayer.sources.count else {
+        guard idx >= 0, idx < activePlayer.layers.count else {
             AppNotifications.show("No layer selected", flash: true, duration: 1.25)
             return
         }
 
-        let file = activePlayer.sources[idx].clip.file
+        let file = activePlayer.layers[idx].mediaClip.file
 
         switch file.source {
         case .url:

@@ -286,7 +286,7 @@ final class GameControllerManager {
         }
 
         dream.livePlayer.send(
-            clip: dream.activePlayer.currentClip.copyForExport(),
+            clip: dream.activePlayer.currentHypnogram.copyForExport(),
             config: dream.activePlayer.config
         )
         print("🎮 Sent to Live Display")

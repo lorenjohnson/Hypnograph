@@ -37,7 +37,7 @@ final class LivePlayer: ObservableObject {
     @Published private(set) var isVisible: Bool = false
     @Published private(set) var isTransitioning: Bool = false
     @Published private(set) var currentRecipeDescription: String = ""
-    @Published private(set) var activeSourceCount: Int = 0
+    @Published private(set) var activeLayerCount: Int = 0
     @Published private(set) var hasContent: Bool = false
 
     /// The currently active AVPlayer (for preview mirroring)
@@ -109,7 +109,7 @@ final class LivePlayer: ObservableObject {
     let effectsSession: EffectsSession
 
     /// The current clip being displayed (mutable for live effect changes)
-    private var currentClip: HypnogramClip?
+    private var currentClip: Hypnogram?
 
     // MARK: - Init
 
@@ -156,17 +156,17 @@ final class LivePlayer: ObservableObject {
         effectManager.sourceEffectChainSetter = { [weak self] (sourceIndex: Int, chain: EffectChain) in
             guard let self = self,
                   var clip = self.currentClip,
-                  sourceIndex < clip.sources.count else { return }
+                  sourceIndex < clip.layers.count else { return }
             print("🎬 LivePlayer: sourceEffectChainSetter - setting source[\(sourceIndex)] chain: \(chain.name ?? "unnamed")")
-            clip.sources[sourceIndex].effectChain = chain
+            clip.layers[sourceIndex].effectChain = chain
             self.currentClip = clip
         }
 
         effectManager.blendModeSetter = { [weak self] sourceIndex, blendMode in
             guard let self = self,
                   var clip = self.currentClip,
-                  sourceIndex < clip.sources.count else { return }
-            clip.sources[sourceIndex].blendMode = blendMode
+                  sourceIndex < clip.layers.count else { return }
+            clip.layers[sourceIndex].blendMode = blendMode
             self.currentClip = clip
         }
     }
@@ -339,7 +339,7 @@ final class LivePlayer: ObservableObject {
         contentView = nil
         isTransitioning = false
         currentRecipeDescription = ""
-        activeSourceCount = 0
+        activeLayerCount = 0
         currentClip = nil
         hasContent = false
     }
@@ -375,7 +375,7 @@ final class LivePlayer: ObservableObject {
     /// - Parameters:
     ///   - clip: The hypnogram clip to display
     ///   - config: Player configuration (aspect ratio, resolution, etc.)
-    func send(clip: HypnogramClip, config: PlayerConfiguration) {
+    func send(clip: Hypnogram, config: PlayerConfiguration) {
         // Ensure we have a content view for playback
         ensureContentView()
 
@@ -398,8 +398,8 @@ final class LivePlayer: ObservableObject {
         // Store the clip for live effect modifications
         self.currentClip = clip
 
-        let sourceCount = clip.sources.count
-        activeSourceCount = sourceCount
+        let sourceCount = clip.layers.count
+        activeLayerCount = sourceCount
         currentRecipeDescription = "\(sourceCount) layer\(sourceCount == 1 ? "" : "s")"
 
         print("🎬 LivePlayer: Building live display with \(sourceCount) layers...")
@@ -443,7 +443,7 @@ final class LivePlayer: ObservableObject {
             playerItem.audioTimePitchAlgorithm = .timeDomain
 
             // Setup looping for video content
-            let isAllStillImages = clip.sources.allSatisfy { $0.clip.file.mediaKind == .image }
+            let isAllStillImages = clip.layers.allSatisfy { $0.mediaClip.file.mediaKind == .image }
             if !isAllStillImages {
                 setupLooping(for: playerItem, playRate: clip.playRate)
             }

@@ -67,13 +67,13 @@ enum EffectChainLibraryActions {
     static func loadLibraryFromFile(session: EffectsSession, completion: @escaping @MainActor () -> Void) {
         let panel = NSOpenPanel()
 
-        // Allow JSON and recipe files
+        // Allow JSON and session files
         var allowedTypes: [UTType] = [UTType.json]
-        let recipeTypes = RecipeStore.fileExtensions.compactMap { UTType(filenameExtension: $0) }
-        allowedTypes.append(contentsOf: recipeTypes)
+        let sessionTypes = SessionStore.fileExtensions.compactMap { UTType(filenameExtension: $0) }
+        allowedTypes.append(contentsOf: sessionTypes)
         panel.allowedContentTypes = allowedTypes
         panel.allowsMultipleSelection = false
-        panel.message = "Select an effects library (.json) or recipe file (.hypno/.hypnogram)"
+        panel.message = "Select an effects library (.json) or session file (.hypno/.hypnogram)"
 
         // Start in the Application Support folder
         panel.directoryURL = EffectConfigLoader.userConfigURL.deletingLastPathComponent()
@@ -91,7 +91,7 @@ enum EffectChainLibraryActions {
             Task { @MainActor in
                 let ext = url.pathExtension.lowercased()
 
-                if RecipeStore.isSupportedExtension(ext) {
+                if SessionStore.isSupportedExtension(ext) {
                     // Load from recipe file
                     loadFromHypnogram(url: url, session: session, merge: shouldMerge)
                 } else {
@@ -124,13 +124,13 @@ enum EffectChainLibraryActions {
     /// Load effect chains from a hypnogram recipe file
     /// Extracts only the chains used in the recipe
     private static func loadFromHypnogram(url: URL, session: EffectsSession, merge: Bool) {
-        guard let recipe = RecipeStore.load(from: url) else {
+        guard let sessionFile = SessionStore.load(from: url) else {
             AppNotifications.show("Failed to load hypnogram", flash: true)
             return
         }
 
         // Extract only the chains used in the recipe
-        let chains = extractEffectChains(from: recipe)
+        let chains = extractEffectChains(from: sessionFile)
 
         if chains.isEmpty {
             AppNotifications.show("No effect chains found in hypnogram", flash: true)
@@ -146,40 +146,40 @@ enum EffectChainLibraryActions {
         }
     }
 
-    // MARK: - Recipe Import
+    // MARK: - Session Import
 
-    /// Import effect chains from a recipe into the session (used when loading hypnograms)
+    /// Import effect chains from a session into the effects session (used when loading hypnograms)
     /// Merges chains into the library, avoiding duplicates by name
-    static func importChainsFromRecipe(_ recipe: HypnogramRecipe, into session: EffectsSession) {
-        let chains = extractEffectChains(from: recipe)
+    static func importChainsFromSession(_ hypnographSession: HypnographSession, into session: EffectsSession) {
+        let chains = extractEffectChains(from: hypnographSession)
         guard !chains.isEmpty else { return }
         session.merge(chains: chains)
     }
 
     // MARK: - Private Helpers
 
-    /// Extract effect chains from a recipe (per-clip global + per-clip per-source)
-    private static func extractEffectChains(from recipe: HypnogramRecipe) -> [EffectChain] {
+    /// Extract effect chains from a session (per-hypnogram global + per-hypnogram per-layer)
+    private static func extractEffectChains(from hypnographSession: HypnographSession) -> [EffectChain] {
         var chains: [EffectChain] = []
 
-        for (clipIndex, clip) in recipe.clips.enumerated() {
-            // Add per-clip global effect chain if it has effects
-            if !clip.effectChain.effects.isEmpty {
-                let globalChain = clip.effectChain.clone()
+        for (hypnogramIndex, hypnogram) in hypnographSession.hypnograms.enumerated() {
+            // Add per-hypnogram global effect chain if it has effects
+            if !hypnogram.effectChain.effects.isEmpty {
+                let globalChain = hypnogram.effectChain.clone()
                 if globalChain.name == nil || globalChain.name?.isEmpty == true {
-                    globalChain.name = "Clip \(clipIndex + 1) Global (imported)"
+                    globalChain.name = "Hypnogram \(hypnogramIndex + 1) Global (imported)"
                 }
                 chains.append(globalChain)
             }
 
-            // Add per-source effect chains that have effects
-            for (sourceIndex, source) in clip.sources.enumerated() {
-                if !source.effectChain.effects.isEmpty {
-                    let sourceChain = source.effectChain.clone()
-                    if sourceChain.name == nil || sourceChain.name?.isEmpty == true {
-                        sourceChain.name = "Clip \(clipIndex + 1) Source \(sourceIndex + 1) (imported)"
+            // Add per-layer effect chains that have effects
+            for (layerIndex, layer) in hypnogram.layers.enumerated() {
+                if !layer.effectChain.effects.isEmpty {
+                    let layerChain = layer.effectChain.clone()
+                    if layerChain.name == nil || layerChain.name?.isEmpty == true {
+                        layerChain.name = "Hypnogram \(hypnogramIndex + 1) Layer \(layerIndex + 1) (imported)"
                     }
-                    chains.append(sourceChain)
+                    chains.append(layerChain)
                 }
             }
         }

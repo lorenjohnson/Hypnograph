@@ -25,17 +25,28 @@ struct ContentView: View {
         }
 
         // Layer indicators: show during flash solo (1-9 hold) or global hold (`) while global effects are suspended.
-        guard !dream.activePlayer.sources.isEmpty else { return nil }
+        guard !dream.activePlayer.layers.isEmpty else { return nil }
 
         if dream.activePlayer.effectManager.flashSoloIndex != nil {
-            return ("\(dream.activePlayer.currentSourceIndex + 1)/\(dream.activePlayer.sources.count)", .red)
+            return ("\(dream.activePlayer.currentSourceIndex + 1)/\(dream.activePlayer.layers.count)", .red)
         }
 
         if dream.activePlayer.isGlobalEffectSuspended {
-            return ("GLOBAL/\(dream.activePlayer.sources.count)", .red)
+            return ("GLOBAL/\(dream.activePlayer.layers.count)", .red)
         }
 
         return nil
+    }
+
+    private var shouldAutoHideCursor: Bool {
+        if dream.isLiveMode {
+            guard let player = dream.livePlayer.activeAVPlayer else { return false }
+            return player.rate != 0
+        }
+
+        let clip = dream.activePlayer.currentHypnogram
+        let hasVideo = clip.layers.contains { $0.mediaClip.file.mediaKind == .video }
+        return hasVideo && (dream.activePlayer.isPaused == false)
     }
 
     var body: some View {
@@ -47,6 +58,9 @@ struct ContentView: View {
             // Dream display
             dream.makeDisplayView()
                 .ignoresSafeArea()
+
+            CursorAutoHideView(isEnabled: shouldAutoHideCursor, idleSeconds: 3.0)
+                .allowsHitTesting(false)
 
             // HUD and Hypnogram List - top left (below LIVE if visible)
             VStack(alignment: .leading, spacing: 8) {
@@ -61,11 +75,11 @@ struct ContentView: View {
                     HypnogramListView(
                         store: HypnogramStore.shared,
                         onLoad: { entry in
-                            guard let recipe = HypnogramStore.shared.loadRecipe(from: entry) else {
+                            guard let session = HypnogramStore.shared.loadSession(from: entry) else {
                                 AppNotifications.show("Failed to load recipe", flash: true)
                                 return
                             }
-                            dream.appendRecipeToHistory(recipe)
+                            dream.appendSessionToHistory(session)
                             AppNotifications.show("Loaded: \(entry.name)", flash: true)
                         }
                     )

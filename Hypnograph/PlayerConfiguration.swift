@@ -5,7 +5,7 @@
 //  Per-player configuration (preview + live).
 //  Groups related display and generation settings into a single, cohesive structure.
 //
-//  Note: targetDuration and playRate are stored in HypnogramRecipe, not here.
+//  Note: targetDuration and playRate are stored on Hypnogram (within HypnographSession), not here.
 //
 
 import Foundation

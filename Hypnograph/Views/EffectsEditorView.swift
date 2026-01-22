@@ -305,7 +305,7 @@ struct EffectsEditorView: View {
 
     /// Target rows to show in CURRENT (Global + sources in the active recipe)
     private var currentTargets: [Int] {
-        [-1] + Array(0..<dream.activePlayer.sources.count)
+        [-1] + Array(0..<dream.activePlayer.layers.count)
     }
 
     /// Computed selected chain from current layer's effect
