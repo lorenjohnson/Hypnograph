@@ -8,7 +8,6 @@ Completed items live in `docs/_archive/index.md`.
 
 ## Research & Development
 
-- [ ] Vision smart framing: detect a person (e.g. `VNDetectHumanRectanglesRequest`) and bias aspect-fill framing so the head sits near the top of the window (analyze first frame or a few early frames).
 - [ ] Make Player View a bottom of screen strip instead of a side quarter window. Play with "light up punch buttons" for turning and and off sources and a different color to indicate the currently selected source.
 - [ ] Explore how some watch sort of mode where individual sources in a layered montage hypnogram change one by one randomly might work. Start with prototype just to see how the experience feels and if it is worth integrating.
 - [ ] Explore "Channels" for Hypnograph watching: e.g., select a pin on a map + max radius to constrain random clip selection; or time-based channels with begin/end date (or a slider for time period before/after a date). Or using Apple Foundation to formulate a PHAsset query (e.g. "All photos in and around Berlin, Germany in 2025")
@@ -23,7 +22,7 @@ Completed items live in `docs/_archive/index.md`.
 ## KNOWN ISSUES / BUGS
 
 - [ ] Save and Render: Rendering started and another flash message appear at the same time and one of those messages is extraneous 
-- [ ] When the Player is not playing / when it is all still images blend modes don't apply and I can't "flash" to a new layer and see it without effects like I can when videos are playing. It should work/work the same in both scenarios.
+- [ ] When the Player is not playing / when it is all still images blend modes don't apply and I can't "flash" to a new layer and see it without effects like I can when videos are playing. It should work/work the same in both scenarios. This is also true if I change effects when the player is paused and it is all videos...
 - [ ] Updating an Effect Chain title from where it is applied (e.g. global), then saving back to library just seemed to create a new Library Entry instead of saving back to the original library entry.
 - [ ] Rendering/saving some Hypnograms results in an error: "🔴 RenderEngine.export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn’t be completed. (Hypnograph.RenderError error 6.)"
 any effects load operation were done first
