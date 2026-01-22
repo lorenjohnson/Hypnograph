@@ -142,7 +142,7 @@ Notes:
 
 Saving/rendering a range of clips from history is intentionally **out of scope** for this project.
 It is tracked as a separate project:
-`docs/projects/20250116-save-sequences/overview.md`
+`docs/Hypnograph/projects/20250116-save-sequences/overview.md`
 
 ## What else to do early (high leverage)
 

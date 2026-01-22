@@ -8,7 +8,7 @@
 
 This A/B `AVPlayer`-based architecture was implemented as an intermediate step, but has since been superseded by the Metal Playback Pipeline (Direction A), which replaces `AVPlayerView` + view-level crossfades with a single `MTKView` render surface.
 
-- See: `docs/projects/20260117-metal-playback-pipeline/overview.md`
+- See: `docs/Hypnograph/_archive/projects/20260117-metal-playback-pipeline/overview.md`
 
 ## Goal
 

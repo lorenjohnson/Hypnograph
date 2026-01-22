@@ -1,0 +1,26 @@
+# Hypnograph Ontology (Generated)
+
+This folder contains a best-effort ontology of the Swift types in this repo, plus Mermaid diagrams.
+
+## Generate / refresh
+
+From the repo root:
+
+```sh
+python3 scripts/generate_ontology.py
+```
+
+Outputs:
+
+- `docs/ontology/types.json`: All discovered types + internal relationships (best-effort).
+- `docs/ontology/naming.json`: Quick naming-oriented slices (e.g., `*Source`, `*Loader`).
+- `docs/ontology/hypnograph-ontology.mmd`: Filtered Mermaid graph for readability.
+- `docs/ontology/hypnograph-ontology-full.mmd`: Full Mermaid graph (can be very large).
+- `docs/ontology/HypnographDomainDiagram.md`: Curated domain diagram for naming/consistency checks.
+- `docs/Hypnograph/projects/20260121-more-clear-naming/overview.md`: Naming cleanup planning notes.
+
+## Viewing diagrams
+
+Mermaid is supported by many Markdown editors and plugins, and also by `mmdc` if you have it installed.
+
+Tip: the full graph is often easiest to inspect by searching within it (type name) rather than trying to render it all at once.

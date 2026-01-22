@@ -2,7 +2,7 @@
 
 **Created**: 2026-01-16
 **Status**: Proposal / Planning
-**Depends on**: [Metal Playback Pipeline](../20260117-metal-playback-pipeline/overview.md) (for boundary hooks)
+**Depends on**: [Metal Playback Pipeline](../../_archive/projects/20260117-metal-playback-pipeline/overview.md) (for boundary hooks)
 
 Goal: add an optional **Volume Leveling** feature that makes audio loudness feel **more consistent across hypnograms** while you browse (Preview) and perform (Live), without destroying creative dynamics within a single hypnogram.
 

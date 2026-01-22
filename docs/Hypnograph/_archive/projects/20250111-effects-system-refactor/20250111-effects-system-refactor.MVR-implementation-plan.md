@@ -1,6 +1,6 @@
 # MVR Implementation Plan (Code-Level)
 
-This is a more implementation-oriented companion to `docs/projects/20250111-effects-system-refactor.md`.
+This is a more implementation-oriented companion to `docs/Hypnograph/_archive/projects/20250111-effects-system-refactor/20250111-effects-system-refactor.md`.
 
 Scope note:
 - “CURRENT” is per-mode (Montage/Sequence/Live each has its own active recipe).

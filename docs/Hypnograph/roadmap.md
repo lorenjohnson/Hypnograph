@@ -11,6 +11,7 @@ Completed items live in `docs/_archive/index.md`.
 - [ ] Vision smart framing: detect a person (e.g. `VNDetectHumanRectanglesRequest`) and bias aspect-fill framing so the head sits near the top of the window (analyze first frame or a few early frames).
 - [ ] Make Player View a bottom of screen strip instead of a side quarter window. Play with "light up punch buttons" for turning and and off sources and a different color to indicate the currently selected source.
 - [ ] Explore how some watch sort of mode where individual sources in a layered montage hypnogram change one by one randomly might work. Start with prototype just to see how the experience feels and if it is worth integrating.
+- [ ] Explore "Channels" for Hypnograph watching: e.g., select a pin on a map + max radius to constrain random clip selection; or time-based channels with begin/end date (or a slider for time period before/after a date). Or using Apple Foundation to formulate a PHAsset query (e.g. "All photos in and around Berlin, Germany in 2025")
 - [ ] Custom Metal blends modes for better destructive shaders/effects. How to integrate our own Metal shaders as Blend Mode options.
 - [ ] Auto blend mode sensing (like based on the relative brightness of the source images). I think I am already doing something like that.
 - [ ] Midi mapping, Mic input, MIDI Clock, OSC
@@ -45,6 +46,16 @@ any effects load operation were done first
 
 ## PROJECTS
 
+## Improve windowing system to be more idiomatic / Swift native while still be unobtrusive
+
+The hidden work here is actually desciding and designing the UI/UX I want first. Which windows exist and what goes in them and what do they look like?
+
+## Integrate a Roadmap feature into both apps
+
+Appears as a command under Hypnograph / Divine left menu and opens a conventional Swift or Swift UI Mac OS window
+
+- [ ] Show a list of upcoming features with a vote option and status of completion
+
 ## Export entire History to an open standard timeline format (for import by a NLE)
 
 - [ ] Add a Hypnograph menu item to Export entire History to an open standard timeline format (for import by a NLE)
@@ -53,21 +64,28 @@ any effects load operation were done first
 
 Bias `SourceFraming.fill` to keep detected subjects (head/body) in-frame without revealing empty edges.
 
-- Docs: `docs/projects/20260120-smart-framing-human-centering/overview.md`
-- Plan: `docs/projects/20260120-smart-framing-human-centering/implementation-planning.md`
+- Docs: `docs/Hypnograph/_archive/projects/20260120-smart-framing-human-centering/overview.md`
+- Plan: `docs/Hypnograph/_archive/projects/20260120-smart-framing-human-centering/implementation-planning.md`
 
 ## Volume Leveling
 
 Volume leveling option in Player Settings (keeps relative db same across all shown Hypnograms). Depends on: Metal Playback Pipeline (boundary hooks).
 
-- Docs: `docs/projects/20260116-volume-leveling/overview.md`
-- Plan: `docs/projects/20260116-volume-leveling/implementation-planning.md`
+- Docs: `docs/Hypnograph/projects/20260116-volume-leveling/overview.md`
+- Plan: `docs/Hypnograph/projects/20260116-volume-leveling/implementation-planning.md`
+
+## Location Overlay Effect
+
+Per-source effect that overlays a source asset’s location as text (Phase 1: coordinate short form; Phase 2: reverse-geocoded place name).
+
+- Docs: `docs/Hypnograph/projects/20260121-location-overlay-effect/overview.md`
+- Plan: `docs/Hypnograph/projects/20260121-location-overlay-effect/implementation-planning.md`
 
 ## Save Sequences
 
 - Goal: save and render a contiguous range of clips from clip history (In/Out selection by clip id), without re-introducing "Sequence mode".
-- Docs: `docs/projects/20250116-save-sequences/overview.md`
-- Plan: `docs/projects/20250116-save-sequences/implementation-planning.md`
+- Docs: `docs/Hypnograph/projects/20250116-save-sequences/overview.md`
+- Plan: `docs/Hypnograph/projects/20250116-save-sequences/implementation-planning.md`
 
 ## Prepare for Beta Release/TestFlight
 

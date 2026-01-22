@@ -60,18 +60,18 @@ Both apps share core frameworks (notably `HypnoCore`, plus UI helpers in `HypnoU
                     +---------+
 ```
 
-Hypnograph controls are documented in `docs/reference/controls.md`. Divine has its own command surface.
+Hypnograph controls are documented in `docs/Hypnograph/reference/controls.md`. Divine has its own command surface.
 
 ## Subsystem Docs
 
 These docs are currently a mix of shared (`HypnoCore`) and app-specific (Hypnograph/Divine) details.
 
-- Rendering: `docs/architecture/rendering.md`
-- Effects: `docs/architecture/effects.md`
-- Media Library: `docs/architecture/media-library.md`
-- Dream Players: `docs/architecture/dream-players.md`
-- Settings: `docs/architecture/settings.md`
-- Recipes: `docs/architecture/recipes.md`
+- Rendering: `docs/Hypnograph/architecture/rendering.md`
+- Effects: `docs/Hypnograph/architecture/effects.md`
+- Media Library: `docs/Hypnograph/architecture/media-library.md`
+- Dream Players: `docs/Hypnograph/architecture/dream-players.md`
+- Settings: `docs/Hypnograph/architecture/settings.md`
+- Recipes: `docs/Hypnograph/architecture/recipes.md`
 
 ## Module Coordinator Pattern
 
@@ -110,18 +110,14 @@ HypnogramRecipe -> RenderEngine -> (internal composition + compositor) -> AVPlay
     -> FrameSource (AVPlayerItemVideoOutput) -> PlayerView (MTKView)
 ```
 
-Detailed render notes live in `docs/architecture/rendering.md`.
-Effect-specific details live in `docs/architecture/effects.md`.
+Detailed render notes live in `docs/Hypnograph/architecture/rendering.md`.
+Effect-specific details live in `docs/Hypnograph/architecture/effects.md`.
 
-## Docs Layout (Planned)
+## Docs Layout
 
-Longer-term, it may be cleaner to split docs by audience and app:
-
-- `docs/` — shared, core docs (primarily `HypnoCore`)
-- `Hypnograph/docs/` — Hypnograph-specific docs
-- `Divine/docs/` — Divine-specific docs
-
-This re-org will require updating intra-doc links; it can be done as a dedicated docs-only pass.
+- `docs/Hypnograph/` — Hypnograph-specific docs
+- `docs/Divine/` — Divine-specific docs
+- `docs/ontology/` — shared core ontology + diagrams (generated)
 
 ## Logging Convention
 
