@@ -60,18 +60,18 @@ Both apps share core frameworks (notably `HypnoCore`, plus UI helpers in `HypnoU
                     +---------+
 ```
 
-Hypnograph controls are documented in `docs/Hypnograph/reference/controls.md`. Divine has its own command surface.
+Hypnograph controls are documented in `../reference/controls.md`. Divine has its own command surface.
 
 ## Subsystem Docs
 
 These docs are currently a mix of shared (`HypnoCore`) and app-specific (Hypnograph/Divine) details.
 
-- Rendering: `docs/Hypnograph/architecture/rendering.md`
-- Effects: `docs/Hypnograph/architecture/effects.md`
-- Media Library: `docs/Hypnograph/architecture/media-library.md`
-- Dream Players: `docs/Hypnograph/architecture/dream-players.md`
-- Settings: `docs/Hypnograph/architecture/settings.md`
-- Recipes: `docs/Hypnograph/architecture/recipes.md`
+- Rendering: `rendering.md`
+- Effects: `effects.md`
+- Media Library: `media-library.md`
+- Dream Players: `dream-players.md`
+- Settings: `settings.md`
+- Recipes: `recipes.md`
 
 ## Module Coordinator Pattern
 
@@ -110,14 +110,14 @@ HypnogramRecipe -> RenderEngine -> (internal composition + compositor) -> AVPlay
     -> FrameSource (AVPlayerItemVideoOutput) -> PlayerView (MTKView)
 ```
 
-Detailed render notes live in `docs/Hypnograph/architecture/rendering.md`.
-Effect-specific details live in `docs/Hypnograph/architecture/effects.md`.
+Detailed render notes live in `rendering.md`.
+Effect-specific details live in `effects.md`.
 
 ## Docs Layout
 
-- `docs/Hypnograph/` — Hypnograph-specific docs
-- `docs/Divine/` — Divine-specific docs
-- `docs/ontology/` — shared core ontology + diagrams (generated)
+- `docs/hypnograph/` — Hypnograph-specific docs
+- `docs/divine/` — Divine-specific docs
+- `docs/shared/ontology/` — shared core ontology + diagrams (generated)
 
 ## Logging Convention
 

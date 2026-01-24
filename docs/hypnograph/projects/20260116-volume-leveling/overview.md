@@ -2,7 +2,7 @@
 
 **Created**: 2026-01-16
 **Status**: Proposal / Planning
-**Depends on**: [Metal Playback Pipeline](../../_archive/projects/20260117-metal-playback-pipeline/overview.md) (for boundary hooks)
+**Depends on**: [Metal Playback Pipeline](../../archive/20260117-metal-playback-pipeline/overview.md) (for boundary hooks)
 
 Goal: add an optional **Volume Leveling** feature that makes audio loudness feel **more consistent across hypnograms** while you browse (Preview) and perform (Live), without destroying creative dynamics within a single hypnogram.
 
@@ -123,4 +123,4 @@ We likely want a video transition option between clip changes to make browsing m
 - Option 5 boundary fades (audio + video together),
 - and any leveling gain ramps around the boundary (avoid spikes when a new clip starts).
 
-See also: `docs/_archive/projects/20260116-hypnogram-transitions/overview.md`.
+See also: `../../archive/20260116-hypnogram-transitions/overview.md`.

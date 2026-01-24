@@ -4,7 +4,7 @@ last_reviewed: 2026-01-07
 
 ## RESEARCH & DEVELOPMENT
 
-Completed items live in `docs/_archive/index.md`.
+Completed items live in `archive/index.md`.
 
 ## Research & Development
 
@@ -30,6 +30,7 @@ any effects load operation were done first
 
 ## MINOR PROJECTS
 
+- [ ] Add settings window and splash screen, branding stuff? "What you are looking for is who is looking." - St. Francis of Assisi
 - [ ] Feature flag Live mode as a possible optional feature... to eventually be a paid add on?
 - [ ] Hypnograph: Put what is in HUD view into the top of the Player Settings modal, eliminating the HUD View. Player Settings may get retitled, not sure. But it now takes up more vertical space and goes to top left of screen. We may need to iterate on the styling and what actually stays, as some things in the HUD may just go away or move elsewhere.
 - [ ] Hypnograph Favorites/Recents window. Recents should just be a list of the history items. Favorite should be ordered from newest to oldest?
@@ -63,28 +64,28 @@ Appears as a command under Hypnograph / Divine left menu and opens a conventiona
 
 Bias `SourceFraming.fill` to keep detected subjects (head/body) in-frame without revealing empty edges.
 
-- Docs: `docs/Hypnograph/_archive/projects/20260120-smart-framing-human-centering/overview.md`
-- Plan: `docs/Hypnograph/_archive/projects/20260120-smart-framing-human-centering/implementation-planning.md`
+- Docs: `archive/20260120-smart-framing-human-centering/overview.md`
+- Plan: `archive/20260120-smart-framing-human-centering/implementation-planning.md`
 
 ## Volume Leveling
 
 Volume leveling option in Player Settings (keeps relative db same across all shown Hypnograms). Depends on: Metal Playback Pipeline (boundary hooks).
 
-- Docs: `docs/Hypnograph/projects/20260116-volume-leveling/overview.md`
-- Plan: `docs/Hypnograph/projects/20260116-volume-leveling/implementation-planning.md`
+- Docs: `projects/20260116-volume-leveling/overview.md`
+- Plan: `projects/20260116-volume-leveling/implementation-planning.md`
 
 ## Location Overlay Effect
 
 Per-source effect that overlays a source asset’s location as text (Phase 1: coordinate short form; Phase 2: reverse-geocoded place name).
 
-- Docs: `docs/Hypnograph/projects/20260121-location-overlay-effect/overview.md`
-- Plan: `docs/Hypnograph/projects/20260121-location-overlay-effect/implementation-planning.md`
+- Docs: `projects/20260121-location-overlay-effect/overview.md`
+- Plan: `projects/20260121-location-overlay-effect/implementation-planning.md`
 
 ## Save Sequences
 
 - Goal: save and render a contiguous range of clips from clip history (In/Out selection by clip id), without re-introducing "Sequence mode".
-- Docs: `docs/Hypnograph/projects/20250116-save-sequences/overview.md`
-- Plan: `docs/Hypnograph/projects/20250116-save-sequences/implementation-planning.md`
+- Docs: `projects/20250116-save-sequences/overview.md`
+- Plan: `projects/20250116-save-sequences/implementation-planning.md`
 
 ## Prepare for Beta Release/TestFlight
 
