@@ -6,8 +6,7 @@ Hypnograph is a macOS app for creating layered video montages from your photo/vi
 
 ```text
 hypnograph/
-├── projects/           # active projects
-│   └── backlog/        # planned, not started
+├── projects/           # project specs
 ├── archive/            # completed projects
 ├── architecture/       # system design docs
 ├── product/            # mission, tech stack, practices
@@ -18,7 +17,7 @@ hypnograph/
 
 ## Directories
 
-**projects/** — Active development work. Each project is a folder or file (`project-name/` or `project-name.md`). `backlog/` holds planned-but-not-started work.
+**projects/** — Development work. Each project is a folder or file (`project-name/` or `project-name.md`).
 
 **archive/** — Completed projects, date-prefixed with completion date (`YYYYMMDD-project-name/`). See `archive/index.md` for a log of completed roadmap items.
 
@@ -37,14 +36,13 @@ hypnograph/
 ## Project Lifecycle
 
 ```text
-roadmap.md  →  projects/backlog/  →  projects/  →  archive/
-(idea)         (planned)            (active)      (done)
+roadmap.md  →  projects/  →  archive/
+(idea)         (planning)    (done)
 ```
 
 1. Ideas captured in `roadmap.md`
-2. When ready to plan: create doc in `projects/backlog/`
-3. When starting work: move to `projects/` root
-4. When complete: move to `archive/` with date prefix
+2. When ready to plan: create doc in `projects/`
+3. When complete: move to `archive/` with date prefix
 
 ## Related
 
