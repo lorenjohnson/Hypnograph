@@ -8,7 +8,7 @@
 
 This A/B `AVPlayer`-based architecture was implemented as an intermediate step, but has since been superseded by the Metal Playback Pipeline (Direction A), which replaces `AVPlayerView` + view-level crossfades with a single `MTKView` render surface.
 
-- See: `docs/Hypnograph/_archive/projects/20260117-metal-playback-pipeline/overview.md`
+- See: `archive/20260117-metal-playback-pipeline/overview.md`
 
 ## Goal
 
@@ -124,7 +124,7 @@ We decided against this because:
 
 ## Relationship to Other Projects
 
-### Hypnogram Transitions (docs/_archive/projects/20260116-hypnogram-transitions/)
+### Hypnogram Transitions (docs/_archive/20260116-hypnogram-transitions/)
 This project provides the **foundation** for transitions. The transitions project defines:
 - Transition styles (None, Crossfade, Punk)
 - User-facing settings

@@ -1,6 +1,6 @@
 # Live Mode Feature Flag
 
-**Project ID:** 20260121-live-mode-feature-flag
+**Project ID:** live-mode-feature-flag
 **Status:** Planning
 **Created:** 2026-01-21
 

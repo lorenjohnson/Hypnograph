@@ -313,7 +313,7 @@ Pixelate + Bloom + Noise                     [···]
 
 ## Implementation Plan
 
-Execution checklist: `docs/Hypnograph/_archive/projects/20250111-effects-system-refactor/20250111-effects-system-refactor.MVR-implementation-plan.md`
+Execution checklist: `archive/20250111-effects-system-refactor/20250111-effects-system-refactor.MVR-implementation-plan.md`
 
 ### MVR (Steps 1–4)
 

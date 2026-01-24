@@ -3,7 +3,7 @@
 **Created**: 2026-01-15  
 **Status**: Completed
 
-This is an implementation-oriented plan derived from `docs/_archive/projects/unify-montage-sequence/overview.md`.
+This is an implementation-oriented plan derived from `docs/_archive/unify-montage-sequence/overview.md`.
 
 ## Guiding constraints
 

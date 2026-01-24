@@ -50,42 +50,27 @@ any effects load operation were done first
 
 The hidden work here is actually desciding and designing the UI/UX I want first. Which windows exist and what goes in them and what do they look like?
 
+## export-clip-history-fcpxml
+
+- [ ] Add a Hypnograph menu item to Export entire History to an open standard timeline format (for import by a NLE): `projects/backlog/export-clip-history-fcpxml`
+
+## volume-leveling
+
+Volume leveling option in Player Settings (keeps relative db same across all shown Hypnograms). Depends on: Metal Playback Pipeline (boundary hooks): `projects/volume-leveling`
+
+## location-overlay-effect
+
+Per-source effect that overlays a source asset's location as text (Phase 1: coordinate short form; Phase 2: reverse-geocoded place name): `projects/backlog/location-overlay-effect`
+
+## save-sequences
+
+- Goal: save and render a contiguous range of clips from clip history (In/Out selection by clip id), without re-introducing "Sequence mode":`projects/save-sequences`
+
 ## Integrate a Roadmap feature into both apps
 
 Appears as a command under Hypnograph / Divine left menu and opens a conventional Swift or Swift UI Mac OS window
 
 - [ ] Show a list of upcoming features with a vote option and status of completion
-
-## Export entire History to an open standard timeline format (for import by a NLE)
-
-- [ ] Add a Hypnograph menu item to Export entire History to an open standard timeline format (for import by a NLE)
-
-## Smart Framing (Human Centering)
-
-Bias `SourceFraming.fill` to keep detected subjects (head/body) in-frame without revealing empty edges.
-
-- Docs: `archive/20260120-smart-framing-human-centering/overview.md`
-- Plan: `archive/20260120-smart-framing-human-centering/implementation-planning.md`
-
-## Volume Leveling
-
-Volume leveling option in Player Settings (keeps relative db same across all shown Hypnograms). Depends on: Metal Playback Pipeline (boundary hooks).
-
-- Docs: `projects/20260116-volume-leveling/overview.md`
-- Plan: `projects/20260116-volume-leveling/implementation-planning.md`
-
-## Location Overlay Effect
-
-Per-source effect that overlays a source asset’s location as text (Phase 1: coordinate short form; Phase 2: reverse-geocoded place name).
-
-- Docs: `projects/20260121-location-overlay-effect/overview.md`
-- Plan: `projects/20260121-location-overlay-effect/implementation-planning.md`
-
-## Save Sequences
-
-- Goal: save and render a contiguous range of clips from clip history (In/Out selection by clip id), without re-introducing "Sequence mode".
-- Docs: `projects/20250116-save-sequences/overview.md`
-- Plan: `projects/20250116-save-sequences/implementation-planning.md`
 
 ## Prepare for Beta Release/TestFlight
 

@@ -15,9 +15,9 @@ divine/
 
 ## Directories
 
-**projects/** — Active development work. Each project is a date-prefixed folder or file (`YYYYMMDD-project-name/`). `backlog/` holds planned-but-not-started work.
+**projects/** — Active development work. Each project is a folder or file (`project-name/` or `project-name.md`). `backlog/` holds planned-but-not-started work.
 
-**archive/** — Completed projects. Same naming convention.
+**archive/** — Completed projects, date-prefixed with completion date (`YYYYMMDD-project-name/`).
 
 ## Root Files
 
