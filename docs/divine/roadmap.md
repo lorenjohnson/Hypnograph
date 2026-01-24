@@ -1,13 +1,17 @@
 ---
 last_reviewed: 2026-01-07
 ---
-
 # Roadmap
 
-## Minor Projects:
-- [ ] Add "Allow Reversed" toggle settings
+## v0.1 Release
 
-## Project: Prepare for Beta Release/TestFlight
+- [ ] Add Settings window:
+	- [ ] "Allow Reversed" toggle settings (default true)
+	- [ ] "Borderless" toggle setting (default false)
+	- [ ] "Card Backs" toggle setting (default true)
 - [ ] Save layed out cards somehow (Snapshots are a good start), but saving a recipe for restore would be a better first step probably
-- [ ] Layout templates for either snap to or hard assigned positions
-- [ ] Apple Developer signup, App Store Connect, TestFlight release
+- [ ] Layout templates for either snap to or hard assigned positions?
+- [ ] Re-enable Save Snapshot (S)
+- [ ] Make Exclude (X) also work for cards
+- [ ] Does it also respect excluded sources?
+- [ ] Make option to save individual card?

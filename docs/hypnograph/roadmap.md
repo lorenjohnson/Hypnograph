@@ -3,13 +3,13 @@ last_reviewed: 2026-01-23
 ---
 # Roadmap
 
-### v0.1 Initial beta release
+## v0.1 Release
 
 - [ ] Blend modes and effects don't visibly apply when player is paused or showing still images (regression — this used to work)
 - [ ] Rendering/saving some Hypnograms results in an error: "🔴 RenderEngine.export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn't be completed. (Hypnograph.RenderError error 6.)" — happens if any effects load operation were done first
 - [ ] Refine packaged Effect Chains Library entries
 - [ ] Review Effect Chains library window to make i maybe more intuitive (recent is a little confusing and probably can/should go below the library/s)
-- [ ] Finder action "Add to Hypnograph Source" is not installing - Automator action fails.
+- [ ] Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause  causes a crash?
 - [ ] Refine or Remove (feature flag?) the Apple Photos selection window feature
 - [command-menu-review](projects/command-menu-review.md)
 - [splash-screen](projects/splash-screen.md)
@@ -22,7 +22,7 @@ last_reviewed: 2026-01-23
 - [volume-leveling](projects/volume-leveling)
 - [beta-release-testflight](projects/beta-release-testflight.md)
 
-### Backlog
+## Backlog
 - [save-sequences](projects/save-sequences)
 - [export-clip-history-fcpxml](projects/export-clip-history-fcpxml)
 - [add-history-to-hypnograms-favorite-recent-window](projects/add-history-to-hypnograms-favorite-recent-window)
@@ -35,7 +35,7 @@ last_reviewed: 2026-01-23
   - When it is done sticking to a mask or whatever you'd call it, it releases seemingly suddenly. Make it more of a fade or erosion.
 - [ ]  In-App Roadmap Display: Show the roadmap in-app, let users vote on feature priorities. Related to but separate from in-app feedback. Would need to decide on data source (local markdown, remote JSON) and how votes aggregate. #idea
 
-## RESEARCH & DEVELOPMENT
+# Research & Development
 
 - [ ] Investigate replacing custom settings/state persistence with UserDefaults or @AppStorage. Goal: reduce owned code, be more idiomatic. What would we lose? What could we delete?
 - [ ] "Randomize Effect" as a toggle for randomized hypnogram generation
