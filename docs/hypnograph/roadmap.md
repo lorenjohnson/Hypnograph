@@ -1,5 +1,5 @@
 ---
-last_reviewed: 2026-01-07
+last_reviewed: 2026-01-23
 ---
 
 # Roadmap
@@ -28,15 +28,17 @@ last_reviewed: 2026-01-07
 
 ## Projects
 
-- [add-history-to-hypnograms-favorite-recent-window](projects/add-history-to-hypnograms-favorite-recent-window)
 - [desktop-fullscreen](projects/desktop-fullscreen.md)
+- [save-sequences](projects/save-sequences)
+- [live-mode-feature-flag](projects/live-mode-feature-flag.md)
+- [volume-leveling](projects/volume-leveling)
+- [beta-release-testflight](projects/beta-release-testflight.md)
 - [export-clip-history-fcpxml](projects/export-clip-history-fcpxml)
+- [add-history-to-hypnograms-favorite-recent-window](projects/add-history-to-hypnograms-favorite-recent-window)
 - [layer-editor](projects/layer-editor)
 - [library-manager](projects/library-manager.md)
-- [live-mode-feature-flag](projects/live-mode-feature-flag.md)
 - [location-overlay-effect](projects/location-overlay-effect)
-- [save-sequences](projects/save-sequences)
-- [volume-leveling](projects/volume-leveling)
+- [in-app-feedback](projects/in-app-feedback.md)
 
 ## IDEAS
 
@@ -44,16 +46,9 @@ last_reviewed: 2026-01-07
 
 The hidden work here is actually deciding and designing the UI/UX I want first. Which windows exist and what goes in them and what do they look like?
 
-### Integrate a Roadmap feature into both apps
+### In-App Roadmap Display
 
-Appears as a command under Hypnograph / Divine left menu and opens a conventional Swift or SwiftUI macOS window.
-
-- [ ] Show a list of upcoming features with a vote option and status of completion
-
-### Prepare for Beta Release/TestFlight
-
-- [ ] Apple Developer signup, App Store Connect, TestFlight release
-- [ ] Collect testers, sort paths, finalize icon
+Show the roadmap in-app, let users vote on feature priorities. Related to but separate from in-app feedback. Would need to decide on data source (local markdown, remote JSON) and how votes aggregate.
 
 ### Current Hypnogram / Recipe window
 
