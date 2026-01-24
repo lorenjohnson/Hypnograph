@@ -9,7 +9,6 @@ import HypnoUI
 final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     weak var renderQueue: RenderEngine.ExportQueue?
     weak var mainWindow: NSWindow?
-    var gameControllerManager: GameControllerManager?
 
     /// Callback to toggle clean screen (injected by app)
     var toggleCleanScreen: (() -> Void)?
@@ -354,12 +353,6 @@ struct HypnographApp: App {
                     dream?.appendSessionToHistory(session)
                     AppNotifications.show("Loaded \(url.lastPathComponent)", flash: true)
                 }
-
-                // Initialize game controller support
-                appDelegate.gameControllerManager = GameControllerManager(
-                    state: state,
-                    dream: dream
-                )
 
                 // Refresh available libraries (includes asset counts for menu)
                 Task {

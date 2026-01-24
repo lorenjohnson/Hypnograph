@@ -718,14 +718,13 @@ final class Dream: ObservableObject {
         print("Dream: enqueueing clip with \(renderHypnogram.layers.count) layer(s), duration: \(renderHypnogram.targetDuration.seconds)s")
 
         // Enqueue immediately (don't defer - the renderer handles async internally)
+        // RenderEngine.ExportQueue provides status messages via onStatusMessage callback
         renderQueue.enqueue(
             clip: renderHypnogram,
             outputFolder: state.settings.outputURL,
             outputSize: outputSize,
             sourceFraming: state.settings.sourceFraming
         )
-
-        AppNotifications.show("Rendering video...", flash: true)
 
         // Reset for next hypnogram
         // Defer this to avoid modifying @Published during button action
