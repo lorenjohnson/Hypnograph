@@ -2,7 +2,7 @@
 last_reviewed: 2026-01-07
 ---
 
-## RESEARCH & DEVELOPMENT
+# Roadmap
 
 Completed items live in `archive/index.md`.
 
@@ -24,16 +24,13 @@ Completed items live in `archive/index.md`.
 - [ ] Save and Render: Rendering started and another flash message appear at the same time and one of those messages is extraneous 
 - [ ] When the Player is not playing / when it is all still images blend modes don't apply and I can't "flash" to a new layer and see it without effects like I can when videos are playing. It should work/work the same in both scenarios. This is also true if I change effects when the player is paused and it is all videos...
 - [ ] Updating an Effect Chain title from where it is applied (e.g. global), then saving back to library just seemed to create a new Library Entry instead of saving back to the original library entry.
-- [ ] Rendering/saving some Hypnograms results in an error: "🔴 RenderEngine.export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn’t be completed. (Hypnograph.RenderError error 6.)"
-any effects load operation were done first
+- [ ] Rendering/saving some Hypnograms results in an error: "🔴 RenderEngine.export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn't be completed. (Hypnograph.RenderError error 6.)" — happens if any effects load operation were done first
 - [ ] Finder action not installing - Automator action fails.
 
 ## MINOR PROJECTS
 
 - [ ] Add settings window and splash screen, branding stuff? "What you are looking for is who is looking." - St. Francis of Assisi
-- [ ] Feature flag Live mode as a possible optional feature... to eventually be a paid add on?
 - [ ] Hypnograph: Put what is in HUD view into the top of the Player Settings modal, eliminating the HUD View. Player Settings may get retitled, not sure. But it now takes up more vertical space and goes to top left of screen. We may need to iterate on the styling and what actually stays, as some things in the HUD may just go away or move elsewhere.
-- [ ] Hypnograph Favorites/Recents window. Recents should just be a list of the history items. Favorite should be ordered from newest to oldest?
 - [ ] Window state not saved in Hypnograph. Maybe save it. Also tab when there are no windows shown or to restore, shows a default set of Player Settings and Effects.
 - [ ] Consider new default for storage location (e.g. `~/Movies/Hypnograph` instead of `~/Library/Application Support/Hypnograph/recipes`)
 - [ ] Confirm the Add Source functionality (which should be mapped to ".") still works.
@@ -46,25 +43,47 @@ any effects load operation were done first
 
 ## PROJECTS
 
-## Improve windowing system to be more idiomatic / Swift native while still be unobtrusive
+### Active
 
-The hidden work here is actually desciding and designing the UI/UX I want first. Which windows exist and what goes in them and what do they look like?
+## live-mode-feature-flag
 
-## export-clip-history-fcpxml
+Feature flag to gate Live Mode as an optional feature (eventually paid add-on): `projects/live-mode-feature-flag.md`
 
-- [ ] Add a Hypnograph menu item to Export entire History to an open standard timeline format (for import by a NLE): `projects/backlog/export-clip-history-fcpxml`
+## layer-editor
+
+Layer editor UI: `projects/layer-editor`
+
+## desktop-fullscreen
+
+Desktop fullscreen mode: `projects/desktop-fullscreen.md`
 
 ## volume-leveling
 
 Volume leveling option in Player Settings (keeps relative db same across all shown Hypnograms). Depends on: Metal Playback Pipeline (boundary hooks): `projects/volume-leveling`
 
+## save-sequences
+
+Save and render a contiguous range of clips from clip history (In/Out selection by clip id), without re-introducing "Sequence mode": `projects/save-sequences`
+
+### Backlog
+
+## export-clip-history-fcpxml
+
+Add a Hypnograph menu item to Export entire History to an open standard timeline format (for import by a NLE): `projects/backlog/export-clip-history-fcpxml`
+
 ## location-overlay-effect
 
 Per-source effect that overlays a source asset's location as text (Phase 1: coordinate short form; Phase 2: reverse-geocoded place name): `projects/backlog/location-overlay-effect`
 
-## save-sequences
+## add-history-to-hypnograms-favorite-recent-window
 
-- Goal: save and render a contiguous range of clips from clip history (In/Out selection by clip id), without re-introducing "Sequence mode":`projects/save-sequences`
+Hypnograph Favorites/Recents window with history integration: `projects/backlog/add-history-to-hypnograms-favorite-recent-window`
+
+### Ideas (no project file yet)
+
+## Improve windowing system to be more idiomatic / Swift native while still be unobtrusive
+
+The hidden work here is actually deciding and designing the UI/UX I want first. Which windows exist and what goes in them and what do they look like?
 
 ## Integrate a Roadmap feature into both apps
 
