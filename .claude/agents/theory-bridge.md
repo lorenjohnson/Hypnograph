@@ -1,1 +1,1 @@
-../../agents/theory-bridge.md
+../../docs/agents/theory-bridge.md

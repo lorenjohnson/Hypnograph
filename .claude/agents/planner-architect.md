@@ -1,1 +1,1 @@
-../../agents/planner-architect.md
+../../docs/agents/planner-architect.md

@@ -1,1 +1,1 @@
-../../agents/reviewer-skeptic.md
+../../docs/agents/reviewer-skeptic.md

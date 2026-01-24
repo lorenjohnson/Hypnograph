@@ -1,1 +1,1 @@
-../../agents/doc-writer.md
+../../docs/agents/doc-writer.md
