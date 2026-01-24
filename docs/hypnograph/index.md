@@ -18,9 +18,9 @@ hypnograph/
 
 ## Directories
 
-**projects/** — Active development work. Each project is a date-prefixed folder or file (`YYYYMMDD-project-name/`). `backlog/` holds planned-but-not-started work.
+**projects/** — Active development work. Each project is a folder or file (`project-name/` or `project-name.md`). `backlog/` holds planned-but-not-started work.
 
-**archive/** — Completed projects. Same naming convention. See `archive/index.md` for a log of completed roadmap items.
+**archive/** — Completed projects, date-prefixed with completion date (`YYYYMMDD-project-name/`). See `archive/index.md` for a log of completed roadmap items.
 
 **architecture/** — System design documentation (effects, rendering, settings, etc.).
 

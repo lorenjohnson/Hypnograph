@@ -6,7 +6,7 @@
 
 This plan was executed for the AVPlayerView-based unified player work, but the codebase has since moved to the Metal Playback Pipeline (Direction A). This document remains as historical implementation notes.
 
-- See: `docs/Hypnograph/_archive/projects/20260117-metal-playback-pipeline/overview.md`
+- See: `archive/20260117-metal-playback-pipeline/overview.md`
 
 This plan details the code-level implementation for unifying Preview and Live player infrastructure.
 
