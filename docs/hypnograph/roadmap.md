@@ -14,7 +14,6 @@ last_reviewed: 2026-01-23
 - [command-menu-review](projects/command-menu-review.md)
 - [splash-screen](projects/splash-screen.md)
 - [app-settings-window](projects/app-settings-window.md)
-- [in-app-windowing-review](projects/in-app-windowing-review.md)
 - [combine-hud-into-player-settings](projects/combine-hud-into-player-settings.md)
 - [save-fullscreen-state](projects/save-fullscreen-state.md)
 - [live-mode-feature-flag](projects/live-mode-feature-flag.md)
