@@ -25,11 +25,6 @@ final class SettingsStore: PersistentStore<Settings> {
 
     /// Convenience init that loads from URL or uses defaults
     convenience init(fileURL: URL) {
-        // Try to load existing settings, fall back to defaults
-        let defaultSettings = Settings(
-            outputFolder: "~/Movies/Hypnograph/renders",
-            sources: .array(["~/Movies/Hypnograph/sources"])
-        )
-        self.init(fileURL: fileURL, default: defaultSettings)
+        self.init(fileURL: fileURL, default: Settings.defaultValue)
     }
 }
