@@ -37,7 +37,27 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     var saveEffectSessions: (() -> Void)?
 
     /// Callback after Photos authorization completes (injected by app)
-    var onPhotosAuthorization: (() -> Void)?
+    var onPhotosAuthorization: (() -> Void)? {
+        didSet {
+            // If authorization completed before the callback was wired, fire it once.
+            if pendingPhotosAuthorizationCallback, onPhotosAuthorization != nil {
+                pendingPhotosAuthorizationCallback = false
+                onPhotosAuthorization?()
+            }
+        }
+    }
+
+    /// Photos authorization can complete before the SwiftUI view hierarchy wires callbacks.
+    private var pendingPhotosAuthorizationCallback = false
+
+    @MainActor
+    func photosAuthorizationDidComplete() {
+        if let callback = onPhotosAuthorization {
+            callback()
+        } else {
+            pendingPhotosAuthorizationCallback = true
+        }
+    }
 
     /// Callback to save window state (injected by app)
     var saveWindowState: (() -> Void)?
@@ -179,7 +199,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             await MainActor.run { [weak self] in
-                self?.onPhotosAuthorization?()
+                self?.photosAuthorizationDidComplete()
             }
         }
     }

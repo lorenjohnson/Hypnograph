@@ -508,11 +508,18 @@ final class Dream: ObservableObject {
             )
         }
 
-        if activePlayer.session.hypnograms.isEmpty {
-            replaceHistoryWithNewClip()
-        } else if activePlayer.layers.isEmpty {
-            // Defensive: keep history shape, just replace the current clip if it is empty.
-            replaceCurrentClipWithNewClip()
+        if activePlayer.session.hypnograms.isEmpty || activePlayer.layers.isEmpty {
+            // Avoid an infinite "generate new clip" loop when the media library is empty.
+            if state.library.assetCount == 0 {
+                return AnyView(NoSourcesView(state: state))
+            }
+
+            if activePlayer.session.hypnograms.isEmpty {
+                replaceHistoryWithNewClip()
+            } else if activePlayer.layers.isEmpty {
+                // Defensive: keep history shape, just replace the current clip if it is empty.
+                replaceCurrentClipWithNewClip()
+            }
         }
 
         let player = activePlayer

@@ -170,6 +170,12 @@ final class HypnographState: ObservableObject {
         }
     }
 
+    /// Rebuilds the current library using the existing `activeLibraryKeys` and latest settings.
+    /// Useful after settings changes that affect library contents (e.g. updating source folders).
+    func rebuildLibrary() async {
+        await applyActiveLibrariesUnified(activeLibraryKeys, save: false)
+    }
+
     // MARK: - Source Media Types
 
     func isMediaTypeActive(_ type: MediaType) -> Bool {
