@@ -101,8 +101,9 @@ struct Settings: Codable, MediaLibrarySettings {
         static let clipLengthMinSeconds: Double = 2.0
         static let clipLengthMaxSeconds: Double = 15.0
         static let historyLimit: Int = 200
-        static let sources = MediaSourcesParam.array([
-            "~/Movies/Hypnograph/sources"
+        static let sources = MediaSourcesParam.dictionary([
+            "default": ["~/Movies/Hypnograph/sources"],
+            "From Finder Helper": []
         ])
         static let activeLibraries: [String] = []
         static let aspectRatio: AspectRatio = .ratio16x9
@@ -120,6 +121,35 @@ struct Settings: Codable, MediaLibrarySettings {
         static let previewVolume: Float = 1.0
         static let liveAudioDeviceUID: String? = nil
         static let liveVolume: Float = 1.0
+    }
+
+    /// Single source of truth for defaults (kept in sync with `Defaults`).
+    static var defaultValue: Settings {
+        Settings(
+            outputFolder: Defaults.outputFolder,
+            sources: Defaults.sources,
+            watchMode: Defaults.watchMode,
+            snapshotsFolder: Defaults.snapshotsFolder,
+            clipLengthMinSeconds: Defaults.clipLengthMinSeconds,
+            clipLengthMaxSeconds: Defaults.clipLengthMaxSeconds,
+            historyLimit: Defaults.historyLimit,
+            activeLibraries: Defaults.activeLibraries,
+            outputResolution: Defaults.outputResolution,
+            sourceFraming: Defaults.sourceFraming,
+            sourceMediaTypes: Defaults.sourceMediaTypes,
+            effectsListCollapsed: Defaults.effectsListCollapsed,
+            transitionStyle: Defaults.transitionStyle,
+            transitionDuration: Defaults.transitionDuration,
+            previewAudioDeviceUID: Defaults.previewAudioDeviceUID,
+            previewVolume: Defaults.previewVolume,
+            liveAudioDeviceUID: Defaults.liveAudioDeviceUID,
+            liveVolume: Defaults.liveVolume,
+            playerConfig: PlayerConfiguration(
+                aspectRatio: Defaults.aspectRatio,
+                playerResolution: Defaults.playerResolution,
+                maxLayers: Defaults.maxLayers
+            )
+        )
     }
 
     private enum CodingKeys: String, CodingKey {

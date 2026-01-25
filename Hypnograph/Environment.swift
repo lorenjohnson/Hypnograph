@@ -78,24 +78,154 @@ enum Environment {
 
     /// If no settings exists in Application Support, copy the bundled default JSON there.
     static func ensureDefaultSettingsFileExists() {
-        let fm = FileManager.default
-        let url = defaultSettingsURL
-
-        guard !fm.fileExists(atPath: url.path) else { return }
-
-        guard let bundledURL = Bundle.main.url(
+        let bundledURL = Bundle.main.url(
             forResource: "default-settings",
             withExtension: "json"
-        ) else {
-            print("⚠️ No bundled default settings found; skipping creation.")
-            return
+        )
+        ensureSettingsFileExists(
+            at: defaultSettingsURL,
+            bundledURL: bundledURL,
+            defaultSettings: Settings.defaultValue
+        )
+    }
+
+    /// Ensures a valid, decodable settings file exists at the provided URL.
+    /// - If missing: copies `bundledURL` if available, otherwise writes `defaultSettings`.
+    /// - If present but invalid: attempts a targeted repair for common schema issues, otherwise backs up and rewrites.
+    static func ensureSettingsFileExists(
+        at url: URL,
+        bundledURL: URL?,
+        defaultSettings: Settings
+    ) {
+        let fm = FileManager.default
+
+        // Ensure parent directory exists
+        let dir = url.deletingLastPathComponent()
+        if !fm.fileExists(atPath: dir.path) {
+            try? fm.createDirectory(at: dir, withIntermediateDirectories: true, attributes: nil)
         }
 
+        // Create file if missing
+        if !fm.fileExists(atPath: url.path) {
+            if let bundledURL {
+                do {
+                    try fm.copyItem(at: bundledURL, to: url)
+                    print("Copied bundled default settings to \(url.path)")
+                } catch {
+                    print("Failed to copy default settings to \(url.path): \(error)")
+                }
+            }
+
+            if !fm.fileExists(atPath: url.path) {
+                writeSettings(defaultSettings, to: url)
+                return
+            }
+        }
+
+        // Validate + normalize
         do {
-            try fm.copyItem(at: bundledURL, to: url)
-            print("Copied bundled default settings to \(url.path)")
+            let data = try Data(contentsOf: url)
+            _ = try JSONDecoder().decode(Settings.self, from: data)
+            return
         } catch {
-            print("Failed to copy default settings to \(url.path): \(error)")
+            // Try repairing common issues (notably mixed-type `sources` dictionaries).
+            if let repaired = repairSettingsFile(at: url),
+               let repairedData = try? stableJSONEncoder().encode(repaired) {
+                do {
+                    try repairedData.write(to: url, options: .atomic)
+                    print("Repaired settings JSON at \(url.path)")
+                    return
+                } catch {
+                    // Fall through to backup + rewrite.
+                }
+            }
+
+            backupInvalidSettingsFile(at: url)
+            writeSettings(defaultSettings, to: url)
+        }
+    }
+
+    private static func writeSettings(_ settings: Settings, to url: URL) {
+        do {
+            let data = try stableJSONEncoder().encode(settings)
+            try data.write(to: url, options: .atomic)
+            print("Wrote default settings to \(url.path)")
+        } catch {
+            print("Failed to write default settings to \(url.path): \(error)")
+        }
+    }
+
+    private static func stableJSONEncoder() -> JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return encoder
+    }
+
+    /// Attempts to repair a settings file that can't decode under the current schema.
+    /// Returns a decoded `Settings` if repair succeeds; otherwise nil.
+    private static func repairSettingsFile(at url: URL) -> Settings? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+
+        // If it decodes, no repair needed.
+        if let decoded = try? JSONDecoder().decode(Settings.self, from: data) {
+            return decoded
+        }
+
+        // Attempt JSON-level normalization of the `sources` field when it is a dictionary
+        // with mixed string/array values (legacy/bundled formats).
+        guard let obj = try? JSONSerialization.jsonObject(with: data, options: []),
+              var dict = obj as? [String: Any] else {
+            return nil
+        }
+
+        if let sourcesAny = dict["sources"] as? [String: Any] {
+            var normalized: [String: [String]] = [:]
+            var didConvertAny = false
+
+            for (key, value) in sourcesAny {
+                if let s = value as? String {
+                    normalized[key] = [s]
+                    didConvertAny = true
+                } else if let arr = value as? [String] {
+                    normalized[key] = arr
+                    didConvertAny = true
+                }
+            }
+
+            if didConvertAny {
+                dict["sources"] = normalized
+            }
+        }
+
+        guard let normalizedData = try? JSONSerialization.data(withJSONObject: dict, options: []),
+              let repaired = try? JSONDecoder().decode(Settings.self, from: normalizedData) else {
+            return nil
+        }
+
+        return repaired
+    }
+
+    private static func backupInvalidSettingsFile(at url: URL) {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: url.path) else { return }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+
+        let ts = formatter.string(from: Date())
+        let backupName = "hypnograph-settings.invalid-\(ts).json"
+        let backupURL = url.deletingLastPathComponent().appendingPathComponent(backupName)
+
+        do {
+            if fm.fileExists(atPath: backupURL.path) {
+                try fm.removeItem(at: backupURL)
+            }
+            try fm.moveItem(at: url, to: backupURL)
+            print("Backed up invalid settings to \(backupURL.path)")
+        } catch {
+            print("Failed to back up invalid settings at \(url.path): \(error)")
         }
     }
 

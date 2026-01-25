@@ -1,7 +1,7 @@
 {
   "watchMode": true,
   "sources": {
-    "default": "~/Movies/Hypnograph/sources",
+    "default": ["~/Movies/Hypnograph/sources"],
     "From Finder Helper": []
   },
   "outputFolder": "~/Movies/Hypnograph/renders",
