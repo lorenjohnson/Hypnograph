@@ -72,4 +72,18 @@ struct HypnographTests {
         let backups = names.filter { $0.hasPrefix("hypnograph-settings.invalid-") && $0.hasSuffix(".json") }
         #expect(!backups.isEmpty)
     }
+
+    @MainActor
+    @Test func photosAuthorization_callbackIsDeliveredIfWiredLate() throws {
+        let delegate = HypnographAppDelegate()
+        final class Counter { var value = 0 }
+        let counter = Counter()
+
+        delegate.photosAuthorizationDidComplete()
+        delegate.onPhotosAuthorization = {
+            counter.value += 1
+        }
+
+        #expect(counter.value == 1)
+    }
 }
