@@ -35,6 +35,51 @@ Also: ensure window state (open/closed) is saved and restored between sessions.
 - [ ] Is this the right default set?
 - [ ] Should Tab cycle through window visibility states?
 
+## Prototype Findings (2026-01-25)
+
+Built a quick prototype comparing native SwiftUI sidebars vs current floating panels.
+
+### Decision: Use Native Sidebars + Controls
+
+**Strongly prefer native approach:**
+- Left sidebar + right sidebar (overlay video, don't resize it)
+- Native SwiftUI controls (Slider, Toggle, Picker, Stepper) instead of custom ones
+- Tab bar for Live/Preview mode switching
+- Show/hide via on-screen icons AND single-key shortcuts (`[` for left, `]` for right)
+
+**Benefits:**
+- Less custom code to maintain
+- Consistent macOS look and feel
+- Built-in accessibility
+- Reduces codebase complexity
+
+### SwiftUI Terminology
+
+| Term | Usage |
+|------|-------|
+| Sidebar | Left/right panels that overlay content |
+| `.ultraThinMaterial` | Frosted glass background effect |
+| `TabView` | For switching between modes/sections |
+| Native controls | `Slider`, `Toggle`, `Picker`, `Stepper` |
+
+### Proposed Layout
+
+```text
+┌─────────────────┬────────────────────────────────────┬─────────────────┐
+│  LEFT SIDEBAR   │                                    │  RIGHT SIDEBAR  │
+│  [Sources]      │         VIDEO CONTENT              │  [Layers]       │
+│  [Settings]     │         (full size)                │  [Effects]      │
+│  [Favorites]    │                                    │                 │
+└─────────────────┴────────────────────────────────────┴─────────────────┘
+```
+
+### Next Steps
+
+- [ ] Spec out exactly what goes in each sidebar tab
+- [ ] Design the Layers panel in detail (per-layer effect editing)
+- [ ] Decide on Tab bar placement for Live/Preview mode
+- [ ] Plan migration from custom controls to native ones
+
 ## Related Projects
 
 - [combine-hud-into-player-settings](combine-hud-into-player-settings.md) — May eliminate HUD as a separate window
