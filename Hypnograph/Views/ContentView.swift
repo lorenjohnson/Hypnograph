@@ -90,6 +90,43 @@ struct ContentView: View {
             .padding(.leading, 12)
             .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("hypnogramList"))
         }
+        .overlay(alignment: .center) {
+            HStack(spacing: 0) {
+                if state.windowState.isVisible("leftSidebar") {
+                    LeftSidebarView(state: state, dream: dream, player: dream.activePlayer)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                }
+
+                Spacer(minLength: 0)
+
+                if state.windowState.isVisible("rightSidebar") {
+                    RightSidebarView(state: state, dream: dream, effectsSession: dream.effectsLibrarySession)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
+            }
+            .padding(12)
+            .animation(.easeInOut(duration: 0.25), value: state.windowState.isVisible("leftSidebar"))
+            .animation(.easeInOut(duration: 0.25), value: state.windowState.isVisible("rightSidebar"))
+        }
+        .overlay(alignment: .top) {
+            if !state.windowState.isCleanScreen {
+                Picker("", selection: Binding(
+                    get: { dream.isLiveMode ? 1 : 0 },
+                    set: { newValue in
+                        if (newValue == 1) != dream.isLiveMode {
+                            dream.toggleLiveMode()
+                        }
+                    }
+                )) {
+                    Text("Preview").tag(0)
+                    Text("Live").tag(1)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 170)
+                .padding(.top, 12)
+                .glassPanel(cornerRadius: 12)
+            }
+        }
         .overlay(alignment: .bottomLeading) {
             // Player Settings - bottom left
             if state.windowState.isVisible("playerSettings") {
@@ -104,6 +141,14 @@ struct ContentView: View {
                 .padding(.bottom, 12)
                 .transition(.move(edge: .leading).combined(with: .opacity))
                 .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("playerSettings"))
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if state.windowState.isVisible("keyboardHints") {
+                KeyboardHintBar()
+                    .padding(.bottom, 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.easeInOut(duration: 0.25), value: state.windowState.isVisible("keyboardHints"))
             }
         }
         .overlay(alignment: .topTrailing) {
@@ -151,6 +196,11 @@ struct ContentView: View {
         }
         .appNotifications()
         .background(Color.black)
+        .onAppear {
+            state.windowState.register("leftSidebar", defaultVisible: true)
+            state.windowState.register("rightSidebar", defaultVisible: true)
+            state.windowState.register("keyboardHints", defaultVisible: true)
+        }
         .sheet(isPresented: $state.showPhotosPicker) {
             PhotosPickerSheet(
                 isPresented: $state.showPhotosPicker,
