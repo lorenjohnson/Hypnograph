@@ -79,6 +79,20 @@ struct Settings: Codable, MediaLibrarySettings {
     /// Duration of transitions in seconds
     var transitionDuration: Double
 
+    // MARK: - Randomization Settings (Generation Rules)
+
+    /// When true, randomly applies a global effect chain when generating new clips
+    var randomGlobalEffect: Bool
+
+    /// Chance (0.0 - 1.0) of randomizing global effect on generation
+    var randomGlobalEffectFrequency: Double
+
+    /// When true, randomly applies per-layer effect chains when generating new clips
+    var randomLayerEffect: Bool
+
+    /// Chance (0.0 - 1.0) of randomizing layer effects on generation
+    var randomLayerEffectFrequency: Double
+
     // MARK: - Audio Settings
 
     /// Preview audio device UID (nil = None/muted)
@@ -116,6 +130,11 @@ struct Settings: Codable, MediaLibrarySettings {
         // Transition defaults
         static let transitionStyle: TransitionRenderer.TransitionType = .crossfade
         static let transitionDuration: Double = 1.5
+        // Randomization defaults
+        static let randomGlobalEffect: Bool = true
+        static let randomGlobalEffectFrequency: Double = 0.7
+        static let randomLayerEffect: Bool = false
+        static let randomLayerEffectFrequency: Double = 0.3
         // Audio defaults: nil UID = system default, volume = 1.0
         static let previewAudioDeviceUID: String? = nil
         static let previewVolume: Float = 1.0
@@ -140,6 +159,10 @@ struct Settings: Codable, MediaLibrarySettings {
             effectsListCollapsed: Defaults.effectsListCollapsed,
             transitionStyle: Defaults.transitionStyle,
             transitionDuration: Defaults.transitionDuration,
+            randomGlobalEffect: Defaults.randomGlobalEffect,
+            randomGlobalEffectFrequency: Defaults.randomGlobalEffectFrequency,
+            randomLayerEffect: Defaults.randomLayerEffect,
+            randomLayerEffectFrequency: Defaults.randomLayerEffectFrequency,
             previewAudioDeviceUID: Defaults.previewAudioDeviceUID,
             previewVolume: Defaults.previewVolume,
             liveAudioDeviceUID: Defaults.liveAudioDeviceUID,
@@ -161,6 +184,8 @@ struct Settings: Codable, MediaLibrarySettings {
         case outputResolution, sourceFraming, sourceMediaTypes
         case effectsListCollapsed
         case transitionStyle, transitionDuration
+        case randomGlobalEffect, randomGlobalEffectFrequency
+        case randomLayerEffect, randomLayerEffectFrequency
         case previewAudioDeviceUID, previewVolume
         case liveAudioDeviceUID, liveVolume
         case playerConfig
@@ -185,6 +210,10 @@ struct Settings: Codable, MediaLibrarySettings {
         effectsListCollapsed: Bool = Defaults.effectsListCollapsed,
         transitionStyle: TransitionRenderer.TransitionType = Defaults.transitionStyle,
         transitionDuration: Double = Defaults.transitionDuration,
+        randomGlobalEffect: Bool = Defaults.randomGlobalEffect,
+        randomGlobalEffectFrequency: Double = Defaults.randomGlobalEffectFrequency,
+        randomLayerEffect: Bool = Defaults.randomLayerEffect,
+        randomLayerEffectFrequency: Double = Defaults.randomLayerEffectFrequency,
         previewAudioDeviceUID: String? = Defaults.previewAudioDeviceUID,
         previewVolume: Float = Defaults.previewVolume,
         liveAudioDeviceUID: String? = Defaults.liveAudioDeviceUID,
@@ -205,6 +234,10 @@ struct Settings: Codable, MediaLibrarySettings {
         self.effectsListCollapsed = effectsListCollapsed
         self.transitionStyle = transitionStyle
         self.transitionDuration = transitionDuration
+        self.randomGlobalEffect = randomGlobalEffect
+        self.randomGlobalEffectFrequency = randomGlobalEffectFrequency
+        self.randomLayerEffect = randomLayerEffect
+        self.randomLayerEffectFrequency = randomLayerEffectFrequency
         self.previewAudioDeviceUID = previewAudioDeviceUID
         self.previewVolume = previewVolume
         self.liveAudioDeviceUID = liveAudioDeviceUID
@@ -253,6 +286,14 @@ struct Settings: Codable, MediaLibrarySettings {
             ?? Defaults.transitionStyle
         transitionDuration = try c.decodeIfPresent(Double.self, forKey: .transitionDuration)
             ?? Defaults.transitionDuration
+        randomGlobalEffect = try c.decodeIfPresent(Bool.self, forKey: .randomGlobalEffect)
+            ?? Defaults.randomGlobalEffect
+        randomGlobalEffectFrequency = try c.decodeIfPresent(Double.self, forKey: .randomGlobalEffectFrequency)
+            ?? Defaults.randomGlobalEffectFrequency
+        randomLayerEffect = try c.decodeIfPresent(Bool.self, forKey: .randomLayerEffect)
+            ?? Defaults.randomLayerEffect
+        randomLayerEffectFrequency = try c.decodeIfPresent(Double.self, forKey: .randomLayerEffectFrequency)
+            ?? Defaults.randomLayerEffectFrequency
         previewAudioDeviceUID = try c.decodeIfPresent(String.self, forKey: .previewAudioDeviceUID)
             ?? Defaults.previewAudioDeviceUID
         previewVolume = try c.decodeIfPresent(Float.self, forKey: .previewVolume)
@@ -289,6 +330,10 @@ struct Settings: Codable, MediaLibrarySettings {
         try c.encode(effectsListCollapsed, forKey: .effectsListCollapsed)
         try c.encode(transitionStyle, forKey: .transitionStyle)
         try c.encode(transitionDuration, forKey: .transitionDuration)
+        try c.encode(randomGlobalEffect, forKey: .randomGlobalEffect)
+        try c.encode(randomGlobalEffectFrequency, forKey: .randomGlobalEffectFrequency)
+        try c.encode(randomLayerEffect, forKey: .randomLayerEffect)
+        try c.encode(randomLayerEffectFrequency, forKey: .randomLayerEffectFrequency)
         try c.encodeIfPresent(previewAudioDeviceUID, forKey: .previewAudioDeviceUID)
         try c.encode(previewVolume, forKey: .previewVolume)
         try c.encodeIfPresent(liveAudioDeviceUID, forKey: .liveAudioDeviceUID)

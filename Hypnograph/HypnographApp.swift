@@ -13,6 +13,10 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Callback to toggle clean screen (injected by app)
     var toggleCleanScreen: (() -> Void)?
 
+    /// Callback to toggle sidebars (injected by app)
+    var toggleLeftSidebar: (() -> Void)?
+    var toggleRightSidebar: (() -> Void)?
+
     /// Callback to check if typing is active (injected by app)
     var isTypingActive: (() -> Bool)?
 
@@ -72,6 +76,9 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Event monitor for Tab key (workaround for SwiftUI menu shortcut not registering until menu opened)
     private var tabKeyMonitor: Any?
 
+    /// Event monitor for [ and ] keys (toggle sidebars)
+    private var sidebarKeyMonitor: Any?
+
     /// Event monitor for ` key hold to suspend global effects
     private var globalKeyMonitor: Any?
 
@@ -101,6 +108,25 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
                 return nil  // Consume the event
             }
             return event
+        }
+
+        // Install [ and ] key monitor for toggling sidebars
+        sidebarKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+            guard event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty else { return event }
+            if self.isTypingActive?() == true { return event }
+            if event.isARepeat { return event }
+
+            switch event.charactersIgnoringModifiers {
+            case "[":
+                self.toggleLeftSidebar?()
+                return nil
+            case "]":
+                self.toggleRightSidebar?()
+                return nil
+            default:
+                return event
+            }
         }
 
         // Install ` key monitor for hold-to-suspend global effects
@@ -339,6 +365,12 @@ struct HypnographApp: App {
                 // Wire up Tab key callbacks for clean screen toggle
                 appDelegate.toggleCleanScreen = { [weak state] in
                     state?.windowState.toggleCleanScreen()
+                }
+                appDelegate.toggleLeftSidebar = { [weak state] in
+                    _ = state?.windowState.toggle("leftSidebar")
+                }
+                appDelegate.toggleRightSidebar = { [weak state] in
+                    _ = state?.windowState.toggle("rightSidebar")
                 }
                 appDelegate.isTypingActive = { [weak state] in
                     state?.isTyping ?? false

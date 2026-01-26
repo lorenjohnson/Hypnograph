@@ -118,11 +118,11 @@ Located in `docs/hypnograph/projects/sidebar-ui-redesign/`:
 
 **Tasks**:
 
-1. [ ] Create `LeftSidebarView.swift` and `RightSidebarView.swift` based on mockups
-2. [ ] Update `ContentView.swift` to use new sidebars with ZStack overlay pattern
-3. [ ] Add sidebar visibility state to `Dream` or create new `UIState` observable
-4. [ ] Implement keyboard shortcuts: `[`, `]`, `Tab` for sidebar toggling
-5. [ ] Add Preview/Live mode switcher (segmented control) to top center HUD
+1. [x] Create `LeftSidebarView.swift` and `RightSidebarView.swift` based on mockups
+2. [x] Update `ContentView.swift` to use new sidebars with ZStack overlay pattern
+3. [x] Add sidebar visibility state (registered via `WindowState`)
+4. [x] Implement keyboard shortcuts: `[`, `]`, `Tab` for sidebar toggling
+5. [x] Add Preview/Live mode switcher (segmented control) to top center HUD
 
 **Files to Create**:
 
@@ -140,16 +140,16 @@ Located in `docs/hypnograph/projects/sidebar-ui-redesign/`:
 
 **Tasks**:
 
-1. [ ] Wire up existing `Settings` bindings to left sidebar controls
-2. [ ] Add new settings to `Settings.swift`:
+1. [x] Wire up existing `Settings` bindings to left sidebar controls
+2. [x] Add new settings to `Settings.swift`:
    - `randomGlobalEffect: Bool`
    - `randomGlobalEffectFrequency: Double`
    - `randomLayerEffect: Bool`
    - `randomLayerEffectFrequency: Double`
-3. [ ] Implement `RangeSliderView` for clip length (or use swiftui-sliders package)
-4. [ ] Connect audio device/volume controls to `Dream.previewAudioDevice`, etc.
-5. [ ] Migrate Watch Mode toggle
-6. [ ] Migrate Play Rate slider (with snap points from `PlayRateControl`)
+3. [x] Implement clip length range control (min/max sliders)
+4. [x] Connect audio device/volume controls to `Dream.previewAudioDevice`, etc.
+5. [x] Migrate Watch Mode toggle
+6. [x] Migrate Play Rate slider (with snap points from `PlayRateControl`)
 
 **Files to Modify**:
 

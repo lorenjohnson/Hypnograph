@@ -101,6 +101,20 @@ struct AppCommands: Commands {
 
         CommandGroup(replacing: .sidebar) {
             Section("Overlays") {
+                Toggle("Left Sidebar", isOn: Binding(
+                    get: { state.windowState.isVisible("leftSidebar") },
+                    set: { _ in state.windowState.toggle("leftSidebar") }
+                ))
+                .keyboardShortcut("[", modifiers: [])
+                .disabled(isTyping)
+
+                Toggle("Right Sidebar", isOn: Binding(
+                    get: { state.windowState.isVisible("rightSidebar") },
+                    set: { _ in state.windowState.toggle("rightSidebar") }
+                ))
+                .keyboardShortcut("]", modifiers: [])
+                .disabled(isTyping)
+
                 Toggle("Effects Editor", isOn: Binding(
                     get: { state.windowState.isVisible("effectsEditor") },
                     set: { _ in state.windowState.toggle("effectsEditor") }
