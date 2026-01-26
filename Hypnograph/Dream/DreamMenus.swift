@@ -14,50 +14,11 @@ import HypnoUI
 
 extension Dream {
 
-    // MARK: - HUD
+    // MARK: - HUD (deprecated - returns empty)
 
     func hudItems() -> [HUDItem] {
-        var items: [HUDItem] = []
-
-        // Header
-        items.append(.text("Hypnograph", order: 10, font: .headline))
-        items.append(.text("Dream: \(isLiveMode ? "Live" : "Preview")", order: 11, font: .subheadline))
-        items.append(.padding(8, order: 15))
-
-        // Queue status
-        if renderQueue.activeJobs > 0 {
-            items.append(.text("Queue: \(renderQueue.activeJobs)", order: 20, font: .subheadline))
-        } else {
-            items.append(.text("Queue: 0", order: 20, font: .caption))
-        }
-        items.append(.padding(8, order: 21))
-
-        // Layer info (Global or Source X of Y)
-        items.append(.text(activePlayer.editingLayerDisplay, order: 22))
-        items.append(.text("Effect (E): \(activeEffectManager.effectName(for: activePlayer.currentSourceIndex))", order: 23))
-
-        // Source-specific info (only when on a source layer, not global)
-        if !activePlayer.isOnGlobalLayer {
-            items.append(.text("Blend mode (M): \(currentBlendModeDisplayName())", order: 26))
-            if let mediaClip = activePlayer.currentMediaClip {
-                items.append(.text("Layer clip: \(String(format: "%.1fs", mediaClip.duration.seconds))", order: 27))
-            }
-
-        }
-
-        items.append(.padding(16, order: 39))
-
-        // Keyboard hints
-        items.append(.text("Shortcuts", order: 40, font: .subheadline))
-        items.append(.text(". = New clip | M = Blend | Delete = Delete source", order: 41))
-        items.append(.text("Cmd+E = Cycle effect | C = Clear layer | Ctrl+Shift+C = Clear all", order: 42))
-        items.append(.text("E = Effects editor | ` = Global | 1-9 = Source", order: 43))
-        items.append(.text("Left/Right = Navigate clips | Opt+Left/Right = Navigate layers", order: 44))
-        items.append(.text("N = New | Shift+N = Add source | Cmd+Delete = Delete clip", order: 45))
-        items.append(.text("Cmd+S = Save | Cmd+F = Favorite hypnogram", order: 46))
-        items.append(.text("Shift+X/F = Exclude/Favorite source", order: 47))
-
-        return items
+        // HUD removed in menu cleanup - this stub prevents compile errors
+        return []
     }
 
     // MARK: - Menus
@@ -67,13 +28,6 @@ extension Dream {
 
     @ViewBuilder
     func compositionMenu() -> some View {
-        Button("Toggle Live Mode (Preview/Live)") { [self] in
-            toggleLiveMode()
-        }
-        .disabled(isTyping)
-
-        Divider()
-
         Button("Cycle Effect Forward") { [self] in
             cycleEffect(direction: 1)
         }
@@ -84,7 +38,7 @@ extension Dream {
         }
         .keyboardShortcut("e", modifiers: [.command, .shift])
 
-        Button("Add Source") { [self] in
+        Button("Add Layer") { [self] in
             addSource()
         }
         .keyboardShortcut("n", modifiers: [.shift])
@@ -105,13 +59,13 @@ extension Dream {
 
             Divider()
 
-            Button("> Next Source") { [self] in
+            Button("> Next Layer") { [self] in
                 nextSource()
             }
             .keyboardShortcut(.rightArrow, modifiers: [.option])
             .disabled(isTyping)
 
-            Button("< Previous Source") { [self] in
+            Button("< Previous Layer") { [self] in
                 previousSource()
             }
             .keyboardShortcut(.leftArrow, modifiers: [.option])
@@ -125,17 +79,17 @@ extension Dream {
                 previousClip()
             }
 
-            Button("> Next Source") { [self] in
+            Button("> Next Layer") { [self] in
                 nextSource()
             }
 
-            Button("< Previous Source") { [self] in
+            Button("< Previous Layer") { [self] in
                 previousSource()
             }
         }
 
         ForEach(0..<9, id: \.self) { [self] idx in
-            Button("Select Source \(idx + 1)") { [self] in
+            Button("Select Layer \(idx + 1)") { [self] in
                 self.selectSource(index: idx)
             }
             .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
@@ -163,7 +117,7 @@ extension Dream {
 
         Divider()
 
-        Button("New Clip") { [self] in
+        Button("New") { [self] in
             new()
         }
         .keyboardShortcut("n", modifiers: [])
@@ -176,11 +130,6 @@ extension Dream {
         .disabled(isTyping)
 
         Divider()
-
-        Button("Save Hypnogram") { [self] in
-            save()
-        }
-        .keyboardShortcut("s", modifiers: [.command])
 
         Button("Render Video") { [self] in
             renderAndSaveVideo()
@@ -230,7 +179,7 @@ extension Dream {
 
         Divider()
 
-        Button("Delete Source") { [self] in
+        Button("Remove Layer") { [self] in
             removeCurrentLayer()
         }
         .keyboardShortcut(.delete, modifiers: [])

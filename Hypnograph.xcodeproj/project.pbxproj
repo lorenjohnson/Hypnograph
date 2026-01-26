@@ -9,6 +9,10 @@
 /* Begin PBXBuildFile section */
 		04302B382F00E924001C0F60 /* Quartz.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04302B372F00E924001C0F60 /* Quartz.framework */; };
 		04302B442F00E924001C0F60 /* HypnogramQuickLook.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 04302B352F00E924001C0F60 /* HypnogramQuickLook.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		049B392B2F26C1E500FFF6A8 /* FullLayoutMockup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049B38D92F26C06200FFF6A8 /* FullLayoutMockup.swift */; };
+		049B392C2F26C1E500FFF6A8 /* LeftSidebarMockup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049B38DB2F26C06200FFF6A8 /* LeftSidebarMockup.swift */; };
+		049B392D2F26C1E500FFF6A8 /* RightSidebarMockup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049B38DC2F26C06200FFF6A8 /* RightSidebarMockup.swift */; };
+		049B392E2F26C1E500FFF6A8 /* ComponentMockups.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049B38D82F26C06200FFF6A8 /* ComponentMockups.swift */; };
 		41E09D815A84A5C5F90444FE /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
 		8C9F3A1B2C3D4E5F6A7B8C9D /* HypnoUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C5 /* HypnoUI.framework */; };
 		A1B2C3D4E5F6A7B8C9D0E1F8 /* HypnoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 764AADFE87DF1064AD85DF6E /* HypnoCore.framework */; };
@@ -146,6 +150,76 @@
 		042F991C2EC8990C006D4CDE /* HypnographUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnographUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		04302B352F00E924001C0F60 /* HypnogramQuickLook.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HypnogramQuickLook.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		04302B372F00E924001C0F60 /* Quartz.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Quartz.framework; path = System/Library/Frameworks/Quartz.framework; sourceTree = SDKROOT; };
+		049B38AA2F26C06200FFF6A8 /* app.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = app.json; sourceTree = "<group>"; };
+		049B38AB2F26C06200FFF6A8 /* appearance.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = appearance.json; sourceTree = "<group>"; };
+		049B38AC2F26C06200FFF6A8 /* core-plugins.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "core-plugins.json"; sourceTree = "<group>"; };
+		049B38AD2F26C06200FFF6A8 /* workspace.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = workspace.json; sourceTree = "<group>"; };
+		049B38AF2F26C06200FFF6A8 /* doc-writer.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "doc-writer.md"; sourceTree = "<group>"; };
+		049B38B02F26C06200FFF6A8 /* implementer.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = implementer.md; sourceTree = "<group>"; };
+		049B38B12F26C06200FFF6A8 /* intent-manager.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "intent-manager.md"; sourceTree = "<group>"; };
+		049B38B22F26C06200FFF6A8 /* planner-architect.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "planner-architect.md"; sourceTree = "<group>"; };
+		049B38B32F26C06200FFF6A8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		049B38B42F26C06200FFF6A8 /* reviewer-skeptic.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "reviewer-skeptic.md"; sourceTree = "<group>"; };
+		049B38B52F26C06200FFF6A8 /* theory-bridge.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "theory-bridge.md"; sourceTree = "<group>"; };
+		049B38B72F26C06200FFF6A8 /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
+		049B38B92F26C06200FFF6A8 /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
+		049B38BB2F26C06200FFF6A8 /* roadmap.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = roadmap.md; sourceTree = "<group>"; };
+		049B38BD2F26C06200FFF6A8 /* dream-players.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "dream-players.md"; sourceTree = "<group>"; };
+		049B38BE2F26C06200FFF6A8 /* effects.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = effects.md; sourceTree = "<group>"; };
+		049B38BF2F26C06200FFF6A8 /* index.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = index.md; sourceTree = "<group>"; };
+		049B38C02F26C06200FFF6A8 /* media-library.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "media-library.md"; sourceTree = "<group>"; };
+		049B38C12F26C06200FFF6A8 /* recipes.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = recipes.md; sourceTree = "<group>"; };
+		049B38C22F26C06200FFF6A8 /* rendering.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = rendering.md; sourceTree = "<group>"; };
+		049B38C32F26C06200FFF6A8 /* settings.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = settings.md; sourceTree = "<group>"; };
+		049B38C52F26C06200FFF6A8 /* 20241225-custom-blend-modes.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20241225-custom-blend-modes.md"; sourceTree = "<group>"; };
+		049B38C62F26C06200FFF6A8 /* 20251225-keyboard-handling.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20251225-keyboard-handling.md"; sourceTree = "<group>"; };
+		049B38C72F26C06200FFF6A8 /* 20251226-window-state.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20251226-window-state.md"; sourceTree = "<group>"; };
+		049B38C82F26C06200FFF6A8 /* 20251227-dream-player-refactor.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20251227-dream-player-refactor.md"; sourceTree = "<group>"; };
+		049B38C92F26C06200FFF6A8 /* 20260104-divine-extraction.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260104-divine-extraction.md"; sourceTree = "<group>"; };
+		049B38CA2F26C06200FFF6A8 /* 20260111-effects-system-refactor.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260111-effects-system-refactor.md"; sourceTree = "<group>"; };
+		049B38CB2F26C06200FFF6A8 /* 20260115-unify-montage-sequence.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260115-unify-montage-sequence.md"; sourceTree = "<group>"; };
+		049B38CC2F26C06200FFF6A8 /* 20260116-add-source-framing-setting.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260116-add-source-framing-setting.md"; sourceTree = "<group>"; };
+		049B38CD2F26C06200FFF6A8 /* 20260116-hypnogram-transitions.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260116-hypnogram-transitions.md"; sourceTree = "<group>"; };
+		049B38CE2F26C06200FFF6A8 /* 20260116-unified-player-architecture.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260116-unified-player-architecture.md"; sourceTree = "<group>"; };
+		049B38CF2F26C06200FFF6A8 /* 20260117-metal-playback-pipeline.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260117-metal-playback-pipeline.md"; sourceTree = "<group>"; };
+		049B38D02F26C06200FFF6A8 /* 20260120-smart-framing-human-centering.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260120-smart-framing-human-centering.md"; sourceTree = "<group>"; };
+		049B38D12F26C06200FFF6A8 /* 20260121-more-clear-naming.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260121-more-clear-naming.md"; sourceTree = "<group>"; };
+		049B38D22F26C06200FFF6A8 /* 20260125-in-app-windowing-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260125-in-app-windowing-review.md"; sourceTree = "<group>"; };
+		049B38D42F26C06200FFF6A8 /* coding-best-practices.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "coding-best-practices.md"; sourceTree = "<group>"; };
+		049B38D52F26C06200FFF6A8 /* mission.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = mission.md; sourceTree = "<group>"; };
+		049B38D62F26C06200FFF6A8 /* tech-stack.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "tech-stack.md"; sourceTree = "<group>"; };
+		049B38D82F26C06200FFF6A8 /* ComponentMockups.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentMockups.swift; sourceTree = "<group>"; };
+		049B38D92F26C06200FFF6A8 /* FullLayoutMockup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullLayoutMockup.swift; sourceTree = "<group>"; };
+		049B38DA2F26C06200FFF6A8 /* index.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = index.md; sourceTree = "<group>"; };
+		049B38DB2F26C06200FFF6A8 /* LeftSidebarMockup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeftSidebarMockup.swift; sourceTree = "<group>"; };
+		049B38DC2F26C06200FFF6A8 /* RightSidebarMockup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RightSidebarMockup.swift; sourceTree = "<group>"; };
+		049B38DE2F26C06200FFF6A8 /* add-history-to-hypnograms-favorite-recent-window.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "add-history-to-hypnograms-favorite-recent-window.md"; sourceTree = "<group>"; };
+		049B38DF2F26C06200FFF6A8 /* app-settings-window.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "app-settings-window.md"; sourceTree = "<group>"; };
+		049B38E02F26C06200FFF6A8 /* beta-release-testflight.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "beta-release-testflight.md"; sourceTree = "<group>"; };
+		049B38E12F26C06200FFF6A8 /* combine-hud-into-player-settings.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "combine-hud-into-player-settings.md"; sourceTree = "<group>"; };
+		049B38E22F26C06200FFF6A8 /* command-menu-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "command-menu-review.md"; sourceTree = "<group>"; };
+		049B38E32F26C06200FFF6A8 /* export-clip-history-fcpxml.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "export-clip-history-fcpxml.md"; sourceTree = "<group>"; };
+		049B38E42F26C06200FFF6A8 /* in-app-feedback.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "in-app-feedback.md"; sourceTree = "<group>"; };
+		049B38E52F26C06200FFF6A8 /* layer-editor.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "layer-editor.md"; sourceTree = "<group>"; };
+		049B38E62F26C06200FFF6A8 /* library-manager.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "library-manager.md"; sourceTree = "<group>"; };
+		049B38E72F26C06200FFF6A8 /* live-mode-feature-flag.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "live-mode-feature-flag.md"; sourceTree = "<group>"; };
+		049B38E82F26C06200FFF6A8 /* location-overlay-effect.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "location-overlay-effect.md"; sourceTree = "<group>"; };
+		049B38E92F26C06200FFF6A8 /* save-fullscreen-state.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "save-fullscreen-state.md"; sourceTree = "<group>"; };
+		049B38EA2F26C06200FFF6A8 /* save-sequences.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "save-sequences.md"; sourceTree = "<group>"; };
+		049B38EB2F26C06200FFF6A8 /* splash-screen.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "splash-screen.md"; sourceTree = "<group>"; };
+		049B38EC2F26C06200FFF6A8 /* volume-leveling.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "volume-leveling.md"; sourceTree = "<group>"; };
+		049B38EE2F26C06200FFF6A8 /* controls.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = controls.md; sourceTree = "<group>"; };
+		049B38F02F26C06200FFF6A8 /* 2026-01-25-Eli.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "2026-01-25-Eli.md"; sourceTree = "<group>"; };
+		049B38F22F26C06200FFF6A8 /* roadmap.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = roadmap.md; sourceTree = "<group>"; };
+		049B38F42F26C06200FFF6A8 /* 20260123-docs-reorg.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260123-docs-reorg.md"; sourceTree = "<group>"; };
+		049B38F62F26C06200FFF6A8 /* hypnograph-ontology.mmd */ = {isa = PBXFileReference; lastKnownFileType = text; path = "hypnograph-ontology.mmd"; sourceTree = "<group>"; };
+		049B38F72F26C06200FFF6A8 /* hypnograph-ontology-full.mmd */ = {isa = PBXFileReference; lastKnownFileType = text; path = "hypnograph-ontology-full.mmd"; sourceTree = "<group>"; };
+		049B38F82F26C06200FFF6A8 /* HypnographDomainDiagram.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = HypnographDomainDiagram.md; sourceTree = "<group>"; };
+		049B38F92F26C06200FFF6A8 /* naming.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = naming.json; sourceTree = "<group>"; };
+		049B38FA2F26C06200FFF6A8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		049B38FB2F26C06200FFF6A8 /* types.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = types.json; sourceTree = "<group>"; };
+		049B38FE2F26C06200FFF6A8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		049B39042F26C1A300FFF6A8 /* SwiftUIPreviewHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftUIPreviewHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A2B3C4D5E6F708192A3B4C5 /* HypnoUI.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = HypnoUI.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		764AADFE87DF1064AD85DF6E /* HypnoCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = HypnoCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* HypnoCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnoCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -202,6 +276,11 @@
 				04302B482F00E924001C0F60 /* Exceptions for "HypnogramQuickLook" folder in "HypnogramQuickLook" target */,
 			);
 			path = HypnogramQuickLook;
+			sourceTree = "<group>";
+		};
+		049B39052F26C1A300FFF6A8 /* SwiftUIPreviewHost */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SwiftUIPreviewHost;
 			sourceTree = "<group>";
 		};
 		4D5E6F708192A3B4C5D6E7F8 /* HypnoUI */ = {
@@ -267,6 +346,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		049B39012F26C1A300FFF6A8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		407DC1ED597763C16767A434 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -312,6 +398,7 @@
 		042F98F82EC8990A006D4CDE = {
 			isa = PBXGroup;
 			children = (
+				049B38FF2F26C06200FFF6A8 /* docs */,
 				042F99032EC8990B006D4CDE /* Hypnograph */,
 				D1B2C3D4E5F60718293A4B64 /* Divine */,
 				F50B765E3CAB7CFD665F71DC /* HypnoCore */,
@@ -321,6 +408,7 @@
 				D1E2F3A4B5C6D7E8F9A0B1C3 /* HypnogramQuickLookTests */,
 				042F991F2EC8990C006D4CDE /* HypnographUITests */,
 				04302B392F00E924001C0F60 /* HypnogramQuickLook */,
+				049B39052F26C1A300FFF6A8 /* SwiftUIPreviewHost */,
 				04302B362F00E924001C0F60 /* Frameworks */,
 				042F99022EC8990B006D4CDE /* Products */,
 			);
@@ -338,6 +426,7 @@
 				042F991C2EC8990C006D4CDE /* HypnographUITests.xctest */,
 				D1E2F3A4B5C6D7E8F9A0B1C2 /* HypnogramQuickLookTests.xctest */,
 				04302B352F00E924001C0F60 /* HypnogramQuickLook.appex */,
+				049B39042F26C1A300FFF6A8 /* SwiftUIPreviewHost.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -348,6 +437,210 @@
 				04302B372F00E924001C0F60 /* Quartz.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		049B38AE2F26C06200FFF6A8 /* .obsidian */ = {
+			isa = PBXGroup;
+			children = (
+				049B38AA2F26C06200FFF6A8 /* app.json */,
+				049B38AB2F26C06200FFF6A8 /* appearance.json */,
+				049B38AC2F26C06200FFF6A8 /* core-plugins.json */,
+				049B38AD2F26C06200FFF6A8 /* workspace.json */,
+			);
+			path = .obsidian;
+			sourceTree = "<group>";
+		};
+		049B38B62F26C06200FFF6A8 /* agents */ = {
+			isa = PBXGroup;
+			children = (
+				049B38AF2F26C06200FFF6A8 /* doc-writer.md */,
+				049B38B02F26C06200FFF6A8 /* implementer.md */,
+				049B38B12F26C06200FFF6A8 /* intent-manager.md */,
+				049B38B22F26C06200FFF6A8 /* planner-architect.md */,
+				049B38B32F26C06200FFF6A8 /* README.md */,
+				049B38B42F26C06200FFF6A8 /* reviewer-skeptic.md */,
+				049B38B52F26C06200FFF6A8 /* theory-bridge.md */,
+			);
+			path = agents;
+			sourceTree = "<group>";
+		};
+		049B38B82F26C06200FFF6A8 /* archive */ = {
+			isa = PBXGroup;
+			children = (
+				049B38B72F26C06200FFF6A8 /* .gitkeep */,
+			);
+			path = archive;
+			sourceTree = "<group>";
+		};
+		049B38BA2F26C06200FFF6A8 /* projects */ = {
+			isa = PBXGroup;
+			children = (
+				049B38B92F26C06200FFF6A8 /* .gitkeep */,
+			);
+			path = projects;
+			sourceTree = "<group>";
+		};
+		049B38BC2F26C06200FFF6A8 /* divine */ = {
+			isa = PBXGroup;
+			children = (
+				049B38B82F26C06200FFF6A8 /* archive */,
+				049B38BA2F26C06200FFF6A8 /* projects */,
+				049B38BB2F26C06200FFF6A8 /* roadmap.md */,
+			);
+			path = divine;
+			sourceTree = "<group>";
+		};
+		049B38C42F26C06200FFF6A8 /* architecture */ = {
+			isa = PBXGroup;
+			children = (
+				049B38BD2F26C06200FFF6A8 /* dream-players.md */,
+				049B38BE2F26C06200FFF6A8 /* effects.md */,
+				049B38BF2F26C06200FFF6A8 /* index.md */,
+				049B38C02F26C06200FFF6A8 /* media-library.md */,
+				049B38C12F26C06200FFF6A8 /* recipes.md */,
+				049B38C22F26C06200FFF6A8 /* rendering.md */,
+				049B38C32F26C06200FFF6A8 /* settings.md */,
+			);
+			path = architecture;
+			sourceTree = "<group>";
+		};
+		049B38D32F26C06200FFF6A8 /* archive */ = {
+			isa = PBXGroup;
+			children = (
+				049B38C52F26C06200FFF6A8 /* 20241225-custom-blend-modes.md */,
+				049B38C62F26C06200FFF6A8 /* 20251225-keyboard-handling.md */,
+				049B38C72F26C06200FFF6A8 /* 20251226-window-state.md */,
+				049B38C82F26C06200FFF6A8 /* 20251227-dream-player-refactor.md */,
+				049B38C92F26C06200FFF6A8 /* 20260104-divine-extraction.md */,
+				049B38CA2F26C06200FFF6A8 /* 20260111-effects-system-refactor.md */,
+				049B38CB2F26C06200FFF6A8 /* 20260115-unify-montage-sequence.md */,
+				049B38CC2F26C06200FFF6A8 /* 20260116-add-source-framing-setting.md */,
+				049B38CD2F26C06200FFF6A8 /* 20260116-hypnogram-transitions.md */,
+				049B38CE2F26C06200FFF6A8 /* 20260116-unified-player-architecture.md */,
+				049B38CF2F26C06200FFF6A8 /* 20260117-metal-playback-pipeline.md */,
+				049B38D02F26C06200FFF6A8 /* 20260120-smart-framing-human-centering.md */,
+				049B38D12F26C06200FFF6A8 /* 20260121-more-clear-naming.md */,
+				049B38D22F26C06200FFF6A8 /* 20260125-in-app-windowing-review.md */,
+			);
+			path = archive;
+			sourceTree = "<group>";
+		};
+		049B38D72F26C06200FFF6A8 /* product */ = {
+			isa = PBXGroup;
+			children = (
+				049B38D42F26C06200FFF6A8 /* coding-best-practices.md */,
+				049B38D52F26C06200FFF6A8 /* mission.md */,
+				049B38D62F26C06200FFF6A8 /* tech-stack.md */,
+			);
+			path = product;
+			sourceTree = "<group>";
+		};
+		049B38DD2F26C06200FFF6A8 /* sidebar-ui-redesign */ = {
+			isa = PBXGroup;
+			children = (
+				049B38D82F26C06200FFF6A8 /* ComponentMockups.swift */,
+				049B38D92F26C06200FFF6A8 /* FullLayoutMockup.swift */,
+				049B38DA2F26C06200FFF6A8 /* index.md */,
+				049B38DB2F26C06200FFF6A8 /* LeftSidebarMockup.swift */,
+				049B38DC2F26C06200FFF6A8 /* RightSidebarMockup.swift */,
+			);
+			path = "sidebar-ui-redesign";
+			sourceTree = "<group>";
+		};
+		049B38ED2F26C06200FFF6A8 /* projects */ = {
+			isa = PBXGroup;
+			children = (
+				049B38DD2F26C06200FFF6A8 /* sidebar-ui-redesign */,
+				049B38DE2F26C06200FFF6A8 /* add-history-to-hypnograms-favorite-recent-window.md */,
+				049B38DF2F26C06200FFF6A8 /* app-settings-window.md */,
+				049B38E02F26C06200FFF6A8 /* beta-release-testflight.md */,
+				049B38E12F26C06200FFF6A8 /* combine-hud-into-player-settings.md */,
+				049B38E22F26C06200FFF6A8 /* command-menu-review.md */,
+				049B38E32F26C06200FFF6A8 /* export-clip-history-fcpxml.md */,
+				049B38E42F26C06200FFF6A8 /* in-app-feedback.md */,
+				049B38E52F26C06200FFF6A8 /* layer-editor.md */,
+				049B38E62F26C06200FFF6A8 /* library-manager.md */,
+				049B38E72F26C06200FFF6A8 /* live-mode-feature-flag.md */,
+				049B38E82F26C06200FFF6A8 /* location-overlay-effect.md */,
+				049B38E92F26C06200FFF6A8 /* save-fullscreen-state.md */,
+				049B38EA2F26C06200FFF6A8 /* save-sequences.md */,
+				049B38EB2F26C06200FFF6A8 /* splash-screen.md */,
+				049B38EC2F26C06200FFF6A8 /* volume-leveling.md */,
+			);
+			path = projects;
+			sourceTree = "<group>";
+		};
+		049B38EF2F26C06200FFF6A8 /* reference */ = {
+			isa = PBXGroup;
+			children = (
+				049B38EE2F26C06200FFF6A8 /* controls.md */,
+			);
+			path = reference;
+			sourceTree = "<group>";
+		};
+		049B38F12F26C06200FFF6A8 /* user-testing */ = {
+			isa = PBXGroup;
+			children = (
+				049B38F02F26C06200FFF6A8 /* 2026-01-25-Eli.md */,
+			);
+			path = "user-testing";
+			sourceTree = "<group>";
+		};
+		049B38F32F26C06200FFF6A8 /* hypnograph */ = {
+			isa = PBXGroup;
+			children = (
+				049B38C42F26C06200FFF6A8 /* architecture */,
+				049B38D32F26C06200FFF6A8 /* archive */,
+				049B38D72F26C06200FFF6A8 /* product */,
+				049B38ED2F26C06200FFF6A8 /* projects */,
+				049B38EF2F26C06200FFF6A8 /* reference */,
+				049B38F12F26C06200FFF6A8 /* user-testing */,
+				049B38F22F26C06200FFF6A8 /* roadmap.md */,
+			);
+			path = hypnograph;
+			sourceTree = "<group>";
+		};
+		049B38F52F26C06200FFF6A8 /* archive */ = {
+			isa = PBXGroup;
+			children = (
+				049B38F42F26C06200FFF6A8 /* 20260123-docs-reorg.md */,
+			);
+			path = archive;
+			sourceTree = "<group>";
+		};
+		049B38FC2F26C06200FFF6A8 /* ontology */ = {
+			isa = PBXGroup;
+			children = (
+				049B38F62F26C06200FFF6A8 /* hypnograph-ontology.mmd */,
+				049B38F72F26C06200FFF6A8 /* hypnograph-ontology-full.mmd */,
+				049B38F82F26C06200FFF6A8 /* HypnographDomainDiagram.md */,
+				049B38F92F26C06200FFF6A8 /* naming.json */,
+				049B38FA2F26C06200FFF6A8 /* README.md */,
+				049B38FB2F26C06200FFF6A8 /* types.json */,
+			);
+			path = ontology;
+			sourceTree = "<group>";
+		};
+		049B38FD2F26C06200FFF6A8 /* shared */ = {
+			isa = PBXGroup;
+			children = (
+				049B38F52F26C06200FFF6A8 /* archive */,
+				049B38FC2F26C06200FFF6A8 /* ontology */,
+			);
+			path = shared;
+			sourceTree = "<group>";
+		};
+		049B38FF2F26C06200FFF6A8 /* docs */ = {
+			isa = PBXGroup;
+			children = (
+				049B38AE2F26C06200FFF6A8 /* .obsidian */,
+				049B38B62F26C06200FFF6A8 /* agents */,
+				049B38BC2F26C06200FFF6A8 /* divine */,
+				049B38F32F26C06200FFF6A8 /* hypnograph */,
+				049B38FD2F26C06200FFF6A8 /* shared */,
+				049B38FE2F26C06200FFF6A8 /* README.md */,
+			);
+			path = docs;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -448,6 +741,28 @@
 			productName = HypnogramQuickLook;
 			productReference = 04302B352F00E924001C0F60 /* HypnogramQuickLook.appex */;
 			productType = "com.apple.product-type.app-extension";
+		};
+		049B39032F26C1A300FFF6A8 /* SwiftUIPreviewHost */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 049B39222F26C1A400FFF6A8 /* Build configuration list for PBXNativeTarget "SwiftUIPreviewHost" */;
+			buildPhases = (
+				049B39002F26C1A300FFF6A8 /* Sources */,
+				049B39012F26C1A300FFF6A8 /* Frameworks */,
+				049B39022F26C1A300FFF6A8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				049B39052F26C1A300FFF6A8 /* SwiftUIPreviewHost */,
+			);
+			name = SwiftUIPreviewHost;
+			packageProductDependencies = (
+			);
+			productName = SwiftUIPreviewHost;
+			productReference = 049B39042F26C1A300FFF6A8 /* SwiftUIPreviewHost.app */;
+			productType = "com.apple.product-type.application";
 		};
 		5E6F708192A3B4C5D6E7F809 /* HypnoUI */ = {
 			isa = PBXNativeTarget;
@@ -589,6 +904,9 @@
 					04302B342F00E924001C0F60 = {
 						CreatedOnToolsVersion = 26.2;
 					};
+					049B39032F26C1A300FFF6A8 = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					5E6F708192A3B4C5D6E7F809 = {
 						CreatedOnToolsVersion = 16.2;
 					};
@@ -631,6 +949,7 @@
 				D1E2F3A4B5C6D7E8F9A0B1C4 /* HypnogramQuickLookTests */,
 				042F991B2EC8990C006D4CDE /* HypnographUITests */,
 				04302B342F00E924001C0F60 /* HypnogramQuickLook */,
+				049B39032F26C1A300FFF6A8 /* SwiftUIPreviewHost */,
 			);
 		};
 /* End PBXProject section */
@@ -658,6 +977,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		04302B332F00E924001C0F60 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		049B39022F26C1A300FFF6A8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -727,6 +1053,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		049B39002F26C1A300FFF6A8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				049B392B2F26C1E500FFF6A8 /* FullLayoutMockup.swift in Sources */,
+				049B392C2F26C1E500FFF6A8 /* LeftSidebarMockup.swift in Sources */,
+				049B392D2F26C1E500FFF6A8 /* RightSidebarMockup.swift in Sources */,
+				049B392E2F26C1E500FFF6A8 /* ComponentMockups.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1136,6 +1473,72 @@
 			};
 			name = Release;
 		};
+		049B39232F26C1A400FFF6A8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6A74MR47VX;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.SwiftUIPreviewHost;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		049B39242F26C1A400FFF6A8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6A74MR47VX;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.SwiftUIPreviewHost;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 		670BB02F33C293971AEE3E28 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1376,6 +1779,15 @@
 			buildConfigurations = (
 				04302B462F00E924001C0F60 /* Debug */,
 				04302B472F00E924001C0F60 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		049B39222F26C1A400FFF6A8 /* Build configuration list for PBXNativeTarget "SwiftUIPreviewHost" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				049B39232F26C1A400FFF6A8 /* Debug */,
+				049B39242F26C1A400FFF6A8 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
