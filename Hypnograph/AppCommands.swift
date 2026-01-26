@@ -90,29 +90,22 @@ struct AppCommands: Commands {
                 dream.openRecipe()
             }
             .keyboardShortcut("o", modifiers: [.command])
+
+            Toggle("Hypnogram List", isOn: Binding(
+                get: { state.windowState.isVisible("hypnogramList") },
+                set: { _ in state.windowState.toggle("hypnogramList") }
+            ))
+            .keyboardShortcut("h", modifiers: [])
+            .disabled(isTyping)
         }
 
         CommandGroup(replacing: .sidebar) {
             Section("Overlays") {
-                Toggle("Info HUD", isOn: Binding(
-                    get: { state.windowState.isVisible("hud") },
-                    set: { _ in state.windowState.toggle("hud") }
-                ))
-                .keyboardShortcut("i", modifiers: [])
-                .disabled(isTyping)
-
                 Toggle("Effects Editor", isOn: Binding(
                     get: { state.windowState.isVisible("effectsEditor") },
                     set: { _ in state.windowState.toggle("effectsEditor") }
                 ))
                 .keyboardShortcut("e", modifiers: [])
-                .disabled(isTyping)
-
-                Toggle("Hypnogram List", isOn: Binding(
-                    get: { state.windowState.isVisible("hypnogramList") },
-                    set: { _ in state.windowState.toggle("hypnogramList") }
-                ))
-                .keyboardShortcut("h", modifiers: [])
                 .disabled(isTyping)
 
                 // Clean Screen: Tab key handled via NSEvent monitor in app delegate
@@ -191,7 +184,7 @@ struct AppCommands: Commands {
             dream.compositionMenu()
         }
 
-        CommandMenu("Source") {
+        CommandMenu("Layer") {
             dream.sourceMenu()
         }
     }

@@ -279,6 +279,9 @@ struct HypnographApp: App {
     @StateObject private var dream: Dream
 
     init() {
+        // Disable macOS window tabbing (must be set before any windows are created)
+        NSWindow.allowsAutomaticWindowTabbing = false
+
         let coreConfig = HypnoCoreConfig(appSupportDirectory: Environment.appSupportDirectory)
         HypnoCoreConfig.shared = coreConfig
         ApplePhotosHooks.install()

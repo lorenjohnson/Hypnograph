@@ -1,7 +1,8 @@
 # Command Menu Review
 
-**Status:** Planning
+**Status:** Done (initial cleanup)
 **Created:** 2026-01-24
+**Updated:** 2026-01-26
 
 ## Overview
 
