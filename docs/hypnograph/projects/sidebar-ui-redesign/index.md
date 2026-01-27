@@ -187,8 +187,8 @@ Located in `docs/hypnograph/projects/sidebar-ui-redesign/`:
 2. [x] Implement layer selection state management
 3. [x] Wire up Global section:
    - Clip Length display (from `Settings.clipLengthMinSeconds/Max`)
-   - Global Effect Chain (from `Dream.activePlayer.globalEffectChain`) *(shown as summary + Edit link to Effects Editor)*
-4. [x] Wire up per-layer effect chains (from `HypnogramLayer.effectChain`) *(shown as summary + Edit link to Effects Editor)*
+   - Global Effect Chain (inline expandable list of effects + parameters)
+4. [x] Wire up per-layer effect chains (inline expandable list of effects + parameters)
 5. [x] Create reusable `EffectChainView` component for displaying/editing chains
 6. [x] Implement blend mode and opacity controls per layer
 
@@ -221,6 +221,7 @@ Located in `docs/hypnograph/projects/sidebar-ui-redesign/`:
 4. [x] Implement "Apply to Selected Layer" action (requires layer selection state)
 5. [x] Add context menu actions: Duplicate, Rename, Delete
 6. [x] Implement "Save to Library" from Global/Layer context menus
+7. [x] Match mockup row layout (expandable per-chain rows with inline effect editing)
 
 **Files to Create**:
 
