@@ -8,7 +8,14 @@ struct EffectParameterRowView: View {
     let spec: ParameterSpec?
     let onChange: (AnyCodableValue) -> Void
 
-    private var label: String { Self.formatCamelCase(name) }
+    @State private var didRefreshFileList = false
+    @State private var fileListRefreshNonce = UUID()
+
+    private var label: String {
+        // Mockup fidelity: LUT selection should read "LUT" (not "Lut File").
+        if name == "lutFile" { return "LUT" }
+        return Self.formatCamelCase(name)
+    }
 
     var body: some View {
         switch value {
@@ -27,7 +34,9 @@ struct EffectParameterRowView: View {
             }
 
         case .string(let s):
-            if let options = spec?.choiceOptions {
+            if spec?.isFile == true, let spec {
+                filePicker(currentValue: s, spec: spec)
+            } else if let options = spec?.choiceOptions {
                 HStack {
                     Text(label)
                         .font(.caption)
@@ -110,6 +119,43 @@ struct EffectParameterRowView: View {
         return "\(Int(value.rounded()))"
     }
 
+    @ViewBuilder
+    private func filePicker(currentValue: String, spec: ParameterSpec) -> some View {
+        let _ = fileListRefreshNonce
+        let files = spec.availableFiles
+
+        HStack {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+
+            if files.isEmpty {
+                Text("No LUTs found")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Picker("", selection: Binding(
+                    get: { currentValue },
+                    set: { onChange(.string($0)) }
+                )) {
+                    Text("Select LUT…").tag("")
+                    ForEach(files, id: \.key) { file in
+                        Text(file.label).tag(file.key)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(width: 160, alignment: .trailing)
+            }
+        }
+        .onAppear {
+            guard !didRefreshFileList else { return }
+            ParameterSpec.clearFileListCache()
+            didRefreshFileList = true
+            fileListRefreshNonce = UUID()
+        }
+    }
+
     private static func formatCamelCase(_ input: String) -> String {
         guard !input.isEmpty else { return input }
         var result = ""
@@ -130,4 +176,3 @@ private extension Double {
         min(max(self, range.lowerBound), range.upperBound)
     }
 }
-
