@@ -91,6 +91,10 @@ struct RightSidebarView: View {
                             },
                             onToggleExpanded: {
                                 toggleExpanded(id: dream.activePlayer.layers[index].mediaClip.file.id)
+                            },
+                            onDelete: {
+                                dream.activePlayer.selectSource(index)
+                                dream.removeCurrentLayer()
                             }
                         )
                         .animation(.easeInOut(duration: 0.2), value: expandedLayerIDs)

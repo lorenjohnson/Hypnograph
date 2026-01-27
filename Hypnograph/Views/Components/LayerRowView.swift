@@ -2,6 +2,7 @@ import SwiftUI
 import CoreLocation
 import Photos
 import HypnoCore
+import AppKit
 
 struct LayerRowView: View {
     @ObservedObject var state: HypnographState
@@ -15,6 +16,7 @@ struct LayerRowView: View {
     let isExpanded: Bool
     let onSelect: () -> Void
     let onToggleExpanded: () -> Void
+    let onDelete: () -> Void
 
     @State private var lastVisibleOpacity: Double = 1.0
 
@@ -125,6 +127,22 @@ struct LayerRowView: View {
             .buttonStyle(.plain)
         }
         .padding(10)
+        .contextMenu {
+            Button {
+                revealSource()
+            } label: {
+                Label("Reveal in Finder", systemImage: "folder")
+            }
+            .disabled(!canRevealInFinder)
+
+            Divider()
+
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Delete Layer", systemImage: "trash")
+            }
+        }
     }
 
     private var thumbnailView: some View {
@@ -243,6 +261,24 @@ struct LayerRowView: View {
                 parts.append(Self.locationString(location))
             }
             return parts.joined(separator: " · ")
+        }
+    }
+
+    private var canRevealInFinder: Bool {
+        switch layer.mediaClip.file.source {
+        case .url:
+            return true
+        case .external:
+            return false
+        }
+    }
+
+    private func revealSource() {
+        switch layer.mediaClip.file.source {
+        case .url(let url):
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        case .external:
+            break
         }
     }
 
