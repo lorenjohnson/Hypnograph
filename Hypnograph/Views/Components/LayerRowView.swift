@@ -199,31 +199,13 @@ struct LayerRowView: View {
             .disabled(index == 0)
             .opacity(index == 0 ? 0.6 : 1.0)
 
-            effectChainRow
-        }
-    }
-
-    private var effectChainRow: some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Effects")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-
-                Text(effectChainSummary(layer.effectChain))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            Spacer()
-
-            Button("Edit") {
-                state.windowState.set("effectsEditor", visible: true)
-                dream.activePlayer.selectSource(index)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            EffectChainView(
+                state: state,
+                dream: dream,
+                layer: index,
+                title: "Effects",
+                isCollapsible: false
+            )
         }
     }
 
@@ -298,12 +280,6 @@ struct LayerRowView: View {
         }
     }
 
-    private func effectChainSummary(_ chain: EffectChain) -> String {
-        if chain.effects.isEmpty { return "None" }
-        let name = chain.name?.isEmpty == false ? (chain.name ?? "") : "Unnamed"
-        return "\(name) (\(chain.effects.count))"
-    }
-
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .medium
@@ -317,4 +293,3 @@ private extension Double {
         min(max(self, range.lowerBound), range.upperBound)
     }
 }
-

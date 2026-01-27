@@ -130,26 +130,12 @@ struct RightSidebarView: View {
                     .monospacedDigit()
             }
 
-            HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Global Effects")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                    Text(effectChainSummary(dream.activePlayer.effectChain))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                Button("Edit") {
-                    state.windowState.set("effectsEditor", visible: true)
-                    dream.activePlayer.selectGlobalLayer()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            }
+            EffectChainView(
+                state: state,
+                dream: dream,
+                layer: -1,
+                title: "Effects"
+            )
         }
     }
 
@@ -174,9 +160,4 @@ struct RightSidebarView: View {
         }
     }
 
-    private func effectChainSummary(_ chain: EffectChain) -> String {
-        if chain.effects.isEmpty { return "None" }
-        let name = chain.name?.isEmpty == false ? (chain.name ?? "") : "Unnamed"
-        return "\(name) (\(chain.effects.count))"
-    }
 }
