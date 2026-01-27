@@ -54,9 +54,24 @@ struct RightSidebarView: View {
                         .font(.headline)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text("\(dream.activePlayer.layers.count)")
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+                    Menu {
+                        Button {
+                            // Not implemented yet (kept for mockup parity)
+                        } label: {
+                            Label("Select Source…", systemImage: "photo.on.rectangle")
+                        }
+                        .disabled(true)
+
+                        Button {
+                            dream.addSource()
+                        } label: {
+                            Label("Random Source", systemImage: "dice")
+                        }
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.body.weight(.medium))
+                    }
+                    .menuStyle(.borderlessButton)
                 }
 
                 VStack(alignment: .leading, spacing: 6) {

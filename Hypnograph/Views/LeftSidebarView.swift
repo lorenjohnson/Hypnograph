@@ -33,12 +33,18 @@ struct LeftSidebarView: View {
                             set: { _ in state.toggleWatchMode() }
                         ))
                         .labelsHidden()
+                        .toggleStyle(.switch)
                         .controlSize(.small)
                     }
 
-                    PlayRateControl(playRate: $player.playRate)
-                        .disabled(isLiveMode)
-                        .opacity(isLiveMode ? 0.55 : 1.0)
+                    labeledSliderRow(
+                        title: "Play Rate",
+                        valueText: String(format: "%.0f%%", player.playRate * 100)
+                    ) {
+                        Slider(value: $player.playRate, in: 0.2...2.0, step: 0.2)
+                    }
+                    .disabled(isLiveMode)
+                    .opacity(isLiveMode ? 0.55 : 1.0)
 
                     row {
                         Text("Transition Style")
@@ -255,44 +261,41 @@ struct LeftSidebarView: View {
 
     @ViewBuilder
     private func clipLengthRangeRow() -> some View {
-        let minSeconds = Binding(
-            get: { state.settings.clipLengthMinSeconds },
-            set: { newValue in
-                let clamped = max(1, min(newValue, state.settings.clipLengthMaxSeconds))
-                state.settingsStore.update { $0.clipLengthMinSeconds = clamped }
+        let bounds: ClosedRange<Double> = 1...60
+        let minDistance: Double = 2
+
+        let range = Binding<ClosedRange<Double>>(
+            get: {
+                let lower = state.settings.clipLengthMinSeconds.clamped(to: bounds)
+                let upper = state.settings.clipLengthMaxSeconds.clamped(to: bounds)
+                let fixedLower = min(lower, bounds.upperBound - minDistance)
+                let fixedUpper = max(upper, fixedLower + minDistance).clamped(to: bounds)
+                return fixedLower...fixedUpper
+            },
+            set: { newRange in
+                let lower = newRange.lowerBound.rounded().clamped(to: bounds)
+                let upper = newRange.upperBound.rounded().clamped(to: bounds)
+                let fixedLower = min(lower, upper - minDistance).clamped(to: bounds)
+                let fixedUpper = max(upper, fixedLower + minDistance).clamped(to: bounds)
+                state.settingsStore.update {
+                    $0.clipLengthMinSeconds = fixedLower
+                    $0.clipLengthMaxSeconds = fixedUpper
+                }
             }
         )
 
-        let maxSeconds = Binding(
-            get: { state.settings.clipLengthMaxSeconds },
-            set: { newValue in
-                let clamped = max(newValue, state.settings.clipLengthMinSeconds)
-                state.settingsStore.update { $0.clipLengthMaxSeconds = clamped }
-            }
-        )
-
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text("Clip Length")
                 Spacer()
-                Text("\(Int(minSeconds.wrappedValue.rounded()))–\(Int(maxSeconds.wrappedValue.rounded()))s")
+                Text("\(Int(range.wrappedValue.lowerBound))–\(Int(range.wrappedValue.upperBound))s")
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
 
-            VStack(alignment: .leading, spacing: 6) {
-                Slider(value: minSeconds, in: 1...60, step: 1) {
-                    Text("Min")
-                }
+            RangeSliderView(range: range, bounds: bounds, step: 1, minimumDistance: minDistance)
                 .disabled(isLiveMode)
                 .opacity(isLiveMode ? 0.55 : 1.0)
-
-                Slider(value: maxSeconds, in: minSeconds.wrappedValue...120, step: 1) {
-                    Text("Max")
-                }
-                .disabled(isLiveMode)
-                .opacity(isLiveMode ? 0.55 : 1.0)
-            }
         }
     }
 
@@ -308,6 +311,7 @@ struct LeftSidebarView: View {
                 Spacer()
                 Toggle("", isOn: isOn)
                     .labelsHidden()
+                    .toggleStyle(.switch)
                     .controlSize(.small)
             }
 
