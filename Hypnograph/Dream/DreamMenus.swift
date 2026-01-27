@@ -43,50 +43,31 @@ extension Dream {
         }
         .keyboardShortcut("n", modifiers: [.shift])
 
-        // Only use arrow shortcuts when effects editor is closed (otherwise they adjust params)
-        if !state.windowState.isVisible("effectsEditor") {
-            Button("> Next Clip") { [self] in
-                nextClip()
-            }
-            .keyboardShortcut(.rightArrow, modifiers: [])
-            .disabled(isTyping)
-
-            Button("< Previous Clip") { [self] in
-                previousClip()
-            }
-            .keyboardShortcut(.leftArrow, modifiers: [])
-            .disabled(isTyping)
-
-            Divider()
-
-            Button("> Next Layer") { [self] in
-                nextSource()
-            }
-            .keyboardShortcut(.rightArrow, modifiers: [.option])
-            .disabled(isTyping)
-
-            Button("< Previous Layer") { [self] in
-                previousSource()
-            }
-            .keyboardShortcut(.leftArrow, modifiers: [.option])
-            .disabled(isTyping)
-        } else {
-            Button("> Next Clip") { [self] in
-                nextClip()
-            }
-
-            Button("< Previous Clip") { [self] in
-                previousClip()
-            }
-
-            Button("> Next Layer") { [self] in
-                nextSource()
-            }
-
-            Button("< Previous Layer") { [self] in
-                previousSource()
-            }
+        Button("> Next Clip") { [self] in
+            nextClip()
         }
+        .keyboardShortcut(.rightArrow, modifiers: [])
+        .disabled(isTyping)
+
+        Button("< Previous Clip") { [self] in
+            previousClip()
+        }
+        .keyboardShortcut(.leftArrow, modifiers: [])
+        .disabled(isTyping)
+
+        Divider()
+
+        Button("> Next Layer") { [self] in
+            nextSource()
+        }
+        .keyboardShortcut(.rightArrow, modifiers: [.option])
+        .disabled(isTyping)
+
+        Button("< Previous Layer") { [self] in
+            previousSource()
+        }
+        .keyboardShortcut(.leftArrow, modifiers: [.option])
+        .disabled(isTyping)
 
         ForEach(0..<9, id: \.self) { [self] idx in
             Button("Select Layer \(idx + 1)") { [self] in

@@ -115,13 +115,6 @@ struct AppCommands: Commands {
                 .keyboardShortcut("]", modifiers: [])
                 .disabled(isTyping)
 
-                Toggle("Effects Editor", isOn: Binding(
-                    get: { state.windowState.isVisible("effectsEditor") },
-                    set: { _ in state.windowState.toggle("effectsEditor") }
-                ))
-                .keyboardShortcut("e", modifiers: [])
-                .disabled(isTyping)
-
                 // Clean Screen: Tab key handled via NSEvent monitor in app delegate
                 // (workaround for SwiftUI menu shortcut not registering until menu opened)
                 Button("Clean Screen (Tab)") {
