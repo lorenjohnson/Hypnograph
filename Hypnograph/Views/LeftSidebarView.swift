@@ -60,7 +60,7 @@ struct LeftSidebarView: View {
                             }
                         }
                         .pickerStyle(.menu)
-                        .fixedSize()
+                        .frame(width: 140, alignment: .trailing)
                     }
 
                     labeledSliderRow(
@@ -92,7 +92,7 @@ struct LeftSidebarView: View {
                             }
                         }
                         .pickerStyle(.menu)
-                        .fixedSize()
+                        .frame(width: 140, alignment: .trailing)
                     }
 
                     row {
@@ -100,11 +100,14 @@ struct LeftSidebarView: View {
                         Spacer()
                         Picker("", selection: isLiveMode ? .constant(dream.livePlayer.config.aspectRatio) : $player.config.aspectRatio) {
                             ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
-                                Text(ratio.menuLabel).tag(ratio)
+                                Text(ratio.menuLabel)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                                    .tag(ratio)
                             }
                         }
                         .pickerStyle(.menu)
-                        .fixedSize()
+                        .frame(width: 170, alignment: .trailing)
                         .disabled(isLiveMode)
                         .opacity(isLiveMode ? 0.55 : 1.0)
                     }
@@ -192,6 +195,7 @@ struct LeftSidebarView: View {
                     .opacity(isLiveMode ? 0.55 : 1.0)
                 }
                 .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .frame(width: 280)
@@ -210,6 +214,7 @@ struct LeftSidebarView: View {
         HStack(alignment: .center, spacing: 8) {
             content()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -242,11 +247,14 @@ struct LeftSidebarView: View {
                 Spacer()
                 Picker("", selection: selection) {
                     ForEach(audioManager.outputDevices) { device in
-                        Text(device.name).tag(device as AudioOutputDevice?)
+                        Text(device.name)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .tag(device as AudioOutputDevice?)
                     }
                 }
                 .pickerStyle(.menu)
-                .fixedSize()
+                .frame(width: 190, alignment: .trailing)
             }
 
             HStack(spacing: 8) {
