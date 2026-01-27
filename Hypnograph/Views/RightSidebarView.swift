@@ -37,7 +37,7 @@ struct RightSidebarView: View {
                 effectChainsTab()
             }
         }
-        .frame(width: 300)
+        .frame(width: SidebarMetrics.rightWidth)
         .glassPanel(cornerRadius: 16)
     }
 

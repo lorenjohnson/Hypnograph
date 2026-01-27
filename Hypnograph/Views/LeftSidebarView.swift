@@ -198,7 +198,7 @@ struct LeftSidebarView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .frame(width: 280)
+        .frame(width: SidebarMetrics.leftWidth)
         .glassPanel(cornerRadius: 16)
     }
 
