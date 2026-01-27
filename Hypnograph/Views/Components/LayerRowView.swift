@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreLocation
+import Photos
 import HypnoCore
 
 struct LayerRowView: View {
@@ -21,8 +22,8 @@ struct LayerRowView: View {
         switch layer.mediaClip.file.source {
         case .url(let url):
             return url.lastPathComponent
-        case .external:
-            return "Photos Item"
+        case .external(let identifier):
+            return photosFilename(for: identifier) ?? "Photos Item"
         }
     }
 
@@ -221,7 +222,13 @@ struct LayerRowView: View {
 
     private func subtitleBase() -> String? {
         switch layer.mediaClip.file.source {
-        case .url:
+        case .url(let url):
+            guard let values = try? url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey]) else {
+                return nil
+            }
+            if let date = values.creationDate ?? values.contentModificationDate {
+                return Self.dateFormatter.string(from: date)
+            }
             return nil
         case .external(let identifier):
             guard let asset = ApplePhotos.shared.fetchAsset(localIdentifier: identifier) else { return nil }
@@ -234,6 +241,17 @@ struct LayerRowView: View {
             }
             return parts.joined(separator: " · ")
         }
+    }
+
+    private func photosFilename(for identifier: String) -> String? {
+        guard let asset = ApplePhotos.shared.fetchAsset(localIdentifier: identifier) else { return nil }
+        let resources = PHAssetResource.assetResources(for: asset)
+
+        // Prefer "primary" resource types for clearer filenames.
+        if let resource = resources.first(where: { $0.type == .pairedVideo || $0.type == .video || $0.type == .photo }) {
+            return resource.originalFilename
+        }
+        return resources.first?.originalFilename
     }
 
     private static func locationString(_ location: CLLocation) -> String {

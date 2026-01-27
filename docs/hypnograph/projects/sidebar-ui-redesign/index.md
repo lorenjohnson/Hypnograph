@@ -170,6 +170,8 @@ Located in `docs/hypnograph/projects/sidebar-ui-redesign/`:
 ## Known Divergences (Mockup vs. Current Implementation)
 
 - **Select Source... (Add Layer menu)**: Menu item exists but is disabled until a source picker flow is implemented.
+- **Layer subtitle location**: Mockup shows human-readable locations (e.g. “Malibu, CA”); the app currently displays coordinates (e.g. “34.02N, 118.78W”) for Photos assets.
+- **Non-Photos sources**: Mockup shows date + location; URL-based sources currently show only the file date (no location metadata).
 
 ### Phase 3: Layers Tab Implementation
 
