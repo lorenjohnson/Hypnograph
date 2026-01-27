@@ -167,18 +167,18 @@ Located in `docs/hypnograph/projects/sidebar-ui-redesign/`:
 
 **Tasks**:
 
-1. [ ] Create `LayerRowView` component with:
+1. [x] Create `LayerRowView` component with:
    - Thumbnail generation (NEW: extract frame from video via AVAssetImageGenerator)
    - Title/subtitle (filename, date, location from PHAsset)
    - Solo/Visibility toggles
    - Selection state visual indicator
-2. [ ] Implement layer selection state management
-3. [ ] Wire up Global section:
+2. [x] Implement layer selection state management
+3. [x] Wire up Global section:
    - Clip Length display (from `Settings.clipLengthMinSeconds/Max`)
-   - Global Effect Chain (from `Dream.activePlayer.globalEffectChain`)
-4. [ ] Wire up per-layer effect chains (from `HypnogramLayer.effectChain`)
+   - Global Effect Chain (from `Dream.activePlayer.globalEffectChain`) *(shown as summary + Edit link to Effects Editor)*
+4. [x] Wire up per-layer effect chains (from `HypnogramLayer.effectChain`) *(shown as summary + Edit link to Effects Editor)*
 5. [ ] Create reusable `EffectChainView` component for displaying/editing chains
-6. [ ] Implement blend mode and opacity controls per layer
+6. [x] Implement blend mode and opacity controls per layer
 
 **Data Sources**:
 

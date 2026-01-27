@@ -12,6 +12,9 @@ struct RightSidebarView: View {
     @ObservedObject var effectsSession: EffectsSession
 
     @State private var selectedTab: RightSidebarTab = .composition
+    @State private var expandedLayerIDs: Set<UUID> = []
+
+    @StateObject private var thumbnailStore = LayerThumbnailStore()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,19 +44,7 @@ struct RightSidebarView: View {
     private func compositionTab() -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Global")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Clip Length")
-                        Spacer()
-                        Text("\(Int(state.settings.clipLengthMinSeconds.rounded()))–\(Int(state.settings.clipLengthMaxSeconds.rounded()))s")
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                    }
-                }
+                globalSection
 
                 GlassDivider()
                     .padding(.vertical, 4)
@@ -69,8 +60,23 @@ struct RightSidebarView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    ForEach(Array(dream.activePlayer.layers.enumerated()), id: \.offset) { index, layer in
-                        layerRow(index: index, layer: layer)
+                    ForEach(dream.activePlayer.layers.indices, id: \.self) { index in
+                        LayerRowView(
+                            state: state,
+                            dream: dream,
+                            thumbnailStore: thumbnailStore,
+                            index: index,
+                            layer: bindingForLayer(index: index),
+                            isSelected: dream.activePlayer.currentSourceIndex == index,
+                            isExpanded: expandedLayerIDs.contains(dream.activePlayer.layers[index].mediaClip.file.id),
+                            onSelect: {
+                                dream.activePlayer.selectSource(index)
+                            },
+                            onToggleExpanded: {
+                                toggleExpanded(id: dream.activePlayer.layers[index].mediaClip.file.id)
+                            }
+                        )
+                        .animation(.easeInOut(duration: 0.2), value: expandedLayerIDs)
                     }
                 }
             }
@@ -110,56 +116,67 @@ struct RightSidebarView: View {
         }
     }
 
-    @ViewBuilder
-    private func layerRow(index: Int, layer: HypnogramLayer) -> some View {
-        let isSelected = (dream.activePlayer.currentSourceIndex == index)
-        let label = layerLabel(layer)
+    private var globalSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Global")
+                .font(.headline)
+                .foregroundStyle(.secondary)
 
-        Button {
-            if isSelected {
-                dream.activePlayer.selectGlobalLayer()
-            } else {
-                dream.activePlayer.selectSource(index)
+            HStack {
+                Text("Clip Length")
+                Spacer()
+                Text("\(Int(state.settings.clipLengthMinSeconds.rounded()))–\(Int(state.settings.clipLengthMaxSeconds.rounded()))s")
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
             }
-        } label: {
-            HStack(spacing: 8) {
-                Text("\(index + 1)")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
-                    .frame(width: 22, alignment: .trailing)
 
-                Text(label)
-                    .font(.callout)
-                    .lineLimit(1)
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Global Effects")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    Text(effectChainSummary(dream.activePlayer.effectChain))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
 
                 Spacer()
 
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Color.accentColor)
+                Button("Edit") {
+                    state.windowState.set("effectsEditor", visible: true)
+                    dream.activePlayer.selectGlobalLayer()
                 }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(isSelected ? Color.accentColor.opacity(0.14) : Color.white.opacity(0.05))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(isSelected ? Color.accentColor.opacity(0.55) : Color.white.opacity(0.08), lineWidth: isSelected ? 1.0 : 0.5)
-            )
         }
-        .buttonStyle(.plain)
     }
 
-    private func layerLabel(_ layer: HypnogramLayer) -> String {
-        switch layer.mediaClip.file.source {
-        case .url(let url):
-            return url.lastPathComponent
-        case .external(let identifier):
-            return identifier
+    private func bindingForLayer(index: Int) -> Binding<HypnogramLayer> {
+        Binding(
+            get: { dream.activePlayer.layers[index] },
+            set: { updated in
+                var layers = dream.activePlayer.layers
+                guard index < layers.count else { return }
+                layers[index] = updated
+                dream.activePlayer.layers = layers
+                dream.activePlayer.notifySessionMutated()
+            }
+        )
+    }
+
+    private func toggleExpanded(id: UUID) {
+        if expandedLayerIDs.contains(id) {
+            expandedLayerIDs.remove(id)
+        } else {
+            expandedLayerIDs.insert(id)
         }
+    }
+
+    private func effectChainSummary(_ chain: EffectChain) -> String {
+        if chain.effects.isEmpty { return "None" }
+        let name = chain.name?.isEmpty == false ? (chain.name ?? "") : "Unnamed"
+        return "\(name) (\(chain.effects.count))"
     }
 }
-
