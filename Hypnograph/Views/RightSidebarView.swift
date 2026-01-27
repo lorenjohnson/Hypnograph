@@ -59,7 +59,7 @@ struct RightSidebarView: View {
                         Button {
                             // Not implemented yet (kept for mockup parity)
                         } label: {
-                            Label("Select Source…", systemImage: "photo.on.rectangle")
+                            Label("Select Source...", systemImage: "photo.on.rectangle")
                         }
                         .disabled(true)
 

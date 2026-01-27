@@ -89,7 +89,7 @@ Sidebars use **fixed widths** (Left: 280pt, Right: 300pt) rather than percentage
 - **Visibility button** (eye icon)
 - **Expanded state**: Blend mode picker, opacity slider, effect chain section
 - **Add Layer**: `+` menu in the Layers header
-  - **Select Source…** (disabled for now)
+  - **Select Source...** (disabled for now)
   - **Random Source** (implemented; adds a random layer)
 
 ### Effect Chains Library (Right Tab)
@@ -169,7 +169,7 @@ Located in `docs/hypnograph/projects/sidebar-ui-redesign/`:
 
 ## Known Divergences (Mockup vs. Current Implementation)
 
-- **Select Source… (Add Layer menu)**: Menu item exists but is disabled until a source picker flow is implemented.
+- **Select Source... (Add Layer menu)**: Menu item exists but is disabled until a source picker flow is implemented.
 
 ### Phase 3: Layers Tab Implementation
 
