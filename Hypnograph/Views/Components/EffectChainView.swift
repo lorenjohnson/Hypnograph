@@ -54,30 +54,6 @@ struct EffectChainView: View {
                 .padding(.top, 2)
             }
         }
-        .contextMenu {
-            Button {
-                let current = chain
-                _ = dream.effectsLibrarySession.addTemplate(from: current, name: current.name)
-                AppNotifications.show("Saved to library", flash: true)
-            } label: {
-                Label("Save to Library", systemImage: "square.and.arrow.down")
-            }
-
-            Button {
-                AppNotifications.show("Use Effect Chains tab to load templates", flash: true, duration: 1.25)
-            } label: {
-                Label("Load from Library...", systemImage: "folder")
-            }
-
-            Divider()
-
-            Button(role: .destructive) {
-                dream.activeEffectManager.clearEffect(for: layer)
-                expandedEffectIndices.removeAll()
-            } label: {
-                Label("Clear Effect", systemImage: "trash")
-            }
-        }
     }
 
     private var headerRow: some View {
@@ -130,6 +106,30 @@ struct EffectChainView: View {
             guard isCollapsible else { return }
             withAnimation(.easeInOut(duration: 0.15)) {
                 isExpanded.toggle()
+            }
+        }
+        .contextMenu {
+            Button {
+                let current = chain
+                _ = dream.effectsLibrarySession.addTemplate(from: current, name: current.name)
+                AppNotifications.show("Saved to library", flash: true)
+            } label: {
+                Label("Save to Library", systemImage: "square.and.arrow.down")
+            }
+
+            Button {
+                AppNotifications.show("Use Effect Chains tab to load templates", flash: true, duration: 1.25)
+            } label: {
+                Label("Load from Library...", systemImage: "folder")
+            }
+
+            Divider()
+
+            Button(role: .destructive) {
+                dream.activeEffectManager.clearEffect(for: layer)
+                expandedEffectIndices.removeAll()
+            } label: {
+                Label("Clear Effect", systemImage: "trash")
             }
         }
     }

@@ -112,7 +112,6 @@ struct ContentView: View {
                 .pickerStyle(.segmented)
                 .frame(width: 170)
                 .padding(.top, 12)
-                .glassPanel(cornerRadius: 12)
             }
         }
         .overlay(alignment: .bottom) {
