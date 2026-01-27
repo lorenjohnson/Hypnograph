@@ -208,7 +208,7 @@ struct LayerRowView: View {
                 dream: dream,
                 layer: index,
                 title: "Effects",
-                isCollapsible: false
+                isCollapsible: true
             )
         }
     }

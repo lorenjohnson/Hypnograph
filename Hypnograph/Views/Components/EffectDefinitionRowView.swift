@@ -21,32 +21,37 @@ struct EffectDefinitionRowView: View {
 
             if isExpanded {
                 paramsEditor
-                    .padding(.leading, 14)
+                    .padding(.leading, 16)
+                    .opacity(effect.isEnabled ? 1.0 : 0.5)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(10)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(.white.opacity(0.04))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(.white.opacity(0.08), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(.quaternary)
         )
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
+        HStack {
             Button {
                 onToggleExpanded()
             } label: {
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 18, height: 18)
+                HStack(spacing: 4) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    Text(displayName)
+                        .font(.callout)
+                        .foregroundStyle(effect.isEnabled ? .primary : .secondary)
+                        .lineLimit(1)
+                }
             }
             .buttonStyle(.plain)
+
+            Spacer()
 
             Toggle("", isOn: Binding(
                 get: { effect.isEnabled },
@@ -54,44 +59,17 @@ struct EffectDefinitionRowView: View {
                     dream.activeEffectManager.setEffectEnabled(for: layer, effectDefIndex: effectIndex, enabled: enabled)
                 }
             ))
-            .toggleStyle(.darkModeCheckbox)
+            .toggleStyle(.switch)
+            .controlSize(.mini)
             .labelsHidden()
-
-            Text(displayName)
-                .font(.callout.weight(.medium))
-                .lineLimit(1)
-
-            Spacer(minLength: 8)
-
-            Button {
-                dream.activeEffectManager.randomizeEffect(for: layer, effectDefIndex: effectIndex)
-            } label: {
-                Image(systemName: "shuffle")
-                    .font(.system(size: 11, weight: .semibold))
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .help("Randomize")
-
-            Button {
-                dream.activeEffectManager.resetEffectToDefaults(for: layer, effectDefIndex: effectIndex)
-            } label: {
-                Image(systemName: "arrow.uturn.backward")
-                    .font(.system(size: 11, weight: .semibold))
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .help("Reset")
 
             Button(role: .destructive) {
                 dream.activeEffectManager.removeEffectFromChain(for: layer, effectDefIndex: effectIndex)
             } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 11, weight: .semibold))
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.tertiary)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .help("Remove")
+            .buttonStyle(.borderless)
         }
     }
 
@@ -108,10 +86,9 @@ struct EffectDefinitionRowView: View {
                 ForEach(keys, id: \.self) { key in
                     let spec = specs[key]
                     let value = effect.params?[key] ?? spec?.defaultValue ?? .double(0)
-                    ParameterSliderRow(
+                    EffectParameterRowView(
                         name: key,
                         value: value,
-                        effectType: effect.type,
                         spec: spec,
                         onChange: { newValue in
                             dream.activeEffectManager.updateEffectParameter(
@@ -127,4 +104,3 @@ struct EffectDefinitionRowView: View {
         }
     }
 }
-

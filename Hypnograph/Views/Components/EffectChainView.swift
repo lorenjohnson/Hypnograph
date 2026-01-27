@@ -14,65 +14,16 @@ struct EffectChainView: View {
     @State private var isExpanded: Bool = true
     @State private var expandedEffectIndices: Set<Int> = []
 
-    @State private var chainNameDraft: String = ""
-    @FocusState private var isNameFocused: Bool
-
     private var chain: EffectChain {
         dream.activeEffectManager.effectChain(for: layer) ?? EffectChain()
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if isCollapsible {
-                DisclosureGroup(isExpanded: $isExpanded) {
-                    content
-                        .padding(.top, 6)
-                } label: {
-                    header
-                }
-            } else {
-                header
-                content
-            }
-        }
-        .onAppear {
-            if chainNameDraft.isEmpty {
-                chainNameDraft = chain.name ?? ""
-            }
-        }
-        .onChange(of: chain.name) { _, newName in
-            guard !isNameFocused else { return }
-            chainNameDraft = newName ?? ""
-        }
-    }
+        VStack(alignment: .leading, spacing: 8) {
+            headerRow
 
-    private var header: some View {
-        HStack(spacing: 10) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.secondary)
-
-            Spacer(minLength: 8)
-
-            Text(chainSummary(chain))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-    }
-
-    private var content: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            chainNameRow
-            addEffectRow
-
-            if chain.effects.isEmpty {
-                Text("No effects")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 4)
-            } else {
-                VStack(alignment: .leading, spacing: 8) {
+            if isExpanded, !chain.effects.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
                     ForEach(Array(chain.effects.enumerated()), id: \.offset) { index, effect in
                         EffectDefinitionRowView(
                             dream: dream,
@@ -84,118 +35,102 @@ struct EffectChainView: View {
                                 toggleEffectExpanded(index)
                             }
                         )
-                        .animation(.easeInOut(duration: 0.18), value: expandedEffectIndices)
+                        .animation(.easeInOut(duration: 0.15), value: expandedEffectIndices)
                     }
+
+                    Menu {
+                        ForEach(EffectRegistry.availableEffectTypes, id: \.type) { entry in
+                            Button(entry.displayName) {
+                                dream.activeEffectManager.addEffectToChain(for: layer, effectType: entry.type)
+                            }
+                        }
+                    } label: {
+                        Label("Add Effect", systemImage: "plus")
+                            .font(.callout)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
+                .padding(.top, 2)
             }
         }
-    }
+        .contextMenu {
+            Button {
+                let current = chain
+                _ = dream.effectsLibrarySession.addTemplate(from: current, name: current.name)
+                AppNotifications.show("Saved to library", flash: true)
+            } label: {
+                Label("Save to Library", systemImage: "square.and.arrow.down")
+            }
 
-    private var chainNameRow: some View {
-        HStack(spacing: 8) {
-            Text("Name")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .frame(width: 48, alignment: .leading)
+            Button {
+                AppNotifications.show("Use Effect Chains tab to load templates", flash: true, duration: 1.25)
+            } label: {
+                Label("Load from Library...", systemImage: "folder")
+            }
 
-            TextField("Optional", text: $chainNameDraft)
-                .textFieldStyle(.plain)
-                .font(.system(size: 12, design: .monospaced))
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
-                .background(isNameFocused ? Color.white : Color.white.opacity(0.08))
-                .foregroundColor(isNameFocused ? .black : .white)
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .focused($isNameFocused)
-                .onSubmit {
-                    dream.activeEffectManager.updateChainName(for: layer, name: chainNameDraft)
-                }
-                .onChange(of: isNameFocused) { _, focused in
-                    if !focused, chainNameDraft != (chain.name ?? "") {
-                        dream.activeEffectManager.updateChainName(for: layer, name: chainNameDraft)
-                    }
-                }
+            Divider()
 
             Button(role: .destructive) {
                 dream.activeEffectManager.clearEffect(for: layer)
                 expandedEffectIndices.removeAll()
             } label: {
-                Image(systemName: "xmark.circle")
-                    .font(.system(size: 12, weight: .semibold))
+                Label("Clear Effect", systemImage: "trash")
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .help("Clear chain")
-            .disabled(chain.effects.isEmpty && (chain.name?.isEmpty ?? true))
-
-            Menu {
-                Button("Save as New Template") {
-                    _ = dream.effectsLibrarySession.addTemplate(from: chain, name: chain.name)
-                    AppNotifications.show("Saved to library", flash: true)
-                }
-
-                if let templateId = chain.sourceTemplateId {
-                    Button("Update Linked Template") {
-                        dream.effectsLibrarySession.updateTemplate(id: templateId, from: chain, preserveName: true)
-                        AppNotifications.show("Updated library template", flash: true)
-                    }
-                }
-            } label: {
-                Image(systemName: "tray.and.arrow.down")
-                    .font(.system(size: 12, weight: .semibold))
-            }
-            .menuStyle(.borderlessButton)
-            .help("Library")
-            .disabled(chain.effects.isEmpty)
-
-            Button("Edit") {
-                state.windowState.set("effectsEditor", visible: true)
-                if layer == -1 {
-                    dream.activePlayer.selectGlobalLayer()
-                } else {
-                    dream.activePlayer.selectSource(layer)
-                }
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
         }
     }
 
-    private var addEffectRow: some View {
-        HStack(spacing: 8) {
-            Menu {
-                ForEach(EffectRegistry.availableEffectTypes, id: \.type) { entry in
-                    Button(entry.displayName) {
-                        dream.activeEffectManager.addEffectToChain(for: layer, effectType: entry.type)
-                    }
-                }
-            } label: {
-                Label("Add Effect", systemImage: "plus")
-            }
-            .menuStyle(.borderlessButton)
-            .controlSize(.small)
+    private var headerRow: some View {
+        let hasChain = !chain.effects.isEmpty
+        let displayName = chain.name ?? (hasChain ? "Custom" : "No Effect")
+
+        return HStack(spacing: 8) {
+            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text(displayName)
+                .font(.callout.weight(hasChain ? .medium : .regular))
+                .foregroundStyle(hasChain ? .primary : .secondary)
+                .lineLimit(1)
 
             Spacer()
 
-            Button {
-                expandedEffectIndices = Set(0..<chain.effects.count)
-            } label: {
-                Text("Expand All")
+            if hasChain {
+                Toggle("", isOn: Binding(
+                    get: { chain.effects.contains(where: { $0.isEnabled }) },
+                    set: { enabled in
+                        for idx in chain.effects.indices {
+                            dream.activeEffectManager.setEffectEnabled(for: layer, effectDefIndex: idx, enabled: enabled)
+                        }
+                    }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .labelsHidden()
+                .onTapGesture { }
+            } else {
+                Menu {
+                    ForEach(EffectRegistry.availableEffectTypes, id: \.type) { entry in
+                        Button(entry.displayName) {
+                            dream.activeEffectManager.addEffectToChain(for: layer, effectType: entry.type)
+                            isExpanded = true
+                        }
+                    }
+                } label: {
+                    Text("Add...")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .onTapGesture { }
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .font(.caption)
-            .disabled(chain.effects.isEmpty)
-
-            Button {
-                expandedEffectIndices.removeAll()
-            } label: {
-                Text("Collapse")
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard isCollapsible else { return }
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isExpanded.toggle()
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .font(.caption)
-            .disabled(expandedEffectIndices.isEmpty)
         }
     }
 
@@ -205,14 +140,5 @@ struct EffectChainView: View {
         } else {
             expandedEffectIndices.insert(index)
         }
-    }
-
-    private func chainSummary(_ chain: EffectChain) -> String {
-        let enabledCount = chain.effects.filter { $0.isEnabled }.count
-        if chain.effects.isEmpty { return "None" }
-        if enabledCount == chain.effects.count {
-            return "\(enabledCount)"
-        }
-        return "\(enabledCount)/\(chain.effects.count)"
     }
 }
