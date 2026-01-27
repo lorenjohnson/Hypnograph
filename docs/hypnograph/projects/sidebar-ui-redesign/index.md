@@ -170,7 +170,6 @@ Located in `docs/hypnograph/projects/sidebar-ui-redesign/`:
 ## Known Divergences (Mockup vs. Current Implementation)
 
 - **Select Source… (Add Layer menu)**: Menu item exists but is disabled until a source picker flow is implemented.
-- **Right Sidebar → Global → Clip Length**: Currently displayed as the configured range; mockup shows an adjustable single-value slider.
 
 ### Phase 3: Layers Tab Implementation
 
