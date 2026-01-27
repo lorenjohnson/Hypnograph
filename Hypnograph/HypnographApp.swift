@@ -73,6 +73,10 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Returns true if the source exists (or nil was passed), false if source index is out of range.
     var setFlashSolo: ((Int?) -> Bool)?
 
+    /// Callback to select a source index (injected by app). Used for single-key navigation without
+    /// relying on menu key equivalents (which can enter menu tracking and stall playback).
+    var selectSourceIndex: ((Int) -> Void)?
+
     /// Event monitor for Tab key (workaround for SwiftUI menu shortcut not registering until menu opened)
     private var tabKeyMonitor: Any?
 
@@ -160,9 +164,9 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
             if self.isTypingActive?() == true {
                 return event
             }
-            // Skip key repeats for double-tap detection
+            // Consume key repeats (prevents menu key equivalents from stalling playback while held).
             if event.isARepeat {
-                return event
+                return nil
             }
 
             let isDown = event.type == .keyDown
@@ -170,6 +174,10 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
             let doubleTapThreshold: TimeInterval = 0.3
 
             if isDown {
+                // Keep layer selection responsive without letting the event fall through to the menu
+                // system (menu tracking can stall playback while the key is held).
+                self.selectSourceIndex?(sourceIndex)
+
                 // Check for double-tap on same key
                 let isDoubleTap = (sourceIndex == self.lastSourceKeyIndex) &&
                                   (now - self.lastSourceKeyDownTime < doubleTapThreshold)
@@ -212,7 +220,9 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
                     self.setGlobalEffectSuspended?(false)
                 }
             }
-            return event  // Don't consume - let SwiftUI handle the key press for source selection
+            // Consume to prevent menu key equivalents (Select Layer 1-9) from entering menu tracking,
+            // which can stall playback during flash-solo holds.
+            return nil
         }
 
         // Request Photos library authorization and refresh hidden assets cache
@@ -397,6 +407,13 @@ struct HypnographApp: App {
                     }
                     dream.player.effectManager.setFlashSolo(sourceIndex)
                     return true
+                }
+
+                // Wire up 1-9 source selection (used by the flash-solo key monitor)
+                appDelegate.selectSourceIndex = { [weak dream] index in
+                    guard let dream = dream, !dream.isLiveMode else { return }
+                    guard index >= 0, index < dream.player.layers.count else { return }
+                    dream.player.selectSource(index)
                 }
 
                 // Wire up session file opening
