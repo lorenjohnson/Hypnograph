@@ -1,20 +1,30 @@
 {
-  "watchMode": true,
+  "watchMode": false,
   "sources": {
     "default": ["~/Movies/Hypnograph/sources"],
     "From Finder Helper": []
   },
   "outputFolder": "~/Movies/Hypnograph/renders",
   "snapshotsFolder": "~/Movies/Hypnograph/snapshots",
-  "clipLengthMinSeconds": 2,
-  "clipLengthMaxSeconds": 15,
+  "clipLengthMinSeconds": 5,
+  "clipLengthMaxSeconds": 20,
   "historyLimit": 200,
   "sourceFraming": "fill",
   "playerConfig": {
     "aspectRatio": "16:9",
     "playerResolution": 1080,
-    "maxLayers": 5,
-    "targetDurationSeconds": 60.0,
+    "maxLayers": 1,
+    "targetDurationSeconds": 15.0,
     "playRate": 1.0
-  }
+  },
+  "transitionStyle": "crossfade",
+  "transitionDuration": 1,
+  "randomGlobalEffect": true,
+  "randomGlobalEffectFrequency": 0.7,
+  "randomLayerEffect": false,
+  "randomLayerEffectFrequency": 0.3,
+  "previewAudioDeviceUID": null,
+  "previewVolume": 0.8,
+  "liveAudioDeviceUID": null,
+  "liveVolume": 1
 }

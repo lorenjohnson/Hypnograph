@@ -35,15 +35,14 @@ struct RangeSliderView: View {
                 Capsule()
                     .fill(Color.secondary.opacity(0.3))
                     .frame(height: trackHeight)
-                    .offset(y: (thumbDiameter - trackHeight) / 2)
 
                 Capsule()
                     .fill(Color.accentColor)
                     .frame(
-                        width: max(thumbDiameter, (upperX - lowerX) + thumbDiameter),
+                        width: CGFloat(upperT - lowerT) * usableWidth + thumbDiameter,
                         height: trackHeight
                     )
-                    .offset(x: lowerX, y: (thumbDiameter - trackHeight) / 2)
+                    .offset(x: lowerX)
 
                 thumb(x: lowerX, thumb: .lower, diameter: thumbDiameter, usableWidth: usableWidth)
                     .zIndex(activeThumb == .lower ? 2 : 1)
@@ -60,12 +59,8 @@ struct RangeSliderView: View {
     @ViewBuilder
     private func thumb(x: CGFloat, thumb: Thumb, diameter: CGFloat, usableWidth: CGFloat) -> some View {
         Circle()
-            .fill(Color(nsColor: .controlBackgroundColor))
-            .overlay(
-                Circle()
-                    .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
+            .fill(Color.white)
+            .shadow(radius: 2)
             .frame(width: diameter, height: diameter)
             .offset(x: x, y: 0)
             .gesture(

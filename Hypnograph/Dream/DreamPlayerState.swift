@@ -106,7 +106,7 @@ final class DreamPlayerState: ObservableObject {
         // Session starts with defaults; restored from clip history on app launch.
         self.session = HypnographSession(
             layers: [],
-            targetDuration: CMTime(seconds: 60, preferredTimescale: 600),
+            targetDuration: CMTime(seconds: 15, preferredTimescale: 600),
             playRate: 1.0
         )
         self.effectsSession = effectsSession
