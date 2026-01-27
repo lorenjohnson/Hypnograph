@@ -177,7 +177,7 @@ Located in `docs/hypnograph/projects/sidebar-ui-redesign/`:
    - Clip Length display (from `Settings.clipLengthMinSeconds/Max`)
    - Global Effect Chain (from `Dream.activePlayer.globalEffectChain`) *(shown as summary + Edit link to Effects Editor)*
 4. [x] Wire up per-layer effect chains (from `HypnogramLayer.effectChain`) *(shown as summary + Edit link to Effects Editor)*
-5. [ ] Create reusable `EffectChainView` component for displaying/editing chains
+5. [x] Create reusable `EffectChainView` component for displaying/editing chains
 6. [x] Implement blend mode and opacity controls per layer
 
 **Data Sources**:
