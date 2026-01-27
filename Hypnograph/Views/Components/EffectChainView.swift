@@ -114,7 +114,7 @@ struct EffectChainView: View {
                 _ = dream.effectsLibrarySession.addTemplate(from: current, name: current.name)
                 AppNotifications.show("Saved to library", flash: true)
             } label: {
-                Label("Save to Library", systemImage: "square.and.arrow.down")
+                Label("Save as New Template...", systemImage: "square.and.arrow.down")
             }
 
             Button {
