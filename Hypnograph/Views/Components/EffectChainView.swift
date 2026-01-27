@@ -1,5 +1,6 @@
 import SwiftUI
 import HypnoCore
+import HypnoUI
 
 struct EffectChainView: View {
     @ObservedObject var state: HypnographState
@@ -127,6 +128,26 @@ struct EffectChainView: View {
             .help("Clear chain")
             .disabled(chain.effects.isEmpty && (chain.name?.isEmpty ?? true))
 
+            Menu {
+                Button("Save as New Template") {
+                    _ = dream.effectsLibrarySession.addTemplate(from: chain, name: chain.name)
+                    AppNotifications.show("Saved to library", flash: true)
+                }
+
+                if let templateId = chain.sourceTemplateId {
+                    Button("Update Linked Template") {
+                        dream.effectsLibrarySession.updateTemplate(id: templateId, from: chain, preserveName: true)
+                        AppNotifications.show("Updated library template", flash: true)
+                    }
+                }
+            } label: {
+                Image(systemName: "tray.and.arrow.down")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .menuStyle(.borderlessButton)
+            .help("Library")
+            .disabled(chain.effects.isEmpty)
+
             Button("Edit") {
                 state.windowState.set("effectsEditor", visible: true)
                 if layer == -1 {
@@ -195,4 +216,3 @@ struct EffectChainView: View {
         return "\(enabledCount)/\(chain.effects.count)"
     }
 }
-

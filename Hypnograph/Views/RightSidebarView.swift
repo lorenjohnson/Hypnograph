@@ -86,34 +86,11 @@ struct RightSidebarView: View {
 
     @ViewBuilder
     private func effectChainsTab() -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
-                if effectsSession.chains.isEmpty {
-                    Text("No saved effect chains.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(Array(effectsSession.chains.enumerated()), id: \.offset) { _, chain in
-                        HStack(spacing: 8) {
-                            Text(chain.name?.isEmpty == false ? (chain.name ?? "") : "Untitled")
-                                .lineLimit(1)
-                            Spacer()
-                            Text("\(chain.effects.count)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(.white.opacity(0.08))
-                                )
-                        }
-                        .padding(.vertical, 6)
-                    }
-                }
-            }
-            .padding(12)
-        }
+        EffectChainLibraryView(
+            state: state,
+            dream: dream,
+            session: effectsSession
+        )
     }
 
     private var globalSection: some View {

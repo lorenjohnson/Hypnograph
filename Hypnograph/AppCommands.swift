@@ -132,13 +132,6 @@ struct AppCommands: Commands {
             Divider()
 
             Section("Player") {
-                Toggle("Player Settings", isOn: Binding(
-                    get: { state.windowState.isVisible("playerSettings") },
-                    set: { _ in state.windowState.toggle("playerSettings") }
-                ))
-                .keyboardShortcut("p", modifiers: [])
-                .disabled(isTyping)
-
                 Toggle("Watch", isOn: Binding(
                     get: { state.settings.watchMode },
                     set: { _ in state.toggleWatchMode() }

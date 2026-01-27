@@ -203,12 +203,12 @@ Located in `docs/hypnograph/projects/sidebar-ui-redesign/`:
 
 **Tasks**:
 
-1. [ ] Create `EffectChainLibraryView` for the right sidebar tab
-2. [ ] Load effect chains from `effects.json` library file
-3. [ ] Implement "Apply to Global" action
-4. [ ] Implement "Apply to Selected Layer" action (requires layer selection state)
-5. [ ] Add context menu actions: Duplicate, Rename, Delete
-6. [ ] Implement "Save to Library" from Global/Layer context menus
+1. [x] Create `EffectChainLibraryView` for the right sidebar tab
+2. [x] Load effect chains from `effects.json` library file
+3. [x] Implement "Apply to Global" action
+4. [x] Implement "Apply to Selected Layer" action (requires layer selection state)
+5. [x] Add context menu actions: Duplicate, Rename, Delete
+6. [x] Implement "Save to Library" from Global/Layer context menus
 
 **Files to Create**:
 
@@ -226,11 +226,11 @@ Located in `docs/hypnograph/projects/sidebar-ui-redesign/`:
 
 **Tasks**:
 
-1. [ ] Deprecate `HUDView.swift` (functionality moved to Layers tab)
-2. [ ] Deprecate `PlayerSettingsView.swift` (functionality moved to left sidebar)
-3. [ ] Update `HypnographCommands.swift` to remove obsolete menu items
-4. [ ] Review keyboard shortcuts for conflicts
-5. [ ] Update any documentation referencing old UI
+1. [x] Deprecate `HUDView.swift` (functionality moved to Layers tab)
+2. [x] Deprecate `PlayerSettingsView.swift` (functionality moved to left sidebar)
+3. [x] Update menu commands to remove obsolete items
+4. [x] Review keyboard shortcuts for conflicts
+5. [x] Update any documentation referencing old UI
 
 **Files to Deprecate**:
 

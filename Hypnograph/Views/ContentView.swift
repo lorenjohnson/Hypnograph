@@ -64,13 +64,6 @@ struct ContentView: View {
 
             // HUD and Hypnogram List - top left (below LIVE if visible)
             VStack(alignment: .leading, spacing: 8) {
-                if state.windowState.isVisible("hud") {
-                    HUDView(
-                        state: state,
-                        dream: dream
-                    )
-                }
-
                 if state.windowState.isVisible("hypnogramList") {
                     HypnogramListView(
                         store: HypnogramStore.shared,
@@ -125,22 +118,6 @@ struct ContentView: View {
                 .frame(width: 170)
                 .padding(.top, 12)
                 .glassPanel(cornerRadius: 12)
-            }
-        }
-        .overlay(alignment: .bottomLeading) {
-            // Player Settings - bottom left
-            if state.windowState.isVisible("playerSettings") {
-                PlayerSettingsView(
-                    player: dream.activePlayer,
-                    dream: dream,
-                    onClose: {
-                        state.windowState.set("playerSettings", visible: false)
-                    }
-                )
-                .padding(.leading, 12)
-                .padding(.bottom, 12)
-                .transition(.move(edge: .leading).combined(with: .opacity))
-                .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("playerSettings"))
             }
         }
         .overlay(alignment: .bottom) {
