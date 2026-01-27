@@ -166,11 +166,14 @@ struct LayerRowView: View {
                 )) {
                     Text("Normal").tag(BlendMode.sourceOver)
                     ForEach(BlendMode.all, id: \.self) { mode in
-                        Text(blendModeName(mode)).tag(mode)
+                        Text(blendModeName(mode))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .tag(mode)
                     }
                 }
                 .pickerStyle(.menu)
-                .fixedSize()
+                .frame(width: 140, alignment: .trailing)
                 .disabled(index == 0)
                 .opacity(index == 0 ? 0.6 : 1.0)
             }
