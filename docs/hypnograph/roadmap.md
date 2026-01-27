@@ -5,15 +5,17 @@ last_reviewed: 2026-01-23
 
 ## v0.1 Release
 
+- [ ] Video playback can freeze/blank while audio continues (AVFoundation stall); current workaround can show black frames — investigate root cause and remove TODO recovery. [video-playback-stall](projects/video-playback-stall.md)
 - [ ] Blend modes and effects don't visibly apply when player is paused or showing still images (regression — this used to work)
 - [ ] Rendering/saving some Hypnograms results in an error: "🔴 RenderEngine.export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn't be completed. (Hypnograph.RenderError error 6.)" — happens if any effects load operation were done first
-- [ ] Refine packaged Effect Chains Library entries
-- [ ] Review Effect Chains library window to make i maybe more intuitive (recent is a little confusing and probably can/should go below the library/s)
 - [ ] Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause  causes a crash?
 - [ ] Refine or Remove (feature flag?) the Apple Photos selection window feature
+- [ ] Refine packaged Effect Chains Library entries
+- [ ] Review Effect Chains library window to make i maybe more intuitive (recent is a little confusing and probably can/should go below the library/s)
+- [record-deck](projects/record-deck.md)
+- [app-settings-window](projects/app-settings-window.md)
 - [command-menu-review](projects/command-menu-review.md)
 - [splash-screen](projects/splash-screen.md)
-- [app-settings-window](projects/app-settings-window.md)
 - [combine-hud-into-player-settings](projects/combine-hud-into-player-settings.md)
 - [save-fullscreen-state](projects/save-fullscreen-state.md)
 - [live-mode-feature-flag](projects/live-mode-feature-flag.md)
@@ -22,7 +24,7 @@ last_reviewed: 2026-01-23
 - [beta-release-testflight](projects/beta-release-testflight.md)
 
 ## Backlog
-- [save-sequences](projects/save-sequences)
+- [save-sequences](projects/save-sequences.md)
 - [export-clip-history-fcpxml](projects/export-clip-history-fcpxml)
 - [add-history-to-hypnograms-favorite-recent-window](projects/add-history-to-hypnograms-favorite-recent-window)
 - [layer-editor](projects/layer-editor)

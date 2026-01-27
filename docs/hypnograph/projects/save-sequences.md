@@ -3,6 +3,10 @@
 **Created**: 2025-01-16
 **Status**: Proposal / Planning
 
+> **Superseded**: This work is being folded into `record-deck` so the primary UX is a Record/Stop
+> “tape deck” flow instead of explicit IN/OUT marks.
+> See: `docs/hypnograph/projects/record-deck.md`
+
 ## Overview
 
 Goal: add a clean, predictable way to **save and render a sequence of clips** from the existing persistent clip history, without re-introducing "Sequence mode".
