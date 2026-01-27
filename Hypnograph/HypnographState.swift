@@ -46,9 +46,6 @@ final class HypnographState: ObservableObject {
     /// Unified window visibility state with clean screen support
     @Published var windowState = WindowState()
 
-    /// Shared effects editor view model for controller/keyboard navigation
-    let effectsEditorViewModel = EffectsEditorViewModel()
-
     private var cancellables: Set<AnyCancellable> = []
 
     // MARK: - Init

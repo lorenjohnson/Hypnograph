@@ -9,11 +9,6 @@ struct ContentView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var dream: Dream
 
-    /// Use shared view model from state for controller/keyboard navigation
-    private var effectsEditorViewModel: EffectsEditorViewModel {
-        state.effectsEditorViewModel
-    }
-
     private var topRightIndicator: (text: String, color: Color)? {
         // LIVE indicator (same placement/size as the layer indicator)
         if dream.isLiveMode {
@@ -140,19 +135,8 @@ struct ContentView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            // Right-side panels: Effects editor (top-aligned) and Live preview (bottom)
+            // Right-side panels: Live preview (bottom)
             VStack(spacing: 0) {
-                if state.windowState.isVisible("effectsEditor") {
-                    EffectsEditorView(
-                        viewModel: effectsEditorViewModel,
-                        recentStore: dream.recentEffectsStore,
-                        state: state,
-                        dream: dream
-                    )
-                        .padding(.bottom, state.windowState.isVisible("livePreview") ? 12 : 0)
-                        .transition(.move(edge: .trailing))
-                }
-
                 Spacer(minLength: 0)
 
                 if state.windowState.isVisible("livePreview") {
@@ -168,7 +152,6 @@ struct ContentView: View {
             .padding(.top, 12)
             .padding(.trailing, 12)
             .padding(.bottom, 12)
-            .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("effectsEditor"))
             .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("livePreview"))
         }
         .appNotifications()

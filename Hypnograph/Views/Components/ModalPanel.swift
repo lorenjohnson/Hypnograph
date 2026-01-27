@@ -3,7 +3,7 @@
 //  Hypnograph
 //
 //  Reusable modal panel component for overlay UI.
-//  Standard pattern for effects editor, live display, etc.
+//  Standard pattern for overlay UI (e.g. live preview).
 //
 
 import SwiftUI
@@ -17,11 +17,6 @@ struct ModalPanelStyle {
     var maxWidth: CGFloat? = nil
     var minHeight: CGFloat? = nil
     var maxHeight: CGFloat? = nil
-    
-    static let effectsEditor = ModalPanelStyle(
-        minWidth: 480,
-        maxWidth: 480
-    )
     
     static let livePreview = ModalPanelStyle(
         minWidth: 320,
@@ -134,4 +129,3 @@ struct FocusableSection<Content: View>: View {
             )
     }
 }
-

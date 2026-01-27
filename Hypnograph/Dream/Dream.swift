@@ -462,23 +462,17 @@ final class Dream: ObservableObject {
     func cycleEffect(direction: Int = 1) {
         activeEffectManager.cycleEffect(for: activePlayer.currentSourceIndex, direction: direction)
 
-        // Show flash message when effects panel is not open
-        if !state.windowState.isVisible("effectsEditor") {
-            let effectName = activeEffectManager.effectName(for: activePlayer.currentSourceIndex)
-            let layerLabel = activePlayer.currentSourceIndex == -1 ? "Global" : "Source \(activePlayer.currentSourceIndex + 1)"
-            AppNotifications.show("\(layerLabel): \(effectName)", flash: true, duration: 1.5)
-        }
+        let effectName = activeEffectManager.effectName(for: activePlayer.currentSourceIndex)
+        let layerLabel = activePlayer.currentSourceIndex == -1 ? "Global" : "Source \(activePlayer.currentSourceIndex + 1)"
+        AppNotifications.show("\(layerLabel): \(effectName)", flash: true, duration: 1.5)
     }
 
     /// Clear effect for current layer only
     func clearCurrentLayerEffect() {
         activeEffectManager.clearEffect(for: activePlayer.currentSourceIndex)
 
-        // Show flash message when effects panel is not open
-        if !state.windowState.isVisible("effectsEditor") {
-            let layerLabel = activePlayer.currentSourceIndex == -1 ? "Global" : "Source \(activePlayer.currentSourceIndex + 1)"
-            AppNotifications.show("\(layerLabel): None", flash: true, duration: 1.5)
-        }
+        let layerLabel = activePlayer.currentSourceIndex == -1 ? "Global" : "Source \(activePlayer.currentSourceIndex + 1)"
+        AppNotifications.show("\(layerLabel): None", flash: true, duration: 1.5)
     }
 
     // MARK: - Settings helpers
