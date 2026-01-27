@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreMedia
 import HypnoCore
 
 enum RightSidebarTab: Int, Hashable {
@@ -73,6 +74,7 @@ struct RightSidebarView: View {
                     }
                     .menuStyle(.borderlessButton)
                 }
+                .padding(.horizontal, 4)
 
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(dream.activePlayer.layers.indices, id: \.self) { index in
@@ -113,14 +115,35 @@ struct RightSidebarView: View {
             Text("Global")
                 .font(.headline)
                 .foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
 
-            HStack {
-                Text("Clip Length")
-                Spacer()
-                Text("\(Int(state.settings.clipLengthMinSeconds.rounded()))–\(Int(state.settings.clipLengthMaxSeconds.rounded()))s")
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Clip Length")
+                        .font(.callout)
+                    Spacer()
+                    Text("\(Int(dream.activePlayer.targetDuration.seconds.rounded()))s")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+
+                Slider(
+                    value: Binding(
+                        get: {
+                            let seconds = dream.activePlayer.targetDuration.seconds
+                            return max(1, min(seconds, 60))
+                        },
+                        set: { newValue in
+                            let seconds = max(1, min(newValue.rounded(), 60))
+                            dream.activePlayer.targetDuration = CMTime(seconds: seconds, preferredTimescale: 600)
+                            dream.activePlayer.notifySessionMutated()
+                        }
+                    ),
+                    in: 1...60,
+                    step: 1
+                )
             }
+            .padding(.horizontal, 4)
 
             EffectChainView(
                 state: state,
