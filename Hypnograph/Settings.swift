@@ -109,11 +109,11 @@ struct Settings: Codable, MediaLibrarySettings {
 
     // Single source of truth for defaults
     private enum Defaults {
-        static let watchMode: Bool = true
+        static let watchMode: Bool = false
         static let outputFolder = "~/Movies/Hypnograph/renders"
         static let snapshotsFolder = "~/Movies/Hypnograph/snapshots"
-        static let clipLengthMinSeconds: Double = 2.0
-        static let clipLengthMaxSeconds: Double = 15.0
+        static let clipLengthMinSeconds: Double = 5.0
+        static let clipLengthMaxSeconds: Double = 20.0
         static let historyLimit: Int = 200
         static let sources = MediaSourcesParam.dictionary([
             "default": ["~/Movies/Hypnograph/sources"],
@@ -123,13 +123,13 @@ struct Settings: Codable, MediaLibrarySettings {
         static let aspectRatio: AspectRatio = .ratio16x9
         static let outputResolution: OutputResolution = .p1080
         static let playerResolution: OutputResolution = .p1080
-        static let maxLayers = 5
+        static let maxLayers = 1
         static let sourceFraming: SourceFraming = .fill
         static let sourceMediaTypes: Set<MediaType> = [.images, .videos]
         static let effectsListCollapsed: Bool = false
         // Transition defaults
         static let transitionStyle: TransitionRenderer.TransitionType = .crossfade
-        static let transitionDuration: Double = 1.5
+        static let transitionDuration: Double = 1.0
         // Randomization defaults
         static let randomGlobalEffect: Bool = true
         static let randomGlobalEffectFrequency: Double = 0.7
@@ -137,7 +137,7 @@ struct Settings: Codable, MediaLibrarySettings {
         static let randomLayerEffectFrequency: Double = 0.3
         // Audio defaults: nil UID = system default, volume = 1.0
         static let previewAudioDeviceUID: String? = nil
-        static let previewVolume: Float = 1.0
+        static let previewVolume: Float = 0.8
         static let liveAudioDeviceUID: String? = nil
         static let liveVolume: Float = 1.0
     }
