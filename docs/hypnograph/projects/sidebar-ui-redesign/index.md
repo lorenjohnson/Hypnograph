@@ -2,7 +2,7 @@
 
 **Status:** In Progress
 **Created:** 2026-01-25
-**Last Updated:** 2026-01-26
+**Last Updated:** 2026-01-27
 
 ## Overview
 
@@ -66,10 +66,11 @@ Sidebars use **fixed widths** (Left: 280pt, Right: 300pt) rather than percentage
 
 ### Layer Selection Model
 
-- Use existing `currentLayer` concept from the app (0 or nil = no layer selected)
-- Global is always accessible (no selection concept for Global)
+- Use existing selection concept from the app: `DreamPlayerState.currentSourceIndex`
+  - `-1` = Global
+  - `0...` = layer index
 - Selection determines which layer receives "Apply to Selected Layer" from Effect Chains library
-- "Apply to Selected Layer" grayed out when `currentLayer === 0` or `nil`
+- "Apply to Selected Layer" grayed out when Global is selected (`currentSourceIndex == -1`)
 - Visual indicator: accent color tint + border on selected layer row
 - Selection persists when switching between Composition and Effect Chains tabs
 
@@ -87,6 +88,9 @@ Sidebars use **fixed widths** (Left: 280pt, Right: 300pt) rather than percentage
 - **Solo button** (S) - Yellow when active
 - **Visibility button** (eye icon)
 - **Expanded state**: Blend mode picker, opacity slider, effect chain section
+- **Add Layer**: `+` menu in the Layers header
+  - **Select Source…** (disabled for now)
+  - **Random Source** (implemented; adds a random layer)
 
 ### Effect Chains Library (Right Tab)
 
@@ -146,7 +150,7 @@ Located in `docs/hypnograph/projects/sidebar-ui-redesign/`:
    - `randomGlobalEffectFrequency: Double`
    - `randomLayerEffect: Bool`
    - `randomLayerEffectFrequency: Double`
-3. [x] Implement clip length range control (min/max sliders)
+3. [x] Implement clip length range control (double-thumb range slider)
 4. [x] Connect audio device/volume controls to `Dream.previewAudioDevice`, etc.
 5. [x] Migrate Watch Mode toggle
 6. [x] Migrate Play Rate slider (with snap points from `PlayRateControl`)
@@ -160,6 +164,13 @@ Located in `docs/hypnograph/projects/sidebar-ui-redesign/`:
 
 - `PlayerSettingsView.PlayRateControl` can be extracted and reused
 - `AudioDeviceRow` can be simplified (remove dark mode styling for material background)
+
+---
+
+## Known Divergences (Mockup vs. Current Implementation)
+
+- **Select Source… (Add Layer menu)**: Menu item exists but is disabled until a source picker flow is implemented.
+- **Right Sidebar → Global → Clip Length**: Currently displayed as the configured range; mockup shows an adjustable single-value slider.
 
 ### Phase 3: Layers Tab Implementation
 
