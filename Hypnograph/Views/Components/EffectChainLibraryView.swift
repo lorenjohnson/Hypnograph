@@ -35,41 +35,43 @@ struct EffectChainLibraryView: View {
                         .foregroundStyle(.secondary)
                         .padding(.vertical, 4)
                 } else {
-                    ForEach(session.chains.indices, id: \.self) { chainIndex in
-                        let chain = session.chains[chainIndex]
-                        EffectChainLibraryRow(
-                            dream: dream,
-                            session: session,
-                            chainIndex: chainIndex,
-                            chain: chain,
-                            selectedLayerIndex: selectedLayerIndex,
-                            isExpanded: expandedChainIDs.contains(chain.id),
-                            expandedEffectIndices: Binding(
-                                get: { expandedEffectIndicesByChainID[chain.id] ?? [] },
-                                set: { expandedEffectIndicesByChainID[chain.id] = $0 }
-                            ),
-                            onToggleExpanded: {
-                                withAnimation(.easeInOut(duration: 0.15)) {
-                                    if expandedChainIDs.contains(chain.id) {
-                                        expandedChainIDs.remove(chain.id)
-                                    } else {
-                                        expandedChainIDs.insert(chain.id)
+                    let snapshot = session.chains
+                    ForEach(snapshot, id: \.id) { chain in
+                        if let chainIndex = session.chainIndex(id: chain.id) {
+                            EffectChainLibraryRow(
+                                dream: dream,
+                                session: session,
+                                chainIndex: chainIndex,
+                                chain: chain,
+                                selectedLayerIndex: selectedLayerIndex,
+                                isExpanded: expandedChainIDs.contains(chain.id),
+                                expandedEffectIndices: Binding(
+                                    get: { expandedEffectIndicesByChainID[chain.id] ?? [] },
+                                    set: { expandedEffectIndicesByChainID[chain.id] = $0 }
+                                ),
+                                onToggleExpanded: {
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        if expandedChainIDs.contains(chain.id) {
+                                            expandedChainIDs.remove(chain.id)
+                                        } else {
+                                            expandedChainIDs.insert(chain.id)
+                                        }
                                     }
+                                },
+                                onRename: {
+                                    renameTargetID = chain.id
+                                    renameText = chain.name ?? ""
+                                },
+                                onDuplicate: {
+                                    _ = session.duplicateTemplate(id: chain.id)
+                                    AppNotifications.show("Duplicated", flash: true)
+                                },
+                                onDelete: {
+                                    deleteTargetID = chain.id
+                                    showDeleteConfirm = true
                                 }
-                            },
-                            onRename: {
-                                renameTargetID = chain.id
-                                renameText = chain.name ?? ""
-                            },
-                            onDuplicate: {
-                                _ = session.duplicateTemplate(id: chain.id)
-                                AppNotifications.show("Duplicated", flash: true)
-                            },
-                            onDelete: {
-                                deleteTargetID = chain.id
-                                showDeleteConfirm = true
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }

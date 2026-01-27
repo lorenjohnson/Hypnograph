@@ -77,27 +77,37 @@ struct RightSidebarView: View {
                 .padding(.horizontal, 4)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    ForEach(dream.activePlayer.layers.indices, id: \.self) { index in
-                        LayerRowView(
-                            state: state,
-                            dream: dream,
-                            thumbnailStore: thumbnailStore,
-                            index: index,
-                            layer: bindingForLayer(index: index),
-                            isSelected: dream.activePlayer.currentSourceIndex == index,
-                            isExpanded: expandedLayerIDs.contains(dream.activePlayer.layers[index].mediaClip.file.id),
-                            onSelect: {
-                                dream.activePlayer.selectSource(index)
-                            },
-                            onToggleExpanded: {
-                                toggleExpanded(id: dream.activePlayer.layers[index].mediaClip.file.id)
-                            },
-                            onDelete: {
-                                dream.activePlayer.selectSource(index)
-                                dream.removeCurrentLayer()
-                            }
-                        )
-                        .animation(.easeInOut(duration: 0.2), value: expandedLayerIDs)
+                    let snapshot = dream.activePlayer.layers
+                    ForEach(snapshot, id: \.mediaClip.file.id) { snapshotLayer in
+                        let id = snapshotLayer.mediaClip.file.id
+                        let currentIndex = layerIndex(for: id)
+
+                        if let currentIndex {
+                            LayerRowView(
+                                state: state,
+                                dream: dream,
+                                thumbnailStore: thumbnailStore,
+                                index: currentIndex,
+                                layer: bindingForLayer(id: id, fallback: snapshotLayer),
+                                isSelected: dream.activePlayer.currentSourceIndex == currentIndex,
+                                isExpanded: expandedLayerIDs.contains(id),
+                                onSelect: {
+                                    if let idx = layerIndex(for: id) {
+                                        dream.activePlayer.selectSource(idx)
+                                    }
+                                },
+                                onToggleExpanded: {
+                                    toggleExpanded(id: id)
+                                },
+                                onDelete: {
+                                    if let idx = layerIndex(for: id) {
+                                        dream.activePlayer.selectSource(idx)
+                                    }
+                                    dream.removeCurrentLayer()
+                                }
+                            )
+                            .animation(.easeInOut(duration: 0.2), value: expandedLayerIDs)
+                        }
                     }
                 }
             }
@@ -158,17 +168,21 @@ struct RightSidebarView: View {
         }
     }
 
-    private func bindingForLayer(index: Int) -> Binding<HypnogramLayer> {
+    private func bindingForLayer(id: UUID, fallback: HypnogramLayer) -> Binding<HypnogramLayer> {
         Binding(
-            get: { dream.activePlayer.layers[index] },
+            get: { dream.activePlayer.layers.first(where: { $0.mediaClip.file.id == id }) ?? fallback },
             set: { updated in
                 var layers = dream.activePlayer.layers
-                guard index < layers.count else { return }
+                guard let index = layers.firstIndex(where: { $0.mediaClip.file.id == id }) else { return }
                 layers[index] = updated
                 dream.activePlayer.layers = layers
                 dream.activePlayer.notifySessionMutated()
             }
         )
+    }
+
+    private func layerIndex(for id: UUID) -> Int? {
+        dream.activePlayer.layers.firstIndex(where: { $0.mediaClip.file.id == id })
     }
 
     private func toggleExpanded(id: UUID) {
