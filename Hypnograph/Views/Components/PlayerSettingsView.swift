@@ -353,7 +353,6 @@ struct PlayerSettingsView: View {
 
             // Header row 2: Target switcher (full width)
             HStack(spacing: 6) {
-                // Preview button
                 playerModeButton(
                     icon: "rectangle",
                     label: "Preview",
@@ -363,15 +362,16 @@ struct PlayerSettingsView: View {
                     }
                 )
 
-                // Live mode button
-                playerModeButton(
-                    icon: "play.display",
-                    label: "Live",
-                    isSelected: dream.isLiveMode,
-                    action: {
-                        if !dream.isLiveMode { dream.toggleLiveMode() }
-                    }
-                )
+                if dream.isLiveModeAvailable {
+                    playerModeButton(
+                        icon: "play.display",
+                        label: "Live",
+                        isSelected: dream.isLiveMode,
+                        action: {
+                            if !dream.isLiveMode { dream.toggleLiveMode() }
+                        }
+                    )
+                }
             }
 
             Divider()

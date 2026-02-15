@@ -133,38 +133,40 @@ struct AppCommands: Commands {
                 .disabled(isTyping)
             }
 
-            Divider()
+            if dream.isLiveModeAvailable {
+                Divider()
 
-            Section("Live Display") {
-                Toggle("Live Preview", isOn: Binding(
-                    get: { state.windowState.isVisible("livePreview") },
-                    set: { _ in state.windowState.toggle("livePreview") }
-                ))
-                .keyboardShortcut("l", modifiers: [])
-                .disabled(isTyping)
+                Section("Live Display") {
+                    Toggle("Live Preview", isOn: Binding(
+                        get: { state.windowState.isVisible("livePreview") },
+                        set: { _ in state.windowState.toggle("livePreview") }
+                    ))
+                    .keyboardShortcut("l", modifiers: [])
+                    .disabled(isTyping)
 
-                Toggle("Live Mode", isOn: Binding(
-                    get: { dream.isLiveMode },
-                    set: { _ in dream.toggleLiveMode() }
-                ))
-                .keyboardShortcut("l", modifiers: [.command])
+                    Toggle("Live Mode", isOn: Binding(
+                        get: { dream.isLiveMode },
+                        set: { _ in dream.toggleLiveMode() }
+                    ))
+                    .keyboardShortcut("l", modifiers: [.command])
 
-                Toggle("External Monitor", isOn: Binding(
-                    get: { dream.livePlayer.isVisible },
-                    set: { _ in dream.livePlayer.toggle() }
-                ))
-                .keyboardShortcut("l", modifiers: [.command, .shift])
+                    Toggle("External Monitor", isOn: Binding(
+                        get: { dream.livePlayer.isVisible },
+                        set: { _ in dream.livePlayer.toggle() }
+                    ))
+                    .keyboardShortcut("l", modifiers: [.command, .shift])
 
-                Button("Send to Live Display") {
-                    dream.sendToLivePlayer()
+                    Button("Send to Live Display") {
+                        dream.sendToLivePlayer()
+                    }
+                    .keyboardShortcut(.return, modifiers: [.command])
+
+                    Button("Reset Live Display") {
+                        dream.livePlayer.reset()
+                    }
+                    .keyboardShortcut("r", modifiers: [.command, .shift])
+                    .disabled(!dream.livePlayer.isVisible)
                 }
-                .keyboardShortcut(.return, modifiers: [.command])
-
-                Button("Reset Live Display") {
-                    dream.livePlayer.reset()
-                }
-                .keyboardShortcut("r", modifiers: [.command, .shift])
-                .disabled(!dream.livePlayer.isVisible)
             }
 
             Divider()
