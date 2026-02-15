@@ -1037,7 +1037,57 @@ final class Dream: ObservableObject {
         )
     }
 
-    /// Load a recipe into the current player by appending its clips to history.
+    private enum SessionLoadPlacement {
+        case append
+        case replace
+    }
+
+    private func promptSessionLoadPlacement(for clipCount: Int) -> SessionLoadPlacement? {
+        let alert = NSAlert()
+        alert.messageText = "Load \(clipCount)-Clip Session"
+        alert.informativeText = "Do you want to append these clips to your current history, or replace history with them?"
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Append")
+        alert.addButton(withTitle: "Replace History")
+        alert.addButton(withTitle: "Cancel")
+
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            return .append
+        case .alertSecondButtonReturn:
+            return .replace
+        default:
+            return nil
+        }
+    }
+
+    private func appendLoadedHypnograms(_ hypnograms: [Hypnogram]) {
+        let oldCount = activePlayer.session.hypnograms.count
+        activePlayer.session.hypnograms.append(contentsOf: hypnograms)
+        activePlayer.currentHypnogramIndex = oldCount
+        activePlayer.currentSourceIndex = -1
+        recordingInClipID = hypnograms.first?.id
+        recordingOutClipID = hypnograms.last?.id
+        isRecording = false
+        activePlayer.notifySessionMutated()
+        enforceHistoryLimit()
+        applyClipSelectionChanged(manual: true)
+    }
+
+    private func replaceHistoryWithLoadedHypnograms(_ hypnograms: [Hypnogram]) {
+        activePlayer.session = HypnographSession(hypnograms: hypnograms)
+        activePlayer.currentHypnogramIndex = 0
+        activePlayer.currentSourceIndex = -1
+        recordingInClipID = hypnograms.first?.id
+        recordingOutClipID = hypnograms.last?.id
+        isRecording = false
+        activePlayer.notifySessionMutated()
+        enforceHistoryLimit()
+        applyClipSelectionChanged(manual: true)
+    }
+
+    /// Load a recipe into the current player.
+    /// Multi-clip sessions prompt to append or replace history; single-clip sessions append.
     func appendSessionToHistory(_ session: HypnographSession) {
         // Ensure effect chains have names (required for library matching)
         var mutableSession = session
@@ -1046,23 +1096,26 @@ final class Dream: ObservableObject {
         // Ensure we're editing the preview deck
         liveMode = .edit
 
-        let hypnogramsToAppend = mutableSession.hypnograms
-        guard !hypnogramsToAppend.isEmpty else { return }
+        let loadedHypnograms = mutableSession.hypnograms
+        guard !loadedHypnograms.isEmpty else { return }
 
         // Import effect chains used in the recipe into the session
         // (adds missing chains, replaces same-named chains with recipe versions)
         EffectChainLibraryActions.importChainsFromSession(mutableSession, into: effectsSession)
 
-        let oldCount = activePlayer.session.hypnograms.count
-        activePlayer.session.hypnograms.append(contentsOf: hypnogramsToAppend)
-        activePlayer.currentHypnogramIndex = oldCount
-        activePlayer.currentSourceIndex = -1
-        recordingInClipID = hypnogramsToAppend.first?.id
-        recordingOutClipID = hypnogramsToAppend.last?.id
-        isRecording = false
-        activePlayer.notifySessionMutated()
-        enforceHistoryLimit()
-        applyClipSelectionChanged(manual: true)
+        let shouldPrompt = loadedHypnograms.count > 1 && !activePlayer.session.hypnograms.isEmpty
+        if shouldPrompt {
+            guard let placement = promptSessionLoadPlacement(for: loadedHypnograms.count) else { return }
+            switch placement {
+            case .append:
+                appendLoadedHypnograms(loadedHypnograms)
+            case .replace:
+                replaceHistoryWithLoadedHypnograms(loadedHypnograms)
+            }
+            return
+        }
+
+        appendLoadedHypnograms(loadedHypnograms)
     }
 
     /// Favorite the current hypnogram (save to store as favorite)
