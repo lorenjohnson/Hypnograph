@@ -50,6 +50,7 @@ final class Dream: ObservableObject {
     @Published var liveMode: LiveMode = .edit
 
     var isLiveMode: Bool { liveMode == .live }
+    var isLiveModeAvailable: Bool { state.settings.liveModeEnabled }
 
     // MARK: - Clip History HUD
 
@@ -105,6 +106,12 @@ final class Dream: ObservableObject {
     }
 
     func toggleLiveMode() {
+        guard isLiveModeAvailable else {
+            if liveMode != .edit {
+                liveMode = .edit
+            }
+            return
+        }
         liveMode = (liveMode == .edit) ? .live : .edit
         print("🎬 Live Mode: \(liveMode == .live ? "LIVE" : "Edit")")
     }
@@ -144,6 +151,22 @@ final class Dream: ObservableObject {
         // Forward settings changes (e.g., watch mode toggle) for SwiftUI reactivity
         state.settingsStore.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &playerSubscriptions)
+
+        // If the live feature flag is disabled while running, gracefully return to preview-only mode.
+        state.settingsStore.$value
+            .map(\.liveModeEnabled)
+            .removeDuplicates()
+            .sink { [weak self] isEnabled in
+                guard let self, !isEnabled else { return }
+                if self.liveMode == .live {
+                    self.liveMode = .edit
+                }
+                self.state.windowState.set("livePreview", visible: false)
+                if self.livePlayer.isVisible {
+                    self.livePlayer.hide()
+                }
+            }
             .store(in: &playerSubscriptions)
 
         state.settingsStore.$value

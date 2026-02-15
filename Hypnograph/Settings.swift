@@ -71,6 +71,9 @@ struct Settings: Codable, MediaLibrarySettings {
     /// Whether the effects list column is collapsed in the Effects Editor
     var effectsListCollapsed: Bool
 
+    /// Feature flag for live display workflows (preview panel, external monitor, live mode)
+    var liveModeEnabled: Bool
+
     // MARK: - Transition Settings
 
     /// Transition style for playback (shared by Preview and Live)
@@ -127,6 +130,7 @@ struct Settings: Codable, MediaLibrarySettings {
         static let sourceFraming: SourceFraming = .fill
         static let sourceMediaTypes: Set<MediaType> = [.images, .videos]
         static let effectsListCollapsed: Bool = false
+        static let liveModeEnabled: Bool = false
         // Transition defaults
         static let transitionStyle: TransitionRenderer.TransitionType = .crossfade
         static let transitionDuration: Double = 1.0
@@ -157,6 +161,7 @@ struct Settings: Codable, MediaLibrarySettings {
             sourceFraming: Defaults.sourceFraming,
             sourceMediaTypes: Defaults.sourceMediaTypes,
             effectsListCollapsed: Defaults.effectsListCollapsed,
+            liveModeEnabled: Defaults.liveModeEnabled,
             transitionStyle: Defaults.transitionStyle,
             transitionDuration: Defaults.transitionDuration,
             randomGlobalEffect: Defaults.randomGlobalEffect,
@@ -183,6 +188,7 @@ struct Settings: Codable, MediaLibrarySettings {
         case activeLibraries
         case outputResolution, sourceFraming, sourceMediaTypes
         case effectsListCollapsed
+        case liveModeEnabled
         case transitionStyle, transitionDuration
         case randomGlobalEffect, randomGlobalEffectFrequency
         case randomLayerEffect, randomLayerEffectFrequency
@@ -208,6 +214,7 @@ struct Settings: Codable, MediaLibrarySettings {
         sourceFraming: SourceFraming = Defaults.sourceFraming,
         sourceMediaTypes: Set<MediaType> = Defaults.sourceMediaTypes,
         effectsListCollapsed: Bool = Defaults.effectsListCollapsed,
+        liveModeEnabled: Bool = Defaults.liveModeEnabled,
         transitionStyle: TransitionRenderer.TransitionType = Defaults.transitionStyle,
         transitionDuration: Double = Defaults.transitionDuration,
         randomGlobalEffect: Bool = Defaults.randomGlobalEffect,
@@ -232,6 +239,7 @@ struct Settings: Codable, MediaLibrarySettings {
         self.sourceFraming = sourceFraming
         self.sourceMediaTypes = sourceMediaTypes
         self.effectsListCollapsed = effectsListCollapsed
+        self.liveModeEnabled = liveModeEnabled
         self.transitionStyle = transitionStyle
         self.transitionDuration = transitionDuration
         self.randomGlobalEffect = randomGlobalEffect
@@ -282,6 +290,8 @@ struct Settings: Codable, MediaLibrarySettings {
         }
         effectsListCollapsed = try c.decodeIfPresent(Bool.self, forKey: .effectsListCollapsed)
             ?? Defaults.effectsListCollapsed
+        liveModeEnabled = try c.decodeIfPresent(Bool.self, forKey: .liveModeEnabled)
+            ?? Defaults.liveModeEnabled
         transitionStyle = try c.decodeIfPresent(TransitionRenderer.TransitionType.self, forKey: .transitionStyle)
             ?? Defaults.transitionStyle
         transitionDuration = try c.decodeIfPresent(Double.self, forKey: .transitionDuration)
@@ -328,6 +338,7 @@ struct Settings: Codable, MediaLibrarySettings {
         try c.encode(sourceFraming, forKey: .sourceFraming)
         try c.encode(Array(sourceMediaTypes), forKey: .sourceMediaTypes)
         try c.encode(effectsListCollapsed, forKey: .effectsListCollapsed)
+        try c.encode(liveModeEnabled, forKey: .liveModeEnabled)
         try c.encode(transitionStyle, forKey: .transitionStyle)
         try c.encode(transitionDuration, forKey: .transitionDuration)
         try c.encode(randomGlobalEffect, forKey: .randomGlobalEffect)

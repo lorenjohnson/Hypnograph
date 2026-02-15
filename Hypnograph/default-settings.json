@@ -10,6 +10,7 @@
   "clipLengthMaxSeconds": 20,
   "historyLimit": 200,
   "sourceFraming": "fill",
+  "liveModeEnabled": false,
   "playerConfig": {
     "aspectRatio": "16:9",
     "playerResolution": 1080,

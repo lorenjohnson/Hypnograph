@@ -9,6 +9,7 @@ struct LeftSidebarView: View {
     @StateObject private var audioManager = AudioDeviceManager.shared
 
     private var isLiveMode: Bool { dream.isLiveMode }
+    private var isLiveModeAvailable: Bool { state.settings.liveModeEnabled }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -112,6 +113,22 @@ struct LeftSidebarView: View {
                         .opacity(isLiveMode ? 0.55 : 1.0)
                     }
 
+                    sectionTitle("Live")
+
+                    row {
+                        Text("Enable Live Features")
+                        Spacer()
+                        Toggle("", isOn: Binding(
+                            get: { state.settings.liveModeEnabled },
+                            set: { newValue in
+                                state.settingsStore.update { $0.liveModeEnabled = newValue }
+                            }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                    }
+
                     sectionTitle("Audio")
 
                     audioDeviceRow(
@@ -126,17 +143,19 @@ struct LeftSidebarView: View {
                         )
                     )
 
-                    audioDeviceRow(
-                        title: "Live",
-                        selection: Binding(
-                            get: { dream.liveAudioDevice },
-                            set: { dream.liveAudioDevice = $0 }
-                        ),
-                        volume: Binding(
-                            get: { Double(dream.liveVolume) },
-                            set: { dream.liveVolume = Float($0) }
+                    if isLiveModeAvailable {
+                        audioDeviceRow(
+                            title: "Live",
+                            selection: Binding(
+                                get: { dream.liveAudioDevice },
+                                set: { dream.liveAudioDevice = $0 }
+                            ),
+                            volume: Binding(
+                                get: { Double(dream.liveVolume) },
+                                set: { dream.liveVolume = Float($0) }
+                            )
                         )
-                    )
+                    }
 
                     GlassDivider()
                         .padding(.vertical, 4)

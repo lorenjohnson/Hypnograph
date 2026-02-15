@@ -97,7 +97,7 @@ struct ContentView: View {
             .animation(.easeInOut(duration: 0.25), value: state.windowState.isVisible("rightSidebar"))
         }
         .overlay(alignment: .top) {
-            if !state.windowState.isCleanScreen {
+            if !state.windowState.isCleanScreen && dream.isLiveModeAvailable {
                 Picker("", selection: Binding(
                     get: { dream.isLiveMode ? 1 : 0 },
                     set: { newValue in
@@ -138,7 +138,7 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
 
-                if state.windowState.isVisible("livePreview") {
+                if dream.isLiveModeAvailable && state.windowState.isVisible("livePreview") {
                     LivePreviewPanel(
                         livePlayer: dream.livePlayer,
                         onClose: {
