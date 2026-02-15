@@ -1,5 +1,7 @@
 import SwiftUI
 import CoreMedia
+import AppKit
+import UniformTypeIdentifiers
 import HypnoCore
 
 enum RightSidebarTab: Int, Hashable {
@@ -14,6 +16,7 @@ struct RightSidebarView: View {
 
     @State private var selectedTab: RightSidebarTab = .composition
     @State private var expandedLayerIDs: Set<UUID> = []
+    @State private var showAddLayerPhotosPicker = false
 
     @StateObject private var thumbnailStore = LayerThumbnailStore()
 
@@ -39,6 +42,17 @@ struct RightSidebarView: View {
         }
         .frame(width: SidebarMetrics.rightWidth)
         .glassPanel(cornerRadius: 16)
+        .sheet(isPresented: $showAddLayerPhotosPicker) {
+            PhotosPickerSheet(
+                isPresented: $showAddLayerPhotosPicker,
+                preselectedIdentifiers: [],
+                selectionLimit: 1,
+                onSelection: { identifiers in
+                    guard let selectedIdentifier = identifiers.first else { return }
+                    _ = dream.addSource(fromPhotosAssetIdentifier: selectedIdentifier)
+                }
+            )
+        }
     }
 
     @ViewBuilder
@@ -56,12 +70,21 @@ struct RightSidebarView: View {
                         .foregroundStyle(.secondary)
                     Spacer()
                     Menu {
-                        Button {
-                            // Not implemented yet (kept for mockup parity)
+                        Menu {
+                            Button {
+                                addLayerFromFiles()
+                            } label: {
+                                Label("From Files...", systemImage: "doc")
+                            }
+
+                            Button {
+                                showAddLayerPhotosPicker = true
+                            } label: {
+                                Label("From Photos...", systemImage: "photo")
+                            }
                         } label: {
                             Label("Select Source...", systemImage: "photo.on.rectangle")
                         }
-                        .disabled(true)
 
                         Button {
                             dream.addSource()
@@ -191,6 +214,17 @@ struct RightSidebarView: View {
         } else {
             expandedLayerIDs.insert(id)
         }
+    }
+
+    private func addLayerFromFiles() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.image, .movie]
+
+        guard panel.runModal() == .OK, let selectedURL = panel.url else { return }
+        _ = dream.addSource(fromFileURL: selectedURL)
     }
 
 }

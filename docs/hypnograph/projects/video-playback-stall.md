@@ -1,7 +1,9 @@
 # Video Playback Stall (Audio Continues)
 
 **Created**: 2026-01-27  
-**Status**: Active
+**Status**: Backlog
+
+> **2026-02-15 note:** On the current build run directly from Xcode, this issue is not currently reproducible. Keeping this project in backlog until a reliable repro returns.
 
 ## Summary
 
@@ -53,4 +55,3 @@ Around failures we see AVFoundation internal errors such as:
 - No visible blank/black frames during normal editing and transitions.
 - No “video frozen but audio continues” reports during extended self-testing.
 - Remove or gate the TODO stall recovery code (or prove it is harmless/invisible).
-

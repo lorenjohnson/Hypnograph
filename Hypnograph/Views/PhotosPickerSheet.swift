@@ -5,11 +5,25 @@ import PhotosUI
 struct PhotosPickerSheet: View {
     @Binding var isPresented: Bool
     let preselectedIdentifiers: [String]
+    let selectionLimit: Int
     let onSelection: ([String]) -> Void
+
+    init(
+        isPresented: Binding<Bool>,
+        preselectedIdentifiers: [String],
+        selectionLimit: Int = 0,
+        onSelection: @escaping ([String]) -> Void
+    ) {
+        self._isPresented = isPresented
+        self.preselectedIdentifiers = preselectedIdentifiers
+        self.selectionLimit = selectionLimit
+        self.onSelection = onSelection
+    }
 
     var body: some View {
         PHPickerRepresentable(
             preselectedIdentifiers: preselectedIdentifiers,
+            selectionLimit: selectionLimit,
             onSelection: { identifiers in
                 onSelection(identifiers)
                 isPresented = false
@@ -47,11 +61,12 @@ struct WindowResizer: NSViewRepresentable {
 /// The actual PHPickerViewController wrapper
 struct PHPickerRepresentable: NSViewControllerRepresentable {
     let preselectedIdentifiers: [String]
+    let selectionLimit: Int
     let onSelection: ([String]) -> Void
 
     func makeNSViewController(context: Context) -> PHPickerViewController {
         var config = PHPickerConfiguration(photoLibrary: .shared())
-        config.selectionLimit = 0  // Unlimited
+        config.selectionLimit = selectionLimit
         config.filter = .any(of: [.images, .videos])
         config.preselectedAssetIdentifiers = preselectedIdentifiers
 
