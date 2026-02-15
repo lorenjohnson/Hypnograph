@@ -176,8 +176,14 @@ struct LayerRowView: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Picker("", selection: Binding(
-                    get: { layer.blendMode ?? BlendMode.defaultMontage },
+                    get: {
+                        if index == 0 {
+                            return BlendMode.sourceOver
+                        }
+                        return layer.blendMode ?? BlendMode.defaultMontage
+                    },
                     set: { newValue in
+                        guard index != 0 else { return }
                         layer.blendMode = newValue
                         dream.activePlayer.notifySessionMutated()
                     }
@@ -218,8 +224,6 @@ struct LayerRowView: View {
                     }
                 ), in: 0...1)
             }
-            .disabled(index == 0)
-            .opacity(index == 0 ? 0.6 : 1.0)
 
             EffectChainView(
                 state: state,

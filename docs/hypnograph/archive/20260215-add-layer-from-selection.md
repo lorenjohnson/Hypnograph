@@ -1,7 +1,10 @@
 # Add Layer From Selection (File / Photos Asset)
 
 **Created**: 2026-01-27  
-**Status**: Proposal / Planning
+**Completed**: 2026-02-15  
+**Status**: Archived
+
+> Implemented: Layers `+` menu now supports `Select Source...` with both `From Files...` (NSOpenPanel) and `From Photos...` (single-select PhotoKit picker).
 
 ## Summary
 
@@ -53,4 +56,3 @@ This is more explicit but predictable.
   - `HypnoCore` / media resolution layer for Photos asset vs file URL handling
 - If we must support Photos via PhotoKit:
   - Use `PHAsset` local identifiers as the stable reference.
-
