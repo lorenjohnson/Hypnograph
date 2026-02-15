@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import HypnoCore
 import HypnoUI
 
@@ -15,6 +16,7 @@ struct EffectChainLibraryView: View {
 
     @State private var expandedChainIDs: Set<UUID> = []
     @State private var expandedEffectIndicesByChainID: [UUID: Set<Int>] = [:]
+    @State private var draggedChainID: UUID?
 
     private var selectedLayerIndex: Int? {
         let idx = dream.activePlayer.currentSourceIndex
@@ -71,6 +73,23 @@ struct EffectChainLibraryView: View {
                                     showDeleteConfirm = true
                                 }
                             )
+                            .contentShape(Rectangle())
+                            .onDrag {
+                                draggedChainID = chain.id
+                                return NSItemProvider(object: chain.id.uuidString as NSString)
+                            }
+                            .onDrop(
+                                of: [UTType.text],
+                                delegate: EffectChainReorderDropDelegate(
+                                    targetID: chain.id,
+                                    draggedChainID: $draggedChainID,
+                                    moveChain: { sourceID, targetID in
+                                        withAnimation(.easeInOut(duration: 0.15)) {
+                                            session.moveChain(fromID: sourceID, toID: targetID)
+                                        }
+                                    }
+                                )
+                            )
                         }
                     }
                 }
@@ -103,6 +122,31 @@ struct EffectChainLibraryView: View {
                 deleteTargetID = nil
             }
         }
+    }
+}
+
+private struct EffectChainReorderDropDelegate: DropDelegate {
+    let targetID: UUID
+    @Binding var draggedChainID: UUID?
+    let moveChain: (UUID, UUID) -> Void
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func dropEntered(info: DropInfo) {
+        guard let sourceID = draggedChainID else { return }
+        guard sourceID != targetID else { return }
+        moveChain(sourceID, targetID)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggedChainID = nil
+        return true
+    }
+
+    func dropExited(info: DropInfo) {
+        // Keep current drag state; it will clear on performDrop.
     }
 }
 

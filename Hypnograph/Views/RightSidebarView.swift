@@ -17,6 +17,7 @@ struct RightSidebarView: View {
     @State private var selectedTab: RightSidebarTab = .composition
     @State private var expandedLayerIDs: Set<UUID> = []
     @State private var showAddLayerPhotosPicker = false
+    @State private var draggedLayerID: UUID?
 
     @StateObject private var thumbnailStore = LayerThumbnailStore()
 
@@ -129,6 +130,21 @@ struct RightSidebarView: View {
                                     dream.removeCurrentLayer()
                                 }
                             )
+                            .contentShape(Rectangle())
+                            .onDrag {
+                                draggedLayerID = id
+                                return NSItemProvider(object: id.uuidString as NSString)
+                            }
+                            .onDrop(
+                                of: [UTType.text],
+                                delegate: LayerReorderDropDelegate(
+                                    targetID: id,
+                                    draggedLayerID: $draggedLayerID,
+                                    moveLayer: { sourceID, targetID in
+                                        moveLayer(sourceID: sourceID, targetID: targetID)
+                                    }
+                                )
+                            )
                             .animation(.easeInOut(duration: 0.2), value: expandedLayerIDs)
                         }
                     }
@@ -216,6 +232,37 @@ struct RightSidebarView: View {
         }
     }
 
+    private func moveLayer(sourceID: UUID, targetID: UUID) {
+        guard sourceID != targetID else { return }
+
+        var layers = dream.activePlayer.layers
+        guard let fromIndex = layers.firstIndex(where: { $0.mediaClip.file.id == sourceID }) else { return }
+        guard let toIndex = layers.firstIndex(where: { $0.mediaClip.file.id == targetID }) else { return }
+        guard fromIndex != toIndex else { return }
+
+        let selectedID: UUID? = {
+            let selectedIndex = dream.activePlayer.currentSourceIndex
+            guard selectedIndex >= 0, selectedIndex < layers.count else { return nil }
+            return layers[selectedIndex].mediaClip.file.id
+        }()
+
+        withAnimation(.easeInOut(duration: 0.15)) {
+            let movedLayer = layers.remove(at: fromIndex)
+            var destination = toIndex
+            if fromIndex < toIndex {
+                destination -= 1
+            }
+            layers.insert(movedLayer, at: max(0, min(destination, layers.count)))
+            dream.activePlayer.layers = layers
+        }
+
+        if let selectedID, let newIndex = layers.firstIndex(where: { $0.mediaClip.file.id == selectedID }) {
+            dream.activePlayer.selectSource(newIndex)
+        }
+
+        dream.activePlayer.notifySessionChanged()
+    }
+
     private func addLayerFromFiles() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
@@ -227,4 +274,29 @@ struct RightSidebarView: View {
         _ = dream.addSource(fromFileURL: selectedURL)
     }
 
+}
+
+private struct LayerReorderDropDelegate: DropDelegate {
+    let targetID: UUID
+    @Binding var draggedLayerID: UUID?
+    let moveLayer: (UUID, UUID) -> Void
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func dropEntered(info: DropInfo) {
+        guard let sourceID = draggedLayerID else { return }
+        guard sourceID != targetID else { return }
+        moveLayer(sourceID, targetID)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggedLayerID = nil
+        return true
+    }
+
+    func dropExited(info: DropInfo) {
+        // Keep current drag state; it will clear on performDrop.
+    }
 }
