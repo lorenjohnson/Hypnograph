@@ -12,6 +12,7 @@ import Combine
 import SwiftUI
 import AVFoundation
 import AppKit
+import Photos
 import HypnoCore
 import HypnoUI
 
@@ -435,10 +436,81 @@ final class Dream: ObservableObject {
         // Use default clip length if not provided
         let clipLength = length ?? player.targetDuration.seconds
         guard let mediaClip = state.library.randomClip(clipLength: clipLength) else { return }
+        addSourceToPlayer(player, mediaClip: mediaClip)
+    }
+
+    /// Add a specific clip as a new source layer.
+    private func addSourceToPlayer(_ player: DreamPlayerState, mediaClip: MediaClip) {
         let blendMode = player.layers.isEmpty ? BlendMode.sourceOver : BlendMode.defaultMontage
         let layer = HypnogramLayer(mediaClip: mediaClip, blendMode: blendMode)
         player.layers.append(layer)
         player.currentSourceIndex = player.layers.count - 1
+    }
+
+    /// Build a clip from a local file URL (image or video).
+    private func makeClip(forFileURL url: URL, preferredLength: Double) -> MediaClip? {
+        let targetLength = max(0.1, preferredLength)
+
+        let videoAsset = AVURLAsset(url: url)
+        let totalVideoSeconds = videoAsset.duration.seconds
+        let hasVideoTrack = videoAsset.tracks(withMediaType: .video).first != nil
+        if hasVideoTrack, totalVideoSeconds.isFinite, totalVideoSeconds > 0, videoAsset.isPlayable {
+            let clipLength = min(targetLength, totalVideoSeconds)
+            let source = MediaSource.url(url)
+            let file = MediaFile(
+                source: source,
+                mediaKind: .video,
+                duration: CMTime(seconds: totalVideoSeconds, preferredTimescale: 600)
+            )
+            return MediaClip(
+                file: file,
+                startTime: .zero,
+                duration: CMTime(seconds: clipLength, preferredTimescale: 600)
+            )
+        }
+
+        guard let image = StillImageCache.ciImage(for: url), !image.extent.isEmpty else {
+            return nil
+        }
+
+        let source = MediaSource.url(url)
+        let imageDuration = CMTime(seconds: targetLength, preferredTimescale: 600)
+        let file = MediaFile(source: source, mediaKind: .image, duration: imageDuration)
+        return MediaClip(file: file, startTime: .zero, duration: imageDuration)
+    }
+
+    /// Build a clip from a Photos asset identifier (image or video).
+    private func makeClip(forPhotosAssetIdentifier identifier: String, preferredLength: Double) -> MediaClip? {
+        guard ApplePhotos.shared.status.canRead else { return nil }
+        guard let asset = ApplePhotos.shared.fetchAsset(localIdentifier: identifier) else { return nil }
+
+        let targetLength = max(0.1, preferredLength)
+        let source = MediaSource.external(identifier: identifier)
+
+        switch asset.mediaType {
+        case .video:
+            let totalVideoSeconds = asset.duration
+            guard totalVideoSeconds.isFinite, totalVideoSeconds > 0 else { return nil }
+            let clipLength = min(targetLength, totalVideoSeconds)
+            let file = MediaFile(
+                source: source,
+                mediaKind: .video,
+                duration: CMTime(seconds: totalVideoSeconds, preferredTimescale: 600)
+            )
+            return MediaClip(
+                file: file,
+                startTime: .zero,
+                duration: CMTime(seconds: clipLength, preferredTimescale: 600)
+            )
+
+        case .image:
+            let imageDuration = CMTime(seconds: targetLength, preferredTimescale: 600)
+            let file = MediaFile(source: source, mediaKind: .image, duration: imageDuration)
+            return MediaClip(file: file, startTime: .zero, duration: imageDuration)
+
+        default:
+            return nil
+        }
     }
 
     // MARK: - Layer Navigation
@@ -608,6 +680,28 @@ final class Dream: ObservableObject {
 
     func addSource() {
         addSourceToPlayer(activePlayer)
+    }
+
+    /// Add a source layer from an explicit local file.
+    @discardableResult
+    func addSource(fromFileURL url: URL) -> Bool {
+        guard let mediaClip = makeClip(forFileURL: url, preferredLength: activePlayer.targetDuration.seconds) else {
+            AppNotifications.show("Couldn't add source from file", flash: true, duration: 1.5)
+            return false
+        }
+        addSourceToPlayer(activePlayer, mediaClip: mediaClip)
+        return true
+    }
+
+    /// Add a source layer from an explicit Photos asset identifier.
+    @discardableResult
+    func addSource(fromPhotosAssetIdentifier identifier: String) -> Bool {
+        guard let mediaClip = makeClip(forPhotosAssetIdentifier: identifier, preferredLength: activePlayer.targetDuration.seconds) else {
+            AppNotifications.show("Couldn't add source from Photos", flash: true, duration: 1.5)
+            return false
+        }
+        addSourceToPlayer(activePlayer, mediaClip: mediaClip)
+        return true
     }
 
     func newRandomClip() {
