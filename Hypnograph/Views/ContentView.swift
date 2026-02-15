@@ -8,6 +8,7 @@ import HypnoUI
 struct ContentView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var dream: Dream
+    @State private var isRecordDeckVisible: Bool = true
 
     private var topRightIndicator: (text: String, color: Color)? {
         // LIVE indicator (same placement/size as the layer indicator)
@@ -56,6 +57,13 @@ struct ContentView: View {
 
             CursorAutoHideView(isEnabled: shouldAutoHideCursor, idleSeconds: 3.0)
                 .allowsHitTesting(false)
+
+            MouseIdleVisibilityView(
+                isEnabled: shouldAutoHideCursor,
+                idleSeconds: 3.0,
+                isVisible: $isRecordDeckVisible
+            )
+            .allowsHitTesting(false)
 
             // HUD and Hypnogram List - top left (below LIVE if visible)
             VStack(alignment: .leading, spacing: 8) {
@@ -115,12 +123,31 @@ struct ContentView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            if state.windowState.isVisible("keyboardHints") {
-                KeyboardHintBar()
-                    .padding(.bottom, 12)
+            VStack(spacing: 8) {
+                if !state.windowState.isCleanScreen && isRecordDeckVisible {
+                    RecordDeckBar(
+                        isPaused: dream.activePlayer.isPaused,
+                        isRecording: dream.isRecording,
+                        rangeText: dream.recordingRangeDisplayText,
+                        onPrevious: { dream.previousClip() },
+                        onPlayPause: { dream.togglePause() },
+                        onNext: { dream.nextClip() },
+                        onRecordToggle: { dream.toggleRecording() },
+                        onSaveRecording: { dream.saveRecording() },
+                        onRenderRecording: { dream.renderRecording() }
+                    )
+                    .frame(maxWidth: 720)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(.easeInOut(duration: 0.25), value: state.windowState.isVisible("keyboardHints"))
+                }
+
+                if state.windowState.isVisible("keyboardHints") {
+                    KeyboardHintBar()
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
+            .padding(.bottom, 12)
+            .animation(.easeInOut(duration: 0.25), value: state.windowState.isVisible("keyboardHints"))
+            .animation(.easeInOut(duration: 0.2), value: isRecordDeckVisible)
         }
         .overlay(alignment: .topTrailing) {
             if let indicator = topRightIndicator {

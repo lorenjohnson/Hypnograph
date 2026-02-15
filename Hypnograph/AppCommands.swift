@@ -44,6 +44,11 @@ struct AppCommands: Commands {
             .keyboardShortcut(.space, modifiers: [])
             .disabled(isTyping)
 
+            Button(dream.isRecording ? "Stop Recording" : "Record") {
+                dream.toggleRecording()
+            }
+            .disabled(isTyping)
+
             Button("Clear Clip History") {
                 dream.clearClipHistory()
             }
@@ -83,6 +88,16 @@ struct AppCommands: Commands {
                 dream.renderAndSaveVideo()
             }
             .keyboardShortcut("s", modifiers: [.option, .command])
+
+            Divider()
+
+            Button("Save Recording") {
+                dream.saveRecording()
+            }
+
+            Button("Render Recording") {
+                dream.renderRecording()
+            }
 
             Divider()
 
