@@ -11,6 +11,8 @@ import HypnoCore
 struct ClipHistoryFile: Codable {
     var hypnograms: [Hypnogram]
     var currentHypnogramIndex: Int
+    var inClipID: UUID?
+    var outClipID: UUID?
 }
 
 enum ClipHistoryIO {
@@ -47,12 +49,27 @@ enum ClipHistoryIO {
             index = max(0, index - overflow)
         }
 
-        if hypnograms.isEmpty {
-            return ClipHistoryFile(hypnograms: [], currentHypnogramIndex: 0)
+        guard !hypnograms.isEmpty else {
+            return ClipHistoryFile(
+                hypnograms: [],
+                currentHypnogramIndex: 0,
+                inClipID: nil,
+                outClipID: nil
+            )
         }
 
         index = max(0, min(index, hypnograms.count - 1))
-        return ClipHistoryFile(hypnograms: hypnograms, currentHypnogramIndex: index)
+
+        let validIDs = Set(hypnograms.map(\.id))
+        let sanitizedInID = history.inClipID.flatMap { validIDs.contains($0) ? $0 : nil }
+        let sanitizedOutID = history.outClipID.flatMap { validIDs.contains($0) ? $0 : nil }
+
+        return ClipHistoryFile(
+            hypnograms: hypnograms,
+            currentHypnogramIndex: index,
+            inClipID: sanitizedInID,
+            outClipID: sanitizedOutID
+        )
     }
 
     private static func backupCorruptFile(at url: URL) {
