@@ -25,6 +25,7 @@ struct PreviewPlayerView: NSViewRepresentable {
     @Binding var currentSourceTime: CMTime?
     let isPaused: Bool
     let effectsChangeCounter: Int
+    let sessionRevision: Int
     let effectManager: EffectManager
     /// Volume level (0.0 to 1.0) - use 0 for muted
     let volume: Float
@@ -72,6 +73,7 @@ struct PreviewPlayerView: NSViewRepresentable {
         var currentTask: Task<Void, Never>?
         var lastPauseState: Bool?
         var lastEffectsCounter: Int?
+        var lastSessionRevision: Int?
         var currentPlayerItem: AVPlayerItem?
         var playRate: Float = 0.8
         var lastAppliedPlayRate: Float?
@@ -273,6 +275,7 @@ struct PreviewPlayerView: NSViewRepresentable {
                     c.currentPlayerItem = playerItem
                     c.lastPauseState = self.isPaused
                     c.lastEffectsCounter = effectsChangeCounter
+                    c.lastSessionRevision = sessionRevision
                     c.lastAppliedPlayRate = playRate
 
                     // For still images, schedule the timer for watch mode advancement
@@ -317,8 +320,17 @@ struct PreviewPlayerView: NSViewRepresentable {
                 c.lastAppliedPlayRate = clip.playRate
             }
 
-            if c.lastEffectsCounter != effectsChangeCounter {
+            let didEffectsChange = c.lastEffectsCounter != effectsChangeCounter
+            if didEffectsChange {
                 c.lastEffectsCounter = effectsChangeCounter
+            }
+
+            let didSessionMutate = c.lastSessionRevision != sessionRevision
+            if didSessionMutate {
+                c.lastSessionRevision = sessionRevision
+            }
+
+            if didEffectsChange || didSessionMutate {
                 if let content = c.contentView {
                     if c.isAllStillImages {
                         // Force redraw of still frame at t=0

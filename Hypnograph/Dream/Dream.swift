@@ -646,6 +646,7 @@ final class Dream: ObservableObject {
                 currentSourceTime: currentSourceTimeBinding,
                 isPaused: player.isPaused,
                 effectsChangeCounter: player.effectsChangeCounter,
+                sessionRevision: player.sessionRevision,
                 effectManager: player.effectManager,
                 volume: previewVolume,
                 audioDeviceUID: previewAudioDeviceUID,
