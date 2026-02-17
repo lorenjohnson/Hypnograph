@@ -23,6 +23,8 @@ last_reviewed: 2026-02-15
 - [ ] [beta-release-testflight](projects/beta-release-testflight.md)
 
 ## Backlog
+- clip start / stop potins and duration not just duration (like the range selector for randomize clip speed in behaviour including being able to set an individual frame 
+- [ ] I'd like to be able to enable/disable effect chain options from the right side bar Effects Cahin tab. Just a round checkbox not a slider.
 - [ ] Video playback can freeze/blank while audio continues (AVFoundation stall); current workaround can show black frames — investigate root cause and remove TODO recovery (Can't currently reproduce) [video-playback-stall](projects/video-playback-stall.md)
 - [export-clip-history-fcpxml](projects/export-clip-history-fcpxml)
 - [add-history-to-hypnograms-favorite-recent-window](projects/add-history-to-hypnograms-favorite-recent-window)

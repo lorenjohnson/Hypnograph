@@ -10,52 +10,26 @@ import HypnoCore
 import HypnoUI
 
 struct AppCommands: Commands {
+    @SwiftUI.Environment(\.openWindow) private var openWindow
     @ObservedObject private var state: HypnographState
     @ObservedObject private var dream: Dream
-    private weak var appDelegate: HypnographAppDelegate?
 
     /// Whether a text field is currently being edited
     private var isTyping: Bool { state.isTyping }
 
     init(
         state: HypnographState,
-        dream: Dream,
-        appDelegate: HypnographAppDelegate?
+        dream: Dream
     ) {
         _state = ObservedObject(initialValue: state)
         _dream = ObservedObject(initialValue: dream)
-        self.appDelegate = appDelegate
     }
 
     var body: some Commands {
         // Standard About panel with custom label
         CommandGroup(replacing: .appInfo) {
             Button("About Hypnograph") {
-                NSApp.activate(ignoringOtherApps: true)
-                NSApp.orderFrontStandardAboutPanel(nil)
-            }
-        }
-
-        // Items in the Hypnograph app menu (leftmost)
-        CommandGroup(after: .appSettings) {
-            Button(dream.activePlayer.isPaused ? "Play" : "Pause") {
-                dream.activePlayer.isPaused.toggle()
-            }
-            .keyboardShortcut(.space, modifiers: [])
-            .disabled(isTyping)
-
-            Button("Clear Clip History") {
-                dream.clearClipHistory()
-            }
-            .disabled(isTyping)
-
-            Button("Show Settings Folder") {
-                Environment.showSettingsFolderInFinder()
-            }
-
-            Button("Install hypnograph CLI and Finder Action") {
-                Environment.installCLI()
-                Environment.installAutomatorQuickAction()
+                openWindow(id: "about")
             }
         }
 
@@ -69,6 +43,13 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(replacing: .saveItem) {
+            Button("Open Hypnogram…") {
+                dream.openRecipe()
+            }
+            .keyboardShortcut("o", modifiers: [.command])
+
+            Divider()
+
             Button("Save Current") {
                 dream.save()
             }
@@ -84,12 +65,12 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("s", modifiers: [.option, .command])
 
-            Divider()
-
-            Button("Open Hypnogram…") {
-                dream.openRecipe()
+            Button("Favorite Current Hypnogram") {
+                dream.favoriteCurrentHypnogram()
             }
-            .keyboardShortcut("o", modifiers: [.command])
+            .keyboardShortcut("f", modifiers: [.command])
+
+            Divider()
 
             Toggle("Hypnogram List", isOn: Binding(
                 get: { state.windowState.isVisible("hypnogramList") },
@@ -125,9 +106,9 @@ struct AppCommands: Commands {
             Divider()
 
             Section("Player") {
-                Toggle("Watch", isOn: Binding(
-                    get: { state.settings.watchMode },
-                    set: { _ in state.toggleWatchMode() }
+                Toggle("Loop Current Clip", isOn: Binding(
+                    get: { state.settings.playbackEndBehavior == .loopCurrentClip },
+                    set: { state.setLoopCurrentClipMode($0) }
                 ))
                 .keyboardShortcut("w", modifiers: [])
                 .disabled(isTyping)

@@ -2,12 +2,12 @@ import SwiftUI
 
 struct PlayerControlsBar: View {
     let isPaused: Bool
-    let isWatchModeEnabled: Bool
+    let isLoopCurrentClipEnabled: Bool
     let currentClipText: String
     let onPrevious: () -> Void
     let onPlayPause: () -> Void
     let onNext: () -> Void
-    let onToggleWatchMode: () -> Void
+    let onToggleLoopCurrentClipMode: () -> Void
     let onSaveCurrent: () -> Void
     let onRenderCurrent: () -> Void
 
@@ -21,18 +21,19 @@ struct PlayerControlsBar: View {
         HStack(spacing: 14) {
             deckButton(id: "prev", systemName: "backward.fill", tooltip: "Previous Clip", action: onPrevious)
             deckButton(id: "play_pause", systemName: isPaused ? "play.fill" : "pause.fill", tooltip: isPaused ? "Play" : "Pause", action: onPlayPause)
-            deckButton(
-                id: "watch",
-                systemName: "arrow.counterclockwise",
-                tooltip: isWatchModeEnabled ? "Continuous Playback" : "Loop Current Clip",
-                tint: .white,
-                activeBackground: isWatchModeEnabled ? nil : .blue,
-                action: onToggleWatchMode
-            )
             deckButton(id: "next", systemName: "forward.fill", tooltip: "Next Clip", action: onNext)
 
             Divider()
                 .frame(height: 30)
+
+            deckButton(
+                id: "loop",
+                systemName: "arrow.counterclockwise",
+                tooltip: isLoopCurrentClipEnabled ? "Loop Current Clip" : "Auto-Advance Clips",
+                tint: .white,
+                activeBackground: isLoopCurrentClipEnabled ? .blue : nil,
+                action: onToggleLoopCurrentClipMode
+            )
 
             Text(currentClipText.uppercased())
                 .font(.system(.callout, design: .monospaced))

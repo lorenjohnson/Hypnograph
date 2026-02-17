@@ -1,5 +1,5 @@
 {
-  "watchMode": false,
+  "playbackEndBehavior": "autoAdvance",
   "sources": {
     "default": ["~/Movies/Hypnograph/sources"],
     "From Finder Helper": []
@@ -11,6 +11,7 @@
   "historyLimit": 200,
   "sourceFraming": "fill",
   "liveModeEnabled": false,
+  "keyboardAccessibilityOverridesEnabled": true,
   "playerConfig": {
     "aspectRatio": "16:9",
     "playerResolution": 1080,

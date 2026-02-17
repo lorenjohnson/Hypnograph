@@ -296,6 +296,16 @@ final class PlayerContentView: NSView {
         playerView.contentMode = mode
     }
 
+    /// Force the active frame source to refresh at a specific time.
+    /// Uses a non-clearing seek so paused effect edits repaint without transient black frames.
+    func refreshActiveFrame(at time: CMTime) {
+        if let activeFrameSource {
+            activeFrameSource.refresh(at: time)
+        } else {
+            activeAVPlayer?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+        }
+    }
+
     /// Set a content-aware focus point (e.g. human head) used to offset aspect-fill framing.
     /// Pass `nil` to clear and return to centered framing.
     func setContentFocus(_ focus: PlayerView.ContentFocus?) {

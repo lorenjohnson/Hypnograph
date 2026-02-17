@@ -10,6 +10,8 @@ struct EffectParameterRowView: View {
 
     @State private var didRefreshFileList = false
     @State private var fileListRefreshNonce = UUID()
+    @State private var sliderValue: Double = 0
+    @State private var lastExternalNumericValue: Double = 0
 
     private var label: String {
         // Mockup fidelity: LUT selection should read "LUT" (not "Lut File").
@@ -67,11 +69,22 @@ struct EffectParameterRowView: View {
             }
 
         case .double(let d):
-            numericRow(value: d, isInt: false)
+            numericRow(value: d, isInt: shouldUseIntegerSlider)
 
         case .int(let i):
-            numericRow(value: Double(i), isInt: true)
+            numericRow(value: Double(i), isInt: shouldUseIntegerSlider)
         }
+    }
+
+    /// Use parameter spec as source of truth for integer-vs-continuous numeric controls.
+    /// This avoids float params getting stuck on integer steps when persisted as `.int(0)`.
+    private var shouldUseIntegerSlider: Bool {
+        guard let spec else {
+            if case .int = value { return true }
+            return false
+        }
+        if case .int = spec { return true }
+        return false
     }
 
     @ViewBuilder
@@ -79,6 +92,7 @@ struct EffectParameterRowView: View {
         let range = spec?.rangeAsDoubles ?? (0...1).asTuple
         let minValue = range.min
         let maxValue = range.max
+        let sliderRange = minValue...maxValue
 
         HStack {
             Text(label)
@@ -86,25 +100,42 @@ struct EffectParameterRowView: View {
                 .foregroundStyle(.secondary)
 
             Slider(
-                value: Binding(
-                    get: { value.clamped(to: minValue...maxValue) },
-                    set: { newValue in
-                        if isInt || spec?.step == 1 {
-                            onChange(.int(Int(newValue.rounded())))
-                        } else {
-                            onChange(.double(newValue))
-                        }
-                    }
-                ),
-                in: minValue...maxValue
+                value: $sliderValue,
+                in: sliderRange
             )
+            .onAppear {
+                syncSliderFromExternal(value: value, in: sliderRange)
+            }
+            .onChange(of: value) { _, newValue in
+                syncSliderFromExternal(value: newValue, in: sliderRange)
+            }
+            .onChange(of: sliderValue) { _, newValue in
+                let clampedValue = newValue.clamped(to: sliderRange)
+                if isInt || spec?.step == 1 {
+                    let intValue = Int(clampedValue.rounded())
+                    let numericValue = Double(intValue)
+                    guard abs(numericValue - lastExternalNumericValue) > 0.0001 else { return }
+                    onChange(.int(intValue))
+                } else {
+                    guard abs(clampedValue - lastExternalNumericValue) > 0.0001 else { return }
+                    onChange(.double(clampedValue))
+                }
+            }
 
-            Text(trailingValueText(value: value, min: minValue, max: maxValue))
+            Text(trailingValueText(value: sliderValue, min: minValue, max: maxValue))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
                 .frame(width: 44, alignment: .trailing)
         }
+    }
+
+    private func syncSliderFromExternal(value: Double, in range: ClosedRange<Double>) {
+        let clamped = value.clamped(to: range)
+        lastExternalNumericValue = clamped
+
+        guard abs(sliderValue - clamped) > 0.0001 else { return }
+        sliderValue = clamped
     }
 
     private func trailingValueText(value: Double, min: Double, max: Double) -> String {
