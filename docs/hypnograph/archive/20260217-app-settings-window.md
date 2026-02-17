@@ -1,7 +1,11 @@
-# App Settings Window
+---
+created: 2026-01-24
+updated: 2026-02-17
+status: completed
+completed: 2026-02-17
+---
 
-**Status:** Planning
-**Created:** 2026-01-24
+# App Settings Window
 
 ## Overview
 
@@ -42,6 +46,15 @@ Consider changing the default storage location from `~/Library/Application Suppo
 ## Notes
 
 The "Show Settings Folder" command in the Hypnograph menu already helps users find settings.json. A Settings window would be more discoverable but adds UI surface area to maintain.
+
+## Completion Notes
+
+Implemented a dedicated app settings surface and exposed key app-wide controls in UI:
+- render output folder chooser
+- history limit control
+- clip-history clear action
+- keyboard accessibility override toggle
+- live/performance mode options toggle
 
 Files involved:
 - [Settings.swift](../../../Hypnograph/Settings.swift) — Settings struct definition

@@ -1,7 +1,11 @@
-# Combine HUD into Player Settings
+---
+created: 2026-01-24
+updated: 2026-02-17
+status: completed
+completed: 2026-02-17
+---
 
-**Status:** Planning
-**Created:** 2026-01-24
+# Combine HUD into Player Settings
 
 ## Overview
 

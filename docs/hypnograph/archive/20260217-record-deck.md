@@ -1,7 +1,11 @@
-# Record Deck (VCR HUD + Recording)
+---
+created: 2026-01-27
+updated: 2026-02-17
+status: completed
+completed: 2026-02-17
+---
 
-**Created**: 2026-01-27  
-**Status**: Proposal / Planning
+# Record Deck (VCR HUD + Recording)
 
 ## Summary
 

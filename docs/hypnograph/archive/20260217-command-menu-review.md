@@ -1,8 +1,11 @@
-# Command Menu Review
+---
+created: 2026-01-24
+updated: 2026-02-17
+status: completed
+completed: 2026-02-17
+---
 
-**Status:** Done (initial cleanup)
-**Created:** 2026-01-24
-**Updated:** 2026-01-26
+# Command Menu Review
 
 ## Overview
 

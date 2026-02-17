@@ -1,7 +1,11 @@
-# Splash Screen
+---
+created: 2026-01-24
+updated: 2026-02-17
+status: canceled
+canceled: 2026-02-17
+---
 
-**Status:** Considering
-**Created:** 2026-01-24
+# Splash Screen
 
 ## Overview
 
@@ -28,4 +32,4 @@ Consider whether to add a splash screen on app launch. This is a "maybe not" —
 
 ## Decision
 
-TBD — leaning toward **no splash screen** unless there's a concrete first-run onboarding need.
+Canceled on 2026-02-17 — not shipping a splash screen unless a concrete first-run onboarding need emerges.

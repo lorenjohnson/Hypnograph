@@ -1,23 +1,14 @@
 ---
-last_reviewed: 2026-02-15
+last_reviewed: 2026-02-17
 ---
 # Roadmap
 
 ## v0.1 Release
-- `snapshotsFolder` — Where snapshots are saved (`~/Movies/Hypnograph/snapshots`)
 - the "h" hypnograms window. what to do with it...
-
-- [x] [live-mode-feature-flag](projects/live-mode-feature-flag.md)
-- [x] Blend modes and effects don't visibly apply when player is paused or showing still images (regression — this used to work)
 - [ ] Rendering/saving some Hypnograms results in an error: "🔴 RenderEngine.export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn't be completed. (Hypnograph.RenderError error 6.)" — happens if any effects load operation were done first
 - [ ] Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause  causes a crash?
 - [ ] Refine packaged Effect Chains Library entries
 - [ ] Review Effect Chains library window to make i maybe more intuitive (recent is a little confusing and probably can/should go below the library/s)
-- [x] [record-deck](projects/record-deck.md)
-- [x] [app-settings-window](projects/app-settings-window.md)
-- [x] [command-menu-review](projects/command-menu-review.md)
-- [x]  Won't do: [splash-screen](projects/splash-screen.md)
-- [x] [combine-hud-into-player-settings](projects/combine-hud-into-player-settings.md)
 - [ ] [save-fullscreen-state](projects/save-fullscreen-state.md)
 - [ ] [in-app-feedback](projects/in-app-feedback.md)
 - [ ] [volume-leveling](projects/volume-leveling)
