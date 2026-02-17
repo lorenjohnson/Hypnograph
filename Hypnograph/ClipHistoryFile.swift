@@ -11,6 +11,31 @@ import HypnoCore
 struct ClipHistoryFile: Codable {
     var hypnograms: [Hypnogram]
     var currentHypnogramIndex: Int
+
+    private enum CodingKeys: String, CodingKey {
+        case hypnograms
+        case currentHypnogramIndex
+    }
+
+    init(
+        hypnograms: [Hypnogram],
+        currentHypnogramIndex: Int
+    ) {
+        self.hypnograms = hypnograms
+        self.currentHypnogramIndex = currentHypnogramIndex
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        hypnograms = try container.decode([Hypnogram].self, forKey: .hypnograms)
+        currentHypnogramIndex = try container.decode(Int.self, forKey: .currentHypnogramIndex)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(hypnograms, forKey: .hypnograms)
+        try container.encode(currentHypnogramIndex, forKey: .currentHypnogramIndex)
+    }
 }
 
 enum ClipHistoryIO {
@@ -47,12 +72,19 @@ enum ClipHistoryIO {
             index = max(0, index - overflow)
         }
 
-        if hypnograms.isEmpty {
-            return ClipHistoryFile(hypnograms: [], currentHypnogramIndex: 0)
+        guard !hypnograms.isEmpty else {
+            return ClipHistoryFile(
+                hypnograms: [],
+                currentHypnogramIndex: 0
+            )
         }
 
         index = max(0, min(index, hypnograms.count - 1))
-        return ClipHistoryFile(hypnograms: hypnograms, currentHypnogramIndex: index)
+
+        return ClipHistoryFile(
+            hypnograms: hypnograms,
+            currentHypnogramIndex: index
+        )
     }
 
     private static func backupCorruptFile(at url: URL) {

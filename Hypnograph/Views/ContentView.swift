@@ -8,6 +8,7 @@ import HypnoUI
 struct ContentView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var dream: Dream
+    @State private var isPlayerControlsVisible: Bool = true
 
     private var topRightIndicator: (text: String, color: Color)? {
         // LIVE indicator (same placement/size as the layer indicator)
@@ -44,6 +45,39 @@ struct ContentView: View {
         return hasVideo && (dream.activePlayer.isPaused == false)
     }
 
+    @ViewBuilder
+    private func topRightIndicatorBadge(_ indicator: (text: String, color: Color)) -> some View {
+        Text(indicator.text)
+            .font(.system(size: 36, weight: .bold))
+            .foregroundStyle(indicator.color)
+            .padding(.vertical, 14)
+            .padding(.leading, 14)
+            .padding(.trailing, 28)
+    }
+
+    @ViewBuilder
+    private var playerControlsOverlay: some View {
+        VStack(spacing: 0) {
+            if isPlayerControlsVisible {
+                PlayerControlsBar(
+                    isPaused: dream.activePlayer.isPaused,
+                    isWatchModeEnabled: dream.isWatchModeEnabled,
+                    currentClipText: dream.currentClipIndicatorText,
+                    onPrevious: { dream.previousClip() },
+                    onPlayPause: { dream.togglePause() },
+                    onNext: { dream.nextClip() },
+                    onToggleWatchMode: { dream.toggleWatchMode() },
+                    onSaveCurrent: { dream.save() },
+                    onRenderCurrent: { dream.renderAndSaveVideo() }
+                )
+                .frame(maxWidth: 920)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .padding(.bottom, 12)
+        .animation(.easeInOut(duration: 0.2), value: isPlayerControlsVisible)
+    }
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             // Solid black backing for the entire window
@@ -56,6 +90,13 @@ struct ContentView: View {
 
             CursorAutoHideView(isEnabled: shouldAutoHideCursor, idleSeconds: 3.0)
                 .allowsHitTesting(false)
+
+            MouseIdleVisibilityView(
+                isEnabled: state.windowState.isCleanScreen,
+                idleSeconds: 3.0,
+                isVisible: $isPlayerControlsVisible
+            )
+            .allowsHitTesting(false)
 
             // HUD and Hypnogram List - top left (below LIVE if visible)
             VStack(alignment: .leading, spacing: 8) {
@@ -97,40 +138,37 @@ struct ContentView: View {
             .animation(.easeInOut(duration: 0.25), value: state.windowState.isVisible("rightSidebar"))
         }
         .overlay(alignment: .top) {
-            if !state.windowState.isCleanScreen && dream.isLiveModeAvailable {
-                Picker("", selection: Binding(
-                    get: { dream.isLiveMode ? 1 : 0 },
-                    set: { newValue in
-                        if (newValue == 1) != dream.isLiveMode {
-                            dream.toggleLiveMode()
+            VStack(spacing: 8) {
+                if !state.windowState.isCleanScreen && dream.isLiveModeAvailable {
+                    Picker("", selection: Binding(
+                        get: { dream.isLiveMode ? 1 : 0 },
+                        set: { newValue in
+                            if (newValue == 1) != dream.isLiveMode {
+                                dream.toggleLiveMode()
+                            }
                         }
+                    )) {
+                        Text("Preview").tag(0)
+                        Text("Live").tag(1)
                     }
-                )) {
-                    Text("Preview").tag(0)
-                    Text("Live").tag(1)
+                    .pickerStyle(.segmented)
+                    .frame(width: 170)
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 170)
-                .padding(.top, 12)
+
+                if !state.windowState.isCleanScreen && state.windowState.isVisible("keyboardHints") {
+                    KeyboardHintBar()
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
+            .padding(.top, 12)
+            .animation(.easeInOut(duration: 0.25), value: state.windowState.isVisible("keyboardHints"))
         }
         .overlay(alignment: .bottom) {
-            if state.windowState.isVisible("keyboardHints") {
-                KeyboardHintBar()
-                    .padding(.bottom, 12)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(.easeInOut(duration: 0.25), value: state.windowState.isVisible("keyboardHints"))
-            }
+            playerControlsOverlay
         }
         .overlay(alignment: .topTrailing) {
             if let indicator = topRightIndicator {
-                Text(indicator.text)
-                    .font(.system(size: 36, weight: .bold))
-                    .foregroundColor(indicator.color)
-                    .padding(.top, 14)
-                    .padding(.bottom, 14)
-                    .padding(.leading, 14)
-                    .padding(.trailing, 28)
+                topRightIndicatorBadge(indicator)
             }
         }
         .overlay(alignment: .topTrailing) {
@@ -159,6 +197,9 @@ struct ContentView: View {
             state.windowState.register("leftSidebar", defaultVisible: true)
             state.windowState.register("rightSidebar", defaultVisible: true)
             state.windowState.register("keyboardHints", defaultVisible: true)
+        }
+        .onChange(of: state.windowState.isCleanScreen) { _, isCleanScreen in
+            isPlayerControlsVisible = !isCleanScreen
         }
         .sheet(isPresented: $state.showPhotosPicker) {
             PhotosPickerSheet(
