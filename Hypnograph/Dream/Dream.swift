@@ -57,13 +57,6 @@ final class Dream: ObservableObject {
     /// Flash-only clip position indicator (e.g. "3/57") shown when manually navigating history.
     @Published private(set) var clipHistoryIndicatorText: String?
 
-    /// In/Out clip IDs for the current recording selection (persisted in clip-history).
-    @Published private(set) var recordingInClipID: UUID?
-    @Published private(set) var recordingOutClipID: UUID?
-
-    /// True while "tape deck" recording is armed and waiting for Stop.
-    @Published private(set) var isRecording: Bool = false
-
     private var clipHistoryIndicatorClearWorkItem: DispatchWorkItem?
 
     // MARK: - Clip History Persistence
@@ -256,14 +249,10 @@ final class Dream: ObservableObject {
     }
 
     func saveClipHistory(synchronous: Bool) {
-        sanitizeRecordingSelectionAgainstHistory()
-
         let url = Environment.clipHistoryURL
         let history = ClipHistoryFile(
             hypnograms: player.session.hypnograms,
-            currentHypnogramIndex: player.currentHypnogramIndex,
-            inClipID: recordingInClipID,
-            outClipID: recordingOutClipID
+            currentHypnogramIndex: player.currentHypnogramIndex
         )
 
         if synchronous {
@@ -292,10 +281,6 @@ final class Dream: ObservableObject {
             let session = HypnographSession(hypnograms: history.hypnograms)
             player.session = session
             player.currentHypnogramIndex = history.currentHypnogramIndex
-            recordingInClipID = history.inClipID
-            recordingOutClipID = history.outClipID
-            isRecording = false
-            sanitizeRecordingSelectionAgainstHistory()
             player.notifySessionMutated()
             player.currentSourceIndex = -1
             player.effectManager.clearFrameBuffer()
@@ -325,57 +310,15 @@ final class Dream: ObservableObject {
         sourceCount > 0 ? activePlayer.currentSourceIndex + 1 : 0
     }
 
-    var recordingRangeDisplayText: String {
-        guard let range = recordingRangeIndices() else { return "No Clips" }
-        if range.lowerBound == range.upperBound {
-            return "Clip \(range.lowerBound + 1)"
-        }
-        return "Clips \(range.lowerBound + 1)-\(range.upperBound + 1)"
+    var currentClipIndicatorText: String {
+        let clips = player.session.hypnograms
+        guard !clips.isEmpty else { return "Clip --" }
+        let displayIndex = max(0, min(player.currentHypnogramIndex, clips.count - 1)) + 1
+        return "Clip \(displayIndex)"
     }
 
-    private func recordingRangeIndices() -> ClosedRange<Int>? {
-        let hypnograms = player.session.hypnograms
-        guard !hypnograms.isEmpty else { return nil }
-
-        let fallbackIndex = max(0, min(player.currentHypnogramIndex, hypnograms.count - 1))
-        let fallbackID = hypnograms[fallbackIndex].id
-
-        let inID = recordingInClipID ?? fallbackID
-        let unresolvedOutID = recordingOutClipID
-            ?? (isRecording ? fallbackID : inID)
-
-        guard let inIndex = hypnograms.firstIndex(where: { $0.id == inID }) else {
-            return fallbackIndex...fallbackIndex
-        }
-
-        guard let outIndex = hypnograms.firstIndex(where: { $0.id == unresolvedOutID }) else {
-            return inIndex...inIndex
-        }
-
-        return min(inIndex, outIndex)...max(inIndex, outIndex)
-    }
-
-    private func recordingHypnograms() -> [Hypnogram] {
-        guard let range = recordingRangeIndices() else { return [] }
-        return Array(player.session.hypnograms[range])
-    }
-
-    private func recordingSession() -> HypnographSession {
-        let selectedHypnograms = recordingHypnograms()
-        return HypnographSession(hypnograms: selectedHypnograms, createdAt: Date())
-    }
-
-    private func sanitizeRecordingSelectionAgainstHistory() {
-        let validIDs = Set(player.session.hypnograms.map(\.id))
-        if let inID = recordingInClipID, !validIDs.contains(inID) {
-            recordingInClipID = nil
-            if isRecording {
-                isRecording = false
-            }
-        }
-        if let outID = recordingOutClipID, !validIDs.contains(outID) {
-            recordingOutClipID = nil
-        }
+    var isWatchModeEnabled: Bool {
+        state.settings.watchMode
     }
 
     // MARK: - Clip History
@@ -385,9 +328,41 @@ final class Dream: ObservableObject {
         let clipLengthMax = max(clipLengthMin, state.settings.clipLengthMaxSeconds)
         let clipLengthSeconds = Double.random(in: clipLengthMin...clipLengthMax)
         let targetDuration = CMTime(seconds: clipLengthSeconds, preferredTimescale: 600)
+        let playRateBounds: ClosedRange<Double> = 0.2...2.0
+        let configuredPlayRateMin = min(max(state.settings.clipPlayRateMin, playRateBounds.lowerBound), playRateBounds.upperBound)
+        let configuredPlayRateMax = min(max(state.settings.clipPlayRateMax, playRateBounds.lowerBound), playRateBounds.upperBound)
+        let playRateMin = min(configuredPlayRateMin, configuredPlayRateMax)
+        let playRateMax = max(configuredPlayRateMin, configuredPlayRateMax)
+        let selectedPlayRate: Float = {
+            guard playRateMax > playRateMin else { return Float(playRateMin) }
+            let randomRate = Double.random(in: playRateMin...playRateMax)
+            let steppedRate = (randomRate * 10).rounded() / 10
+            return Float(min(max(steppedRate, playRateBounds.lowerBound), playRateBounds.upperBound))
+        }()
 
         let maxLayers = max(1, player.config.maxLayers)
         let layerCount = Int.random(in: 1...maxLayers)
+        let randomTemplates = effectsLibrarySession.chains.filter { $0.hasEnabledEffects }
+
+        func shouldApplyRandomizedEffect(enabled: Bool, frequency: Double) -> Bool {
+            guard enabled else { return false }
+            let chance = min(max(frequency, 0), 1)
+            guard chance > 0 else { return false }
+            return Double.random(in: 0...1) < chance
+        }
+
+        func randomTemplateChain() -> EffectChain? {
+            guard let template = randomTemplates.randomElement() else { return nil }
+            return EffectChain(duplicating: template, sourceTemplateId: template.id)
+        }
+
+        var globalEffectChain = previous?.effectChain.clone()
+        if shouldApplyRandomizedEffect(
+            enabled: state.settings.randomGlobalEffect,
+            frequency: state.settings.randomGlobalEffectFrequency
+        ) {
+            globalEffectChain = randomTemplateChain() ?? globalEffectChain
+        }
 
         var layers: [HypnogramLayer] = []
         layers.reserveCapacity(layerCount)
@@ -395,14 +370,30 @@ final class Dream: ObservableObject {
         for i in 0..<layerCount {
             guard let mediaClip = state.library.randomClip(clipLength: targetDuration.seconds) else { continue }
             let blendMode = (i == 0) ? BlendMode.sourceOver : BlendMode.defaultMontage
-            layers.append(HypnogramLayer(mediaClip: mediaClip, blendMode: blendMode))
+            let layerEffectChain: EffectChain
+            if shouldApplyRandomizedEffect(
+                enabled: state.settings.randomLayerEffect,
+                frequency: state.settings.randomLayerEffectFrequency
+            ) {
+                layerEffectChain = randomTemplateChain() ?? EffectChain()
+            } else {
+                layerEffectChain = EffectChain()
+            }
+
+            layers.append(
+                HypnogramLayer(
+                    mediaClip: mediaClip,
+                    blendMode: blendMode,
+                    effectChain: layerEffectChain
+                )
+            )
         }
 
         return Hypnogram(
             layers: layers,
             targetDuration: targetDuration,
-            playRate: previous?.playRate ?? 1.0,
-            effectChain: previous?.effectChain.clone(),
+            playRate: selectedPlayRate,
+            effectChain: globalEffectChain,
             createdAt: Date()
         )
     }
@@ -414,12 +405,10 @@ final class Dream: ObservableObject {
 
         player.session.hypnograms.removeFirst(overflow)
         player.currentHypnogramIndex = max(0, player.currentHypnogramIndex - overflow)
-        sanitizeRecordingSelectionAgainstHistory()
         player.notifySessionMutated()
     }
 
     private func applyClipSelectionChanged(manual: Bool) {
-        sanitizeRecordingSelectionAgainstHistory()
         player.clampCurrentSourceIndex()
         player.currentClipTimeOffset = nil
         player.effectManager.clearFrameBuffer()
@@ -436,9 +425,6 @@ final class Dream: ObservableObject {
         player.session = HypnographSession(hypnograms: [hypnogram])
         player.currentHypnogramIndex = 0
         player.currentSourceIndex = -1
-        recordingInClipID = nil
-        recordingOutClipID = nil
-        isRecording = false
         player.notifySessionMutated()
         applyClipSelectionChanged(manual: false)
     }
@@ -461,14 +447,15 @@ final class Dream: ObservableObject {
     }
 
     private func advanceOrGenerateOnClipEnded() {
-        guard state.settings.watchMode else { return }
-
-        let nextIndex = player.currentHypnogramIndex + 1
-        if nextIndex < player.session.hypnograms.count {
-            player.currentHypnogramIndex = nextIndex
-            applyClipSelectionChanged(manual: false)
-        } else {
-            appendNewClipAndSelect(manual: false)
+        if state.settings.watchMode {
+            let nextIndex = player.currentHypnogramIndex + 1
+            if nextIndex < player.session.hypnograms.count {
+                player.currentHypnogramIndex = nextIndex
+                applyClipSelectionChanged(manual: false)
+            } else {
+                appendNewClipAndSelect(manual: false)
+            }
+            return
         }
     }
 
@@ -691,10 +678,9 @@ final class Dream: ObservableObject {
         let aspectRatio = player.config.aspectRatio
         let displayResolution = player.config.playerResolution
         let sourceFraming = state.settings.sourceFraming
-        let watchMode = state.settings.watchMode
+        let shouldAdvanceOnClipEnd = state.settings.watchMode
         let onClipEnded: (() -> Void)? = { [weak self] in
             guard let self else { return }
-            guard self.state.settings.watchMode else { return }
             self.advanceOrGenerateOnClipEnded()
         }
         let currentSourceIndexBinding = Binding(
@@ -713,7 +699,7 @@ final class Dream: ObservableObject {
                 aspectRatio: aspectRatio,
                 displayResolution: displayResolution,
                 sourceFraming: sourceFraming,
-                watchMode: watchMode,
+                watchMode: shouldAdvanceOnClipEnd,
                 onClipEnded: onClipEnded,
                 currentSourceIndex: currentSourceIndexBinding,
                 currentSourceTime: currentSourceTimeBinding,
@@ -775,89 +761,8 @@ final class Dream: ObservableObject {
         activePlayer.togglePause()
     }
 
-    func toggleRecording() {
-        if isRecording {
-            stopRecording()
-        } else {
-            startRecording()
-        }
-    }
-
-    func startRecording() {
-        guard !player.session.hypnograms.isEmpty else { return }
-
-        let currentID = activePlayer.currentHypnogram.id
-        recordingInClipID = currentID
-        recordingOutClipID = nil
-        isRecording = true
-        scheduleClipHistorySave()
-
-        if activePlayer.isPaused {
-            activePlayer.isPaused = false
-        }
-
-        AppNotifications.show("REC", flash: true, duration: 0.6)
-    }
-
-    func stopRecording() {
-        guard !player.session.hypnograms.isEmpty, isRecording else { return }
-
-        recordingOutClipID = activePlayer.currentHypnogram.id
-        isRecording = false
-        scheduleClipHistorySave()
-
-        AppNotifications.show("STOP", flash: true, duration: 0.8)
-    }
-
-    func saveRecording() {
-        guard let snapshot = currentFrameSnapshot() else {
-            AppNotifications.show("No frame available to save", flash: true)
-            return
-        }
-
-        let session = recordingSession().copyForExport()
-        if let entry = HypnogramStore.shared.add(session: session, snapshot: snapshot, isFavorite: false) {
-            print("✅ Dream: Recording saved to \(entry.sessionURL.path)")
-            AppNotifications.show("Recording saved (\(session.hypnograms.count) clip\(session.hypnograms.count == 1 ? "" : "s"))", flash: true)
-
-            if ApplePhotos.shared.status.canWrite {
-                Task {
-                    _ = await ApplePhotos.shared.saveImage(at: entry.sessionURL)
-                }
-            }
-        } else {
-            AppNotifications.show("Failed to save recording", flash: true)
-        }
-    }
-
-    func renderRecording() {
-        let clips = recordingHypnograms().map { $0.copyForExport() }
-        guard !clips.isEmpty else {
-            AppNotifications.show("No clips to render", flash: true)
-            return
-        }
-
-        let outputFolder = state.settings.outputURL
-        let outputSize = exportSettings()
-        let sourceFraming = state.settings.sourceFraming
-
-        AppNotifications.show("Rendering recording (\(clips.count) clip\(clips.count == 1 ? "" : "s"))", flash: true)
-
-        Task {
-            let result = await RecordingRenderPipeline.render(
-                clips: clips,
-                outputFolder: outputFolder,
-                outputSize: outputSize,
-                sourceFraming: sourceFraming
-            )
-
-            switch result {
-            case .success(let url):
-                AppNotifications.show("Saved: \(url.lastPathComponent)", flash: true)
-            case .failure(let error):
-                AppNotifications.show("Render failed: \(error.localizedDescription)", flash: true, duration: 2.0)
-            }
-        }
+    func toggleWatchMode() {
+        state.toggleWatchMode()
     }
 
     func addSource() {
@@ -1037,57 +942,18 @@ final class Dream: ObservableObject {
         )
     }
 
-    private enum SessionLoadPlacement {
-        case append
-        case replace
-    }
-
-    private func promptSessionLoadPlacement(for clipCount: Int) -> SessionLoadPlacement? {
-        let alert = NSAlert()
-        alert.messageText = "Load \(clipCount)-Clip Session"
-        alert.informativeText = "Do you want to append these clips to your current history, or replace history with them?"
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Append")
-        alert.addButton(withTitle: "Replace History")
-        alert.addButton(withTitle: "Cancel")
-
-        switch alert.runModal() {
-        case .alertFirstButtonReturn:
-            return .append
-        case .alertSecondButtonReturn:
-            return .replace
-        default:
-            return nil
-        }
-    }
-
     private func appendLoadedHypnograms(_ hypnograms: [Hypnogram]) {
         let oldCount = activePlayer.session.hypnograms.count
         activePlayer.session.hypnograms.append(contentsOf: hypnograms)
         activePlayer.currentHypnogramIndex = oldCount
         activePlayer.currentSourceIndex = -1
-        recordingInClipID = hypnograms.first?.id
-        recordingOutClipID = hypnograms.last?.id
-        isRecording = false
-        activePlayer.notifySessionMutated()
-        enforceHistoryLimit()
-        applyClipSelectionChanged(manual: true)
-    }
-
-    private func replaceHistoryWithLoadedHypnograms(_ hypnograms: [Hypnogram]) {
-        activePlayer.session = HypnographSession(hypnograms: hypnograms)
-        activePlayer.currentHypnogramIndex = 0
-        activePlayer.currentSourceIndex = -1
-        recordingInClipID = hypnograms.first?.id
-        recordingOutClipID = hypnograms.last?.id
-        isRecording = false
         activePlayer.notifySessionMutated()
         enforceHistoryLimit()
         applyClipSelectionChanged(manual: true)
     }
 
     /// Load a recipe into the current player.
-    /// Multi-clip sessions prompt to append or replace history; single-clip sessions append.
+    /// Loaded clips are always appended to history.
     func appendSessionToHistory(_ session: HypnographSession) {
         // Ensure effect chains have names (required for library matching)
         var mutableSession = session
@@ -1102,18 +968,6 @@ final class Dream: ObservableObject {
         // Import effect chains used in the recipe into the session
         // (adds missing chains, replaces same-named chains with recipe versions)
         EffectChainLibraryActions.importChainsFromSession(mutableSession, into: effectsSession)
-
-        let shouldPrompt = loadedHypnograms.count > 1 && !activePlayer.session.hypnograms.isEmpty
-        if shouldPrompt {
-            guard let placement = promptSessionLoadPlacement(for: loadedHypnograms.count) else { return }
-            switch placement {
-            case .append:
-                appendLoadedHypnograms(loadedHypnograms)
-            case .replace:
-                replaceHistoryWithLoadedHypnograms(loadedHypnograms)
-            }
-            return
-        }
 
         appendLoadedHypnograms(loadedHypnograms)
     }

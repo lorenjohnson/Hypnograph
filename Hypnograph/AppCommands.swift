@@ -44,11 +44,6 @@ struct AppCommands: Commands {
             .keyboardShortcut(.space, modifiers: [])
             .disabled(isTyping)
 
-            Button(dream.isRecording ? "Stop Recording" : "Record") {
-                dream.toggleRecording()
-            }
-            .disabled(isTyping)
-
             Button("Clear Clip History") {
                 dream.clearClipHistory()
             }
@@ -74,30 +69,20 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(replacing: .saveItem) {
-            Button("Save Hypnogram") {
+            Button("Save Current") {
                 dream.save()
             }
             .keyboardShortcut("s", modifiers: [.command])
 
-            Button("Save Hypnogram As…") {
+            Button("Save Current As…") {
                 dream.saveAs()
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
 
-            Button("Save and Render") {
+            Button("Save & Render Current") {
                 dream.renderAndSaveVideo()
             }
             .keyboardShortcut("s", modifiers: [.option, .command])
-
-            Divider()
-
-            Button("Save Recording") {
-                dream.saveRecording()
-            }
-
-            Button("Render Recording") {
-                dream.renderRecording()
-            }
 
             Divider()
 
