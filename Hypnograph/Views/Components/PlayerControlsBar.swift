@@ -2,18 +2,20 @@ import SwiftUI
 
 struct PlayerControlsBar: View {
     let isPaused: Bool
-    let isWatchModeEnabled: Bool
+    let isLoopCurrentClipEnabled: Bool
     let currentClipText: String
+    @Binding var previewVolume: Double
     let onPrevious: () -> Void
     let onPlayPause: () -> Void
     let onNext: () -> Void
-    let onToggleWatchMode: () -> Void
+    let onToggleLoopCurrentClipMode: () -> Void
     let onSaveCurrent: () -> Void
     let onRenderCurrent: () -> Void
 
     @State private var pendingTooltipWorkItem: DispatchWorkItem?
     @State private var visibleTooltipControlID: String?
     @State private var visibleTooltipText: String?
+    @State private var previousPreviewVolumeBeforeMute: Double = 0.8
 
     private let tooltipDelay: TimeInterval = 0.85
 
@@ -21,18 +23,19 @@ struct PlayerControlsBar: View {
         HStack(spacing: 14) {
             deckButton(id: "prev", systemName: "backward.fill", tooltip: "Previous Clip", action: onPrevious)
             deckButton(id: "play_pause", systemName: isPaused ? "play.fill" : "pause.fill", tooltip: isPaused ? "Play" : "Pause", action: onPlayPause)
-            deckButton(
-                id: "watch",
-                systemName: "arrow.counterclockwise",
-                tooltip: isWatchModeEnabled ? "Continuous Playback" : "Loop Current Clip",
-                tint: .white,
-                activeBackground: isWatchModeEnabled ? nil : .blue,
-                action: onToggleWatchMode
-            )
             deckButton(id: "next", systemName: "forward.fill", tooltip: "Next Clip", action: onNext)
 
             Divider()
                 .frame(height: 30)
+
+            deckButton(
+                id: "loop",
+                systemName: "arrow.counterclockwise",
+                tooltip: isLoopCurrentClipEnabled ? "Loop Current Clip" : "Auto-Advance Clips",
+                tint: .white,
+                activeBackground: isLoopCurrentClipEnabled ? .blue : nil,
+                action: onToggleLoopCurrentClipMode
+            )
 
             Text(currentClipText.uppercased())
                 .font(.system(.callout, design: .monospaced))
@@ -42,6 +45,25 @@ struct PlayerControlsBar: View {
                 .padding(.trailing, 2)
 
             Spacer(minLength: 6)
+
+            HStack(spacing: 6) {
+                Button(action: togglePreviewMute) {
+                    Image(systemName: previewVolume <= 0.001 ? "speaker.slash.fill" : "speaker.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 16, height: 16)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(previewVolume <= 0.001 ? "Unmute Preview" : "Mute Preview")
+                Slider(value: $previewVolume, in: 0...1)
+                    .frame(width: 120)
+                    .help("Preview Volume")
+                Image(systemName: "speaker.wave.3.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 16)
+            }
 
             deckButton(id: "save", systemName: "square.and.arrow.down", tooltip: "Save Current", action: onSaveCurrent)
             deckButton(id: "render", systemName: "film.stack", tooltip: "Render Current", action: onRenderCurrent)
@@ -57,12 +79,27 @@ struct PlayerControlsBar: View {
                 )
         )
         .shadow(color: .black.opacity(0.35), radius: 12, x: 0, y: 6)
+        .onChange(of: previewVolume) { _, newValue in
+            if newValue > 0.001 {
+                previousPreviewVolumeBeforeMute = newValue
+            }
+        }
         .onDisappear {
             pendingTooltipWorkItem?.cancel()
             pendingTooltipWorkItem = nil
             visibleTooltipControlID = nil
             visibleTooltipText = nil
         }
+    }
+
+    private func togglePreviewMute() {
+        if previewVolume <= 0.001 {
+            let restored = max(previousPreviewVolumeBeforeMute, 0.05)
+            previewVolume = min(restored, 1.0)
+            return
+        }
+        previousPreviewVolumeBeforeMute = previewVolume
+        previewVolume = 0
     }
 
     private func deckButton(

@@ -148,7 +148,7 @@ final class Dream: ObservableObject {
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &playerSubscriptions)
 
-        // Forward settings changes (e.g., watch mode toggle) for SwiftUI reactivity
+        // Forward settings changes (e.g., playback end behavior toggle) for SwiftUI reactivity
         state.settingsStore.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &playerSubscriptions)
@@ -317,8 +317,8 @@ final class Dream: ObservableObject {
         return "Clip \(displayIndex)"
     }
 
-    var isWatchModeEnabled: Bool {
-        state.settings.watchMode
+    var isLoopCurrentClipEnabled: Bool {
+        state.settings.playbackEndBehavior == .loopCurrentClip
     }
 
     // MARK: - Clip History
@@ -447,7 +447,7 @@ final class Dream: ObservableObject {
     }
 
     private func advanceOrGenerateOnClipEnded() {
-        if state.settings.watchMode {
+        if state.settings.playbackEndBehavior == .autoAdvance {
             let nextIndex = player.currentHypnogramIndex + 1
             if nextIndex < player.session.hypnograms.count {
                 player.currentHypnogramIndex = nextIndex
@@ -678,7 +678,7 @@ final class Dream: ObservableObject {
         let aspectRatio = player.config.aspectRatio
         let displayResolution = player.config.playerResolution
         let sourceFraming = state.settings.sourceFraming
-        let shouldAdvanceOnClipEnd = state.settings.watchMode
+        let shouldAdvanceOnClipEnd = state.settings.playbackEndBehavior == .autoAdvance
         let onClipEnded: (() -> Void)? = { [weak self] in
             guard let self else { return }
             self.advanceOrGenerateOnClipEnded()
@@ -699,7 +699,7 @@ final class Dream: ObservableObject {
                 aspectRatio: aspectRatio,
                 displayResolution: displayResolution,
                 sourceFraming: sourceFraming,
-                watchMode: shouldAdvanceOnClipEnd,
+                autoAdvanceOnClipEnd: shouldAdvanceOnClipEnd,
                 onClipEnded: onClipEnded,
                 currentSourceIndex: currentSourceIndexBinding,
                 currentSourceTime: currentSourceTimeBinding,
@@ -761,8 +761,8 @@ final class Dream: ObservableObject {
         activePlayer.togglePause()
     }
 
-    func toggleWatchMode() {
-        state.toggleWatchMode()
+    func toggleLoopCurrentClipMode() {
+        state.toggleLoopCurrentClipMode()
     }
 
     func addSource() {

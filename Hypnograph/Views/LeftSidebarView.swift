@@ -6,22 +6,19 @@ struct LeftSidebarView: View {
     @ObservedObject var dream: Dream
     @ObservedObject var player: DreamPlayerState
 
-    @StateObject private var audioManager = AudioDeviceManager.shared
-
     private var isLiveMode: Bool { dream.isLiveMode }
-    private var isLiveModeAvailable: Bool { state.settings.liveModeEnabled }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                    sectionTitle("Watch")
+                    sectionTitle("Playback")
 
                     row {
-                        Text("Watch")
+                        Text("Loop Current Clip")
                         Spacer()
                         Toggle("", isOn: Binding(
-                            get: { state.settings.watchMode },
-                            set: { _ in state.toggleWatchMode() }
+                            get: { state.settings.playbackEndBehavior == .loopCurrentClip },
+                            set: { state.setLoopCurrentClipMode($0) }
                         ))
                         .labelsHidden()
                         .toggleStyle(.switch)
@@ -67,6 +64,8 @@ struct LeftSidebarView: View {
                         }
                     )
 
+                    sectionDivider()
+
                     sectionTitle("Display")
 
                     row {
@@ -103,38 +102,9 @@ struct LeftSidebarView: View {
                         .opacity(isLiveMode ? 0.55 : 1.0)
                     }
 
-                    sectionTitle("Audio")
+                    sectionDivider()
 
-                    audioDeviceRow(
-                        title: "Preview",
-                        selection: Binding(
-                            get: { dream.previewAudioDevice },
-                            set: { dream.previewAudioDevice = $0 }
-                        ),
-                        volume: Binding(
-                            get: { Double(dream.previewVolume) },
-                            set: { dream.previewVolume = Float($0) }
-                        )
-                    )
-
-                    if isLiveModeAvailable {
-                        audioDeviceRow(
-                            title: "Live",
-                            selection: Binding(
-                                get: { dream.liveAudioDevice },
-                                set: { dream.liveAudioDevice = $0 }
-                            ),
-                            volume: Binding(
-                                get: { Double(dream.liveVolume) },
-                                set: { dream.liveVolume = Float($0) }
-                            )
-                        )
-                    }
-
-                    GlassDivider()
-                        .padding(.vertical, 4)
-
-                    sectionTitle("Generation")
+                    sectionTitle("New Clips")
 
                     row {
                         Text("Max Layers")
@@ -188,21 +158,6 @@ struct LeftSidebarView: View {
                     .disabled(isLiveMode)
                     .opacity(isLiveMode ? 0.55 : 1.0)
 
-                    sectionTitle("Extra Features")
-
-                    row {
-                        Text("Enable Live Features")
-                        Spacer()
-                        Toggle("", isOn: Binding(
-                            get: { state.settings.liveModeEnabled },
-                            set: { newValue in
-                                state.settingsStore.update { $0.liveModeEnabled = newValue }
-                            }
-                        ))
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                    }
                 }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -216,6 +171,12 @@ struct LeftSidebarView: View {
         Text(text)
             .font(.headline)
             .foregroundStyle(.secondary)
+    }
+
+    @ViewBuilder
+    private func sectionDivider() -> some View {
+        GlassDivider()
+            .padding(.vertical, 4)
     }
 
     @ViewBuilder
@@ -241,38 +202,6 @@ struct LeftSidebarView: View {
                     .monospacedDigit()
             }
             slider()
-        }
-    }
-
-    @ViewBuilder
-    private func audioDeviceRow(
-        title: String,
-        selection: Binding<AudioOutputDevice?>,
-        volume: Binding<Double>
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            row {
-                Text(title)
-                Spacer()
-                Picker("", selection: selection) {
-                    ForEach(audioManager.outputDevices) { device in
-                        Text(device.name)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .tag(device as AudioOutputDevice?)
-                    }
-                }
-                .pickerStyle(.menu)
-                .frame(width: 190, alignment: .trailing)
-            }
-
-            HStack(spacing: 8) {
-                Image(systemName: volume.wrappedValue <= 0.001 ? "speaker.slash.fill" : "speaker.fill")
-                    .foregroundStyle(.secondary)
-                Slider(value: volume, in: 0...1)
-                Image(systemName: "speaker.wave.3.fill")
-                    .foregroundStyle(.secondary)
-            }
         }
     }
 

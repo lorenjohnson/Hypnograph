@@ -13,12 +13,18 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Callback to toggle clean screen (injected by app)
     var toggleCleanScreen: (() -> Void)?
 
+    /// Callback to toggle play/pause (injected by app)
+    var togglePlayPause: (() -> Void)?
+
     /// Callback to toggle sidebars (injected by app)
     var toggleLeftSidebar: (() -> Void)?
     var toggleRightSidebar: (() -> Void)?
 
     /// Callback to check if typing is active (injected by app)
     var isTypingActive: (() -> Bool)?
+
+    /// Callback for whether keyboard accessibility overrides are enabled (injected by app)
+    var isKeyboardAccessibilityOverridesEnabled: (() -> Bool)?
 
     /// Callback to open a session file (injected by app)
     var openSessionFile: ((URL) -> Void)? {
@@ -80,6 +86,9 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Event monitor for Tab key (workaround for SwiftUI menu shortcut not registering until menu opened)
     private var tabKeyMonitor: Any?
 
+    /// Event monitor for Space key (play/pause transport)
+    private var spaceKeyMonitor: Any?
+
     /// Event monitor for [ and ] keys (toggle sidebars)
     private var sidebarKeyMonitor: Any?
 
@@ -99,19 +108,66 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
         AppNotifications.configure(identity: .fromBundle())
         AppNotifications.requestAuthorization()
 
-        // Install Tab key monitor to work around SwiftUI menu shortcut bug
-        tabKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            // Check for Tab key (keyCode 48) with no modifiers
-            if event.keyCode == 48 && event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty {
-                // Don't intercept if user is typing in a text field
-                if self?.isTypingActive?() == true {
-                    return event
-                }
-                // Toggle clean screen
-                self?.toggleCleanScreen?()
-                return nil  // Consume the event
+        // Install Space key monitor for play/pause transport
+        spaceKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+
+            guard event.keyCode == 49,
+                  event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty else {
+                return event
             }
-            return event
+
+            if self.isTypingActive?() == true {
+                return event
+            }
+
+            guard self.isKeyboardAccessibilityOverridesEnabled?() ?? true else {
+                return event
+            }
+
+            guard let togglePlayPause = self.togglePlayPause else {
+                return event
+            }
+
+            if event.isARepeat {
+                return nil
+            }
+
+            togglePlayPause()
+            return nil
+        }
+
+        // Install Tab key monitor for clean screen toggle (including Shift-Tab)
+        tabKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+
+            let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            let isTab = event.keyCode == 48
+            let isPlainTab = modifiers.isEmpty
+            let isShiftTab = modifiers == .shift
+
+            guard isTab, (isPlainTab || isShiftTab) else {
+                return event
+            }
+
+            if self.isTypingActive?() == true {
+                return event
+            }
+
+            guard self.isKeyboardAccessibilityOverridesEnabled?() ?? true else {
+                return event
+            }
+
+            guard let toggleCleanScreen = self.toggleCleanScreen else {
+                return event
+            }
+
+            if event.isARepeat {
+                return nil
+            }
+
+            toggleCleanScreen()
+            return nil
         }
 
         // Install [ and ] key monitor for toggling sidebars
@@ -372,7 +428,10 @@ struct HypnographApp: App {
                     dream?.effectsSession.save()
                 }
 
-                // Wire up Tab key callbacks for clean screen toggle
+                // Wire up transport and clean screen callbacks
+                appDelegate.togglePlayPause = { [weak dream] in
+                    dream?.activePlayer.isPaused.toggle()
+                }
                 appDelegate.toggleCleanScreen = { [weak state] in
                     state?.windowState.toggleCleanScreen()
                 }
@@ -384,6 +443,9 @@ struct HypnographApp: App {
                 }
                 appDelegate.isTypingActive = { [weak state] in
                     state?.isTyping ?? false
+                }
+                appDelegate.isKeyboardAccessibilityOverridesEnabled = { [weak state] in
+                    state?.settings.keyboardAccessibilityOverridesEnabled ?? true
                 }
 
                 // Wire up window state persistence
@@ -430,15 +492,37 @@ struct HypnographApp: App {
                 Task {
                     await state.refreshAvailableLibraries()
                 }
+
+                // When transport keys override accessibility navigation, start with no focused control.
+                DispatchQueue.main.async {
+                    guard state.settings.keyboardAccessibilityOverridesEnabled else { return }
+                    (appDelegate.mainWindow ?? NSApp.mainWindow ?? NSApp.windows.first)?.makeFirstResponder(nil)
+                }
+            }
+            .onChange(of: state.settings.keyboardAccessibilityOverridesEnabled) { _, isEnabled in
+                guard isEnabled else { return }
+                DispatchQueue.main.async {
+                    (appDelegate.mainWindow ?? NSApp.mainWindow ?? NSApp.windows.first)?.makeFirstResponder(nil)
+                }
             }
         }
         .handlesExternalEvents(matching: ["main"])
         .commands {
             AppCommands(
                 state: state,
-                dream: dream,
-                appDelegate: appDelegate
+                dream: dream
             )
         }
+
+        SwiftUI.Settings {
+            AppSettingsView(state: state, dream: dream)
+                .frame(minWidth: 320, idealWidth: 340, minHeight: 380)
+        }
+
+        Window("About Hypnograph", id: "about") {
+            AboutHypnographView()
+        }
+        .defaultSize(width: 720, height: 245)
+        .windowResizability(.contentSize)
     }
 }

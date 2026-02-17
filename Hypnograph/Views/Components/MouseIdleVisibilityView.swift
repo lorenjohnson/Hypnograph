@@ -67,8 +67,10 @@ struct MouseIdleVisibilityView: NSViewRepresentable {
             guard pollTimer == nil else { return }
 
             lastMouseLocation = NSEvent.mouseLocation
-            lastMoveTime = CFAbsoluteTimeGetCurrent()
-            binding.wrappedValue = true
+            // Start hidden when enabling idle-tracked visibility so keyboard actions
+            // (e.g. entering clean screen with Tab) do not count as "activity".
+            lastMoveTime = CFAbsoluteTimeGetCurrent() - idleSeconds
+            binding.wrappedValue = false
 
             pollTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
                 self?.pollOnce()

@@ -205,6 +205,10 @@ struct RightSidebarView: View {
                 title: "Effects"
             )
         }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            dream.activePlayer.selectGlobalLayer()
+        }
     }
 
     private func bindingForLayer(id: UUID, fallback: HypnogramLayer) -> Binding<HypnogramLayer> {

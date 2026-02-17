@@ -19,7 +19,7 @@ struct PreviewPlayerView: NSViewRepresentable {
     let aspectRatio: AspectRatio
     let displayResolution: OutputResolution
     let sourceFraming: SourceFraming
-    let watchMode: Bool
+    let autoAdvanceOnClipEnd: Bool
     let onClipEnded: (() -> Void)?
     @Binding var currentSourceIndex: Int
     @Binding var currentSourceTime: CMTime?
@@ -38,9 +38,9 @@ struct PreviewPlayerView: NSViewRepresentable {
 
     // MARK: - Coordinator
     //
-    // Watch-mode state machine:
+    // Auto-advance state machine:
     // ─────────────────────────
-    // The coordinator manages automatic clip advancement in "watch mode" where clips
+    // The coordinator manages automatic clip advancement where clips
     // play through once and then advance to the next clip. The key challenge is
     // coordinating the timing so transitions start before the current clip ends,
     // while avoiding runaway advancement if the next clip isn't ready yet.
@@ -48,7 +48,7 @@ struct PreviewPlayerView: NSViewRepresentable {
     // State flags:
     // - `didRequestPreEndAdvance`: Set when we've requested the next clip via
     //   `onClipEnded()`. Prevents duplicate requests during the same clip.
-    // - `isWatchAdvanceInFlight`: Set when a clip change is in progress (building
+    // - `isAutoAdvanceInFlight`: Set when a clip change is in progress (building
     //   composition + transitioning). If the current clip ends again while this
     //   is true, we loop the current clip instead of requesting another advance.
     //
@@ -56,13 +56,13 @@ struct PreviewPlayerView: NSViewRepresentable {
     // 1. Time observer fires when remaining time <= transitionDuration + 0.25s
     // 2. If not already advancing, set both flags and call `onClipEnded()`
     // 3. Parent builds new composition and calls `loadAndTransition()`
-    // 4. Transition completes → `isWatchAdvanceInFlight` cleared
+    // 4. Transition completes → `isAutoAdvanceInFlight` cleared
     // 5. New clip plays → `didRequestPreEndAdvance` reset when compositionID changes
     //
     // Edge cases:
     // - If clip is very short, end notification may fire before transition completes
     //   → we loop the outgoing clip to maintain smooth visuals
-    // - Pausing or disabling watch mode resets both flags
+    // - Pausing or disabling auto-advance resets both flags
 
     @MainActor
     class Coordinator {
@@ -79,7 +79,7 @@ struct PreviewPlayerView: NSViewRepresentable {
         var lastAppliedPlayRate: Float?
         var transitionDuration: Double = 1.5
         var lastVolume: Float?
-        var watchMode: Bool = false
+        var autoAdvanceOnClipEnd: Bool = false
         var onClipEnded: (() -> Void)?
         var isAllStillImages: Bool = false
         /// Whether this is the first clip load (no transition needed)
@@ -91,13 +91,13 @@ struct PreviewPlayerView: NSViewRepresentable {
         var playbackEndObservers: [Any] = []
         /// Observers for per-player time updates (used for pre-end advancing)
         var playbackTimeObservers: [Any] = []
-        /// Guard so we request a watch-mode advance at most once per active clip.
+        /// Guard so we request auto-advance at most once per active clip.
         /// Reset when compositionID changes (new clip loaded).
         var didRequestPreEndAdvance: Bool = false
-        /// Prevent runaway watch-mode advancement while a new clip is being built/transitioned in.
+        /// Prevent runaway auto-advance while a new clip is being built/transitioned in.
         /// If the current clip ends again before the next clip is ready, we loop the current clip
         /// instead of requesting another advance. Cleared when transition completes.
-        var isWatchAdvanceInFlight: Bool = false
+        var isAutoAdvanceInFlight: Bool = false
 
         func audioDeviceChanged(to newUID: String?) -> Bool {
             if lastAudioDeviceUID == Self.notSetSentinel { return true }
@@ -148,11 +148,11 @@ struct PreviewPlayerView: NSViewRepresentable {
         // Always update playRate so closures use current value
         c.playRate = clip.playRate
         c.transitionDuration = transitionDuration
-        c.watchMode = watchMode
+        c.autoAdvanceOnClipEnd = autoAdvanceOnClipEnd
         c.onClipEnded = onClipEnded
         c.isAllStillImages = clip.layers.allSatisfy { $0.mediaClip.file.mediaKind == .image }
-        if !watchMode || isPaused {
-            c.isWatchAdvanceInFlight = false
+        if !autoAdvanceOnClipEnd || isPaused {
+            c.isAutoAdvanceInFlight = false
             c.didRequestPreEndAdvance = false
         }
 
@@ -167,7 +167,7 @@ struct PreviewPlayerView: NSViewRepresentable {
             }
             c.stillClipTimer?.invalidate()
             c.stillClipTimer = nil
-            c.isWatchAdvanceInFlight = false
+            c.isAutoAdvanceInFlight = false
             c.didRequestPreEndAdvance = false
             return
         }
@@ -268,7 +268,7 @@ struct PreviewPlayerView: NSViewRepresentable {
                         playRate: playRate
                     ) {
                         Task { @MainActor in
-                            c.isWatchAdvanceInFlight = false
+                            c.isAutoAdvanceInFlight = false
                         }
                     }
 
@@ -278,7 +278,7 @@ struct PreviewPlayerView: NSViewRepresentable {
                     c.lastSessionRevision = sessionRevision
                     c.lastAppliedPlayRate = playRate
 
-                    // For still images, schedule the timer for watch mode advancement
+                    // For still images, schedule the timer for auto-advance
                     if c.isAllStillImages && !self.isPaused {
                         self.scheduleStillClipTimer(coordinator: c)
                     }
@@ -289,7 +289,7 @@ struct PreviewPlayerView: NSViewRepresentable {
                 case .failure(let error):
                     error.log(context: "PreviewPlayerView")
                     c.compositionID = nil
-                    c.isWatchAdvanceInFlight = false
+                    c.isAutoAdvanceInFlight = false
                     if currentSourceTime != nil {
                         currentSourceTime = nil
                     }
@@ -334,11 +334,11 @@ struct PreviewPlayerView: NSViewRepresentable {
                 if let content = c.contentView {
                     if c.isAllStillImages {
                         // Force redraw of still frame at t=0
-                        content.activeAVPlayer?.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
+                        content.refreshActiveFrame(at: .zero)
                     } else if isPaused {
                         // Only force redraw when paused
                         if let currentTime = content.activeAVPlayer?.currentTime() {
-                            content.activeAVPlayer?.seek(to: currentTime, toleranceBefore: .zero, toleranceAfter: .zero)
+                            content.refreshActiveFrame(at: currentTime)
                         }
                     }
                 }
@@ -394,15 +394,15 @@ struct PreviewPlayerView: NSViewRepresentable {
                         return
                     }
 
-                    if c.watchMode {
-                        // Watch mode: only advance when the ACTIVE player ends
+                    if c.autoAdvanceOnClipEnd {
+                        // Auto-advance: only advance when the ACTIVE player ends
                         // (not when the outgoing transition player loops)
                         if player === c.contentView?.activeAVPlayer {
-                            if c.isWatchAdvanceInFlight {
+                            if c.isAutoAdvanceInFlight {
                                 seekToStartAndPlayIfNeeded()
                                 return
                             }
-                            c.isWatchAdvanceInFlight = true
+                            c.isAutoAdvanceInFlight = true
                             c.didRequestPreEndAdvance = true
                             c.onClipEnded?()
                         } else {
@@ -418,7 +418,7 @@ struct PreviewPlayerView: NSViewRepresentable {
             c.playbackEndObservers.append(observer)
         }
 
-        // In watch mode, request the next clip before the current one ends so the transition
+        // In auto-advance mode, request the next clip before the current one ends so the transition
         // can complete before playback reaches the end of the outgoing clip (avoids a pause).
         //
         // We base this on *real time* remaining (video seconds / playRate).
@@ -427,10 +427,10 @@ struct PreviewPlayerView: NSViewRepresentable {
             let token = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak c, weak player] _ in
                 Task { @MainActor [weak c, weak player] in
                     guard let c, let player, let contentView = c.contentView else { return }
-                    guard c.watchMode else { return }
+                    guard c.autoAdvanceOnClipEnd else { return }
                     guard c.lastPauseState != true else { return }
                     guard !c.didRequestPreEndAdvance else { return }
-                    guard !c.isWatchAdvanceInFlight else { return }
+                    guard !c.isAutoAdvanceInFlight else { return }
                     guard contentView.playerView.activeTransition == nil else { return }
                     guard player === contentView.activeAVPlayer else { return }
 
@@ -457,7 +457,7 @@ struct PreviewPlayerView: NSViewRepresentable {
                     let threshold = max(0.05, c.transitionDuration + 0.25)
                     if remainingRealSeconds <= threshold {
                         c.didRequestPreEndAdvance = true
-                        c.isWatchAdvanceInFlight = true
+                        c.isAutoAdvanceInFlight = true
                         c.onClipEnded?()
                     }
                 }
@@ -494,7 +494,7 @@ struct PreviewPlayerView: NSViewRepresentable {
         c.stillClipTimer?.invalidate()
         c.stillClipTimer = nil
 
-        guard c.watchMode, c.lastPauseState != true else { return }
+        guard c.autoAdvanceOnClipEnd, c.lastPauseState != true else { return }
         guard let onClipEnded = c.onClipEnded else { return }
 
         let seconds = max(0.1, clip.targetDuration.seconds)
@@ -512,7 +512,7 @@ struct PreviewPlayerView: NSViewRepresentable {
 
         c.removePlaybackEndObservers()
         c.removePlaybackTimeObservers()
-        c.isWatchAdvanceInFlight = false
+        c.isAutoAdvanceInFlight = false
 
         c.contentView?.stop()
         c.contentView = nil

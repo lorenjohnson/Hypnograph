@@ -61,12 +61,16 @@ struct ContentView: View {
             if isPlayerControlsVisible {
                 PlayerControlsBar(
                     isPaused: dream.activePlayer.isPaused,
-                    isWatchModeEnabled: dream.isWatchModeEnabled,
+                    isLoopCurrentClipEnabled: dream.isLoopCurrentClipEnabled,
                     currentClipText: dream.currentClipIndicatorText,
+                    previewVolume: Binding(
+                        get: { Double(dream.previewVolume) },
+                        set: { dream.previewVolume = Float($0) }
+                    ),
                     onPrevious: { dream.previousClip() },
                     onPlayPause: { dream.togglePause() },
                     onNext: { dream.nextClip() },
-                    onToggleWatchMode: { dream.toggleWatchMode() },
+                    onToggleLoopCurrentClipMode: { dream.toggleLoopCurrentClipMode() },
                     onSaveCurrent: { dream.save() },
                     onRenderCurrent: { dream.renderAndSaveVideo() }
                 )
