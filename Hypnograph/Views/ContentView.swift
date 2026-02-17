@@ -2,6 +2,7 @@ import SwiftUI
 import AVFoundation
 import Combine
 import PhotosUI
+import Photos
 import HypnoCore
 import HypnoUI
 
@@ -9,6 +10,63 @@ struct ContentView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var dream: Dream
     @State private var isPlayerControlsVisible: Bool = true
+
+    private var clipTrimContexts: [ClipTrimContext] {
+        let layers = dream.activePlayer.layers
+        guard !layers.isEmpty else { return [] }
+
+        let maxSelectionForClip = max(0.1, dream.activePlayer.targetDuration.seconds)
+
+        func makeContext(layer: HypnogramLayer, index: Int) -> ClipTrimContext? {
+            guard layer.mediaClip.file.mediaKind == .video else { return nil }
+
+            let total = max(0.1, layer.mediaClip.file.duration.seconds)
+            let start = max(0, min(layer.mediaClip.startTime.seconds, total))
+            let maxSelection = max(0.1, min(maxSelectionForClip, total))
+            let selectedDuration = min(layer.mediaClip.duration.seconds, maxSelection, total - start)
+            let end = max(start + 0.1, min(start + selectedDuration, total))
+
+            return ClipTrimContext(
+                layerIndex: index,
+                fileID: layer.mediaClip.file.id,
+                source: layer.mediaClip.file.source,
+                clipLabel: layerTitle(for: layer),
+                totalDurationSeconds: total,
+                maxSelectionDurationSeconds: maxSelection,
+                selectedRangeSeconds: start...end
+            )
+        }
+
+        if dream.activePlayer.currentSourceIndex == -1 {
+            return layers.enumerated().compactMap { index, layer in
+                makeContext(layer: layer, index: index)
+            }
+        }
+
+        let index = dream.activePlayer.currentSourceIndex
+        guard index >= 0, index < layers.count else { return [] }
+        guard let context = makeContext(layer: layers[index], index: index) else { return [] }
+        return [context]
+    }
+
+    private func layerTitle(for layer: HypnogramLayer) -> String {
+        switch layer.mediaClip.file.source {
+        case .url(let url):
+            return url.lastPathComponent
+        case .external(let identifier):
+            return photosFilename(for: identifier) ?? "Photos Item"
+        }
+    }
+
+    private func photosFilename(for identifier: String) -> String? {
+        guard let asset = ApplePhotos.shared.fetchAsset(localIdentifier: identifier) else { return nil }
+        let resources = PHAssetResource.assetResources(for: asset)
+
+        if let resource = resources.first(where: { $0.type == .pairedVideo || $0.type == .video || $0.type == .photo }) {
+            return resource.originalFilename
+        }
+        return resources.first?.originalFilename
+    }
 
     private var topRightIndicator: (text: String, color: Color)? {
         // LIVE indicator (same placement/size as the layer indicator)
@@ -63,6 +121,8 @@ struct ContentView: View {
                     isPaused: dream.activePlayer.isPaused,
                     isLoopCurrentClipEnabled: dream.isLoopCurrentClipEnabled,
                     currentClipText: dream.currentClipIndicatorText,
+                    clipLengthSeconds: dream.activePlayer.targetDuration.seconds,
+                    clipTrimContexts: clipTrimContexts,
                     previewVolume: Binding(
                         get: { Double(dream.previewVolume) },
                         set: { dream.previewVolume = Float($0) }
@@ -72,7 +132,15 @@ struct ContentView: View {
                     onNext: { dream.nextClip() },
                     onToggleLoopCurrentClipMode: { dream.toggleLoopCurrentClipMode() },
                     onSaveCurrent: { dream.save() },
-                    onRenderCurrent: { dream.renderAndSaveVideo() }
+                    onRenderCurrent: { dream.renderAndSaveVideo() },
+                    onCommitClipTrimRange: { layerIndex, range in
+                        dream.setLayerClipRange(
+                            sourceIndex: layerIndex,
+                            startSeconds: range.lowerBound,
+                            endSeconds: range.upperBound,
+                            maxDurationSeconds: dream.activePlayer.targetDuration.seconds
+                        )
+                    }
                 )
                 .frame(maxWidth: 920)
                 .transition(.move(edge: .bottom).combined(with: .opacity))

@@ -4,6 +4,8 @@ struct PlayerControlsBar: View {
     let isPaused: Bool
     let isLoopCurrentClipEnabled: Bool
     let currentClipText: String
+    let clipLengthSeconds: Double
+    let clipTrimContexts: [ClipTrimContext]
     @Binding var previewVolume: Double
     let onPrevious: () -> Void
     let onPlayPause: () -> Void
@@ -11,6 +13,7 @@ struct PlayerControlsBar: View {
     let onToggleLoopCurrentClipMode: () -> Void
     let onSaveCurrent: () -> Void
     let onRenderCurrent: () -> Void
+    let onCommitClipTrimRange: (Int, ClosedRange<Double>) -> Void
 
     @State private var pendingTooltipWorkItem: DispatchWorkItem?
     @State private var visibleTooltipControlID: String?
@@ -20,6 +23,39 @@ struct PlayerControlsBar: View {
     private let tooltipDelay: TimeInterval = 0.85
 
     var body: some View {
+        VStack(spacing: 8) {
+            ClipTrimPanelView(
+                contexts: clipTrimContexts,
+                onCommit: onCommitClipTrimRange
+            )
+
+            controlsRow
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.black.opacity(0.72))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                )
+        )
+        .shadow(color: .black.opacity(0.35), radius: 12, x: 0, y: 6)
+        .onChange(of: previewVolume) { _, newValue in
+            if newValue > 0.001 {
+                previousPreviewVolumeBeforeMute = newValue
+            }
+        }
+        .onDisappear {
+            pendingTooltipWorkItem?.cancel()
+            pendingTooltipWorkItem = nil
+            visibleTooltipControlID = nil
+            visibleTooltipText = nil
+        }
+    }
+
+    private var controlsRow: some View {
         HStack(spacing: 14) {
             deckButton(id: "prev", systemName: "backward.fill", tooltip: "Previous Clip", action: onPrevious)
             deckButton(id: "play_pause", systemName: isPaused ? "play.fill" : "pause.fill", tooltip: isPaused ? "Play" : "Pause", action: onPlayPause)
@@ -37,7 +73,7 @@ struct PlayerControlsBar: View {
                 action: onToggleLoopCurrentClipMode
             )
 
-            Text(currentClipText.uppercased())
+            Text("\(currentClipText.uppercased()) (\(formattedClipLength))")
                 .font(.system(.callout, design: .monospaced))
                 .fontWeight(.semibold)
                 .foregroundStyle(.secondary)
@@ -68,28 +104,6 @@ struct PlayerControlsBar: View {
             deckButton(id: "save", systemName: "square.and.arrow.down", tooltip: "Save Current", action: onSaveCurrent)
             deckButton(id: "render", systemName: "film.stack", tooltip: "Render Current", action: onRenderCurrent)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.black.opacity(0.72))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
-                )
-        )
-        .shadow(color: .black.opacity(0.35), radius: 12, x: 0, y: 6)
-        .onChange(of: previewVolume) { _, newValue in
-            if newValue > 0.001 {
-                previousPreviewVolumeBeforeMute = newValue
-            }
-        }
-        .onDisappear {
-            pendingTooltipWorkItem?.cancel()
-            pendingTooltipWorkItem = nil
-            visibleTooltipControlID = nil
-            visibleTooltipText = nil
-        }
     }
 
     private func togglePreviewMute() {
@@ -100,6 +114,15 @@ struct PlayerControlsBar: View {
         }
         previousPreviewVolumeBeforeMute = previewVolume
         previewVolume = 0
+    }
+
+    private var formattedClipLength: String {
+        let seconds = max(0.1, clipLengthSeconds)
+        let rounded = (seconds * 10).rounded() / 10
+        if abs(rounded - rounded.rounded()) < 0.05 {
+            return "\(Int(rounded.rounded()))s"
+        }
+        return String(format: "%.1fs", rounded)
     }
 
     private func deckButton(
