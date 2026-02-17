@@ -55,6 +55,29 @@ struct ContentView: View {
             .padding(.trailing, 28)
     }
 
+    @ViewBuilder
+    private var playerControlsOverlay: some View {
+        VStack(spacing: 0) {
+            if isPlayerControlsVisible {
+                PlayerControlsBar(
+                    isPaused: dream.activePlayer.isPaused,
+                    isWatchModeEnabled: dream.isWatchModeEnabled,
+                    currentClipText: dream.currentClipIndicatorText,
+                    onPrevious: { dream.previousClip() },
+                    onPlayPause: { dream.togglePause() },
+                    onNext: { dream.nextClip() },
+                    onToggleWatchMode: { dream.toggleWatchMode() },
+                    onSaveCurrent: { dream.save() },
+                    onRenderCurrent: { dream.renderAndSaveVideo() }
+                )
+                .frame(maxWidth: 920)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .padding(.bottom, 12)
+        .animation(.easeInOut(duration: 0.2), value: isPlayerControlsVisible)
+    }
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             // Solid black backing for the entire window
@@ -141,25 +164,7 @@ struct ContentView: View {
             .animation(.easeInOut(duration: 0.25), value: state.windowState.isVisible("keyboardHints"))
         }
         .overlay(alignment: .bottom) {
-            VStack(spacing: 0) {
-                if isPlayerControlsVisible {
-                    PlayerControlsBar(
-                        isPaused: dream.activePlayer.isPaused,
-                        isWatchModeEnabled: dream.isWatchModeEnabled,
-                        currentClipText: dream.currentClipIndicatorText,
-                        onPrevious: { dream.previousClip() },
-                        onPlayPause: { dream.togglePause() },
-                        onNext: { dream.nextClip() },
-                        onToggleWatchMode: { dream.toggleWatchMode() },
-                        onSaveCurrent: { dream.save() },
-                        onRenderCurrent: { dream.renderAndSaveVideo() }
-                    )
-                    .frame(maxWidth: 920)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-            .padding(.bottom, 12)
-            .animation(.easeInOut(duration: 0.2), value: isPlayerControlsVisible)
+            playerControlsOverlay
         }
         .overlay(alignment: .topTrailing) {
             if let indicator = topRightIndicator {
