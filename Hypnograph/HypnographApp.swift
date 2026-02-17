@@ -516,7 +516,7 @@ struct HypnographApp: App {
 
         SwiftUI.Settings {
             AppSettingsView(state: state, dream: dream)
-                .frame(minWidth: 320, idealWidth: 340, minHeight: 380)
+                .frame(minWidth: 420, idealWidth: 480, maxWidth: 560, minHeight: 380)
         }
 
         Window("About Hypnograph", id: "about") {

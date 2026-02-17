@@ -890,6 +890,49 @@ final class Dream: ObservableObject {
         }
     }
 
+    func duplicateCurrentLayer() {
+        let idx: Int
+        if activePlayer.currentSourceIndex == -1 {
+            if activePlayer.layers.count == 1 {
+                idx = 0
+            } else {
+                if activePlayer.layers.isEmpty {
+                    AppNotifications.show("No layers to duplicate", flash: true, duration: 1.25)
+                } else {
+                    AppNotifications.show("Select a layer (1-9)", flash: true, duration: 1.25)
+                }
+                return
+            }
+        } else {
+            idx = activePlayer.currentSourceIndex
+        }
+
+        guard idx >= 0, idx < activePlayer.layers.count else { return }
+
+        let duplicatedLayer = duplicatedLayerWithNewFileID(from: activePlayer.layers[idx])
+        let insertIndex = idx + 1
+        activePlayer.layers.insert(duplicatedLayer, at: insertIndex)
+        activePlayer.currentSourceIndex = insertIndex
+    }
+
+    private func duplicatedLayerWithNewFileID(from layer: HypnogramLayer) -> HypnogramLayer {
+        let sourceFile = layer.mediaClip.file
+        let duplicatedFile = MediaFile(
+            source: sourceFile.source,
+            mediaKind: sourceFile.mediaKind,
+            duration: sourceFile.duration
+        )
+        let duplicatedClip = MediaClip(
+            file: duplicatedFile,
+            startTime: layer.mediaClip.startTime,
+            duration: layer.mediaClip.duration
+        )
+
+        var duplicatedLayer = layer
+        duplicatedLayer.mediaClip = duplicatedClip
+        return duplicatedLayer
+    }
+
     /// Replace the clip for current source with a new random one
     private func replaceClipForCurrentSource() {
         let idx = activePlayer.currentSourceIndex

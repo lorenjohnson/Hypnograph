@@ -123,6 +123,12 @@ struct RightSidebarView: View {
                                 onToggleExpanded: {
                                     toggleExpanded(id: id)
                                 },
+                                onDuplicate: {
+                                    if let idx = layerIndex(for: id) {
+                                        dream.activePlayer.selectSource(idx)
+                                    }
+                                    dream.duplicateCurrentLayer()
+                                },
                                 onDelete: {
                                     if let idx = layerIndex(for: id) {
                                         dream.activePlayer.selectSource(idx)

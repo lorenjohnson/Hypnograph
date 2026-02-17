@@ -15,33 +15,34 @@ struct AppSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text("Hypnograph Settings")
                     .font(.title3.weight(.semibold))
+                Spacer()
                 Text("Version \(versionText)")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text("Configure feature availability, keyboard behavior, audio routing, and maintenance actions.")
-                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
             ScrollView {
                 VStack(spacing: 0) {
+                    let liveModeEnabled = state.settings.liveModeEnabled
                     settingsDeviceRow(
-                        title: "Preview Audio Output",
-                        description: "Select the audio output device used for preview playback.",
+                        title: liveModeEnabled ? "Audio Output Device (Preview)" : "Audio Output Device",
+                        description: liveModeEnabled
+                            ? "Select the audio output device used for preview playback."
+                            : "Select the audio output device.",
                         selection: Binding(
                             get: { dream.previewAudioDevice },
                             set: { dream.previewAudioDevice = $0 }
                         )
                     )
 
-                    if state.settings.liveModeEnabled {
+                    if liveModeEnabled {
                         Divider()
 
                         settingsDeviceRow(
-                            title: "Live Audio Output",
+                            title: "Audio Output Device (Live)",
                             description: "Select the audio output device used when sending audio to Live.",
                             selection: Binding(
                                 get: { dream.liveAudioDevice },
@@ -80,7 +81,8 @@ struct AppSettingsView: View {
                     settingsActionRow(
                         title: "Clear Clip History",
                         description: "Removes all previous clips from history and keeps your current clip selected.",
-                        buttonTitle: "Clear"
+                        buttonTitle: "Clear",
+                        isDestructive: true
                     ) {
                         dream.clearClipHistory()
                     }
@@ -135,6 +137,7 @@ struct AppSettingsView: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(SettingsWindowPresentationConfigurator())
     }
 
     @ViewBuilder
@@ -217,6 +220,7 @@ struct AppSettingsView: View {
         title: String,
         description: String,
         buttonTitle: String = "Run",
+        isDestructive: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         HStack(alignment: .top, spacing: 14) {
@@ -228,8 +232,14 @@ struct AppSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 12)
-            Button(buttonTitle, action: action)
-                .buttonStyle(.bordered)
+            if isDestructive {
+                Button(buttonTitle, action: action)
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
+            } else {
+                Button(buttonTitle, action: action)
+                    .buttonStyle(.bordered)
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -258,8 +268,9 @@ struct AppSettingsView: View {
                         .tag(device as AudioOutputDevice?)
                 }
             }
+            .labelsHidden()
             .pickerStyle(.menu)
-            .frame(width: 180, alignment: .trailing)
+            .frame(width: 260, alignment: .trailing)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -292,5 +303,98 @@ struct AppSettingsView: View {
             return "~" + expandedPath.dropFirst(homePath.count)
         }
         return expandedPath
+    }
+}
+
+private struct SettingsWindowPresentationConfigurator: NSViewRepresentable {
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        NSView(frame: .zero)
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.configure(using: nsView)
+    }
+
+    final class Coordinator {
+        private let minimumWidth: CGFloat = 420
+        private let maximumWidth: CGFloat = 560
+        private weak var window: NSWindow?
+        private var closeObserver: NSObjectProtocol?
+        private var originalLevel: NSWindow.Level = .normal
+        private var isModalRunning = false
+
+        deinit {
+            teardown()
+        }
+
+        func configure(using view: NSView) {
+            DispatchQueue.main.async { [weak self, weak view] in
+                guard let self, let window = view?.window else { return }
+
+                // Keep Settings chrome minimal and make this panel visually modal.
+                window.title = ""
+                window.titleVisibility = .hidden
+                window.titlebarAppearsTransparent = true
+                if self.window !== window {
+                    self.teardown()
+                    self.window = window
+                    self.originalLevel = window.level
+                    self.closeObserver = NotificationCenter.default.addObserver(
+                        forName: NSWindow.willCloseNotification,
+                        object: window,
+                        queue: .main
+                    ) { [weak self] _ in
+                        self?.teardown()
+                    }
+                }
+
+                window.level = .modalPanel
+                window.contentMinSize = NSSize(width: self.minimumWidth, height: 380)
+                window.contentMaxSize = NSSize(width: self.maximumWidth, height: .greatestFiniteMagnitude)
+                let currentWidth = window.contentLayoutRect.width
+                let clampedWidth = min(max(currentWidth, self.minimumWidth), self.maximumWidth)
+                if abs(currentWidth - clampedWidth) > 1 {
+                    window.setContentSize(
+                        NSSize(
+                            width: clampedWidth,
+                            height: max(380, window.contentLayoutRect.height)
+                        )
+                    )
+                }
+
+                guard !self.isModalRunning else { return }
+                self.isModalRunning = true
+                NSApp.activate(ignoringOtherApps: true)
+                window.makeKeyAndOrderFront(nil)
+
+                DispatchQueue.main.async { [weak self, weak window] in
+                    guard let self, let window, self.window === window else { return }
+                    NSApp.runModal(for: window)
+                    self.isModalRunning = false
+                }
+            }
+        }
+
+        private func teardown() {
+            if let window,
+               NSApp.modalWindow === window {
+                NSApp.stopModal()
+            }
+            isModalRunning = false
+
+            if let closeObserver {
+                NotificationCenter.default.removeObserver(closeObserver)
+                self.closeObserver = nil
+            }
+
+            if let window {
+                window.level = originalLevel
+            }
+            window = nil
+        }
     }
 }

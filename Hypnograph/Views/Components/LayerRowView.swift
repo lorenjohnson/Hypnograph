@@ -16,6 +16,7 @@ struct LayerRowView: View {
     let isExpanded: Bool
     let onSelect: () -> Void
     let onToggleExpanded: () -> Void
+    let onDuplicate: () -> Void
     let onDelete: () -> Void
 
     @State private var lastVisibleOpacity: Double = 1.0
@@ -134,6 +135,14 @@ struct LayerRowView: View {
                 Label("Reveal in Finder", systemImage: "folder")
             }
             .disabled(!canRevealInFinder)
+
+            Divider()
+
+            Button {
+                onDuplicate()
+            } label: {
+                Label("Duplicate Layer", systemImage: "plus.square.on.square")
+            }
 
             Divider()
 
