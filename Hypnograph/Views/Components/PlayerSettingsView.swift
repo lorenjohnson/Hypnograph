@@ -378,15 +378,15 @@ struct PlayerSettingsView: View {
                 .background(Color.white.opacity(0.3))
 
             HStack {
-                Text("Watch Mode:")
+                Text("Loop Current Clip:")
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white.opacity(0.8))
 
                 Spacer()
 
                 Toggle("", isOn: Binding(
-                    get: { dream.state.settings.watchMode },
-                    set: { _ in dream.state.toggleWatchMode() }
+                    get: { dream.state.settings.playbackEndBehavior == .loopCurrentClip },
+                    set: { dream.state.setLoopCurrentClipMode($0) }
                 ))
                 .toggleStyle(.darkMode)
             }

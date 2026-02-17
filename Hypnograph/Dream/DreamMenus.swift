@@ -28,16 +28,6 @@ extension Dream {
 
     @ViewBuilder
     func compositionMenu() -> some View {
-        Button("Cycle Effect Forward") { [self] in
-            cycleEffect(direction: 1)
-        }
-        .keyboardShortcut("e", modifiers: [.command])
-
-        Button("Cycle Effect Backward") { [self] in
-            cycleEffect(direction: -1)
-        }
-        .keyboardShortcut("e", modifiers: [.command, .shift])
-
         Button("Add Layer") { [self] in
             addSource()
         }
@@ -54,6 +44,59 @@ extension Dream {
         }
         .keyboardShortcut(.leftArrow, modifiers: [])
         .disabled(isTyping)
+
+        Divider()
+
+        Button("Clear Current Layer Effect") { [self] in
+            clearCurrentLayerEffect()
+        }
+        .keyboardShortcut("c", modifiers: [])
+        .disabled(isTyping)
+
+        Button("Clear All Effects") { [self] in
+            clearAllEffects()
+        }
+        .keyboardShortcut("c", modifiers: [.control, .shift])
+
+        Divider()
+
+        Button("Cycle Effect Forward") { [self] in
+            cycleEffect(direction: 1)
+        }
+        .keyboardShortcut("e", modifiers: [.command])
+
+        Button("Cycle Effect Backward") { [self] in
+            cycleEffect(direction: -1)
+        }
+        .keyboardShortcut("e", modifiers: [.command, .shift])
+
+        Button("Delete Clip") { [self] in
+            deleteCurrentClip()
+        }
+        .keyboardShortcut(.delete, modifiers: [.command])
+        .disabled(isTyping)
+
+        Divider()
+
+        // Aspect Ratio
+        Section("Aspect Ratio") {
+            ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
+                Toggle(ratio.menuLabel, isOn: Binding(
+                    get: { [self] in activePlayer.config.aspectRatio == ratio },
+                    set: { [self] in if $0 { setAspectRatio(ratio) } }
+                ))
+            }
+        }
+
+        // Output Resolution
+        Section("Output Resolution") {
+            ForEach(OutputResolution.allCases, id: \.self) { resolution in
+                Toggle(resolution.displayName, isOn: Binding(
+                    get: { [self] in activePlayer.config.playerResolution == resolution },
+                    set: { [self] in if $0 { setOutputResolution(resolution) } }
+                ))
+            }
+        }
 
         Divider()
 
@@ -82,66 +125,6 @@ extension Dream {
         }
         .keyboardShortcut("`", modifiers: [])
         .disabled(isTyping)
-
-        Divider()
-
-        Button("Clear Current Layer Effect") { [self] in
-            clearCurrentLayerEffect()
-        }
-        .keyboardShortcut("c", modifiers: [])
-        .disabled(isTyping)
-
-        Button("Clear All Effects") { [self] in
-            clearAllEffects()
-        }
-        .keyboardShortcut("c", modifiers: [.control, .shift])
-
-        Divider()
-
-        Button("New") { [self] in
-            new()
-        }
-        .keyboardShortcut("n", modifiers: [])
-        .disabled(isTyping)
-
-        Button("Delete Clip") { [self] in
-            deleteCurrentClip()
-        }
-        .keyboardShortcut(.delete, modifiers: [.command])
-        .disabled(isTyping)
-
-        Divider()
-
-        Button("Render Video") { [self] in
-            renderAndSaveVideo()
-        }
-
-        Button("Favorite Hypnogram") { [self] in
-            favoriteCurrentHypnogram()
-        }
-        .keyboardShortcut("f", modifiers: [.command])
-
-        Divider()
-
-        // Aspect Ratio
-        Section("Aspect Ratio") {
-            ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
-                Toggle(ratio.menuLabel, isOn: Binding(
-                    get: { [self] in activePlayer.config.aspectRatio == ratio },
-                    set: { [self] in if $0 { setAspectRatio(ratio) } }
-                ))
-            }
-        }
-
-        // Output Resolution
-        Section("Output Resolution") {
-            ForEach(OutputResolution.allCases, id: \.self) { resolution in
-                Toggle(resolution.displayName, isOn: Binding(
-                    get: { [self] in activePlayer.config.playerResolution == resolution },
-                    set: { [self] in if $0 { setOutputResolution(resolution) } }
-                ))
-            }
-        }
     }
 
     @ViewBuilder

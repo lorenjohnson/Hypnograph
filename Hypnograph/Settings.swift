@@ -35,6 +35,11 @@ enum OutputResolution: Int, Codable, CaseIterable {
     var maxDimension: Int { rawValue }
 }
 
+enum PlaybackEndBehavior: String, Codable, CaseIterable {
+    case autoAdvance
+    case loopCurrentClip
+}
+
 // MARK: - Settings
 
 struct Settings: Codable, MediaLibrarySettings {
@@ -43,12 +48,16 @@ struct Settings: Codable, MediaLibrarySettings {
     var sources: MediaSourcesParam
 
     // Optional in JSON (but non-optional in code)
-    var watchMode: Bool
+    var playbackEndBehavior: PlaybackEndBehavior
     var snapshotsFolder: String
 
     /// Default clip length range (seconds) for newly generated clips
     var clipLengthMinSeconds: Double
     var clipLengthMaxSeconds: Double
+
+    /// Default play-rate range for newly generated clips (1.0 = 100%)
+    var clipPlayRateMin: Double
+    var clipPlayRateMax: Double
 
     /// Max number of clips to retain in history (oldest dropped first)
     var historyLimit: Int
@@ -73,6 +82,9 @@ struct Settings: Codable, MediaLibrarySettings {
 
     /// Feature flag for live display workflows (preview panel, external monitor, live mode)
     var liveModeEnabled: Bool
+
+    /// When true, Space/Tab keys are intercepted for transport controls instead of accessibility focus navigation.
+    var keyboardAccessibilityOverridesEnabled: Bool
 
     // MARK: - Transition Settings
 
@@ -112,11 +124,13 @@ struct Settings: Codable, MediaLibrarySettings {
 
     // Single source of truth for defaults
     private enum Defaults {
-        static let watchMode: Bool = false
+        static let playbackEndBehavior: PlaybackEndBehavior = .autoAdvance
         static let outputFolder = "~/Movies/Hypnograph/renders"
         static let snapshotsFolder = "~/Movies/Hypnograph/snapshots"
         static let clipLengthMinSeconds: Double = 5.0
         static let clipLengthMaxSeconds: Double = 20.0
+        static let clipPlayRateMin: Double = 1.0
+        static let clipPlayRateMax: Double = 1.0
         static let historyLimit: Int = 200
         static let sources = MediaSourcesParam.dictionary([
             "default": ["~/Movies/Hypnograph/sources"],
@@ -131,6 +145,7 @@ struct Settings: Codable, MediaLibrarySettings {
         static let sourceMediaTypes: Set<MediaType> = [.images, .videos]
         static let effectsListCollapsed: Bool = false
         static let liveModeEnabled: Bool = false
+        static let keyboardAccessibilityOverridesEnabled: Bool = true
         // Transition defaults
         static let transitionStyle: TransitionRenderer.TransitionType = .crossfade
         static let transitionDuration: Double = 1.0
@@ -151,10 +166,12 @@ struct Settings: Codable, MediaLibrarySettings {
         Settings(
             outputFolder: Defaults.outputFolder,
             sources: Defaults.sources,
-            watchMode: Defaults.watchMode,
+            playbackEndBehavior: Defaults.playbackEndBehavior,
             snapshotsFolder: Defaults.snapshotsFolder,
             clipLengthMinSeconds: Defaults.clipLengthMinSeconds,
             clipLengthMaxSeconds: Defaults.clipLengthMaxSeconds,
+            clipPlayRateMin: Defaults.clipPlayRateMin,
+            clipPlayRateMax: Defaults.clipPlayRateMax,
             historyLimit: Defaults.historyLimit,
             activeLibraries: Defaults.activeLibraries,
             outputResolution: Defaults.outputResolution,
@@ -162,6 +179,7 @@ struct Settings: Codable, MediaLibrarySettings {
             sourceMediaTypes: Defaults.sourceMediaTypes,
             effectsListCollapsed: Defaults.effectsListCollapsed,
             liveModeEnabled: Defaults.liveModeEnabled,
+            keyboardAccessibilityOverridesEnabled: Defaults.keyboardAccessibilityOverridesEnabled,
             transitionStyle: Defaults.transitionStyle,
             transitionDuration: Defaults.transitionDuration,
             randomGlobalEffect: Defaults.randomGlobalEffect,
@@ -182,13 +200,15 @@ struct Settings: Codable, MediaLibrarySettings {
 
     private enum CodingKeys: String, CodingKey {
         case outputFolder, sources
-        case watchMode, snapshotsFolder
+        case playbackEndBehavior, snapshotsFolder
         case clipLengthMinSeconds, clipLengthMaxSeconds
+        case clipPlayRateMin, clipPlayRateMax
         case historyLimit
         case activeLibraries
         case outputResolution, sourceFraming, sourceMediaTypes
         case effectsListCollapsed
         case liveModeEnabled
+        case keyboardAccessibilityOverridesEnabled
         case transitionStyle, transitionDuration
         case randomGlobalEffect, randomGlobalEffectFrequency
         case randomLayerEffect, randomLayerEffectFrequency
@@ -197,17 +217,17 @@ struct Settings: Codable, MediaLibrarySettings {
         case playerConfig
         // Legacy (pre-unify): montagePlayerConfig, sequencePlayerConfig
         case montagePlayerConfig, sequencePlayerConfig
-        // Legacy: watchMode was previously persisted as `watch`
-        case watch
     }
 
     init(
         outputFolder: String,
         sources: MediaSourcesParam,
-        watchMode: Bool = Defaults.watchMode,
+        playbackEndBehavior: PlaybackEndBehavior = Defaults.playbackEndBehavior,
         snapshotsFolder: String = Defaults.snapshotsFolder,
         clipLengthMinSeconds: Double = Defaults.clipLengthMinSeconds,
         clipLengthMaxSeconds: Double = Defaults.clipLengthMaxSeconds,
+        clipPlayRateMin: Double = Defaults.clipPlayRateMin,
+        clipPlayRateMax: Double = Defaults.clipPlayRateMax,
         historyLimit: Int = Defaults.historyLimit,
         activeLibraries: [String] = Defaults.activeLibraries,
         outputResolution: OutputResolution = Defaults.outputResolution,
@@ -215,6 +235,7 @@ struct Settings: Codable, MediaLibrarySettings {
         sourceMediaTypes: Set<MediaType> = Defaults.sourceMediaTypes,
         effectsListCollapsed: Bool = Defaults.effectsListCollapsed,
         liveModeEnabled: Bool = Defaults.liveModeEnabled,
+        keyboardAccessibilityOverridesEnabled: Bool = Defaults.keyboardAccessibilityOverridesEnabled,
         transitionStyle: TransitionRenderer.TransitionType = Defaults.transitionStyle,
         transitionDuration: Double = Defaults.transitionDuration,
         randomGlobalEffect: Bool = Defaults.randomGlobalEffect,
@@ -229,10 +250,12 @@ struct Settings: Codable, MediaLibrarySettings {
     ) {
         self.outputFolder = outputFolder
         self.sources = sources
-        self.watchMode = watchMode
+        self.playbackEndBehavior = playbackEndBehavior
         self.snapshotsFolder = snapshotsFolder
         self.clipLengthMinSeconds = clipLengthMinSeconds
         self.clipLengthMaxSeconds = clipLengthMaxSeconds
+        self.clipPlayRateMin = clipPlayRateMin
+        self.clipPlayRateMax = clipPlayRateMax
         self.historyLimit = historyLimit
         self.activeLibraries = activeLibraries
         self.outputResolution = outputResolution
@@ -240,6 +263,7 @@ struct Settings: Codable, MediaLibrarySettings {
         self.sourceMediaTypes = sourceMediaTypes
         self.effectsListCollapsed = effectsListCollapsed
         self.liveModeEnabled = liveModeEnabled
+        self.keyboardAccessibilityOverridesEnabled = keyboardAccessibilityOverridesEnabled
         self.transitionStyle = transitionStyle
         self.transitionDuration = transitionDuration
         self.randomGlobalEffect = randomGlobalEffect
@@ -266,15 +290,18 @@ struct Settings: Codable, MediaLibrarySettings {
             ?? Defaults.outputFolder
         sources = try c.decodeIfPresent(MediaSourcesParam.self, forKey: .sources)
             ?? Defaults.sources
-        watchMode = try c.decodeIfPresent(Bool.self, forKey: .watchMode)
-            ?? c.decodeIfPresent(Bool.self, forKey: .watch)
-            ?? Defaults.watchMode
+        playbackEndBehavior = try c.decodeIfPresent(PlaybackEndBehavior.self, forKey: .playbackEndBehavior)
+            ?? Defaults.playbackEndBehavior
         snapshotsFolder = try c.decodeIfPresent(String.self, forKey: .snapshotsFolder)
             ?? Defaults.snapshotsFolder
         clipLengthMinSeconds = try c.decodeIfPresent(Double.self, forKey: .clipLengthMinSeconds)
             ?? Defaults.clipLengthMinSeconds
         clipLengthMaxSeconds = try c.decodeIfPresent(Double.self, forKey: .clipLengthMaxSeconds)
             ?? Defaults.clipLengthMaxSeconds
+        clipPlayRateMin = try c.decodeIfPresent(Double.self, forKey: .clipPlayRateMin)
+            ?? Defaults.clipPlayRateMin
+        clipPlayRateMax = try c.decodeIfPresent(Double.self, forKey: .clipPlayRateMax)
+            ?? Defaults.clipPlayRateMax
         historyLimit = try c.decodeIfPresent(Int.self, forKey: .historyLimit)
             ?? Defaults.historyLimit
         activeLibraries = try c.decodeIfPresent([String].self, forKey: .activeLibraries)
@@ -292,6 +319,8 @@ struct Settings: Codable, MediaLibrarySettings {
             ?? Defaults.effectsListCollapsed
         liveModeEnabled = try c.decodeIfPresent(Bool.self, forKey: .liveModeEnabled)
             ?? Defaults.liveModeEnabled
+        keyboardAccessibilityOverridesEnabled = try c.decodeIfPresent(Bool.self, forKey: .keyboardAccessibilityOverridesEnabled)
+            ?? Defaults.keyboardAccessibilityOverridesEnabled
         transitionStyle = try c.decodeIfPresent(TransitionRenderer.TransitionType.self, forKey: .transitionStyle)
             ?? Defaults.transitionStyle
         transitionDuration = try c.decodeIfPresent(Double.self, forKey: .transitionDuration)
@@ -328,10 +357,12 @@ struct Settings: Codable, MediaLibrarySettings {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(outputFolder, forKey: .outputFolder)
         try c.encode(sources, forKey: .sources)
-        try c.encode(watchMode, forKey: .watchMode)
+        try c.encode(playbackEndBehavior, forKey: .playbackEndBehavior)
         try c.encode(snapshotsFolder, forKey: .snapshotsFolder)
         try c.encode(clipLengthMinSeconds, forKey: .clipLengthMinSeconds)
         try c.encode(clipLengthMaxSeconds, forKey: .clipLengthMaxSeconds)
+        try c.encode(clipPlayRateMin, forKey: .clipPlayRateMin)
+        try c.encode(clipPlayRateMax, forKey: .clipPlayRateMax)
         try c.encode(historyLimit, forKey: .historyLimit)
         try c.encode(activeLibraries, forKey: .activeLibraries)
         try c.encode(outputResolution, forKey: .outputResolution)
@@ -339,6 +370,7 @@ struct Settings: Codable, MediaLibrarySettings {
         try c.encode(Array(sourceMediaTypes), forKey: .sourceMediaTypes)
         try c.encode(effectsListCollapsed, forKey: .effectsListCollapsed)
         try c.encode(liveModeEnabled, forKey: .liveModeEnabled)
+        try c.encode(keyboardAccessibilityOverridesEnabled, forKey: .keyboardAccessibilityOverridesEnabled)
         try c.encode(transitionStyle, forKey: .transitionStyle)
         try c.encode(transitionDuration, forKey: .transitionDuration)
         try c.encode(randomGlobalEffect, forKey: .randomGlobalEffect)

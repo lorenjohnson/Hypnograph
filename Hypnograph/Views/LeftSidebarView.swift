@@ -14,14 +14,14 @@ struct LeftSidebarView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                    sectionTitle("Watch")
+                    sectionTitle("Playback")
 
                     row {
-                        Text("Watch")
+                        Text("Loop Current Clip")
                         Spacer()
                         Toggle("", isOn: Binding(
-                            get: { state.settings.watchMode },
-                            set: { _ in state.toggleWatchMode() }
+                            get: { state.settings.playbackEndBehavior == .loopCurrentClip },
+                            set: { state.setLoopCurrentClipMode($0) }
                         ))
                         .labelsHidden()
                         .toggleStyle(.switch)
@@ -67,6 +67,8 @@ struct LeftSidebarView: View {
                         }
                     )
 
+                    sectionDivider()
+
                     sectionTitle("Display")
 
                     row {
@@ -103,6 +105,8 @@ struct LeftSidebarView: View {
                         .opacity(isLiveMode ? 0.55 : 1.0)
                     }
 
+                    sectionDivider()
+
                     sectionTitle("Audio")
 
                     audioDeviceRow(
@@ -131,10 +135,9 @@ struct LeftSidebarView: View {
                         )
                     }
 
-                    GlassDivider()
-                        .padding(.vertical, 4)
+                    sectionDivider()
 
-                    sectionTitle("Generation")
+                    sectionTitle("New Clips")
 
                     row {
                         Text("Max Layers")
@@ -188,21 +191,6 @@ struct LeftSidebarView: View {
                     .disabled(isLiveMode)
                     .opacity(isLiveMode ? 0.55 : 1.0)
 
-                    sectionTitle("Extra Features")
-
-                    row {
-                        Text("Enable Live Features")
-                        Spacer()
-                        Toggle("", isOn: Binding(
-                            get: { state.settings.liveModeEnabled },
-                            set: { newValue in
-                                state.settingsStore.update { $0.liveModeEnabled = newValue }
-                            }
-                        ))
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                    }
                 }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -216,6 +204,12 @@ struct LeftSidebarView: View {
         Text(text)
             .font(.headline)
             .foregroundStyle(.secondary)
+    }
+
+    @ViewBuilder
+    private func sectionDivider() -> some View {
+        GlassDivider()
+            .padding(.vertical, 4)
     }
 
     @ViewBuilder
