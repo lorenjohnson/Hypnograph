@@ -613,18 +613,18 @@ final class Dream: ObservableObject {
 
     // MARK: - Layer Trim
 
-    /// Update the currently selected layer's clip range (video only).
+    /// Update a specific layer's clip range (video only).
     /// `startSeconds...endSeconds` are absolute offsets within the source media file.
-    func setCurrentLayerClipRange(
+    func setLayerClipRange(
+        sourceIndex: Int,
         startSeconds: Double,
         endSeconds: Double,
         maxDurationSeconds: Double? = nil
     ) {
-        let index = activePlayer.currentSourceIndex
-        guard index >= 0, index < activePlayer.layers.count else { return }
+        guard sourceIndex >= 0, sourceIndex < activePlayer.layers.count else { return }
 
         var layers = activePlayer.layers
-        var layer = layers[index]
+        var layer = layers[sourceIndex]
         guard layer.mediaClip.file.mediaKind == .video else { return }
 
         let totalSeconds = max(0.1, layer.mediaClip.file.duration.seconds)
@@ -653,9 +653,24 @@ final class Dream: ObservableObject {
             duration: CMTime(seconds: newDuration, preferredTimescale: 600)
         )
 
-        layers[index] = layer
+        layers[sourceIndex] = layer
         activePlayer.layers = layers
         activePlayer.currentClipTimeOffset = nil
+    }
+
+    /// Update the currently selected layer's clip range (video only).
+    /// `startSeconds...endSeconds` are absolute offsets within the source media file.
+    func setCurrentLayerClipRange(
+        startSeconds: Double,
+        endSeconds: Double,
+        maxDurationSeconds: Double? = nil
+    ) {
+        setLayerClipRange(
+            sourceIndex: activePlayer.currentSourceIndex,
+            startSeconds: startSeconds,
+            endSeconds: endSeconds,
+            maxDurationSeconds: maxDurationSeconds
+        )
     }
 
     // MARK: - Effects
