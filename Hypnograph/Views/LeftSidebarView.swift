@@ -6,10 +6,7 @@ struct LeftSidebarView: View {
     @ObservedObject var dream: Dream
     @ObservedObject var player: DreamPlayerState
 
-    @StateObject private var audioManager = AudioDeviceManager.shared
-
     private var isLiveMode: Bool { dream.isLiveMode }
-    private var isLiveModeAvailable: Bool { state.settings.liveModeEnabled }
 
     var body: some View {
         ScrollView {
@@ -103,36 +100,6 @@ struct LeftSidebarView: View {
                         .frame(width: 170, alignment: .trailing)
                         .disabled(isLiveMode)
                         .opacity(isLiveMode ? 0.55 : 1.0)
-                    }
-
-                    sectionDivider()
-
-                    sectionTitle("Audio")
-
-                    audioDeviceRow(
-                        title: "Preview",
-                        selection: Binding(
-                            get: { dream.previewAudioDevice },
-                            set: { dream.previewAudioDevice = $0 }
-                        ),
-                        volume: Binding(
-                            get: { Double(dream.previewVolume) },
-                            set: { dream.previewVolume = Float($0) }
-                        )
-                    )
-
-                    if isLiveModeAvailable {
-                        audioDeviceRow(
-                            title: "Live",
-                            selection: Binding(
-                                get: { dream.liveAudioDevice },
-                                set: { dream.liveAudioDevice = $0 }
-                            ),
-                            volume: Binding(
-                                get: { Double(dream.liveVolume) },
-                                set: { dream.liveVolume = Float($0) }
-                            )
-                        )
                     }
 
                     sectionDivider()
@@ -235,38 +202,6 @@ struct LeftSidebarView: View {
                     .monospacedDigit()
             }
             slider()
-        }
-    }
-
-    @ViewBuilder
-    private func audioDeviceRow(
-        title: String,
-        selection: Binding<AudioOutputDevice?>,
-        volume: Binding<Double>
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            row {
-                Text(title)
-                Spacer()
-                Picker("", selection: selection) {
-                    ForEach(audioManager.outputDevices) { device in
-                        Text(device.name)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .tag(device as AudioOutputDevice?)
-                    }
-                }
-                .pickerStyle(.menu)
-                .frame(width: 190, alignment: .trailing)
-            }
-
-            HStack(spacing: 8) {
-                Image(systemName: volume.wrappedValue <= 0.001 ? "speaker.slash.fill" : "speaker.fill")
-                    .foregroundStyle(.secondary)
-                Slider(value: volume, in: 0...1)
-                Image(systemName: "speaker.wave.3.fill")
-                    .foregroundStyle(.secondary)
-            }
         }
     }
 

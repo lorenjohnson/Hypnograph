@@ -63,6 +63,10 @@ struct ContentView: View {
                     isPaused: dream.activePlayer.isPaused,
                     isLoopCurrentClipEnabled: dream.isLoopCurrentClipEnabled,
                     currentClipText: dream.currentClipIndicatorText,
+                    previewVolume: Binding(
+                        get: { Double(dream.previewVolume) },
+                        set: { dream.previewVolume = Float($0) }
+                    ),
                     onPrevious: { dream.previousClip() },
                     onPlayPause: { dream.togglePause() },
                     onNext: { dream.nextClip() },
