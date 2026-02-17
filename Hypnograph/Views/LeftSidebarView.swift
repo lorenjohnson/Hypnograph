@@ -12,18 +12,8 @@ struct LeftSidebarView: View {
     private var isLiveModeAvailable: Bool { state.settings.liveModeEnabled }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Text("Settings")
-                .font(.headline)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-
-            GlassDivider()
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
                     sectionTitle("Watch")
 
                     row {
@@ -113,22 +103,6 @@ struct LeftSidebarView: View {
                         .opacity(isLiveMode ? 0.55 : 1.0)
                     }
 
-                    sectionTitle("Live")
-
-                    row {
-                        Text("Enable Live Features")
-                        Spacer()
-                        Toggle("", isOn: Binding(
-                            get: { state.settings.liveModeEnabled },
-                            set: { newValue in
-                                state.settingsStore.update { $0.liveModeEnabled = newValue }
-                            }
-                        ))
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                    }
-
                     sectionTitle("Audio")
 
                     audioDeviceRow(
@@ -176,6 +150,7 @@ struct LeftSidebarView: View {
                     }
 
                     clipLengthRangeRow()
+                    playRateRangeRow()
 
                     randomizationRow(
                         title: "Randomize Global Effect",
@@ -212,10 +187,25 @@ struct LeftSidebarView: View {
                     )
                     .disabled(isLiveMode)
                     .opacity(isLiveMode ? 0.55 : 1.0)
+
+                    sectionTitle("Extra Features")
+
+                    row {
+                        Text("Enable Live Features")
+                        Spacer()
+                        Toggle("", isOn: Binding(
+                            get: { state.settings.liveModeEnabled },
+                            set: { newValue in
+                                state.settingsStore.update { $0.liveModeEnabled = newValue }
+                            }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                    }
                 }
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(width: SidebarMetrics.leftWidth)
         .glassPanel(cornerRadius: 16)
@@ -327,6 +317,48 @@ struct LeftSidebarView: View {
     }
 
     @ViewBuilder
+    private func playRateRangeRow() -> some View {
+        let bounds: ClosedRange<Double> = 0.2...2.0
+        let minDistance: Double = 0
+
+        let range = Binding<ClosedRange<Double>>(
+            get: {
+                let lower = state.settings.clipPlayRateMin.clamped(to: bounds)
+                let upper = state.settings.clipPlayRateMax.clamped(to: bounds)
+                return min(lower, upper)...max(lower, upper)
+            },
+            set: { newRange in
+                let lower = (newRange.lowerBound * 10).rounded() / 10
+                let upper = (newRange.upperBound * 10).rounded() / 10
+                let fixedLower = lower.clamped(to: bounds)
+                let fixedUpper = upper.clamped(to: bounds)
+                state.settingsStore.update {
+                    $0.clipPlayRateMin = min(fixedLower, fixedUpper)
+                    $0.clipPlayRateMax = max(fixedLower, fixedUpper)
+                }
+            }
+        )
+
+        let lowerPercent = Int((range.wrappedValue.lowerBound * 100).rounded())
+        let upperPercent = Int((range.wrappedValue.upperBound * 100).rounded())
+        let valueText = lowerPercent == upperPercent ? "\(lowerPercent)%" : "\(lowerPercent)–\(upperPercent)%"
+
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Play Rate")
+                Spacer()
+                Text(valueText)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+
+            RangeSliderView(range: range, bounds: bounds, step: 0.1, minimumDistance: minDistance)
+                .disabled(isLiveMode)
+                .opacity(isLiveMode ? 0.55 : 1.0)
+        }
+    }
+
+    @ViewBuilder
     private func randomizationRow(
         title: String,
         isOn: Binding<Bool>,
@@ -360,7 +392,6 @@ struct LeftSidebarView: View {
                         set: { frequency.wrappedValue = $0.clamped(to: 0...1) }
                     ), in: 0...1)
                 }
-                .padding(.leading, 18)
             }
         }
     }
