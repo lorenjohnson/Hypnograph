@@ -4,7 +4,10 @@ last_reviewed: 2026-02-17
 # Roadmap
 
 ## v0.1 Release
-- the "h" hypnograms window. what to do with it...
+- [ ] Setting global effect preset is a little weird unexpected... Single press clearing of current Effect Chain selection, selecting of another one... Right now feels like adding effects is like adding a chain but actually mutatin ga chain...
+- [ ] Sets/sequences
+- [ ] the "h" hypnograms window. what to do with it...
+
 - [ ] Rendering/saving some Hypnograms results in an error: "🔴 RenderEngine.export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn't be completed. (Hypnograph.RenderError error 6.)" — happens if any effects load operation were done first
 - [ ] Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause  causes a crash?
 - [ ] Refine packaged Effect Chains Library entries
