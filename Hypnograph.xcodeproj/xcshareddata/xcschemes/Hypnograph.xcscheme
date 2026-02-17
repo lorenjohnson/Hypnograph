@@ -124,6 +124,24 @@
    </AnalyzeAction>
    <ArchiveAction
       buildConfiguration = "Release"
-      revealArchiveInOrganizer = "YES">
+      revealArchiveInOrganizer = "NO">
+      <PostActions>
+         <ExecutionAction
+            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent
+               title = "Install Hypnograph to /Applications"
+               scriptText = "bash &quot;${SRCROOT}/scripts/archive-install-hypnograph.sh&quot;">
+               <EnvironmentBuildable>
+                  <BuildableReference
+                     BuildableIdentifier = "primary"
+                     BlueprintIdentifier = "042F99002EC8990B006D4CDE"
+                     BuildableName = "Hypnograph.app"
+                     BlueprintName = "Hypnograph"
+                     ReferencedContainer = "container:Hypnograph.xcodeproj">
+                  </BuildableReference>
+               </EnvironmentBuildable>
+            </ActionContent>
+         </ExecutionAction>
+      </PostActions>
    </ArchiveAction>
 </Scheme>

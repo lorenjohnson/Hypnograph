@@ -26,19 +26,71 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Callback for whether keyboard accessibility overrides are enabled (injected by app)
     var isKeyboardAccessibilityOverridesEnabled: (() -> Bool)?
 
-    /// Callback to open a session file (injected by app)
+    /// Callback to open incoming files (session documents or media sources).
+    var openIncomingFiles: (([URL]) -> Void)? {
+        didSet {
+            // Process any pending files that arrived before callback was wired.
+            guard !pendingIncomingFiles.isEmpty, openIncomingFiles != nil else { return }
+            let pending = pendingIncomingFiles
+            pendingIncomingFiles.removeAll()
+            openIncomingFiles?(pending)
+        }
+    }
+
+    /// Files received before `openIncomingFiles` callback was wired up.
+    private var pendingIncomingFiles: [URL] = []
+
+    /// Backward-compatible alias for session-only open handling.
     var openSessionFile: ((URL) -> Void)? {
         didSet {
-            // Process any pending URL that arrived before callback was wired
-            if let url = pendingSessionURL, openSessionFile != nil {
-                pendingSessionURL = nil
-                openSessionFile?(url)
+            guard let openSessionFile else { return }
+            openIncomingFiles = { urls in
+                guard let sessionURL = urls.first(where: { SessionStore.isSupportedExtension($0.pathExtension) }) else {
+                    return
+                }
+                openSessionFile(sessionURL)
             }
         }
     }
 
-    /// URL received before openSessionFile callback was wired up
-    private var pendingSessionURL: URL?
+    private func requestMainWindowFocus() {
+        NSApp.activate(ignoringOtherApps: true)
+
+        if focusMainWindowNow() {
+            return
+        }
+
+        // Some launches deliver open events before SwiftUI creates the main window.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self else { return }
+            NSApp.activate(ignoringOtherApps: true)
+            _ = self.focusMainWindowNow()
+        }
+    }
+
+    private func resolveMainWindow() -> NSWindow? {
+        if let mainWindow {
+            return mainWindow
+        }
+
+        return NSApp.windows.first(where: { $0.title == "Hypnograph" })
+            ?? NSApp.windows.first(where: { $0.title != "About Hypnograph" && $0.canBecomeMain })
+            ?? NSApp.windows.first(where: { $0.title != "About Hypnograph" })
+    }
+
+    @discardableResult
+    private func focusMainWindowNow() -> Bool {
+        guard let window = resolveMainWindow() else { return false }
+        mainWindow = window
+
+        if window.isMiniaturized {
+            window.deminiaturize(nil)
+        }
+
+        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+        return true
+    }
 
     /// Callback to check if any session has unsaved changes (injected by app)
     var hasUnsavedEffectChanges: (() -> Bool)?
@@ -342,19 +394,27 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
 
     /// Handle files opened via double-click or drag-drop onto the app
     func application(_ application: NSApplication, open urls: [URL]) {
-        // Filter for supported session files
-        let sessionURLs = urls.filter { SessionStore.isSupportedExtension($0.pathExtension) }
+        let fileURLs = urls.filter(\.isFileURL)
+        guard !fileURLs.isEmpty else { return }
 
-        // Open the first session file
-        if let url = sessionURLs.first {
-            print("Hypnograph: Opening file \(url.lastPathComponent)")
-            if let openSessionFile = openSessionFile {
-                openSessionFile(url)
-            } else {
-                // Callback not wired yet - queue for later
-                pendingSessionURL = url
-            }
+        requestMainWindowFocus()
+
+        print("Hypnograph: received \(fileURLs.count) incoming file(s)")
+        if let openIncomingFiles {
+            openIncomingFiles(fileURLs)
+        } else {
+            pendingIncomingFiles.append(contentsOf: fileURLs)
         }
+
+        // Some launches deliver open events before SwiftUI finishes creating the main window.
+        DispatchQueue.main.async { [weak self] in
+            self?.requestMainWindowFocus()
+        }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        requestMainWindowFocus()
+        return true
     }
 }
 
@@ -374,13 +434,16 @@ struct HypnographApp: App {
         // Disable macOS window tabbing (must be set before any windows are created)
         NSWindow.allowsAutomaticWindowTabbing = false
 
-        let coreConfig = HypnoCoreConfig(appSupportDirectory: Environment.appSupportDirectory)
-        HypnoCoreConfig.shared = coreConfig
-        ApplePhotosHooks.install()
         Environment.ensureDefaultSettingsFileExists()
 
         let settingsStore = SettingsStore()
         self.settingsStore = settingsStore
+        let coreConfig = HypnoCoreConfig(
+            appSupportDirectory: Environment.appSupportDirectory,
+            enablePhotosLocalAvailabilityPrioritization: settingsStore.value.photosLocalAvailabilityPrioritizationEnabled
+        )
+        HypnoCoreConfig.shared = coreConfig
+        ApplePhotosHooks.install()
 
         let state = HypnographState(settingsStore: settingsStore, coreConfig: coreConfig)
         let renderQueue = RenderEngine.ExportQueue()
@@ -404,7 +467,10 @@ struct HypnographApp: App {
             .preferredColorScheme(.dark)
             .onAppear {
                 DispatchQueue.main.async {
-                    guard let window = NSApp.windows.first else { return }
+                    guard let window = NSApp.windows.first(where: { $0.title == "Hypnograph" })
+                        ?? NSApp.mainWindow
+                        ?? NSApp.windows.first(where: { $0.title != "About Hypnograph" })
+                        ?? NSApp.windows.first else { return }
                     appDelegate.mainWindow = window
                 }
 
@@ -478,14 +544,22 @@ struct HypnographApp: App {
                     dream.player.selectSource(index)
                 }
 
-                // Wire up session file opening
-                appDelegate.openSessionFile = { [weak dream] url in
-                    guard let session = SessionStore.load(from: url) else {
-                        AppNotifications.show("Failed to load session", flash: true)
-                        return
+                // Wire up external file opening (session documents + media sources)
+                appDelegate.openIncomingFiles = { [weak dream] urls in
+
+                    let sessionURLs = urls.filter { SessionStore.isSupportedExtension($0.pathExtension) }
+                    if let url = sessionURLs.first {
+                        guard let session = SessionStore.load(from: url) else {
+                            AppNotifications.show("Failed to load session", flash: true)
+                            return
+                        }
+                        dream?.appendSessionToHistory(session)
+                        AppNotifications.show("Loaded \(url.lastPathComponent)", flash: true)
                     }
-                    dream?.appendSessionToHistory(session)
-                    AppNotifications.show("Loaded \(url.lastPathComponent)", flash: true)
+
+                    let mediaURLs = urls.filter { !SessionStore.isSupportedExtension($0.pathExtension) }
+                    guard !mediaURLs.isEmpty else { return }
+                    _ = dream?.addSourcesAsNewClip(fromFileURLs: mediaURLs)
                 }
 
                 // Refresh available libraries (includes asset counts for menu)
@@ -505,8 +579,17 @@ struct HypnographApp: App {
                     (appDelegate.mainWindow ?? NSApp.mainWindow ?? NSApp.windows.first)?.makeFirstResponder(nil)
                 }
             }
+            .onChange(of: state.settings.photosLocalAvailabilityPrioritizationEnabled) { _, isEnabled in
+                let appSupportDirectory = HypnoCoreConfig.shared.appSupportDirectory
+                HypnoCoreConfig.shared = HypnoCoreConfig(
+                    appSupportDirectory: appSupportDirectory,
+                    enablePhotosLocalAvailabilityPrioritization: isEnabled
+                )
+                Task { @MainActor in
+                    await state.rebuildLibrary()
+                }
+            }
         }
-        .handlesExternalEvents(matching: ["main"])
         .commands {
             AppCommands(
                 state: state,
@@ -518,6 +601,7 @@ struct HypnographApp: App {
             AppSettingsView(state: state, dream: dream)
                 .frame(minWidth: 420, idealWidth: 480, maxWidth: 560, minHeight: 380)
         }
+        .windowStyle(.hiddenTitleBar)
 
         Window("About Hypnograph", id: "about") {
             AboutHypnographView()

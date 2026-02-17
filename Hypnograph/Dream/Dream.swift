@@ -831,6 +831,65 @@ final class Dream: ObservableObject {
         addSourceToPlayer(activePlayer)
     }
 
+    /// Create a new clip and add each incoming file as a layer.
+    /// Files that cannot be decoded as image/video are skipped.
+    @discardableResult
+    func addSourcesAsNewClip(fromFileURLs urls: [URL]) -> Bool {
+        let fileURLs = urls.filter(\.isFileURL)
+        guard !fileURLs.isEmpty else { return false }
+
+        let preferredLength = activePlayer.targetDuration.seconds
+        var layers: [HypnogramLayer] = []
+        var failedCount = 0
+
+        for url in fileURLs {
+            guard let mediaClip = makeClip(forFileURL: url, preferredLength: preferredLength) else {
+                failedCount += 1
+                continue
+            }
+
+            let blendMode = layers.isEmpty ? BlendMode.sourceOver : BlendMode.defaultMontage
+            layers.append(HypnogramLayer(mediaClip: mediaClip, blendMode: blendMode))
+        }
+
+        guard !layers.isEmpty else {
+            AppNotifications.show("Couldn't import selected files", flash: true, duration: 1.5)
+            return false
+        }
+
+        let globalEffect = activePlayer.session.hypnograms.isEmpty
+            ? EffectChain()
+            : activePlayer.currentHypnogram.effectChain.clone()
+
+        let importedClip = Hypnogram(
+            layers: layers,
+            targetDuration: activePlayer.targetDuration,
+            playRate: activePlayer.playRate,
+            effectChain: globalEffect,
+            createdAt: Date()
+        )
+
+        activePlayer.session.hypnograms.append(importedClip)
+        activePlayer.currentHypnogramIndex = activePlayer.session.hypnograms.count - 1
+        activePlayer.currentSourceIndex = layers.count - 1
+        activePlayer.notifySessionMutated()
+        enforceHistoryLimit()
+        applyClipSelectionChanged(manual: true)
+
+        let importedCount = layers.count
+        if failedCount == 0 {
+            AppNotifications.show("Imported \(importedCount) layer\(importedCount == 1 ? "" : "s")", flash: true, duration: 1.5)
+        } else {
+            AppNotifications.show(
+                "Imported \(importedCount), skipped \(failedCount)",
+                flash: true,
+                duration: 1.75
+            )
+        }
+
+        return true
+    }
+
     /// Add a source layer from an explicit local file.
     @discardableResult
     func addSource(fromFileURL url: URL) -> Bool {

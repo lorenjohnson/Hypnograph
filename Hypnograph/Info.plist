@@ -2,6 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSQuitAlwaysKeepsWindows</key>
+	<false/>
+
 	<!-- Exported Type Identifiers (UTI) -->
 	<key>UTExportedTypeDeclarations</key>
 	<array>
@@ -44,6 +47,19 @@
 			</array>
 			<key>LSHandlerRank</key>
 			<string>Owner</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Media Source</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.image</string>
+				<string>public.movie</string>
+			</array>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
 		</dict>
 	</array>
 </dict>
