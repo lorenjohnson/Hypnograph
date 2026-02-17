@@ -611,6 +611,53 @@ final class Dream: ObservableObject {
         activePlayer.selectSource(index)
     }
 
+    // MARK: - Layer Trim
+
+    /// Update the currently selected layer's clip range (video only).
+    /// `startSeconds...endSeconds` are absolute offsets within the source media file.
+    func setCurrentLayerClipRange(
+        startSeconds: Double,
+        endSeconds: Double,
+        maxDurationSeconds: Double? = nil
+    ) {
+        let index = activePlayer.currentSourceIndex
+        guard index >= 0, index < activePlayer.layers.count else { return }
+
+        var layers = activePlayer.layers
+        var layer = layers[index]
+        guard layer.mediaClip.file.mediaKind == .video else { return }
+
+        let totalSeconds = max(0.1, layer.mediaClip.file.duration.seconds)
+        let minimumDuration = min(0.1, totalSeconds)
+        let maxWindow = max(
+            minimumDuration,
+            min(totalSeconds, maxDurationSeconds ?? totalSeconds)
+        )
+
+        var clampedStart = max(0, min(startSeconds, totalSeconds - minimumDuration))
+        var clampedEnd = max(clampedStart + minimumDuration, min(endSeconds, totalSeconds))
+
+        if (clampedEnd - clampedStart) > maxWindow {
+            clampedEnd = clampedStart + maxWindow
+            if clampedEnd > totalSeconds {
+                clampedEnd = totalSeconds
+                clampedStart = max(0, clampedEnd - maxWindow)
+            }
+        }
+
+        let newDuration = min(maxWindow, max(minimumDuration, clampedEnd - clampedStart))
+
+        layer.mediaClip = MediaClip(
+            file: layer.mediaClip.file,
+            startTime: CMTime(seconds: clampedStart, preferredTimescale: 600),
+            duration: CMTime(seconds: newDuration, preferredTimescale: 600)
+        )
+
+        layers[index] = layer
+        activePlayer.layers = layers
+        activePlayer.currentClipTimeOffset = nil
+    }
+
     // MARK: - Effects
 
     /// Cycle effect for current layer (global when -1, source when 0+)

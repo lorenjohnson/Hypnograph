@@ -10,6 +10,28 @@ struct ContentView: View {
     @ObservedObject var dream: Dream
     @State private var isPlayerControlsVisible: Bool = true
 
+    private var selectedLayerClipTrimContext: PlayerControlsBar.ClipTrimContext? {
+        let index = dream.activePlayer.currentSourceIndex
+        guard index >= 0, index < dream.activePlayer.layers.count else { return nil }
+
+        let layer = dream.activePlayer.layers[index]
+        guard layer.mediaClip.file.mediaKind == .video else { return nil }
+
+        let total = max(0.1, layer.mediaClip.file.duration.seconds)
+        let start = max(0, min(layer.mediaClip.startTime.seconds, total))
+        let maxSelection = max(0.1, min(dream.activePlayer.targetDuration.seconds, total))
+        let selectedDuration = min(layer.mediaClip.duration.seconds, maxSelection, total - start)
+        let end = max(start + 0.1, min(start + selectedDuration, total))
+
+        return PlayerControlsBar.ClipTrimContext(
+            layerLabel: "Layer \(index + 1)",
+            clipLabel: layer.mediaClip.file.displayName,
+            totalDurationSeconds: total,
+            maxSelectionDurationSeconds: maxSelection,
+            selectedRangeSeconds: start...end
+        )
+    }
+
     private var topRightIndicator: (text: String, color: Color)? {
         // LIVE indicator (same placement/size as the layer indicator)
         if dream.isLiveMode {
@@ -63,6 +85,7 @@ struct ContentView: View {
                     isPaused: dream.activePlayer.isPaused,
                     isLoopCurrentClipEnabled: dream.isLoopCurrentClipEnabled,
                     currentClipText: dream.currentClipIndicatorText,
+                    clipTrimContext: selectedLayerClipTrimContext,
                     previewVolume: Binding(
                         get: { Double(dream.previewVolume) },
                         set: { dream.previewVolume = Float($0) }
@@ -72,7 +95,14 @@ struct ContentView: View {
                     onNext: { dream.nextClip() },
                     onToggleLoopCurrentClipMode: { dream.toggleLoopCurrentClipMode() },
                     onSaveCurrent: { dream.save() },
-                    onRenderCurrent: { dream.renderAndSaveVideo() }
+                    onRenderCurrent: { dream.renderAndSaveVideo() },
+                    onCommitClipTrimRange: { range in
+                        dream.setCurrentLayerClipRange(
+                            startSeconds: range.lowerBound,
+                            endSeconds: range.upperBound,
+                            maxDurationSeconds: dream.activePlayer.targetDuration.seconds
+                        )
+                    }
                 )
                 .frame(maxWidth: 920)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
