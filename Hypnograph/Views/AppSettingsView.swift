@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import HypnoCore
 
 struct AppSettingsView: View {
@@ -27,30 +28,6 @@ struct AppSettingsView: View {
 
             ScrollView {
                 VStack(spacing: 0) {
-                    settingsToggleRow(
-                        title: "Live/Performance mode options",
-                        description: "Enables controls for live preview, live mode, and external monitor output.",
-                        isOn: Binding(
-                            get: { state.settings.liveModeEnabled },
-                            set: { newValue in
-                                state.settingsStore.update { $0.liveModeEnabled = newValue }
-                            }
-                        )
-                    )
-                    Divider()
-
-                    settingsToggleRow(
-                        title: "Override Keyboard Accessibility Keys (Space, Tab)",
-                        description: "When enabled, Space controls Play/Pause and Tab toggles Clean Screen.",
-                        isOn: Binding(
-                            get: { state.settings.keyboardAccessibilityOverridesEnabled },
-                            set: { newValue in
-                                state.settingsStore.update { $0.keyboardAccessibilityOverridesEnabled = newValue }
-                            }
-                        )
-                    )
-                    Divider()
-
                     settingsDeviceRow(
                         title: "Preview Audio Output",
                         description: "Select the audio output device used for preview playback.",
@@ -75,15 +52,6 @@ struct AppSettingsView: View {
                     Divider()
 
                     settingsActionRow(
-                        title: "Clear Clip History",
-                        description: "Removes all previous clips from history and keeps your current clip selected.",
-                        buttonTitle: "Clear"
-                    ) {
-                        dream.clearClipHistory()
-                    }
-                    Divider()
-
-                    settingsActionRow(
                         title: "Show Settings Folder",
                         description: "Opens your Hypnograph settings directory in Finder."
                     ) {
@@ -98,6 +66,62 @@ struct AppSettingsView: View {
                         Environment.installCLI()
                         Environment.installAutomatorQuickAction()
                     }
+                    Divider()
+
+                    settingsFolderRow(
+                        title: "Render Output Folder",
+                        description: "Where rendered videos are saved.",
+                        path: state.settings.outputFolder
+                    ) {
+                        chooseOutputFolder()
+                    }
+                    Divider()
+
+                    settingsActionRow(
+                        title: "Clear Clip History",
+                        description: "Removes all previous clips from history and keeps your current clip selected.",
+                        buttonTitle: "Clear"
+                    ) {
+                        dream.clearClipHistory()
+                    }
+                    Divider()
+
+                    settingsStepperRow(
+                        title: "History Limit",
+                        description: "Max clips in history.",
+                        value: Binding(
+                            get: { max(1, state.settings.historyLimit) },
+                            set: { newValue in
+                                state.settingsStore.update { $0.historyLimit = max(1, newValue) }
+                            }
+                        ),
+                        range: 1...5000
+                    )
+                    Divider()
+
+                    settingsToggleRow(
+                        title: "Override Keyboard Accessibility Keys (Space, Tab)",
+                        description: "When enabled, Space controls Play/Pause and Tab toggles Clean Screen.",
+                        isOn: Binding(
+                            get: { state.settings.keyboardAccessibilityOverridesEnabled },
+                            set: { newValue in
+                                state.settingsStore.update { $0.keyboardAccessibilityOverridesEnabled = newValue }
+                            }
+                        )
+                    )
+                    Divider()
+
+                    settingsToggleRow(
+                        title: "Live/Performance mode options",
+                        description: "Enables controls for live preview, live mode, and external monitor output.",
+                        isOn: Binding(
+                            get: { state.settings.liveModeEnabled },
+                            set: { newValue in
+                                state.settingsStore.update { $0.liveModeEnabled = newValue }
+                            }
+                        )
+                    )
+
                 }
                 .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -126,6 +150,63 @@ struct AppSettingsView: View {
             Spacer(minLength: 12)
             Toggle("", isOn: isOn)
                 .labelsHidden()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+    }
+
+    @ViewBuilder
+    private func settingsFolderRow(
+        title: String,
+        description: String,
+        path: String,
+        onChoose: @escaping () -> Void
+    ) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body)
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(displayPath(path))
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+                    .padding(.top, 2)
+            }
+            Spacer(minLength: 12)
+            Button("Choose…", action: onChoose)
+                .buttonStyle(.bordered)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+    }
+
+    @ViewBuilder
+    private func settingsStepperRow(
+        title: String,
+        description: String,
+        value: Binding<Int>,
+        range: ClosedRange<Int>
+    ) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body)
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 12)
+            HStack(spacing: 8) {
+                Text("\(value.wrappedValue)")
+                    .font(.body.monospacedDigit())
+                    .frame(minWidth: 48, alignment: .trailing)
+                Stepper("", value: value, in: range)
+                    .labelsHidden()
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -182,5 +263,34 @@ struct AppSettingsView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
+    }
+
+    private func chooseOutputFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
+        panel.prompt = "Choose"
+        panel.title = "Choose Render Output Folder"
+        panel.directoryURL = state.settings.outputURL
+
+        guard panel.runModal() == .OK, let folderURL = panel.url else { return }
+        state.settingsStore.update { settings in
+            settings.outputFolder = storagePath(from: folderURL)
+        }
+    }
+
+    private func displayPath(_ path: String) -> String {
+        ((path as NSString).expandingTildeInPath as NSString).abbreviatingWithTildeInPath
+    }
+
+    private func storagePath(from url: URL) -> String {
+        let expandedPath = url.path
+        let homePath = NSHomeDirectory()
+        if expandedPath.hasPrefix(homePath) {
+            return "~" + expandedPath.dropFirst(homePath.count)
+        }
+        return expandedPath
     }
 }

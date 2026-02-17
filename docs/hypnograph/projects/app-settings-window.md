@@ -9,28 +9,11 @@ Determine what app-wide settings exist, which are already exposed in the UI, and
 
 ## Current Settings (from Settings.swift)
 
-### Already Exposed in PlayerSettingsView
-- `watchMode` — Watch Mode toggle
-- `clipLengthMinSeconds` / `clipLengthMaxSeconds` — Clip length range
-- `sourceFraming` — Fill vs Fit
-- `transitionStyle` — Crossfade, etc.
-- `transitionDuration` — Seconds
-- `previewAudioDeviceUID` / `previewVolume` — Preview audio
-- `liveAudioDeviceUID` / `liveVolume` — Live audio
-- `playerConfig.aspectRatio` — Aspect ratio picker
-- `playerConfig.maxLayers` — Max layers stepper
-
 ### Exposed Elsewhere
 - `sourceMediaTypes` — Images/Videos toggles in Sources menu
 - `activeLibraries` — Source library selection in Sources menu
 - `effectsListCollapsed` — Effects Editor UI state (auto-saved)
 - `outputResolution` — Output Resolution submenu in Composition menu
-
-### Not Exposed in UI (edit settings.json manually)
-- `outputFolder` — Where rendered videos are saved (`~/Movies/Hypnograph/renders`)
-- `snapshotsFolder` — Where snapshots are saved (`~/Movies/Hypnograph/snapshots`)
-- `sources` — Source folder configuration
-- `historyLimit` — Max clips in history (default: 200)
 
 ## Questions to Answer
 
