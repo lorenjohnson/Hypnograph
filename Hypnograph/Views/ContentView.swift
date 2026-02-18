@@ -131,6 +131,7 @@ struct ContentView: View {
                     onPlayPause: { dream.togglePause() },
                     onNext: { dream.nextClip() },
                     onToggleLoopCurrentClipMode: { dream.toggleLoopCurrentClipMode() },
+                    onSnapshotCurrent: { dream.saveSnapshotImage() },
                     onSaveCurrent: { dream.save() },
                     onRenderCurrent: { dream.renderAndSaveVideo() },
                     onCommitClipTrimRange: { layerIndex, range in

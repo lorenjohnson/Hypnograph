@@ -15,6 +15,76 @@ Prepare Hypnograph for first external beta via TestFlight: Developer Program enr
 - Bundle ID / Developer Entity — Considering "Sketch" as entity name but haven't started business yet
 - Privacy policy — TestFlight may require URL; verify no analytics/telemetry in app
 - Entitlements — App Sandbox, Hardened Runtime, file access, camera/mic?
+- Optimized Photos storage — can we detect local-vs-iCloud assets before playback?
+
+### Optimized Photos storage note (resolved)
+
+PhotoKit does not expose a simple `PHAsset` property like `isLocallyAvailable`.
+However, we can infer availability safely by probing with network access disabled and
+checking result metadata/errors (`PHImageResultIsInCloudKey`, network-access-required
+errors). This is now partially implemented in-core:
+
+- warm a local-availability cache for recent video identifiers
+- prefer known-local videos during random clip selection
+- still fall back to cloud-backed assets when needed
+
+This reduces initial black/blank clips on libraries using Optimize Mac Storage, while
+keeping current behavior as fallback.
+
+Current rollout safety:
+- Feature is gated behind `HYPNO_ENABLE_PHOTOS_LOCAL_PREF=1`
+- Default is OFF, so baseline beta behavior is unchanged unless explicitly enabled
+- Beta override is exposed in app Settings: "Prefer Locally Available Photos Videos (Beta)"
+
+## Test Coverage Snapshot (2026-02-17)
+
+Automated (`HypnoCoreTests`):
+- No local videos: all known-cloud assets classified as cloud tier.
+- Few local / many remote: local vs unknown vs cloud tier counts are modeled and asserted.
+- Feature disabled: prioritization behaves neutrally (no tiering impact).
+- No Photos access: post-auth coordinator does not force-enable Photos sources.
+- Authorized + empty library + Photos available: coordinator forces `photos:all` as expected.
+- PhotoKit metadata inference: in-cloud and network-required signals map to cloud-tier.
+
+Not covered by automation yet:
+- End-to-end iCloud download timing/latency on real optimized-storage libraries.
+- Real disk-growth behavior when many cloud assets are eventually played/downloaded.
+- Concurrent playback under heavy remote-only libraries (stress/perf behavior).
+
+Manual beta checks still required:
+- Test machine with Optimize Mac Storage + mostly remote videos.
+- Watch initial playback delays with prioritization OFF vs ON.
+- Observe Photos/iCloud storage growth over a 10-20 minute playback session.
+- Confirm behavior when Photos permission is denied, then granted later.
+
+## Readiness Snapshot (2026-02-17)
+
+### Good enough for friend beta now
+
+- Core app is usable with Photos optimized storage, with some startup/download delay.
+- Recent change (when feature flag enabled): source selection prefers videos known to be local first.
+- Acceptable to proceed with friend beta if we include a short in-app/README disclaimer:
+  - first-use playback may pause while Photos downloads iCloud media
+  - this may temporarily use additional disk space
+
+### Likely blockers before broader external TestFlight
+
+- App Sandbox is not yet enabled for Hypnograph target.
+- Folder-source model currently stores raw paths; sandbox-safe persistence likely needs
+  security-scoped bookmarks (or beta scope reduced to Photos-only first).
+- Legacy fallback path scans `~/Pictures/Photos Library.photoslibrary/originals`, which is
+  brittle and should not be primary behavior for App Store distribution.
+- Need a stable privacy policy URL for App Store Connect metadata.
+
+## Representational Page (MVP)
+
+Goal: one trustworthy page to orient friends/testers and satisfy metadata needs.
+
+- [ ] Public page with: what Hypnograph is, current beta status, and core workflow
+- [ ] Privacy policy page (linked from representational page)
+- [ ] TestFlight interest CTA (email / simple form)
+- [ ] “Known beta limitations” section including Optimize Mac Storage behavior
+- [ ] Support/contact section for feedback and bug reports
 
 ## Plan
 

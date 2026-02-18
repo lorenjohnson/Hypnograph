@@ -5,17 +5,17 @@ last_reviewed: 2026-02-17
 
 ## v0.1 Release
 - [ ] Setting global effect preset is a little weird unexpected... Single press clearing of current Effect Chain selection, selecting of another one... Right now feels like adding effects is like adding a chain but actually mutatin ga chain...
-- [ ] Sets/sequences
 - [ ] the "h" hypnograms window. what to do with it...
-
 - [ ] Rendering/saving some Hypnograms results in an error: "🔴 RenderEngine.export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn't be completed. (Hypnograph.RenderError error 6.)" — happens if any effects load operation were done first
-- [ ] Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause  causes a crash?
 - [ ] Refine packaged Effect Chains Library entries
+- [ ] A workflow for adding static file sources. 
+- [ ] Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause  causes a crash?
+- [ ] Now layer timeline editor should maybe be turn on/off'able with a button in the Playbar or even its own window?
+- [ ] Sets/sequences
 - [ ] Review Effect Chains library window to make i maybe more intuitive (recent is a little confusing and probably can/should go below the library/s)
-- [ ] [save-fullscreen-state](projects/save-fullscreen-state.md)
 - [ ] [in-app-feedback](projects/in-app-feedback.md)
-- [ ] [volume-leveling](projects/volume-leveling)
 - [ ] [beta-release-testflight](projects/beta-release-testflight.md)
+- [ ] [volume-leveling](projects/volume-leveling)
 
 ## Backlog
 - clip start / stop potins and duration not just duration (like the range selector for randomize clip speed in behaviour including being able to set an individual frame 
@@ -32,6 +32,7 @@ add-history-to-hypnograms-favorite-recent-window)
   -  Same with the other params, more jitter by default but with anticipation of adding a param
   - When it is done sticking to a mask or whatever you'd call it, it releases seemingly suddenly. Make it more of a fade or erosion.
 - [ ]  In-App Roadmap Display: Show the roadmap in-app, let users vote on feature priorities. Related to but separate from in-app feedback. Would need to decide on data source (local markdown, remote JSON) and how votes aggregate. #idea
+- [ ] [save-fullscreen-state](projects/save-fullscreen-state.md)
 
 # Research & Development
 

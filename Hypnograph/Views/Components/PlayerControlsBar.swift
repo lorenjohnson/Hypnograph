@@ -11,6 +11,7 @@ struct PlayerControlsBar: View {
     let onPlayPause: () -> Void
     let onNext: () -> Void
     let onToggleLoopCurrentClipMode: () -> Void
+    let onSnapshotCurrent: () -> Void
     let onSaveCurrent: () -> Void
     let onRenderCurrent: () -> Void
     let onCommitClipTrimRange: (Int, ClosedRange<Double>) -> Void
@@ -58,7 +59,12 @@ struct PlayerControlsBar: View {
     private var controlsRow: some View {
         HStack(spacing: 14) {
             deckButton(id: "prev", systemName: "backward.fill", tooltip: "Previous Clip", action: onPrevious)
-            deckButton(id: "play_pause", systemName: isPaused ? "play.fill" : "pause.fill", tooltip: isPaused ? "Play" : "Pause", action: onPlayPause)
+            deckButton(
+                id: "play_pause",
+                systemName: isPaused ? "play.fill" : "pause.fill",
+                tooltip: isPaused ? "Play (SPACE)" : "Pause (SPACE)",
+                action: onPlayPause
+            )
             deckButton(id: "next", systemName: "forward.fill", tooltip: "Next Clip", action: onNext)
 
             Divider()
@@ -67,7 +73,7 @@ struct PlayerControlsBar: View {
             deckButton(
                 id: "loop",
                 systemName: "arrow.counterclockwise",
-                tooltip: isLoopCurrentClipEnabled ? "Loop Current Clip" : "Auto-Advance Clips",
+                tooltip: isLoopCurrentClipEnabled ? "Loop Current Clip (L)" : "Auto-Advance Clips (L)",
                 tint: .white,
                 activeBackground: isLoopCurrentClipEnabled ? .blue : nil,
                 action: onToggleLoopCurrentClipMode
@@ -101,8 +107,24 @@ struct PlayerControlsBar: View {
                     .frame(width: 16)
             }
 
-            deckButton(id: "save", systemName: "square.and.arrow.down", tooltip: "Save Current", action: onSaveCurrent)
-            deckButton(id: "render", systemName: "film.stack", tooltip: "Render Current", action: onRenderCurrent)
+            deckButton(
+                id: "snapshot",
+                systemName: "camera.fill",
+                tooltip: "Save Snapshot (S)",
+                action: onSnapshotCurrent
+            )
+            deckButton(
+                id: "save",
+                systemName: "square.and.arrow.down",
+                tooltip: "Save Current (CMD+S)",
+                action: onSaveCurrent
+            )
+            deckButton(
+                id: "render",
+                systemName: "film.stack",
+                tooltip: "Save & Render Current (CMD+OPT+S)",
+                action: onRenderCurrent
+            )
         }
     }
 

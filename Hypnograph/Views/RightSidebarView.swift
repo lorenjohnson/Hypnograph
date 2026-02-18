@@ -204,6 +204,29 @@ struct RightSidebarView: View {
             }
             .padding(.horizontal, 4)
 
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Play Rate")
+                        .font(.callout)
+                    Spacer()
+                    Text(String(format: "%.0f%%", dream.activePlayer.playRate * 100))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+
+                Slider(
+                    value: Binding(
+                        get: { dream.activePlayer.playRate },
+                        set: { dream.activePlayer.playRate = $0 }
+                    ),
+                    in: 0.2...2.0,
+                    step: 0.2
+                )
+            }
+            .padding(.horizontal, 4)
+            .disabled(dream.isLiveMode)
+            .opacity(dream.isLiveMode ? 0.55 : 1.0)
+
             EffectChainView(
                 state: state,
                 dream: dream,

@@ -11,28 +11,7 @@ struct LeftSidebarView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                    sectionTitle("Playback")
-
-                    row {
-                        Text("Loop Current Clip")
-                        Spacer()
-                        Toggle("", isOn: Binding(
-                            get: { state.settings.playbackEndBehavior == .loopCurrentClip },
-                            set: { state.setLoopCurrentClipMode($0) }
-                        ))
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                    }
-
-                    labeledSliderRow(
-                        title: "Play Rate",
-                        valueText: String(format: "%.0f%%", player.playRate * 100)
-                    ) {
-                        Slider(value: $player.playRate, in: 0.2...2.0, step: 0.2)
-                    }
-                    .disabled(isLiveMode)
-                    .opacity(isLiveMode ? 0.55 : 1.0)
+                sectionTitle("Playback")
 
                     row {
                         Text("Transition Style")
@@ -158,7 +137,7 @@ struct LeftSidebarView: View {
                     .disabled(isLiveMode)
                     .opacity(isLiveMode ? 0.55 : 1.0)
 
-                }
+            }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -274,7 +253,7 @@ struct LeftSidebarView: View {
 
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("Play Rate")
+                Text("Play Rate Range")
                 Spacer()
                 Text(valueText)
                     .foregroundStyle(.secondary)

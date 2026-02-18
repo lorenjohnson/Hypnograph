@@ -15,6 +15,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
 
     /// Callback to toggle play/pause (injected by app)
     var togglePlayPause: (() -> Void)?
+    var saveSnapshotImage: (() -> Void)?
 
     /// Callback to toggle sidebars (injected by app)
     var toggleLeftSidebar: (() -> Void)?
@@ -141,6 +142,9 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Event monitor for Space key (play/pause transport)
     private var spaceKeyMonitor: Any?
 
+    /// Event monitor for S key (save snapshot image)
+    private var snapshotKeyMonitor: Any?
+
     /// Event monitor for [ and ] keys (toggle sidebars)
     private var sidebarKeyMonitor: Any?
 
@@ -186,6 +190,35 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
             }
 
             togglePlayPause()
+            return nil
+        }
+
+        // Install S key monitor for snapshot capture
+        snapshotKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+
+            guard event.keyCode == 1,
+                  event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty else {
+                return event
+            }
+
+            if self.isTypingActive?() == true {
+                return event
+            }
+
+            guard self.isKeyboardAccessibilityOverridesEnabled?() ?? true else {
+                return event
+            }
+
+            guard let saveSnapshotImage = self.saveSnapshotImage else {
+                return event
+            }
+
+            if event.isARepeat {
+                return nil
+            }
+
+            saveSnapshotImage()
             return nil
         }
 
@@ -497,6 +530,9 @@ struct HypnographApp: App {
                 // Wire up transport and clean screen callbacks
                 appDelegate.togglePlayPause = { [weak dream] in
                     dream?.activePlayer.isPaused.toggle()
+                }
+                appDelegate.saveSnapshotImage = { [weak dream] in
+                    dream?.saveSnapshotImage()
                 }
                 appDelegate.toggleCleanScreen = { [weak state] in
                     state?.windowState.toggleCleanScreen()

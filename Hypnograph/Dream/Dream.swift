@@ -1014,8 +1014,55 @@ final class Dream: ObservableObject {
         return context.createCGImage(currentFrame, from: currentFrame.extent, format: .RGBA8, colorSpace: colorSpace)
     }
 
+    /// Save a JPEG snapshot of the current frame to the snapshots folder.
+    /// This is a quick image export action (plain S).
+    func saveSnapshotImage() {
+        guard let cgImage = currentFrameSnapshot() else {
+            print("Dream: no current frame available for snapshot")
+            AppNotifications.show("No frame available", flash: true)
+            return
+        }
+
+        let fileManager = FileManager.default
+        let outputDirectory = state.settings.snapshotsURL
+
+        do {
+            try fileManager.createDirectory(at: outputDirectory, withIntermediateDirectories: true, attributes: nil)
+        } catch {
+            print("Dream: failed to create snapshots directory: \(error)")
+            AppNotifications.show("Failed to save snapshot", flash: true)
+            return
+        }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss-SSS"
+        let timestamp = formatter.string(from: Date())
+        var outputURL = outputDirectory.appendingPathComponent("snapshot-\(timestamp)").appendingPathExtension("jpg")
+        var collisionIndex = 2
+        while fileManager.fileExists(atPath: outputURL.path) {
+            outputURL = outputDirectory.appendingPathComponent("snapshot-\(timestamp)-\(collisionIndex)").appendingPathExtension("jpg")
+            collisionIndex += 1
+        }
+
+        let bitmap = NSBitmapImageRep(cgImage: cgImage)
+        guard let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.92]) else {
+            print("Dream: failed to encode snapshot as JPEG")
+            AppNotifications.show("Failed to save snapshot", flash: true)
+            return
+        }
+
+        do {
+            try jpegData.write(to: outputURL, options: .atomic)
+            print("✅ Dream: Snapshot saved to \(outputURL.path)")
+            AppNotifications.show("Snapshot saved", flash: true)
+        } catch {
+            print("Dream: failed to write snapshot: \(error)")
+            AppNotifications.show("Failed to save snapshot", flash: true)
+        }
+    }
+
     /// Save current hypnogram: snapshot with embedded recipe (.hypno file)
-    /// This is the main save action (S / Cmd-S)
+    /// This is the main save action (Cmd-S)
     func save() {
         guard let cgImage = currentFrameSnapshot() else {
             print("Dream: no current frame available for save")

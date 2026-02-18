@@ -110,7 +110,7 @@ struct AppCommands: Commands {
                     get: { state.settings.playbackEndBehavior == .loopCurrentClip },
                     set: { state.setLoopCurrentClipMode($0) }
                 ))
-                .keyboardShortcut("w", modifiers: [])
+                .keyboardShortcut("l", modifiers: [])
                 .disabled(isTyping)
             }
 
@@ -122,7 +122,7 @@ struct AppCommands: Commands {
                         get: { state.windowState.isVisible("livePreview") },
                         set: { _ in state.windowState.toggle("livePreview") }
                     ))
-                    .keyboardShortcut("l", modifiers: [])
+                    .keyboardShortcut("w", modifiers: [])
                     .disabled(isTyping)
 
                     Toggle("Live Mode", isOn: Binding(
