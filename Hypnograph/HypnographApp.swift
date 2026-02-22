@@ -471,12 +471,10 @@ struct HypnographApp: App {
 
         let settingsStore = SettingsStore()
         self.settingsStore = settingsStore
-        let coreConfig = HypnoCoreConfig(
-            appSupportDirectory: Environment.appSupportDirectory,
-            enablePhotosLocalAvailabilityPrioritization: settingsStore.value.photosLocalAvailabilityPrioritizationEnabled
-        )
+        let coreConfig = HypnoCoreConfig(appSupportDirectory: Environment.appSupportDirectory)
         HypnoCoreConfig.shared = coreConfig
         ApplePhotosHooks.install()
+        ExternalMediaLoadHarness.shared.installHookWrappersIfNeeded()
 
         let state = HypnographState(settingsStore: settingsStore, coreConfig: coreConfig)
         let renderQueue = RenderEngine.ExportQueue()
@@ -613,16 +611,6 @@ struct HypnographApp: App {
                 guard isEnabled else { return }
                 DispatchQueue.main.async {
                     (appDelegate.mainWindow ?? NSApp.mainWindow ?? NSApp.windows.first)?.makeFirstResponder(nil)
-                }
-            }
-            .onChange(of: state.settings.photosLocalAvailabilityPrioritizationEnabled) { _, isEnabled in
-                let appSupportDirectory = HypnoCoreConfig.shared.appSupportDirectory
-                HypnoCoreConfig.shared = HypnoCoreConfig(
-                    appSupportDirectory: appSupportDirectory,
-                    enablePhotosLocalAvailabilityPrioritization: isEnabled
-                )
-                Task { @MainActor in
-                    await state.rebuildLibrary()
                 }
             }
         }

@@ -127,13 +127,12 @@ struct LivePreviewPanel: View {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .foregroundColor(.cyan)
                     Text("Transitioning...")
-                } else if !livePlayer.currentRecipeDescription.isEmpty {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
+                } else if
+                    !livePlayer.currentRecipeDescription.isEmpty,
+                    livePlayer.currentRecipeDescription != "Ready"
+                {
                     Text(livePlayer.currentRecipeDescription)
-                } else {
-                    Text("Ready")
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(.white.opacity(0.45))
                 }
 
                 Spacer()

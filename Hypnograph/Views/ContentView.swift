@@ -9,6 +9,7 @@ import HypnoUI
 struct ContentView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var dream: Dream
+    @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
     @State private var isPlayerControlsVisible: Bool = true
 
     private var clipTrimContexts: [ClipTrimContext] {
@@ -232,8 +233,14 @@ struct ContentView: View {
                     KeyboardHintBar()
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
+
+                if let loadStatus = externalLoadHarness.status {
+                    externalLoadStatusBadge(loadStatus)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
             .padding(.top, 12)
+            .animation(.easeInOut(duration: 0.2), value: externalLoadHarness.status)
             .animation(.easeInOut(duration: 0.25), value: state.windowState.isVisible("keyboardHints"))
         }
         .overlay(alignment: .bottom) {
@@ -291,5 +298,39 @@ struct ContentView: View {
                 }
             )
         }
+    }
+
+    @ViewBuilder
+    private func externalLoadStatusBadge(_ status: ExternalMediaLoadHarness.Status) -> some View {
+        HStack(spacing: 8) {
+            switch status.phase {
+            case .loading:
+                ProgressView()
+                    .controlSize(.small)
+            case .downloading:
+                ProgressView(value: status.progress ?? 0, total: 1)
+                    .frame(width: 86)
+            case .timeout, .failed:
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+            }
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(status.title)
+                    .font(.caption.weight(.semibold))
+                if let detail = status.detail {
+                    Text(detail)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.vertical, 7)
+        .padding(.horizontal, 10)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(
+            Capsule()
+                .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
+        )
     }
 }

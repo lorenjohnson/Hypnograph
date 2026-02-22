@@ -5,6 +5,7 @@ struct LeftSidebarView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var dream: Dream
     @ObservedObject var player: DreamPlayerState
+    @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
 
     private var isLiveMode: Bool { dream.isLiveMode }
 
@@ -136,6 +137,24 @@ struct LeftSidebarView: View {
                     )
                     .disabled(isLiveMode)
                     .opacity(isLiveMode ? 0.55 : 1.0)
+
+#if DEBUG
+                    sectionDivider()
+
+                    sectionTitle("Debug")
+
+                    row {
+                        Text("Load Scenario")
+                        Spacer()
+                        Picker("", selection: $externalLoadHarness.scenario) {
+                            ForEach(ExternalMediaLoadHarness.Scenario.allCases) { scenario in
+                                Text(scenario.displayName).tag(scenario)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 190, alignment: .trailing)
+                    }
+#endif
 
             }
             .padding(12)
