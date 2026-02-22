@@ -150,13 +150,6 @@ struct AppCommands: Commands {
                 }
             }
 
-            Divider()
-
-            Toggle("Full Screen", isOn: Binding(
-                get: { NSApp.mainWindow?.styleMask.contains(.fullScreen) ?? false },
-                set: { _ in NSApp.mainWindow?.toggleFullScreen(nil) }
-            ))
-            .keyboardShortcut("f", modifiers: [.control, .command])
         }
 
         CommandMenu("Sources") {
