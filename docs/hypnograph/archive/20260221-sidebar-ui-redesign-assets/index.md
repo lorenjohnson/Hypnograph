@@ -1,16 +1,19 @@
-# Sidebar UI Redesign
+---
+created: 2026-01-25
+updated: 2026-02-21
+status: completed
+completed: 2026-02-21
+---
 
-**Status:** In Progress
-**Created:** 2026-01-25
-**Last Updated:** 2026-01-27
+# Sidebar UI Redesign
 
 ## Overview
 
 Redesign Hypnograph's windowing and UI to use native SwiftUI sidebars with `.ultraThinMaterial` backgrounds. This consolidates several related projects:
 
-- [combine-hud-into-player-settings](../combine-hud-into-player-settings.md) - Merged HUD and player settings
-- [app-settings-window](../app-settings-window.md) - App-wide settings decisions
-- [command-menu-review](../command-menu-review.md) - Menu structure cleanup
+- [combine-hud-into-player-settings](../20260217-combine-hud-into-player-settings.md) - Merged HUD and player settings
+- [app-settings-window](../20260217-app-settings-window.md) - App-wide settings decisions
+- [command-menu-review](../20260217-command-menu-review.md) - Menu structure cleanup
 
 ## Design Goals
 
@@ -103,7 +106,7 @@ Sidebars use **fixed widths** (Left: 280pt, Right: 300pt) rather than percentage
 
 ## Mockup Files
 
-Located in `docs/hypnograph/projects/sidebar-ui-redesign/`:
+Located in `docs/hypnograph/archive/20260221-sidebar-ui-redesign-assets/`:
 
 | File | Description |
 |------|-------------|
