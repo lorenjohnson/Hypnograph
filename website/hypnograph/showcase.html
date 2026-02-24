@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hypnograph Showcase | Community Visual Work</title>
+  <meta name="description" content="Community showcase for visuals generated with Hypnograph. Submit your stills and motion pieces.">
+  <meta name="theme-color" content="#111318">
+  <meta property="og:title" content="Hypnograph Showcase">
+  <meta property="og:description" content="Explore and submit community-created visuals made with Hypnograph.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/hypnograph-hero-poster.jpg">
+  <link rel="icon" href="assets/hypnograph-icon.png" type="image/png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="noise"></div>
+  <header class="site-header">
+    <a href="index.html#top" class="brand" aria-label="Hypnograph home">
+      <img src="assets/hypnograph-icon.png" alt="Hypnograph icon">
+      <span>Hypnograph</span>
+    </a>
+    <nav>
+      <a href="index.html#about">About</a>
+      <a href="features.html">Features</a>
+      <a href="#gallery">Gallery</a>
+      <a href="#submit">Submit</a>
+      <a href="index.html#beta">Beta</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="showcase-hero section-reveal">
+      <div class="showcase-copy">
+        <p class="eyebrow">Community Showcase</p>
+        <h1>Visual work made with Hypnograph.</h1>
+        <p class="lede">
+          This page is where user-contributed outputs live: still images, loops, and process moments.
+          The goal is to highlight what artists are building and let the product direction be shaped in public.
+        </p>
+        <p class="beta-note">
+          Early contributors can join beta conversations directly. Early beta participants receive a free launch license.
+        </p>
+        <div class="cta-row">
+          <a class="button button-primary" href="#submit">Contribute a Piece</a>
+          <a class="button button-ghost" href="index.html#beta">Join Beta</a>
+        </div>
+      </div>
+
+      <div class="hero-media-wrap">
+        <div class="hero-media-frame">
+          <video
+            class="hero-media"
+            autoplay
+            muted
+            loop
+            playsinline
+            preload="metadata"
+            aria-label="Featured Hypnograph motion"
+          >
+            <source src="assets/hypnograph-hero.mp4?v=20260224a" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </section>
+
+    <section id="gallery" class="gallery section-reveal">
+      <div class="section-head">
+        <p class="eyebrow">Gallery</p>
+        <h2>Stills + motion from the community</h2>
+      </div>
+
+      <div class="gallery-grid">
+        <article class="gallery-card">
+          <video controls preload="metadata" aria-label="Looped output sample">
+            <source src="assets/hypnograph-hero.mp4?v=20260224a" type="video/mp4">
+          </video>
+          <div class="gallery-meta">
+            <h3>Loop Study 01</h3>
+            <p>Generated with layered footage and subtle effect-chain drift.</p>
+          </div>
+        </article>
+
+        <article class="gallery-card">
+          <img src="assets/hypnograph-hero-poster.jpg" alt="Still frame from Hypnograph output">
+          <div class="gallery-meta">
+            <h3>Still Frame 01</h3>
+            <p>Texture-forward composition pulled from a live generation pass.</p>
+          </div>
+        </article>
+
+        <article class="gallery-card">
+          <img src="assets/cardback.png" alt="Abstract texture inspired by Hypnograph cardback art">
+          <div class="gallery-meta">
+            <h3>Texture Study</h3>
+            <p>Graphic pattern language that informs visual identity and scene mood.</p>
+          </div>
+        </article>
+
+        <article class="gallery-card">
+          <img src="assets/hypnograph-hero-poster.jpg" alt="Still frame placeholder for future community submission">
+          <div class="gallery-meta">
+            <h3>Submission Slot</h3>
+            <p>This tile is reserved for incoming beta-user work.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="submit" class="submit section-reveal">
+      <div class="section-head">
+        <p class="eyebrow">Contribute</p>
+        <h2>Share your outputs and influence the UX direction</h2>
+      </div>
+
+      <div class="submit-grid">
+        <article class="glass-card">
+          <h3>What to send</h3>
+          <p>Stills (PNG/JPG), short loops (MP4), plus a sentence or two about your process and what worked or broke.</p>
+        </article>
+        <article class="glass-card">
+          <h3>Why it matters</h3>
+          <p>Your work guides feature priority, controls, and workflow refinements. This is community-shaped software.</p>
+        </article>
+        <article class="glass-card">
+          <h3>How to submit</h3>
+          <p>Email your piece and notes. If you want beta access, mention that in the same message.</p>
+        </article>
+      </div>
+
+      <div class="beta-actions">
+        <a class="button button-primary" href="mailto:loren@lorenjohnson.me?subject=Hypnograph%20Showcase%20Submission">Submit to Showcase</a>
+        <a class="button button-ghost" href="index.html">Back to Home</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Hypnograph Showcase • Community visuals in motion.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hypnograph Features | Explore the Instrument</title>
+  <meta name="description" content="Explore Hypnograph features through an interactive interface map with guided points over the app workspace.">
+  <meta name="theme-color" content="#111318">
+  <meta property="og:title" content="Hypnograph Features">
+  <meta property="og:description" content="A guided look at the controls and workflow inside Hypnograph.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/hypnograph-hero-poster.jpg">
+  <link rel="icon" href="assets/hypnograph-icon.png" type="image/png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="noise"></div>
+  <header class="site-header">
+    <a href="index.html#top" class="brand" aria-label="Hypnograph home">
+      <img src="assets/hypnograph-icon.png" alt="Hypnograph icon">
+      <span>Hypnograph</span>
+    </a>
+    <nav>
+      <a href="index.html#about">About</a>
+      <a href="#tour" aria-current="page">Features</a>
+      <a href="showcase.html">Gallery</a>
+      <a href="index.html#beta">Beta</a>
+      <a href="index.html#faq">FAQ</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="feature-page-hero section-reveal">
+      <p class="eyebrow">Features</p>
+      <h1>Explore the Hypnograph workspace.</h1>
+      <p class="lede">
+        Core controls, mapped directly onto the interface.
+      </p>
+    </section>
+
+    <section id="tour" class="feature-stage-wrap section-reveal" data-feature-stage>
+      <div class="feature-stage">
+        <img class="feature-stage-image" src="assets/hypnograph-hero-poster.jpg" alt="Hypnograph workspace with sidebars visible">
+
+        <button
+          class="feature-hotspot is-active"
+          type="button"
+          data-feature="source"
+          data-title="Work from Apple Photos or plain files."
+          data-body="Start from the media you already have. Hypnograph reads familiar libraries and folders instead of asking you to migrate into a new system."
+          data-ox="24"
+          data-oy="21"
+          data-side="right"
+          aria-pressed="true"
+          style="--x: 13%; --y: 21%;"
+        >
+          <span class="sr-only">Source scope controls</span>
+        </button>
+        <button
+          class="feature-hotspot"
+          type="button"
+          data-feature="generate"
+          data-title="Steer what emerges next."
+          data-body="Dial in timing, behavior, and selection to shape output in the moment. The controls are there when you want intention, and disappear when you want flow."
+          data-ox="39"
+          data-oy="27"
+          data-side="right"
+          aria-pressed="false"
+          style="--x: 27%; --y: 27%;"
+        >
+          <span class="sr-only">Generation controls</span>
+        </button>
+        <button
+          class="feature-hotspot"
+          type="button"
+          data-feature="layers"
+          data-title="Reorder, blend, solo, and sculpt."
+          data-body="Build depth by stacking generated and source elements, then route attention using blending and isolate tools without breaking momentum."
+          data-ox="61"
+          data-oy="24"
+          data-side="left"
+          aria-pressed="false"
+          style="--x: 72%; --y: 24%;"
+        >
+          <span class="sr-only">Layer stack</span>
+        </button>
+        <button
+          class="feature-hotspot"
+          type="button"
+          data-feature="effects"
+          data-title="Refine motion and texture live."
+          data-body="Adjust the character of what was generated with a flexible effect path. Experimental results stay usable because everything can be iterated quickly."
+          data-ox="73"
+          data-oy="40"
+          data-side="left"
+          aria-pressed="false"
+          style="--x: 84%; --y: 39%;"
+        >
+          <span class="sr-only">Effect chain controls</span>
+        </button>
+        <button
+          class="feature-hotspot"
+          type="button"
+          data-feature="output"
+          data-title="See reflective sequences as they unfold."
+          data-body="The central viewport is where your archive becomes an evolving stream. It is tuned for immersion first, with control pathways always nearby."
+          data-ox="46"
+          data-oy="60"
+          data-side="center"
+          aria-pressed="false"
+          style="--x: 46%; --y: 58%;"
+        >
+          <span class="sr-only">Live output viewport</span>
+        </button>
+        <article class="feature-overlay is-right" data-feature-overlay aria-live="polite">
+          <h2 class="feature-overlay-title">Work from Apple Photos or plain files.</h2>
+          <p class="feature-overlay-body">Start from the media you already have. Hypnograph reads familiar libraries and folders instead of asking you to migrate into a new system.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

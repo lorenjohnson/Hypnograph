@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hypnograph | Revisit Your Memories in Motion</title>
+  <meta name="description" content="Hypnograph turns your own photos and videos into immersive visual sequences, so revisiting your archive feels reflective instead of administrative.">
+  <meta name="theme-color" content="#111318">
+  <meta property="og:title" content="Hypnograph">
+  <meta property="og:description" content="A memory-forward visual instrument that generates reflective outputs from your own photos and videos.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/hypnograph-hero-poster.jpg">
+  <link rel="icon" href="assets/hypnograph-icon.png" type="image/png">
+  <link rel="preload" href="assets/hypnograph-hero.mp4?v=20260224a" as="video" type="video/mp4">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="noise"></div>
+  <header class="site-header">
+    <a href="#top" class="brand" aria-label="Hypnograph home">
+      <img src="assets/hypnograph-icon.png" alt="Hypnograph icon">
+      <span>Hypnograph</span>
+    </a>
+    <nav>
+      <a href="#about">About</a>
+      <a href="features.html">Features</a>
+      <a href="showcase.html">Gallery</a>
+      <a href="#beta">Beta</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="showcase-hero hero-main section-reveal">
+      <div class="hero-copy">
+        <p class="eyebrow">THE Anarchiving Dream Machine</p>
+        <h1>Your archive, alive.</h1>
+        <p class="lede">
+          Looking back should feel more like a dream than a management activity. Playback your photos and videos as an evolving and unexpected sequence.
+          Hypnograph is a dream machine for your archive: experimental enough to surprise you, productive enough to return to every day.
+        </p>
+        <div class="cta-row">
+          <a class="button button-primary" href="#beta">Get Beta Access</a>
+          <a class="button button-ghost" href="features.html">Explore Features</a>
+          <a class="button button-ghost" href="showcase.html">See Community Work</a>
+        </div>
+      </div>
+
+      <div class="hero-media-wrap">
+        <div class="hero-media-frame">
+          <video
+            class="hero-media"
+            autoplay
+            muted
+            loop
+            playsinline
+            preload="metadata"
+            aria-label="Hypnograph playback sequence"
+          >
+            <source src="assets/hypnograph-hero.mp4?v=20260224a" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </section>
+    <!-- Slider concept paused for now. -->
+
+    <section id="about" class="about section-reveal">
+      <div class="section-head">
+        <p class="eyebrow">What it is</p>
+        <h2>An instrument for memory, not media management.</h2>
+      </div>
+      <div class="about-grid">
+        <article class="glass-card">
+          <h3>Less curation, more immersion</h3>
+          <p>
+            It opens space to experience your captured life without turning reflection into an executive task.
+          </p>
+        </article>
+        <article class="glass-card">
+          <h3>Your library, remixed</h3>
+          <p>
+            Generate evolving sequences from the media you already have and rediscover moments through fresh context.
+          </p>
+        </article>
+        <article class="glass-card">
+          <h3>Built in public</h3>
+          <p>
+            The UX direction is collaborative and shaped by real use from artists, experimenters, and memory-keepers.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section id="beta" class="beta section-reveal">
+      <div class="section-head">
+        <p class="eyebrow">Beta</p>
+        <h2>Give it a try</h2>
+        <p>
+          Hypnograph is in active beta, and we're seeking active users who are excited to help shape its future.
+        </p>
+      </div>
+
+      <div class="beta-capture">
+        <form id="beta-invite-form" class="beta-inline-form">
+          <input type="email" name="email" autocomplete="email" placeholder="you@example.com" aria-label="Email" required>
+          <button type="submit" class="button button-primary">Request Invite</button>
+        </form>
+        <p class="tiny-note" id="beta-invite-note" hidden>Placeholder: invite delivery is not wired yet.</p>
+      </div>
+    </section>
+
+    <section class="roadmap section-reveal">
+      <div class="section-head">
+        <p class="eyebrow">Where it's heading</p>
+        <h2>From powerful internal tool to public creative platform</h2>
+      </div>
+      <div class="roadmap-grid">
+        <article>
+          <h3>Near-term</h3>
+          <p>Beta hardening, feedback rounds from beta testing, onboarding clarity, and ability to custom compose sequences of clips in a timeline like editor.</p>
+        </article>
+        <article>
+          <h3>Mid-term</h3>
+          <p>Expanded output workflows, clearer sharing/export paths.</p>
+        </article>
+        <article>
+          <h3>Long-term</h3>
+          <p>A more connected ecosystem around visual experimentation and community-informed creative tooling.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="faq" class="faq section-reveal">
+      <div class="section-head">
+        <p class="eyebrow">FAQ</p>
+        <h2>Quick answers</h2>
+      </div>
+      <div class="faq-list">
+        <article>
+          <h3>Is Hypnograph available now?</h3>
+          <p>It is currently in active beta preparation.</p>
+        </article>
+        <article>
+          <h3>How do I get beta access?</h3>
+          <p>Use the single invite field above.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Hypnograph • Slowing down by looking back.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
