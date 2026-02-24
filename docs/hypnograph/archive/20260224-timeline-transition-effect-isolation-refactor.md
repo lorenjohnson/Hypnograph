@@ -1,6 +1,7 @@
 ---
-status: active
+status: completed
 created: 2026-02-24
+completed: 2026-02-24
 owner: codex
 ---
 
