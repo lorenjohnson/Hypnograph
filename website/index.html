@@ -23,7 +23,7 @@
     <nav>
       <a href="#about">About</a>
       <a href="features.html">Features</a>
-      <a href="showcase.html">Gallery</a>
+      <a href="#roadmap">Roadmap</a>
       <a href="#beta">Beta</a>
       <a href="#faq">FAQ</a>
     </nav>
@@ -41,7 +41,7 @@
         <div class="cta-row">
           <a class="button button-primary" href="#beta">Get Beta Access</a>
           <a class="button button-ghost" href="features.html">Explore Features</a>
-          <a class="button button-ghost" href="showcase.html">See Community Work</a>
+          <a class="button button-ghost" href="#roadmap">See Roadmap</a>
         </div>
       </div>
 
@@ -98,15 +98,28 @@
       </div>
 
       <div class="beta-capture">
-        <form id="beta-invite-form" class="beta-inline-form">
+        <form
+          id="beta-invite-form"
+          class="beta-inline-form"
+          data-endpoint="https://formsubmit.co/ajax/lorenjohnson@gmail.com"
+        >
+          <input type="text" name="_honey" class="sr-only" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <input type="hidden" name="_subject" value="Hypnograph Beta Invite Request">
+          <input type="hidden" name="_captcha" value="false">
+          <input type="hidden" name="_template" value="table">
+          <input
+            type="hidden"
+            name="_autoresponse"
+            value="Thanks so much for joining the Hypnograph beta invite list. I am really glad you want to participate. As part of this beta, I may reach out to schedule a short call to hear about your experience, and I am also happy to support you directly while you use the app. Hypnograph is built by one developer as an art-driven project, and your perspective is genuinely valuable: how you use it, where you get blocked, what feels exciting, and what feels strange. Bug reports and feature notes are always welcome, but the biggest gift is hearing your lived experience with the project."
+          >
           <input type="email" name="email" autocomplete="email" placeholder="you@example.com" aria-label="Email" required>
           <button type="submit" class="button button-primary">Request Invite</button>
         </form>
-        <p class="tiny-note" id="beta-invite-note" hidden>Placeholder: invite delivery is not wired yet.</p>
+        <p class="tiny-note" id="beta-invite-note" hidden aria-live="polite"></p>
       </div>
     </section>
 
-    <section class="roadmap section-reveal">
+    <section id="roadmap" class="roadmap section-reveal">
       <div class="section-head">
         <p class="eyebrow">Where it's heading</p>
         <h2>From powerful internal tool to public creative platform</h2>

@@ -59,8 +59,58 @@ const inviteForm = document.getElementById("beta-invite-form");
 const inviteNote = document.getElementById("beta-invite-note");
 
 if (inviteForm && inviteNote) {
-  inviteForm.addEventListener("submit", (event) => {
+  const submitButton = inviteForm.querySelector('button[type="submit"]');
+  const defaultButtonLabel = submitButton?.textContent || "Request Invite";
+  let isSubmitting = false;
+
+  inviteForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    inviteNote.hidden = false;
+
+    if (isSubmitting) return;
+
+    const endpoint = inviteForm.dataset.endpoint;
+    if (!endpoint) {
+      inviteNote.textContent = "Beta invite is temporarily unavailable. Please email lorenjohnson@gmail.com.";
+      inviteNote.hidden = false;
+      return;
+    }
+
+    isSubmitting = true;
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = "Sending...";
+    }
+
+    inviteNote.hidden = true;
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+        },
+        body: new FormData(inviteForm),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) {
+        throw new Error("Invite request failed");
+      }
+
+      inviteForm.reset();
+      inviteNote.textContent =
+        "Thanks, you are on the beta invite list. Check your inbox for a confirmation note from me.";
+      inviteNote.hidden = false;
+    } catch (error) {
+      inviteNote.textContent =
+        "Something went wrong sending your beta invite request. Please try again or email lorenjohnson@gmail.com.";
+      inviteNote.hidden = false;
+    } finally {
+      isSubmitting = false;
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = defaultButtonLabel;
+      }
+    }
   });
 }

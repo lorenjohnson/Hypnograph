@@ -6,7 +6,7 @@ Live site: [hypnogra.ph](https://hypnogra.ph)
 
 ## Tech Stack
 
-- Static HTML pages (`index.html`, `features.html`, `showcase.html`)
+- Static HTML pages (`index.html`, `features.html`)
 - Vanilla CSS and JavaScript (`styles.css`, `app.js`)
 - Nginx for serving static assets
 - Docker Compose for local dev and Dokploy deploy
