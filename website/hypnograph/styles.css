@@ -449,6 +449,8 @@ h1 {
   display: block;
   width: 100%;
   height: auto;
+  aspect-ratio: 1920 / 1242;
+  border: 0;
 }
 
 .feature-page-hero {
@@ -673,12 +675,15 @@ h1 {
 }
 
 .gallery-card img,
-.gallery-card video {
+.gallery-card video,
+.gallery-card iframe {
   display: block;
   width: 100%;
   height: auto;
+  aspect-ratio: 1920 / 1242;
   object-fit: contain;
   background: rgba(0, 0, 0, 0.36);
+  border: 0;
 }
 
 .gallery-meta {

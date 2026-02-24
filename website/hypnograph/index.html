@@ -11,7 +11,6 @@
   <meta property="og:type" content="website">
   <meta property="og:image" content="assets/hypnograph-hero-poster.jpg">
   <link rel="icon" href="assets/hypnograph-icon.png" type="image/png">
-  <link rel="preload" href="assets/hypnograph-hero.mp4?v=20260224a" as="video" type="video/mp4">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -48,17 +47,15 @@
 
       <div class="hero-media-wrap">
         <div class="hero-media-frame">
-          <video
+          <iframe
             class="hero-media"
-            autoplay
-            muted
-            loop
-            playsinline
-            preload="metadata"
-            aria-label="Hypnograph playback sequence"
+            title="Hypnograph playback sequence"
+            src="https://iframe.videodelivery.net/6948b43abd96d022bccc2228064ceecd?autoplay=true&muted=true&loop=true&controls=false&preload=true"
+            loading="eager"
+            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+            allowfullscreen
           >
-            <source src="assets/hypnograph-hero.mp4?v=20260224a" type="video/mp4">
-          </video>
+          </iframe>
         </div>
       </div>
     </section>
