@@ -1,11 +1,13 @@
 <h1>
-  <img src="website/hypnograph/assets/hypnograph-icon.png" alt="Hypnograph icon" width="88" align="left" style="border-radius: 18px; margin-right: 12px;" />
+  <img src="website/hypnograph/assets/hypnograph-icon.png" alt="Hypnograph icon" width="88" align="left" />
   Hypnograph
 </h1>
 
 Hypnograph is a memory-forward visual instrument for macOS.
 
 Instead of browsing your archive like a filing cabinet, Hypnograph replays your photos and videos as evolving, remixable sequences. The product goal is to make revisiting your captured life feel exploratory, reflective, and creatively useful.
+
+[Live website: hypnogra.ph](https://hypnogra.ph)
 
 [![Watch Hypnograph teaser](https://customer-ol1nnrpowobo4pog.cloudflarestream.com/6948b43abd96d022bccc2228064ceecd/thumbnails/thumbnail.jpg)](https://customer-ol1nnrpowobo4pog.cloudflarestream.com/6948b43abd96d022bccc2228064ceecd/watch)
 
