@@ -5,7 +5,7 @@
   --muted: #c9ced8;
   --line: rgba(255, 255, 255, 0.18);
   --glass: rgba(255, 255, 255, 0.08);
-  --accent: #8ce86d;
+  --accent: #87ef98;
   --accent-2: #4cc9ff;
   --warn: #ffc078;
   --font-main: "Avenir Next", "Sora", "Trebuchet MS", sans-serif;
@@ -166,8 +166,8 @@ h1 {
 .beta-note {
   margin-top: 1rem;
   padding: 0.88rem 1rem;
-  background: linear-gradient(120deg, rgba(124, 247, 164, 0.12), rgba(86, 217, 255, 0.11));
-  border: 1px solid rgba(124, 247, 164, 0.36);
+  background: linear-gradient(120deg, rgba(135, 239, 152, 0.12), rgba(76, 201, 255, 0.11));
+  border: 1px solid rgba(135, 239, 152, 0.36);
   border-radius: 0.78rem;
   color: #e5f8ee;
 }
@@ -702,7 +702,7 @@ h1 {
 
 #beta-invite-note {
   margin-top: 0.72rem;
-  color: #7cf7a4;
+  color: var(--ink);
   font-weight: 540;
 }
 
