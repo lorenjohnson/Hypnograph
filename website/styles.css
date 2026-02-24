@@ -5,9 +5,8 @@
   --muted: #c9ced8;
   --line: rgba(255, 255, 255, 0.18);
   --glass: rgba(255, 255, 255, 0.08);
-  --accent: #9cdf45;
+  --accent: #8ce86d;
   --accent-2: #4cc9ff;
-  --accent-3: #ff8a5f;
   --warn: #ffc078;
   --font-main: "Avenir Next", "Sora", "Trebuchet MS", sans-serif;
   --font-mono: "IBM Plex Mono", "SF Mono", Menlo, monospace;
@@ -287,7 +286,7 @@ h1 {
   font-size: 0.74rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--accent-3);
+  color: var(--accent-2);
 }
 
 .story-line {
@@ -406,7 +405,7 @@ h1 {
 }
 
 .button-primary {
-  background: linear-gradient(130deg, var(--accent), var(--accent-2), var(--accent-3));
+  background: var(--accent);
   color: #0f1512;
   border-color: transparent;
 }
@@ -414,11 +413,12 @@ h1 {
 .button-ghost {
   color: var(--ink);
   border-color: rgba(76, 201, 255, 0.34);
-  background: linear-gradient(130deg, rgba(76, 201, 255, 0.07), rgba(255, 138, 95, 0.07));
+  background: rgba(76, 201, 255, 0.08);
 }
 
 .button-ghost:hover {
-  border-color: rgba(255, 138, 95, 0.52);
+  border-color: rgba(76, 201, 255, 0.58);
+  background: rgba(76, 201, 255, 0.14);
 }
 
 .hero-media-wrap {
@@ -452,7 +452,7 @@ h1 {
 }
 
 .feature-stage-shell {
-  max-width: 1020px;
+  max-width: 700px;
   margin: 0 auto;
 }
 
@@ -475,28 +475,11 @@ h1 {
 .feature-stage-caption {
   margin: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.82rem 0.9rem;
+  padding: 0.68rem 0.82rem;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   line-height: 1.44;
   background: rgba(10, 14, 15, 0.68);
-}
-
-.feature-stage-notes {
-  margin-top: 0.78rem;
-  display: grid;
-  gap: 0.52rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.feature-stage-notes p {
-  margin: 0;
-  border: 1px solid var(--line);
-  background: var(--glass);
-  border-radius: 999px;
-  padding: 0.54rem 0.74rem;
-  color: #d8dee8;
-  font-size: 0.84rem;
 }
 
 .sr-only {
@@ -820,10 +803,6 @@ h1 {
 
   .annotated-note::after {
     display: none;
-  }
-
-  .feature-stage-notes {
-    grid-template-columns: 1fr;
   }
 
   .about-grid,
