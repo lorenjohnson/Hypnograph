@@ -1,0 +1,26 @@
+# Website Docs (Structure + Rules)
+
+Use this folder for website-only documentation.
+
+Structure:
+- `roadmap.md` - authoritative current work list
+- `backlog/` - planned work not started
+- `active/` - active project write-ups
+- `archive/` - completed project write-ups
+- `archive/done.md` - completed roadmap items without dedicated project docs
+
+Workflow:
+- current work belongs in `roadmap.md`
+- backlog work belongs in `backlog/`
+- active work belongs in `active/`
+- completed work moves to `archive/` and is renamed `YYYYMMDD-project-name.md`
+- completed roadmap items without project docs go into `archive/done.md` (no date in filename; use dated headings inside)
+
+Project write-ups:
+- use a single `.md` file unless the project needs multiple artifacts
+- for multi-file projects, use `active/my-project/index.md` as entrypoint
+- link projects from `roadmap.md`
+
+Naming:
+- use kebab-case for file/folder names
+- use date-prefixed filenames in `archive/`

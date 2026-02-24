@@ -1,5 +1,5 @@
 <h1>
-  <img src="website/hypnograph/assets/hypnograph-icon.png" alt="Hypnograph icon" width="88" align="left" />
+  <img src="website/assets/hypnograph-icon.png" alt="Hypnograph icon" width="88" align="left" />
   Hypnograph
 </h1>
 
@@ -11,7 +11,7 @@ Instead of browsing your archive like a filing cabinet, Hypnograph replays your 
 
 [![Watch Hypnograph teaser](https://customer-ol1nnrpowobo4pog.cloudflarestream.com/6948b43abd96d022bccc2228064ceecd/thumbnails/thumbnail.jpg)](https://customer-ol1nnrpowobo4pog.cloudflarestream.com/6948b43abd96d022bccc2228064ceecd/watch)
 
-[View additional preview screenshots](website/hypnograph/hero-preview.png)
+[View additional preview screenshots](website/hero-preview.png)
 
 If you're joining as a developer collaborator: this is an app for generative playback, effect-driven transformation, live visual experimentation, and export of resulting "hypnograms."
 
@@ -34,20 +34,21 @@ The app currently centers on:
 3. Build and run on macOS.
 
 Website draft/dev preview:
-1. `cd /Users/lorenjohnson/dev/Hypnograph/website/hypnograph`
-2. `docker compose up -d`
+1. `cd /Users/lorenjohnson/dev/Hypnograph/website`
+2. `docker compose -f docker-compose.dev.yml up -d`
 3. Open `http://localhost:8080`
 
 ## Repository Layout
 
 - App source: [Hypnograph](/Users/lorenjohnson/dev/Hypnograph/Hypnograph)
 - App tests: [HypnographTests](/Users/lorenjohnson/dev/Hypnograph/HypnographTests), [HypnographUITests](/Users/lorenjohnson/dev/Hypnograph/HypnographUITests)
-- Website draft: [website/hypnograph](/Users/lorenjohnson/dev/Hypnograph/website/hypnograph)
-- Project documentation: [docs](/Users/lorenjohnson/dev/Hypnograph/docs)
+- Website draft: [website](/Users/lorenjohnson/dev/Hypnograph/website)
+- App/project documentation: [docs](/Users/lorenjohnson/dev/Hypnograph/docs)
+- Website development documentation: [website/docs](/Users/lorenjohnson/dev/Hypnograph/website/docs)
 
 ## Documentation Routing (Important)
 
-All project docs must live in [docs](/Users/lorenjohnson/dev/Hypnograph/docs), and documentation work should follow [docs/README.md](/Users/lorenjohnson/dev/Hypnograph/docs/README.md).
+For app/product work, docs live in [docs](/Users/lorenjohnson/dev/Hypnograph/docs), and documentation work should follow [docs/README.md](/Users/lorenjohnson/dev/Hypnograph/docs/README.md).
 
 Use this routing:
 - Current work tracking: [docs/roadmap.md](/Users/lorenjohnson/dev/Hypnograph/docs/roadmap.md)
@@ -56,4 +57,6 @@ Use this routing:
 - Completed project docs: [docs/archive](/Users/lorenjohnson/dev/Hypnograph/docs/archive) (filename format: `YYYYMMDD-project-name.md`)
 - Completed roadmap items without dedicated project docs: [docs/archive/done.md](/Users/lorenjohnson/dev/Hypnograph/docs/archive/done.md)
 
-If you're a collaborator or an LLM agent, start with [docs/README.md](/Users/lorenjohnson/dev/Hypnograph/docs/README.md) before creating or moving documentation.
+For website-specific dev work, use [website/docs](/Users/lorenjohnson/dev/Hypnograph/website/docs) and start with [website/docs/README.md](/Users/lorenjohnson/dev/Hypnograph/website/docs/README.md), which follows the same roadmap/backlog/active/archive lifecycle.
+
+If you're a collaborator or an LLM agent, start with the relevant docs README before creating or moving documentation.
