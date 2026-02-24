@@ -14,28 +14,28 @@ Live site: [hypnogra.ph](https://hypnogra.ph)
 
 ## Run Locally (Dev)
 
-1. `cd /Users/lorenjohnson/dev/Hypnograph/website`
+1. `cd website`
 2. `docker compose -f docker-compose.dev.yml up -d`
 3. Open `http://localhost:8080`
 
 Stop local stack:
-1. `cd /Users/lorenjohnson/dev/Hypnograph/website`
+1. `cd website`
 2. `docker compose -f docker-compose.dev.yml down`
 
 ## Deploy (Dokploy)
 
-- Compose file: [docker-compose.dokploy.yml](/Users/lorenjohnson/dev/Hypnograph/website/docker-compose.dokploy.yml)
+- Compose file: [docker-compose.dokploy.yml](docker-compose.dokploy.yml)
 - Service: `hypnograph-site`
 - Internal port: `80`
 - Dokploy/Traefik should handle domain + TLS routing
 
 ## Directory Notes
 
-- Static site entry: [index.html](/Users/lorenjohnson/dev/Hypnograph/website/index.html)
-- Nginx config: [nginx.conf](/Users/lorenjohnson/dev/Hypnograph/website/nginx.conf)
-- Docker image definition: [Dockerfile](/Users/lorenjohnson/dev/Hypnograph/website/Dockerfile)
-- Assets: [assets](/Users/lorenjohnson/dev/Hypnograph/website/assets)
+- Static site entry: [index.html](index.html)
+- Nginx config: [nginx.conf](nginx.conf)
+- Docker image definition: [Dockerfile](Dockerfile)
+- Assets: [assets](assets)
 
 ## Website Docs Routing
 
-Website development docs live in [website/docs](/Users/lorenjohnson/dev/Hypnograph/website/docs). Start with [website/docs/README.md](/Users/lorenjohnson/dev/Hypnograph/website/docs/README.md).
+Website development docs live in [docs](docs). Start with [docs/README.md](docs/README.md).

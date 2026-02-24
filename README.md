@@ -29,34 +29,34 @@ The app currently centers on:
 
 ## Quick Start (Dev)
 
-1. Open [Hypnograph.xcodeproj](/Users/lorenjohnson/dev/Hypnograph/Hypnograph.xcodeproj) in Xcode 15+.
+1. Open [Hypnograph.xcodeproj](Hypnograph.xcodeproj) in Xcode 15+.
 2. Select the `Hypnograph` scheme.
 3. Build and run on macOS.
 
 Website draft/dev preview:
-1. `cd /Users/lorenjohnson/dev/Hypnograph/website`
+1. `cd website`
 2. `docker compose -f docker-compose.dev.yml up -d`
 3. Open `http://localhost:8080`
 
 ## Repository Layout
 
-- App source: [Hypnograph](/Users/lorenjohnson/dev/Hypnograph/Hypnograph)
-- App tests: [HypnographTests](/Users/lorenjohnson/dev/Hypnograph/HypnographTests), [HypnographUITests](/Users/lorenjohnson/dev/Hypnograph/HypnographUITests)
-- Website draft: [website](/Users/lorenjohnson/dev/Hypnograph/website)
-- App/project documentation: [docs](/Users/lorenjohnson/dev/Hypnograph/docs)
-- Website development documentation: [website/docs](/Users/lorenjohnson/dev/Hypnograph/website/docs)
+- App source: [Hypnograph](Hypnograph)
+- App tests: [HypnographTests](HypnographTests), [HypnographUITests](HypnographUITests)
+- Website draft: [website](website)
+- App/project documentation: [docs](docs)
+- Website development documentation: [website/docs](website/docs)
 
 ## Documentation Routing (Important)
 
-For app/product work, docs live in [docs](/Users/lorenjohnson/dev/Hypnograph/docs), and documentation work should follow [docs/README.md](/Users/lorenjohnson/dev/Hypnograph/docs/README.md).
+For app/product work, docs live in [docs](docs), and documentation work should follow [docs/README.md](docs/README.md).
 
 Use this routing:
-- Current work tracking: [docs/roadmap.md](/Users/lorenjohnson/dev/Hypnograph/docs/roadmap.md)
-- Planned, not started: [docs/backlog](/Users/lorenjohnson/dev/Hypnograph/docs/backlog)
-- Active project docs: [docs/active](/Users/lorenjohnson/dev/Hypnograph/docs/active)
-- Completed project docs: [docs/archive](/Users/lorenjohnson/dev/Hypnograph/docs/archive) (filename format: `YYYYMMDD-project-name.md`)
-- Completed roadmap items without dedicated project docs: [docs/archive/done.md](/Users/lorenjohnson/dev/Hypnograph/docs/archive/done.md)
+- Current work tracking: [docs/roadmap.md](docs/roadmap.md)
+- Planned, not started: [docs/backlog](docs/backlog)
+- Active project docs: [docs/active](docs/active)
+- Completed project docs: [docs/archive](docs/archive) (filename format: `YYYYMMDD-project-name.md`)
+- Completed roadmap items without dedicated project docs: [docs/archive/done.md](docs/archive/done.md)
 
-For website-specific dev work, use [website/docs](/Users/lorenjohnson/dev/Hypnograph/website/docs) and start with [website/docs/README.md](/Users/lorenjohnson/dev/Hypnograph/website/docs/README.md), which follows the same roadmap/backlog/active/archive lifecycle.
+For website-specific dev work, use [website/docs](website/docs) and start with [website/docs/README.md](website/docs/README.md), which follows the same roadmap/backlog/active/archive lifecycle.
 
 If you're a collaborator or an LLM agent, start with the relevant docs README before creating or moving documentation.
