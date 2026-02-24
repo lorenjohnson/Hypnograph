@@ -9,10 +9,6 @@
 /* Begin PBXBuildFile section */
 		04302B382F00E924001C0F60 /* Quartz.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04302B372F00E924001C0F60 /* Quartz.framework */; };
 		04302B442F00E924001C0F60 /* HypnogramQuickLook.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 04302B352F00E924001C0F60 /* HypnogramQuickLook.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		049B392B2F26C1E500FFF6A8 /* FullLayoutMockup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049B38D92F26C06200FFF6A8 /* FullLayoutMockup.swift */; };
-		049B392C2F26C1E500FFF6A8 /* LeftSidebarMockup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049B38DB2F26C06200FFF6A8 /* LeftSidebarMockup.swift */; };
-		049B392D2F26C1E500FFF6A8 /* RightSidebarMockup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049B38DC2F26C06200FFF6A8 /* RightSidebarMockup.swift */; };
-		049B392E2F26C1E500FFF6A8 /* ComponentMockups.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049B38D82F26C06200FFF6A8 /* ComponentMockups.swift */; };
 		211B1A7B2AC8037E40D63A48 /* HypnoCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D989C67E2DF4FD885791B0F /* HypnoCore */; };
 		95D7E41923E3CAFA9648F0E1 /* HypnoCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6B4E93992CE0046E9A47D568 /* HypnoCore */; };
 		A395488D6399FE11853C50D8 /* HypnoCore in Frameworks */ = {isa = PBXBuildFile; productRef = EB154B2C5C3272CE2685E2EC /* HypnoCore */; };
@@ -98,75 +94,60 @@
 		042F991C2EC8990C006D4CDE /* HypnographUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HypnographUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		04302B352F00E924001C0F60 /* HypnogramQuickLook.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HypnogramQuickLook.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		04302B372F00E924001C0F60 /* Quartz.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Quartz.framework; path = System/Library/Frameworks/Quartz.framework; sourceTree = SDKROOT; };
-		049B38AA2F26C06200FFF6A8 /* app.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = app.json; sourceTree = "<group>"; };
-		049B38AB2F26C06200FFF6A8 /* appearance.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = appearance.json; sourceTree = "<group>"; };
-		049B38AC2F26C06200FFF6A8 /* core-plugins.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "core-plugins.json"; sourceTree = "<group>"; };
-		049B38AD2F26C06200FFF6A8 /* workspace.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = workspace.json; sourceTree = "<group>"; };
-		049B38AF2F26C06200FFF6A8 /* doc-writer.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "doc-writer.md"; sourceTree = "<group>"; };
-		049B38B02F26C06200FFF6A8 /* implementer.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = implementer.md; sourceTree = "<group>"; };
-		049B38B12F26C06200FFF6A8 /* intent-manager.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "intent-manager.md"; sourceTree = "<group>"; };
-		049B38B22F26C06200FFF6A8 /* planner-architect.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "planner-architect.md"; sourceTree = "<group>"; };
-		049B38B32F26C06200FFF6A8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		049B38B42F26C06200FFF6A8 /* reviewer-skeptic.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "reviewer-skeptic.md"; sourceTree = "<group>"; };
-		049B38B52F26C06200FFF6A8 /* theory-bridge.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "theory-bridge.md"; sourceTree = "<group>"; };
-		049B38B72F26C06200FFF6A8 /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
-		049B38B92F26C06200FFF6A8 /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
-		049B38BB2F26C06200FFF6A8 /* roadmap.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = roadmap.md; sourceTree = "<group>"; };
-		049B38BD2F26C06200FFF6A8 /* dream-players.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "dream-players.md"; sourceTree = "<group>"; };
-		049B38BE2F26C06200FFF6A8 /* effects.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = effects.md; sourceTree = "<group>"; };
-		049B38BF2F26C06200FFF6A8 /* index.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = index.md; sourceTree = "<group>"; };
-		049B38C02F26C06200FFF6A8 /* media-library.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "media-library.md"; sourceTree = "<group>"; };
-		049B38C12F26C06200FFF6A8 /* recipes.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = recipes.md; sourceTree = "<group>"; };
-		049B38C22F26C06200FFF6A8 /* rendering.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = rendering.md; sourceTree = "<group>"; };
-		049B38C32F26C06200FFF6A8 /* settings.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = settings.md; sourceTree = "<group>"; };
-		049B38C52F26C06200FFF6A8 /* 20241225-custom-blend-modes.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20241225-custom-blend-modes.md"; sourceTree = "<group>"; };
-		049B38C62F26C06200FFF6A8 /* 20251225-keyboard-handling.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20251225-keyboard-handling.md"; sourceTree = "<group>"; };
-		049B38C72F26C06200FFF6A8 /* 20251226-window-state.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20251226-window-state.md"; sourceTree = "<group>"; };
-		049B38C82F26C06200FFF6A8 /* 20251227-dream-player-refactor.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20251227-dream-player-refactor.md"; sourceTree = "<group>"; };
-		049B38C92F26C06200FFF6A8 /* 20260104-divine-extraction.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260104-divine-extraction.md"; sourceTree = "<group>"; };
-		049B38CA2F26C06200FFF6A8 /* 20260111-effects-system-refactor.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260111-effects-system-refactor.md"; sourceTree = "<group>"; };
-		049B38CB2F26C06200FFF6A8 /* 20260115-unify-montage-sequence.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260115-unify-montage-sequence.md"; sourceTree = "<group>"; };
-		049B38CC2F26C06200FFF6A8 /* 20260116-add-source-framing-setting.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260116-add-source-framing-setting.md"; sourceTree = "<group>"; };
-		049B38CD2F26C06200FFF6A8 /* 20260116-hypnogram-transitions.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260116-hypnogram-transitions.md"; sourceTree = "<group>"; };
-		049B38CE2F26C06200FFF6A8 /* 20260116-unified-player-architecture.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260116-unified-player-architecture.md"; sourceTree = "<group>"; };
-		049B38CF2F26C06200FFF6A8 /* 20260117-metal-playback-pipeline.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260117-metal-playback-pipeline.md"; sourceTree = "<group>"; };
-		049B38D02F26C06200FFF6A8 /* 20260120-smart-framing-human-centering.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260120-smart-framing-human-centering.md"; sourceTree = "<group>"; };
-		049B38D12F26C06200FFF6A8 /* 20260121-more-clear-naming.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260121-more-clear-naming.md"; sourceTree = "<group>"; };
-		049B38D22F26C06200FFF6A8 /* 20260125-in-app-windowing-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260125-in-app-windowing-review.md"; sourceTree = "<group>"; };
-		049B38D42F26C06200FFF6A8 /* coding-best-practices.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "coding-best-practices.md"; sourceTree = "<group>"; };
-		049B38D52F26C06200FFF6A8 /* mission.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = mission.md; sourceTree = "<group>"; };
-		049B38D62F26C06200FFF6A8 /* tech-stack.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "tech-stack.md"; sourceTree = "<group>"; };
-		049B38D82F26C06200FFF6A8 /* ComponentMockups.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentMockups.swift; sourceTree = "<group>"; };
-		049B38D92F26C06200FFF6A8 /* FullLayoutMockup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullLayoutMockup.swift; sourceTree = "<group>"; };
-		049B38DA2F26C06200FFF6A8 /* index.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = index.md; sourceTree = "<group>"; };
-		049B38DB2F26C06200FFF6A8 /* LeftSidebarMockup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeftSidebarMockup.swift; sourceTree = "<group>"; };
-		049B38DC2F26C06200FFF6A8 /* RightSidebarMockup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RightSidebarMockup.swift; sourceTree = "<group>"; };
-		049B38DE2F26C06200FFF6A8 /* add-history-to-hypnograms-favorite-recent-window.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "add-history-to-hypnograms-favorite-recent-window.md"; sourceTree = "<group>"; };
-		049B38DF2F26C06200FFF6A8 /* app-settings-window.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "app-settings-window.md"; sourceTree = "<group>"; };
-		049B38E02F26C06200FFF6A8 /* beta-release-testflight.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "beta-release-testflight.md"; sourceTree = "<group>"; };
-		049B38E12F26C06200FFF6A8 /* combine-hud-into-player-settings.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "combine-hud-into-player-settings.md"; sourceTree = "<group>"; };
-		049B38E22F26C06200FFF6A8 /* command-menu-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "command-menu-review.md"; sourceTree = "<group>"; };
-		049B38E32F26C06200FFF6A8 /* export-clip-history-fcpxml.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "export-clip-history-fcpxml.md"; sourceTree = "<group>"; };
-		049B38E42F26C06200FFF6A8 /* in-app-feedback.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "in-app-feedback.md"; sourceTree = "<group>"; };
-		049B38E52F26C06200FFF6A8 /* layer-editor.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "layer-editor.md"; sourceTree = "<group>"; };
-		049B38E62F26C06200FFF6A8 /* library-manager.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "library-manager.md"; sourceTree = "<group>"; };
-		049B38E72F26C06200FFF6A8 /* live-mode-feature-flag.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "live-mode-feature-flag.md"; sourceTree = "<group>"; };
-		049B38E82F26C06200FFF6A8 /* location-overlay-effect.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "location-overlay-effect.md"; sourceTree = "<group>"; };
-		049B38E92F26C06200FFF6A8 /* save-fullscreen-state.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "save-fullscreen-state.md"; sourceTree = "<group>"; };
-		049B38EA2F26C06200FFF6A8 /* save-sequences.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "save-sequences.md"; sourceTree = "<group>"; };
-		049B38EB2F26C06200FFF6A8 /* splash-screen.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "splash-screen.md"; sourceTree = "<group>"; };
-		049B38EC2F26C06200FFF6A8 /* volume-leveling.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "volume-leveling.md"; sourceTree = "<group>"; };
-		049B38EE2F26C06200FFF6A8 /* controls.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = controls.md; sourceTree = "<group>"; };
-		049B38F02F26C06200FFF6A8 /* 2026-01-25-Eli.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "2026-01-25-Eli.md"; sourceTree = "<group>"; };
-		049B38F22F26C06200FFF6A8 /* roadmap.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = roadmap.md; sourceTree = "<group>"; };
-		049B38F42F26C06200FFF6A8 /* 20260123-docs-reorg.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260123-docs-reorg.md"; sourceTree = "<group>"; };
-		049B38F62F26C06200FFF6A8 /* hypnograph-ontology.mmd */ = {isa = PBXFileReference; lastKnownFileType = text; path = "hypnograph-ontology.mmd"; sourceTree = "<group>"; };
-		049B38F72F26C06200FFF6A8 /* hypnograph-ontology-full.mmd */ = {isa = PBXFileReference; lastKnownFileType = text; path = "hypnograph-ontology-full.mmd"; sourceTree = "<group>"; };
-		049B38F82F26C06200FFF6A8 /* HypnographDomainDiagram.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = HypnographDomainDiagram.md; sourceTree = "<group>"; };
-		049B38F92F26C06200FFF6A8 /* naming.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = naming.json; sourceTree = "<group>"; };
-		049B38FA2F26C06200FFF6A8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		049B38FB2F26C06200FFF6A8 /* types.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = types.json; sourceTree = "<group>"; };
-		049B38FE2F26C06200FFF6A8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		045DA3982F4D5DCE00D41089 /* add-history-to-hypnograms-favorite-recent-window.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "add-history-to-hypnograms-favorite-recent-window.md"; sourceTree = "<group>"; };
+		045DA3992F4D5DCE00D41089 /* beta-release-testflight.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "beta-release-testflight.md"; sourceTree = "<group>"; };
+		045DA39A2F4D5DCE00D41089 /* export-clip-history-fcpxml.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "export-clip-history-fcpxml.md"; sourceTree = "<group>"; };
+		045DA39B2F4D5DCE00D41089 /* in-app-feedback.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "in-app-feedback.md"; sourceTree = "<group>"; };
+		045DA39C2F4D5DCE00D41089 /* layer-editor.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "layer-editor.md"; sourceTree = "<group>"; };
+		045DA39D2F4D5DCE00D41089 /* save-fullscreen-state.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "save-fullscreen-state.md"; sourceTree = "<group>"; };
+		045DA39E2F4D5DCE00D41089 /* sets-model-direction.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "sets-model-direction.md"; sourceTree = "<group>"; };
+		045DA3A02F4D5DCE00D41089 /* dream-players.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "dream-players.md"; sourceTree = "<group>"; };
+		045DA3A12F4D5DCE00D41089 /* effects.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = effects.md; sourceTree = "<group>"; };
+		045DA3A22F4D5DCE00D41089 /* index.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = index.md; sourceTree = "<group>"; };
+		045DA3A32F4D5DCE00D41089 /* media-library.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "media-library.md"; sourceTree = "<group>"; };
+		045DA3A42F4D5DCE00D41089 /* recipes.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = recipes.md; sourceTree = "<group>"; };
+		045DA3A52F4D5DCE00D41089 /* rendering.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = rendering.md; sourceTree = "<group>"; };
+		045DA3A62F4D5DCE00D41089 /* settings.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = settings.md; sourceTree = "<group>"; };
+		045DA3A82F4D5DCE00D41089 /* ComponentMockups.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentMockups.swift; sourceTree = "<group>"; };
+		045DA3A92F4D5DCE00D41089 /* FullLayoutMockup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullLayoutMockup.swift; sourceTree = "<group>"; };
+		045DA3AA2F4D5DCE00D41089 /* index.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = index.md; sourceTree = "<group>"; };
+		045DA3AB2F4D5DCE00D41089 /* LeftSidebarMockup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeftSidebarMockup.swift; sourceTree = "<group>"; };
+		045DA3AC2F4D5DCE00D41089 /* RightSidebarMockup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RightSidebarMockup.swift; sourceTree = "<group>"; };
+		045DA3AE2F4D5DCE00D41089 /* 20241225-custom-blend-modes.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20241225-custom-blend-modes.md"; sourceTree = "<group>"; };
+		045DA3AF2F4D5DCE00D41089 /* 20251225-keyboard-handling.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20251225-keyboard-handling.md"; sourceTree = "<group>"; };
+		045DA3B02F4D5DCE00D41089 /* 20251226-window-state.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20251226-window-state.md"; sourceTree = "<group>"; };
+		045DA3B12F4D5DCE00D41089 /* 20251227-dream-player-refactor.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20251227-dream-player-refactor.md"; sourceTree = "<group>"; };
+		045DA3B22F4D5DCE00D41089 /* 20260104-divine-extraction.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260104-divine-extraction.md"; sourceTree = "<group>"; };
+		045DA3B32F4D5DCE00D41089 /* 20260111-effects-system-refactor.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260111-effects-system-refactor.md"; sourceTree = "<group>"; };
+		045DA3B42F4D5DCE00D41089 /* 20260115-unify-montage-sequence.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260115-unify-montage-sequence.md"; sourceTree = "<group>"; };
+		045DA3B52F4D5DCE00D41089 /* 20260116-add-source-framing-setting.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260116-add-source-framing-setting.md"; sourceTree = "<group>"; };
+		045DA3B62F4D5DCE00D41089 /* 20260116-hypnogram-transitions.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260116-hypnogram-transitions.md"; sourceTree = "<group>"; };
+		045DA3B72F4D5DCE00D41089 /* 20260116-unified-player-architecture.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260116-unified-player-architecture.md"; sourceTree = "<group>"; };
+		045DA3B82F4D5DCE00D41089 /* 20260117-metal-playback-pipeline.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260117-metal-playback-pipeline.md"; sourceTree = "<group>"; };
+		045DA3B92F4D5DCE00D41089 /* 20260120-smart-framing-human-centering.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260120-smart-framing-human-centering.md"; sourceTree = "<group>"; };
+		045DA3BA2F4D5DCE00D41089 /* 20260121-more-clear-naming.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260121-more-clear-naming.md"; sourceTree = "<group>"; };
+		045DA3BB2F4D5DCE00D41089 /* 20260125-in-app-windowing-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260125-in-app-windowing-review.md"; sourceTree = "<group>"; };
+		045DA3BC2F4D5DCE00D41089 /* 20260215-add-layer-from-selection.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260215-add-layer-from-selection.md"; sourceTree = "<group>"; };
+		045DA3BD2F4D5DCE00D41089 /* 20260215-drag-drop-reorder.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260215-drag-drop-reorder.md"; sourceTree = "<group>"; };
+		045DA3BE2F4D5DCE00D41089 /* 20260217-app-settings-window.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260217-app-settings-window.md"; sourceTree = "<group>"; };
+		045DA3BF2F4D5DCE00D41089 /* 20260217-combine-hud-into-player-settings.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260217-combine-hud-into-player-settings.md"; sourceTree = "<group>"; };
+		045DA3C02F4D5DCE00D41089 /* 20260217-command-menu-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260217-command-menu-review.md"; sourceTree = "<group>"; };
+		045DA3C12F4D5DCE00D41089 /* 20260217-live-mode-feature-flag.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260217-live-mode-feature-flag.md"; sourceTree = "<group>"; };
+		045DA3C22F4D5DCE00D41089 /* 20260217-record-deck.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260217-record-deck.md"; sourceTree = "<group>"; };
+		045DA3C32F4D5DCE00D41089 /* 20260217-splash-screen.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260217-splash-screen.md"; sourceTree = "<group>"; };
+		045DA3C42F4D5DCE00D41089 /* 20260221-sets-reset-and-modeling-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260221-sets-reset-and-modeling-plan.md"; sourceTree = "<group>"; };
+		045DA3C52F4D5DCE00D41089 /* 20260224-timeline-transition-effect-isolation-refactor.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "20260224-timeline-transition-effect-isolation-refactor.md"; sourceTree = "<group>"; };
+		045DA3C62F4D5DCE00D41089 /* done.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = done.md; sourceTree = "<group>"; };
+		045DA3C82F4D5DCE00D41089 /* library-manager.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "library-manager.md"; sourceTree = "<group>"; };
+		045DA3C92F4D5DCE00D41089 /* location-overlay-effect.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "location-overlay-effect.md"; sourceTree = "<group>"; };
+		045DA3CA2F4D5DCE00D41089 /* volume-leveling.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "volume-leveling.md"; sourceTree = "<group>"; };
+		045DA3CC2F4D5DCE00D41089 /* coding-best-practices.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "coding-best-practices.md"; sourceTree = "<group>"; };
+		045DA3CD2F4D5DCE00D41089 /* mission.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = mission.md; sourceTree = "<group>"; };
+		045DA3CE2F4D5DCE00D41089 /* tech-stack.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "tech-stack.md"; sourceTree = "<group>"; };
+		045DA3D02F4D5DCE00D41089 /* controls.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = controls.md; sourceTree = "<group>"; };
+		045DA3D22F4D5DCE00D41089 /* 2026-01-25-Eli.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "2026-01-25-Eli.md"; sourceTree = "<group>"; };
+		045DA3D42F4D5DCE00D41089 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		045DA3D52F4D5DCE00D41089 /* roadmap.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = roadmap.md; sourceTree = "<group>"; };
 		049B39042F26C1A300FFF6A8 /* SwiftUIPreviewHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftUIPreviewHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A2B3C4D5E6F708192A3B4C5 /* HypnoUI.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = HypnoUI.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		764AADFE87DF1064AD85DF6E /* HypnoCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = HypnoCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -203,11 +184,15 @@
 		};
 		042F99152EC8990C006D4CDE /* HypnographTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = HypnographTests;
 			sourceTree = "<group>";
 		};
 		042F991F2EC8990C006D4CDE /* HypnographUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = HypnographUITests;
 			sourceTree = "<group>";
 		};
@@ -221,11 +206,15 @@
 		};
 		049B39052F26C1A300FFF6A8 /* SwiftUIPreviewHost */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = SwiftUIPreviewHost;
 			sourceTree = "<group>";
 		};
 		D1E2F3A4B5C6D7E8F9A0B1C3 /* HypnogramQuickLookTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = HypnogramQuickLookTests;
 			sourceTree = "<group>";
 		};
@@ -285,7 +274,7 @@
 		042F98F82EC8990A006D4CDE = {
 			isa = PBXGroup;
 			children = (
-				049B38FF2F26C06200FFF6A8 /* docs */,
+				045DA3D62F4D5DCE00D41089 /* docs */,
 				042F99032EC8990B006D4CDE /* Hypnograph */,
 				042F99152EC8990C006D4CDE /* HypnographTests */,
 				D1E2F3A4B5C6D7E8F9A0B1C3 /* HypnogramQuickLookTests */,
@@ -322,206 +311,127 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		049B38AE2F26C06200FFF6A8 /* .obsidian */ = {
+		045DA39F2F4D5DCE00D41089 /* active */ = {
 			isa = PBXGroup;
 			children = (
-				049B38AA2F26C06200FFF6A8 /* app.json */,
-				049B38AB2F26C06200FFF6A8 /* appearance.json */,
-				049B38AC2F26C06200FFF6A8 /* core-plugins.json */,
-				049B38AD2F26C06200FFF6A8 /* workspace.json */,
+				045DA3982F4D5DCE00D41089 /* add-history-to-hypnograms-favorite-recent-window.md */,
+				045DA3992F4D5DCE00D41089 /* beta-release-testflight.md */,
+				045DA39A2F4D5DCE00D41089 /* export-clip-history-fcpxml.md */,
+				045DA39B2F4D5DCE00D41089 /* in-app-feedback.md */,
+				045DA39C2F4D5DCE00D41089 /* layer-editor.md */,
+				045DA39D2F4D5DCE00D41089 /* save-fullscreen-state.md */,
+				045DA39E2F4D5DCE00D41089 /* sets-model-direction.md */,
 			);
-			path = .obsidian;
+			path = active;
 			sourceTree = "<group>";
 		};
-		049B38B62F26C06200FFF6A8 /* agents */ = {
+		045DA3A72F4D5DCE00D41089 /* architecture */ = {
 			isa = PBXGroup;
 			children = (
-				049B38AF2F26C06200FFF6A8 /* doc-writer.md */,
-				049B38B02F26C06200FFF6A8 /* implementer.md */,
-				049B38B12F26C06200FFF6A8 /* intent-manager.md */,
-				049B38B22F26C06200FFF6A8 /* planner-architect.md */,
-				049B38B32F26C06200FFF6A8 /* README.md */,
-				049B38B42F26C06200FFF6A8 /* reviewer-skeptic.md */,
-				049B38B52F26C06200FFF6A8 /* theory-bridge.md */,
-			);
-			path = agents;
-			sourceTree = "<group>";
-		};
-		049B38B82F26C06200FFF6A8 /* archive */ = {
-			isa = PBXGroup;
-			children = (
-				049B38B72F26C06200FFF6A8 /* .gitkeep */,
-			);
-			path = archive;
-			sourceTree = "<group>";
-		};
-		049B38BA2F26C06200FFF6A8 /* projects */ = {
-			isa = PBXGroup;
-			children = (
-				049B38B92F26C06200FFF6A8 /* .gitkeep */,
-			);
-			path = projects;
-			sourceTree = "<group>";
-		};
-		049B38BC2F26C06200FFF6A8 /* divine */ = {
-			isa = PBXGroup;
-			children = (
-				049B38B82F26C06200FFF6A8 /* archive */,
-				049B38BA2F26C06200FFF6A8 /* projects */,
-				049B38BB2F26C06200FFF6A8 /* roadmap.md */,
-			);
-			path = divine;
-			sourceTree = "<group>";
-		};
-		049B38C42F26C06200FFF6A8 /* architecture */ = {
-			isa = PBXGroup;
-			children = (
-				049B38BD2F26C06200FFF6A8 /* dream-players.md */,
-				049B38BE2F26C06200FFF6A8 /* effects.md */,
-				049B38BF2F26C06200FFF6A8 /* index.md */,
-				049B38C02F26C06200FFF6A8 /* media-library.md */,
-				049B38C12F26C06200FFF6A8 /* recipes.md */,
-				049B38C22F26C06200FFF6A8 /* rendering.md */,
-				049B38C32F26C06200FFF6A8 /* settings.md */,
+				045DA3A02F4D5DCE00D41089 /* dream-players.md */,
+				045DA3A12F4D5DCE00D41089 /* effects.md */,
+				045DA3A22F4D5DCE00D41089 /* index.md */,
+				045DA3A32F4D5DCE00D41089 /* media-library.md */,
+				045DA3A42F4D5DCE00D41089 /* recipes.md */,
+				045DA3A52F4D5DCE00D41089 /* rendering.md */,
+				045DA3A62F4D5DCE00D41089 /* settings.md */,
 			);
 			path = architecture;
 			sourceTree = "<group>";
 		};
-		049B38D32F26C06200FFF6A8 /* archive */ = {
+		045DA3AD2F4D5DCE00D41089 /* 20260221-sidebar-ui-redesign-assets */ = {
 			isa = PBXGroup;
 			children = (
-				049B38C52F26C06200FFF6A8 /* 20241225-custom-blend-modes.md */,
-				049B38C62F26C06200FFF6A8 /* 20251225-keyboard-handling.md */,
-				049B38C72F26C06200FFF6A8 /* 20251226-window-state.md */,
-				049B38C82F26C06200FFF6A8 /* 20251227-dream-player-refactor.md */,
-				049B38C92F26C06200FFF6A8 /* 20260104-divine-extraction.md */,
-				049B38CA2F26C06200FFF6A8 /* 20260111-effects-system-refactor.md */,
-				049B38CB2F26C06200FFF6A8 /* 20260115-unify-montage-sequence.md */,
-				049B38CC2F26C06200FFF6A8 /* 20260116-add-source-framing-setting.md */,
-				049B38CD2F26C06200FFF6A8 /* 20260116-hypnogram-transitions.md */,
-				049B38CE2F26C06200FFF6A8 /* 20260116-unified-player-architecture.md */,
-				049B38CF2F26C06200FFF6A8 /* 20260117-metal-playback-pipeline.md */,
-				049B38D02F26C06200FFF6A8 /* 20260120-smart-framing-human-centering.md */,
-				049B38D12F26C06200FFF6A8 /* 20260121-more-clear-naming.md */,
-				049B38D22F26C06200FFF6A8 /* 20260125-in-app-windowing-review.md */,
+				045DA3A82F4D5DCE00D41089 /* ComponentMockups.swift */,
+				045DA3A92F4D5DCE00D41089 /* FullLayoutMockup.swift */,
+				045DA3AA2F4D5DCE00D41089 /* index.md */,
+				045DA3AB2F4D5DCE00D41089 /* LeftSidebarMockup.swift */,
+				045DA3AC2F4D5DCE00D41089 /* RightSidebarMockup.swift */,
+			);
+			path = "20260221-sidebar-ui-redesign-assets";
+			sourceTree = "<group>";
+		};
+		045DA3C72F4D5DCE00D41089 /* archive */ = {
+			isa = PBXGroup;
+			children = (
+				045DA3AD2F4D5DCE00D41089 /* 20260221-sidebar-ui-redesign-assets */,
+				045DA3AE2F4D5DCE00D41089 /* 20241225-custom-blend-modes.md */,
+				045DA3AF2F4D5DCE00D41089 /* 20251225-keyboard-handling.md */,
+				045DA3B02F4D5DCE00D41089 /* 20251226-window-state.md */,
+				045DA3B12F4D5DCE00D41089 /* 20251227-dream-player-refactor.md */,
+				045DA3B22F4D5DCE00D41089 /* 20260104-divine-extraction.md */,
+				045DA3B32F4D5DCE00D41089 /* 20260111-effects-system-refactor.md */,
+				045DA3B42F4D5DCE00D41089 /* 20260115-unify-montage-sequence.md */,
+				045DA3B52F4D5DCE00D41089 /* 20260116-add-source-framing-setting.md */,
+				045DA3B62F4D5DCE00D41089 /* 20260116-hypnogram-transitions.md */,
+				045DA3B72F4D5DCE00D41089 /* 20260116-unified-player-architecture.md */,
+				045DA3B82F4D5DCE00D41089 /* 20260117-metal-playback-pipeline.md */,
+				045DA3B92F4D5DCE00D41089 /* 20260120-smart-framing-human-centering.md */,
+				045DA3BA2F4D5DCE00D41089 /* 20260121-more-clear-naming.md */,
+				045DA3BB2F4D5DCE00D41089 /* 20260125-in-app-windowing-review.md */,
+				045DA3BC2F4D5DCE00D41089 /* 20260215-add-layer-from-selection.md */,
+				045DA3BD2F4D5DCE00D41089 /* 20260215-drag-drop-reorder.md */,
+				045DA3BE2F4D5DCE00D41089 /* 20260217-app-settings-window.md */,
+				045DA3BF2F4D5DCE00D41089 /* 20260217-combine-hud-into-player-settings.md */,
+				045DA3C02F4D5DCE00D41089 /* 20260217-command-menu-review.md */,
+				045DA3C12F4D5DCE00D41089 /* 20260217-live-mode-feature-flag.md */,
+				045DA3C22F4D5DCE00D41089 /* 20260217-record-deck.md */,
+				045DA3C32F4D5DCE00D41089 /* 20260217-splash-screen.md */,
+				045DA3C42F4D5DCE00D41089 /* 20260221-sets-reset-and-modeling-plan.md */,
+				045DA3C52F4D5DCE00D41089 /* 20260224-timeline-transition-effect-isolation-refactor.md */,
+				045DA3C62F4D5DCE00D41089 /* done.md */,
 			);
 			path = archive;
 			sourceTree = "<group>";
 		};
-		049B38D72F26C06200FFF6A8 /* product */ = {
+		045DA3CB2F4D5DCE00D41089 /* backlog */ = {
 			isa = PBXGroup;
 			children = (
-				049B38D42F26C06200FFF6A8 /* coding-best-practices.md */,
-				049B38D52F26C06200FFF6A8 /* mission.md */,
-				049B38D62F26C06200FFF6A8 /* tech-stack.md */,
+				045DA3C82F4D5DCE00D41089 /* library-manager.md */,
+				045DA3C92F4D5DCE00D41089 /* location-overlay-effect.md */,
+				045DA3CA2F4D5DCE00D41089 /* volume-leveling.md */,
+			);
+			path = backlog;
+			sourceTree = "<group>";
+		};
+		045DA3CF2F4D5DCE00D41089 /* product */ = {
+			isa = PBXGroup;
+			children = (
+				045DA3CC2F4D5DCE00D41089 /* coding-best-practices.md */,
+				045DA3CD2F4D5DCE00D41089 /* mission.md */,
+				045DA3CE2F4D5DCE00D41089 /* tech-stack.md */,
 			);
 			path = product;
 			sourceTree = "<group>";
 		};
-		049B38DD2F26C06200FFF6A8 /* sidebar-ui-redesign */ = {
+		045DA3D12F4D5DCE00D41089 /* reference */ = {
 			isa = PBXGroup;
 			children = (
-				049B38D82F26C06200FFF6A8 /* ComponentMockups.swift */,
-				049B38D92F26C06200FFF6A8 /* FullLayoutMockup.swift */,
-				049B38DA2F26C06200FFF6A8 /* index.md */,
-				049B38DB2F26C06200FFF6A8 /* LeftSidebarMockup.swift */,
-				049B38DC2F26C06200FFF6A8 /* RightSidebarMockup.swift */,
-			);
-			path = "sidebar-ui-redesign";
-			sourceTree = "<group>";
-		};
-		049B38ED2F26C06200FFF6A8 /* projects */ = {
-			isa = PBXGroup;
-			children = (
-				049B38DD2F26C06200FFF6A8 /* sidebar-ui-redesign */,
-				049B38DE2F26C06200FFF6A8 /* add-history-to-hypnograms-favorite-recent-window.md */,
-				049B38DF2F26C06200FFF6A8 /* app-settings-window.md */,
-				049B38E02F26C06200FFF6A8 /* beta-release-testflight.md */,
-				049B38E12F26C06200FFF6A8 /* combine-hud-into-player-settings.md */,
-				049B38E22F26C06200FFF6A8 /* command-menu-review.md */,
-				049B38E32F26C06200FFF6A8 /* export-clip-history-fcpxml.md */,
-				049B38E42F26C06200FFF6A8 /* in-app-feedback.md */,
-				049B38E52F26C06200FFF6A8 /* layer-editor.md */,
-				049B38E62F26C06200FFF6A8 /* library-manager.md */,
-				049B38E72F26C06200FFF6A8 /* live-mode-feature-flag.md */,
-				049B38E82F26C06200FFF6A8 /* location-overlay-effect.md */,
-				049B38E92F26C06200FFF6A8 /* save-fullscreen-state.md */,
-				049B38EA2F26C06200FFF6A8 /* save-sequences.md */,
-				049B38EB2F26C06200FFF6A8 /* splash-screen.md */,
-				049B38EC2F26C06200FFF6A8 /* volume-leveling.md */,
-			);
-			path = projects;
-			sourceTree = "<group>";
-		};
-		049B38EF2F26C06200FFF6A8 /* reference */ = {
-			isa = PBXGroup;
-			children = (
-				049B38EE2F26C06200FFF6A8 /* controls.md */,
+				045DA3D02F4D5DCE00D41089 /* controls.md */,
 			);
 			path = reference;
 			sourceTree = "<group>";
 		};
-		049B38F12F26C06200FFF6A8 /* user-testing */ = {
+		045DA3D32F4D5DCE00D41089 /* user-testing */ = {
 			isa = PBXGroup;
 			children = (
-				049B38F02F26C06200FFF6A8 /* 2026-01-25-Eli.md */,
+				045DA3D22F4D5DCE00D41089 /* 2026-01-25-Eli.md */,
 			);
 			path = "user-testing";
 			sourceTree = "<group>";
 		};
-		049B38F32F26C06200FFF6A8 /* hypnograph */ = {
+		045DA3D62F4D5DCE00D41089 /* docs */ = {
 			isa = PBXGroup;
 			children = (
-				049B38C42F26C06200FFF6A8 /* architecture */,
-				049B38D32F26C06200FFF6A8 /* archive */,
-				049B38D72F26C06200FFF6A8 /* product */,
-				049B38ED2F26C06200FFF6A8 /* projects */,
-				049B38EF2F26C06200FFF6A8 /* reference */,
-				049B38F12F26C06200FFF6A8 /* user-testing */,
-				049B38F22F26C06200FFF6A8 /* roadmap.md */,
-			);
-			path = hypnograph;
-			sourceTree = "<group>";
-		};
-		049B38F52F26C06200FFF6A8 /* archive */ = {
-			isa = PBXGroup;
-			children = (
-				049B38F42F26C06200FFF6A8 /* 20260123-docs-reorg.md */,
-			);
-			path = archive;
-			sourceTree = "<group>";
-		};
-		049B38FC2F26C06200FFF6A8 /* ontology */ = {
-			isa = PBXGroup;
-			children = (
-				049B38F62F26C06200FFF6A8 /* hypnograph-ontology.mmd */,
-				049B38F72F26C06200FFF6A8 /* hypnograph-ontology-full.mmd */,
-				049B38F82F26C06200FFF6A8 /* HypnographDomainDiagram.md */,
-				049B38F92F26C06200FFF6A8 /* naming.json */,
-				049B38FA2F26C06200FFF6A8 /* README.md */,
-				049B38FB2F26C06200FFF6A8 /* types.json */,
-			);
-			path = ontology;
-			sourceTree = "<group>";
-		};
-		049B38FD2F26C06200FFF6A8 /* shared */ = {
-			isa = PBXGroup;
-			children = (
-				049B38F52F26C06200FFF6A8 /* archive */,
-				049B38FC2F26C06200FFF6A8 /* ontology */,
-			);
-			path = shared;
-			sourceTree = "<group>";
-		};
-		049B38FF2F26C06200FFF6A8 /* docs */ = {
-			isa = PBXGroup;
-			children = (
-				049B38AE2F26C06200FFF6A8 /* .obsidian */,
-				049B38B62F26C06200FFF6A8 /* agents */,
-				049B38BC2F26C06200FFF6A8 /* divine */,
-				049B38F32F26C06200FFF6A8 /* hypnograph */,
-				049B38FD2F26C06200FFF6A8 /* shared */,
-				049B38FE2F26C06200FFF6A8 /* README.md */,
+				045DA39F2F4D5DCE00D41089 /* active */,
+				045DA3A72F4D5DCE00D41089 /* architecture */,
+				045DA3C72F4D5DCE00D41089 /* archive */,
+				045DA3CB2F4D5DCE00D41089 /* backlog */,
+				045DA3CF2F4D5DCE00D41089 /* product */,
+				045DA3D12F4D5DCE00D41089 /* reference */,
+				045DA3D32F4D5DCE00D41089 /* user-testing */,
+				045DA3D42F4D5DCE00D41089 /* README.md */,
+				045DA3D52F4D5DCE00D41089 /* roadmap.md */,
 			);
 			path = docs;
 			sourceTree = "<group>";
@@ -711,7 +621,7 @@
 			mainGroup = 042F98F82EC8990A006D4CDE;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "../HypnoPackages" */,
+				F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "HypnoPackages" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 042F99022EC8990B006D4CDE /* Products */;
@@ -806,10 +716,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				049B392B2F26C1E500FFF6A8 /* FullLayoutMockup.swift in Sources */,
-				049B392C2F26C1E500FFF6A8 /* LeftSidebarMockup.swift in Sources */,
-				049B392D2F26C1E500FFF6A8 /* RightSidebarMockup.swift in Sources */,
-				049B392E2F26C1E500FFF6A8 /* ComponentMockups.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1339,7 +1245,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "../HypnoPackages" */ = {
+		F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "HypnoPackages" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../HypnoPackages;
 		};
@@ -1348,22 +1254,22 @@
 /* Begin XCSwiftPackageProductDependency section */
 		4D989C67E2DF4FD885791B0F /* HypnoCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "../HypnoPackages" */;
+			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "HypnoPackages" */;
 			productName = HypnoCore;
 		};
 		6B4E93992CE0046E9A47D568 /* HypnoCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "../HypnoPackages" */;
+			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "HypnoPackages" */;
 			productName = HypnoCore;
 		};
 		E668AB4C346BB9907570FA1D /* HypnoUI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "../HypnoPackages" */;
+			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "HypnoPackages" */;
 			productName = HypnoUI;
 		};
 		EB154B2C5C3272CE2685E2EC /* HypnoCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "../HypnoPackages" */;
+			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "HypnoPackages" */;
 			productName = HypnoCore;
 		};
 /* End XCSwiftPackageProductDependency section */
