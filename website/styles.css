@@ -640,7 +640,7 @@ h1 {
 }
 
 .feature-list {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 
 .gallery-grid {
@@ -879,7 +879,6 @@ h1 {
   }
 
   .about-grid,
-  .feature-list,
   .gallery-grid,
   .submit-grid,
   .roadmap-grid,

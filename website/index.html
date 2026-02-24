@@ -101,12 +101,13 @@
         <form
           id="beta-invite-form"
           class="beta-inline-form"
-          data-endpoint="https://formsubmit.co/ajax/lorenjohnson@gmail.com"
+          action="https://formsubmit.co/lorenjohnson@gmail.com"
+          method="POST"
         >
           <input type="text" name="_honey" class="sr-only" tabindex="-1" autocomplete="off" aria-hidden="true">
           <input type="hidden" name="_subject" value="Hypnograph Beta Invite Request">
-          <input type="hidden" name="_captcha" value="false">
           <input type="hidden" name="_template" value="table">
+          <input type="hidden" name="_next" value="https://hypnogra.ph/thank-you.html">
           <input
             type="hidden"
             name="_autoresponse"
@@ -115,7 +116,7 @@
           <input type="email" name="email" autocomplete="email" placeholder="you@example.com" aria-label="Email" required>
           <button type="submit" class="button button-primary">Request Invite</button>
         </form>
-        <p class="tiny-note" id="beta-invite-note" hidden aria-live="polite"></p>
+        <p class="tiny-note" id="beta-invite-note" aria-live="polite">You will receive a confirmation email after submission.</p>
       </div>
     </section>
 

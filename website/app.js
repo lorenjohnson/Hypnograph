@@ -58,59 +58,30 @@ if (featureStage) {
 const inviteForm = document.getElementById("beta-invite-form");
 const inviteNote = document.getElementById("beta-invite-note");
 
-if (inviteForm && inviteNote) {
+if (inviteForm) {
   const submitButton = inviteForm.querySelector('button[type="submit"]');
-  const defaultButtonLabel = submitButton?.textContent || "Request Invite";
+  const nextField = inviteForm.querySelector('input[name="_next"]');
   let isSubmitting = false;
 
-  inviteForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
+  inviteForm.addEventListener("submit", () => {
     if (isSubmitting) return;
+    isSubmitting = true;
 
-    const endpoint = inviteForm.dataset.endpoint;
-    if (!endpoint) {
-      inviteNote.textContent = "Beta invite is temporarily unavailable. Please email lorenjohnson@gmail.com.";
-      inviteNote.hidden = false;
-      return;
+    if (nextField && window.location?.origin) {
+      const origin = window.location.origin;
+      if (origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1")) {
+        nextField.value = `${origin}/thank-you.html`;
+      }
     }
 
-    isSubmitting = true;
     if (submitButton) {
       submitButton.disabled = true;
       submitButton.textContent = "Sending...";
     }
 
-    inviteNote.hidden = true;
-
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-        },
-        body: new FormData(inviteForm),
-      });
-
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || result.success === false) {
-        throw new Error("Invite request failed");
-      }
-
-      inviteForm.reset();
+    if (inviteNote) {
       inviteNote.textContent =
-        "Thanks, you are on the beta invite list. Check your inbox for a confirmation note from me.";
-      inviteNote.hidden = false;
-    } catch (error) {
-      inviteNote.textContent =
-        "Something went wrong sending your beta invite request. Please try again or email lorenjohnson@gmail.com.";
-      inviteNote.hidden = false;
-    } finally {
-      isSubmitting = false;
-      if (submitButton) {
-        submitButton.disabled = false;
-        submitButton.textContent = defaultButtonLabel;
-      }
+        "Submitting... if the confirmation page does not load, email lorenjohnson@gmail.com.";
     }
   });
 }
