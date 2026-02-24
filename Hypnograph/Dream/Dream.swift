@@ -321,6 +321,56 @@ final class Dream: ObservableObject {
         state.settings.playbackEndBehavior == .loopCurrentClip
     }
 
+    var timelinePlaybackRate: Double {
+        get { Self.normalizedTimelinePlaybackRate(state.settings.timelinePlaybackRate) }
+        set {
+            let normalized = Self.normalizedTimelinePlaybackRate(newValue)
+            if abs(normalized - state.settings.timelinePlaybackRate) < 0.0001 {
+                return
+            }
+            state.settingsStore.update { $0.timelinePlaybackRate = normalized }
+        }
+    }
+
+    /// UI value for a forward-only range control where 0 = normal (1x), 20 = 20x.
+    var timelinePlaybackControlValue: Double {
+        get { Self.timelineControlValue(fromRate: timelinePlaybackRate) }
+        set { timelinePlaybackRate = Self.timelineRate(fromControlValue: newValue, reverse: isTimelinePlaybackReverse) }
+    }
+
+    var isTimelinePlaybackReverse: Bool {
+        get { timelinePlaybackRate < 0 }
+        set {
+            let magnitude = abs(timelinePlaybackRate)
+            let direction = newValue ? -1.0 : 1.0
+            timelinePlaybackRate = direction * magnitude
+        }
+    }
+
+    private var timelinePlaybackDirection: Int {
+        timelinePlaybackRate < 0 ? -1 : 1
+    }
+
+    private static func normalizedTimelinePlaybackRate(_ value: Double) -> Double {
+        guard value.isFinite else { return 1.0 }
+        let direction = value < 0 ? -1.0 : 1.0
+        let magnitude = min(max(abs(value), 1.0), 20.0)
+        return direction * magnitude
+    }
+
+    private static func timelineControlValue(fromRate rate: Double) -> Double {
+        let normalized = normalizedTimelinePlaybackRate(rate)
+        let magnitude = abs(normalized)
+        let position = ((magnitude - 1.0) / 19.0) * 20.0
+        return min(max(position, 0.0), 20.0)
+    }
+
+    private static func timelineRate(fromControlValue value: Double, reverse: Bool) -> Double {
+        let clamped = min(max(value, 0.0), 20.0)
+        let magnitude = 1.0 + (clamped / 20.0) * 19.0
+        return (reverse ? -1.0 : 1.0) * magnitude
+    }
+
     // MARK: - Clip History
 
     private func makeRandomClip(preservingGlobalEffectFrom previous: Hypnogram?) -> Hypnogram {
@@ -446,17 +496,26 @@ final class Dream: ObservableObject {
         applyClipSelectionChanged(manual: manual)
     }
 
-    private func advanceOrGenerateOnClipEnded() {
-        if state.settings.playbackEndBehavior == .autoAdvance {
-            let nextIndex = player.currentHypnogramIndex + 1
-            if nextIndex < player.session.hypnograms.count {
-                player.currentHypnogramIndex = nextIndex
-                applyClipSelectionChanged(manual: false)
-            } else {
-                appendNewClipAndSelect(manual: false)
-            }
-            return
+    @discardableResult
+    private func advanceOrGenerateOnClipEnded() -> Bool {
+        guard state.settings.playbackEndBehavior == .autoAdvance else { return false }
+
+        if timelinePlaybackDirection < 0 {
+            let previousIndex = player.currentHypnogramIndex - 1
+            guard previousIndex >= 0 else { return false }
+            player.currentHypnogramIndex = previousIndex
+            applyClipSelectionChanged(manual: false)
+            return true
         }
+
+        let nextIndex = player.currentHypnogramIndex + 1
+        if nextIndex < player.session.hypnograms.count {
+            player.currentHypnogramIndex = nextIndex
+            applyClipSelectionChanged(manual: false)
+        } else {
+            appendNewClipAndSelect(manual: false)
+        }
+        return true
     }
 
     func previousClip() {
@@ -741,9 +800,9 @@ final class Dream: ObservableObject {
         let displayResolution = player.config.playerResolution
         let sourceFraming = state.settings.sourceFraming
         let shouldAdvanceOnClipEnd = state.settings.playbackEndBehavior == .autoAdvance
-        let onClipEnded: (() -> Void)? = { [weak self] in
-            guard let self else { return }
-            self.advanceOrGenerateOnClipEnded()
+        let onClipEnded: (() -> Bool)? = { [weak self] in
+            guard let self else { return false }
+            return self.advanceOrGenerateOnClipEnded()
         }
         let currentSourceIndexBinding = Binding(
             get: { player.currentSourceIndex },
@@ -771,6 +830,7 @@ final class Dream: ObservableObject {
                 effectManager: player.effectManager,
                 volume: previewVolume,
                 audioDeviceUID: previewAudioDeviceUID,
+                historyPlaybackRate: timelinePlaybackRate,
                 transitionStyle: state.settings.transitionStyle,
                 transitionDuration: state.settings.transitionDuration
             )

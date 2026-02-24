@@ -187,7 +187,7 @@ Validation:
 
 Files:
 
-- `docs/hypnograph/projects/record-deck.md`
+- `docs/hypnograph/archive/20260217-record-deck.md`
 - `docs/hypnograph/roadmap.md`
 
 Actions:

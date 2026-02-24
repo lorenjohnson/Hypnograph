@@ -128,6 +128,15 @@ struct ContentView: View {
                         get: { Double(dream.previewVolume) },
                         set: { dream.previewVolume = Float($0) }
                     ),
+                    timelinePlaybackRate: dream.timelinePlaybackRate,
+                    timelinePlaybackControlValue: Binding(
+                        get: { dream.timelinePlaybackControlValue },
+                        set: { dream.timelinePlaybackControlValue = $0 }
+                    ),
+                    isTimelinePlaybackReverse: Binding(
+                        get: { dream.isTimelinePlaybackReverse },
+                        set: { dream.isTimelinePlaybackReverse = $0 }
+                    ),
                     onPrevious: { dream.previousClip() },
                     onPlayPause: { dream.togglePause() },
                     onNext: { dream.nextClip() },

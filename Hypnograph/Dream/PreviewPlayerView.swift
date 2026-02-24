@@ -20,7 +20,7 @@ struct PreviewPlayerView: NSViewRepresentable {
     let displayResolution: OutputResolution
     let sourceFraming: SourceFraming
     let autoAdvanceOnClipEnd: Bool
-    let onClipEnded: (() -> Void)?
+    let onClipEnded: (() -> Bool)?
     @Binding var currentSourceIndex: Int
     @Binding var currentSourceTime: CMTime?
     let isPaused: Bool
@@ -31,6 +31,9 @@ struct PreviewPlayerView: NSViewRepresentable {
     let volume: Float
     /// Audio output device UID (nil = system default)
     var audioDeviceUID: String? = nil
+    /// Signed history playback rate used for auto-advance timing and direction.
+    /// Positive values move forward, negative values move backward.
+    var historyPlaybackRate: Double = 1.0
     /// Transition style for clip changes
     var transitionStyle: TransitionRenderer.TransitionType = .crossfade
     /// Transition duration in seconds
@@ -67,21 +70,21 @@ struct PreviewPlayerView: NSViewRepresentable {
     @MainActor
     class Coordinator {
         var contentView: PlayerContentView?
-        var containerView: NSView?
         var stillClipTimer: Timer?
         var compositionID: String?
         var currentTask: Task<Void, Never>?
         var lastPauseState: Bool?
         var lastEffectsCounter: Int?
         var lastSessionRevision: Int?
-        var currentPlayerItem: AVPlayerItem?
         var playRate: Float = 0.8
+        var historyPlaybackRate: Double = 1.0
         var lastAppliedPlayRate: Float?
         var transitionDuration: Double = 1.5
         var lastVolume: Float?
         var autoAdvanceOnClipEnd: Bool = false
-        var onClipEnded: (() -> Void)?
+        var onClipEnded: (() -> Bool)?
         var isAllStillImages: Bool = false
+        var lastRenderedClip: Hypnogram?
         /// Whether this is the first clip load (no transition needed)
         var isFirstLoad: Bool = true
         /// Use a sentinel to distinguish "never set" from "set to nil (system default)"
@@ -137,7 +140,6 @@ struct PreviewPlayerView: NSViewRepresentable {
         let container = NSView()
         container.wantsLayer = true
         container.layer?.backgroundColor = NSColor.black.cgColor
-        context.coordinator.containerView = container
         return container
     }
 
@@ -147,6 +149,7 @@ struct PreviewPlayerView: NSViewRepresentable {
 
         // Always update playRate so closures use current value
         c.playRate = clip.playRate
+        c.historyPlaybackRate = Self.normalizedHistoryPlaybackRate(historyPlaybackRate)
         c.transitionDuration = transitionDuration
         c.autoAdvanceOnClipEnd = autoAdvanceOnClipEnd
         c.onClipEnded = onClipEnded
@@ -169,6 +172,7 @@ struct PreviewPlayerView: NSViewRepresentable {
             c.stillClipTimer = nil
             c.isAutoAdvanceInFlight = false
             c.didRequestPreEndAdvance = false
+            c.lastRenderedClip = nil
             return
         }
 
@@ -179,12 +183,12 @@ struct PreviewPlayerView: NSViewRepresentable {
 
         if newID != c.compositionID {
             let previousID = c.compositionID
+
+            freezeOutgoingEffectsIfNeeded(coordinator: c, previousID: previousID)
+
             c.currentTask?.cancel()
             c.compositionID = newID
             c.didRequestPreEndAdvance = false
-
-            // Clear old player item references
-            c.currentPlayerItem = nil
 
             c.currentTask = Task { @MainActor in
                 let engine = RenderEngine()
@@ -258,25 +262,27 @@ struct PreviewPlayerView: NSViewRepresentable {
                     }
 
                     // Determine play rate (nil if paused or all still images)
-                    let playRate: Float? = (self.isPaused || c.isAllStillImages) ? nil : c.playRate
+                    let effectiveRate = effectiveVideoPlaybackRate(for: c)
+                    let playRate: Float? = (self.isPaused || c.isAllStillImages) ? nil : effectiveRate
 
                     // Load with transition - this starts playback on the incoming player
                     content.loadAndTransition(
                         playerItem: playerItem,
                         transitionType: effectiveTransition,
                         duration: self.transitionDuration,
-                        playRate: playRate
+                        playRate: playRate,
+                        incomingEffectManager: self.effectManager
                     ) {
                         Task { @MainActor in
                             c.isAutoAdvanceInFlight = false
                         }
                     }
 
-                    c.currentPlayerItem = playerItem
                     c.lastPauseState = self.isPaused
                     c.lastEffectsCounter = effectsChangeCounter
                     c.lastSessionRevision = sessionRevision
                     c.lastAppliedPlayRate = playRate
+                    c.lastRenderedClip = clip
 
                     // For still images, schedule the timer for auto-advance
                     if c.isAllStillImages && !self.isPaused {
@@ -308,16 +314,20 @@ struct PreviewPlayerView: NSViewRepresentable {
                     c.contentView?.activeAVPlayer?.pause()
                     c.lastAppliedPlayRate = nil
                 } else {
-                    c.contentView?.activeAVPlayer?.playImmediately(atRate: clip.playRate)
-                    c.lastAppliedPlayRate = clip.playRate
+                    let effectiveRate = effectiveVideoPlaybackRate(for: c)
+                    c.contentView?.activeAVPlayer?.playImmediately(atRate: effectiveRate)
+                    c.lastAppliedPlayRate = effectiveRate
                 }
                 c.lastPauseState = isPaused
             }
 
             // If play rate changes while playing, apply it immediately without rebuilding the composition.
-            if !c.isAllStillImages, !isPaused, c.lastAppliedPlayRate != clip.playRate {
-                c.contentView?.activeAVPlayer?.rate = clip.playRate
-                c.lastAppliedPlayRate = clip.playRate
+            if !c.isAllStillImages, !isPaused {
+                let effectiveRate = effectiveVideoPlaybackRate(for: c)
+                if c.lastAppliedPlayRate != effectiveRate {
+                    c.contentView?.activeAVPlayer?.rate = effectiveRate
+                    c.lastAppliedPlayRate = effectiveRate
+                }
             }
 
             let didEffectsChange = c.lastEffectsCounter != effectsChangeCounter
@@ -343,6 +353,10 @@ struct PreviewPlayerView: NSViewRepresentable {
                     }
                 }
             }
+
+            // Keep a current snapshot of the active clip so outgoing transitions
+            // freeze the latest edited state instead of stale composition-time state.
+            c.lastRenderedClip = clip
         }
 
         // Apply volume
@@ -378,7 +392,7 @@ struct PreviewPlayerView: NSViewRepresentable {
                     guard let c = c, let player = player else { return }
 
                     let shouldPlay = (c.lastPauseState != true)
-                    let rate = c.playRate
+                    let rate = effectiveVideoPlaybackRate(for: c)
                     let seekToStartAndPlayIfNeeded = {
                         player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
                             guard finished else { return }
@@ -402,9 +416,7 @@ struct PreviewPlayerView: NSViewRepresentable {
                                 seekToStartAndPlayIfNeeded()
                                 return
                             }
-                            c.isAutoAdvanceInFlight = true
-                            c.didRequestPreEndAdvance = true
-                            c.onClipEnded?()
+                            triggerAutoAdvance(c)
                         } else {
                             // Outgoing player during transition - just loop it
                             seekToStartAndPlayIfNeeded()
@@ -446,7 +458,7 @@ struct PreviewPlayerView: NSViewRepresentable {
                     guard dur.isFinite, now.isFinite, dur > 0 else { return }
 
                     let remainingVideoSeconds = max(0.0, dur - now)
-                    let rate = max(0.0001, Double(c.playRate))
+                    let rate = max(0.0001, Double(effectiveVideoPlaybackRate(for: c)))
                     let remainingRealSeconds = remainingVideoSeconds / rate
 
                     // Trigger next clip build/transition slightly before the desired transition window.
@@ -456,9 +468,7 @@ struct PreviewPlayerView: NSViewRepresentable {
                     // - render/build scheduling jitter
                     let threshold = max(0.05, c.transitionDuration + 0.25)
                     if remainingRealSeconds <= threshold {
-                        c.didRequestPreEndAdvance = true
-                        c.isAutoAdvanceInFlight = true
-                        c.onClipEnded?()
+                        triggerAutoAdvance(c)
                     }
                 }
             }
@@ -490,17 +500,59 @@ struct PreviewPlayerView: NSViewRepresentable {
     }
 
     @MainActor
+    private func freezeOutgoingEffectsIfNeeded(coordinator c: Coordinator, previousID: String?) {
+        guard previousID != nil,
+              let content = c.contentView,
+              !c.isFirstLoad,
+              let outgoingClip = c.lastRenderedClip else { return }
+
+        // Freeze the currently visible clip's effect context before switching composition identity.
+        // This prevents outgoing frames from adopting incoming clip effects during transition/build delay.
+        let frozenManager = effectManager.makeTransitionSnapshotManager(
+            frozenClip: outgoingClip,
+            preserveTemporalState: true
+        )
+        content.freezeActiveSlotEffects(using: frozenManager)
+    }
+
+    @MainActor
     private func scheduleStillClipTimer(coordinator c: Coordinator) {
         c.stillClipTimer?.invalidate()
         c.stillClipTimer = nil
 
         guard c.autoAdvanceOnClipEnd, c.lastPauseState != true else { return }
-        guard let onClipEnded = c.onClipEnded else { return }
 
-        let seconds = max(0.1, clip.targetDuration.seconds)
+        let speed = max(1.0, abs(c.historyPlaybackRate))
+        let seconds = max(0.05, clip.targetDuration.seconds / speed)
         c.stillClipTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { _ in
-            onClipEnded()
+            Task { @MainActor in
+                triggerAutoAdvance(c)
+            }
         }
+    }
+
+    @MainActor
+    private func triggerAutoAdvance(_ coordinator: Coordinator) {
+        coordinator.didRequestPreEndAdvance = true
+        coordinator.isAutoAdvanceInFlight = true
+
+        let didAdvance = coordinator.onClipEnded?() ?? false
+        if !didAdvance {
+            coordinator.didRequestPreEndAdvance = false
+            coordinator.isAutoAdvanceInFlight = false
+        }
+    }
+
+    private static func normalizedHistoryPlaybackRate(_ value: Double) -> Double {
+        guard value.isFinite else { return 1.0 }
+        let direction = value < 0 ? -1.0 : 1.0
+        let magnitude = min(max(abs(value), 1.0), 20.0)
+        return direction * magnitude
+    }
+
+    private func effectiveVideoPlaybackRate(for coordinator: Coordinator) -> Float {
+        let historySpeed = Float(max(1.0, abs(coordinator.historyPlaybackRate)))
+        return coordinator.playRate * historySpeed
     }
 
     // MARK: - Teardown
@@ -516,7 +568,7 @@ struct PreviewPlayerView: NSViewRepresentable {
 
         c.contentView?.stop()
         c.contentView = nil
-        c.currentPlayerItem = nil
         c.compositionID = nil
+        c.lastRenderedClip = nil
     }
 }

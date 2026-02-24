@@ -94,6 +94,13 @@ struct Settings: Codable, MediaLibrarySettings {
     /// Duration of transitions in seconds
     var transitionDuration: Double
 
+    // MARK: - Timeline Playback
+
+    /// Signed history playback rate for auto-advance mode.
+    /// Positive values move forward, negative values move backward.
+    /// Clip-internal playback rate remains controlled by each hypnogram's `playRate`.
+    var timelinePlaybackRate: Double
+
     // MARK: - Randomization Settings (Generation Rules)
 
     /// When true, randomly applies a global effect chain when generating new clips
@@ -149,6 +156,7 @@ struct Settings: Codable, MediaLibrarySettings {
         // Transition defaults
         static let transitionStyle: TransitionRenderer.TransitionType = .crossfade
         static let transitionDuration: Double = 1.0
+        static let timelinePlaybackRate: Double = 1.0
         // Randomization defaults
         static let randomGlobalEffect: Bool = true
         static let randomGlobalEffectFrequency: Double = 0.7
@@ -182,6 +190,7 @@ struct Settings: Codable, MediaLibrarySettings {
             keyboardAccessibilityOverridesEnabled: Defaults.keyboardAccessibilityOverridesEnabled,
             transitionStyle: Defaults.transitionStyle,
             transitionDuration: Defaults.transitionDuration,
+            timelinePlaybackRate: Defaults.timelinePlaybackRate,
             randomGlobalEffect: Defaults.randomGlobalEffect,
             randomGlobalEffectFrequency: Defaults.randomGlobalEffectFrequency,
             randomLayerEffect: Defaults.randomLayerEffect,
@@ -210,6 +219,7 @@ struct Settings: Codable, MediaLibrarySettings {
         case liveModeEnabled
         case keyboardAccessibilityOverridesEnabled
         case transitionStyle, transitionDuration
+        case timelinePlaybackRate
         case randomGlobalEffect, randomGlobalEffectFrequency
         case randomLayerEffect, randomLayerEffectFrequency
         case previewAudioDeviceUID, previewVolume
@@ -238,6 +248,7 @@ struct Settings: Codable, MediaLibrarySettings {
         keyboardAccessibilityOverridesEnabled: Bool = Defaults.keyboardAccessibilityOverridesEnabled,
         transitionStyle: TransitionRenderer.TransitionType = Defaults.transitionStyle,
         transitionDuration: Double = Defaults.transitionDuration,
+        timelinePlaybackRate: Double = Defaults.timelinePlaybackRate,
         randomGlobalEffect: Bool = Defaults.randomGlobalEffect,
         randomGlobalEffectFrequency: Double = Defaults.randomGlobalEffectFrequency,
         randomLayerEffect: Bool = Defaults.randomLayerEffect,
@@ -266,6 +277,7 @@ struct Settings: Codable, MediaLibrarySettings {
         self.keyboardAccessibilityOverridesEnabled = keyboardAccessibilityOverridesEnabled
         self.transitionStyle = transitionStyle
         self.transitionDuration = transitionDuration
+        self.timelinePlaybackRate = timelinePlaybackRate
         self.randomGlobalEffect = randomGlobalEffect
         self.randomGlobalEffectFrequency = randomGlobalEffectFrequency
         self.randomLayerEffect = randomLayerEffect
@@ -325,6 +337,8 @@ struct Settings: Codable, MediaLibrarySettings {
             ?? Defaults.transitionStyle
         transitionDuration = try c.decodeIfPresent(Double.self, forKey: .transitionDuration)
             ?? Defaults.transitionDuration
+        timelinePlaybackRate = try c.decodeIfPresent(Double.self, forKey: .timelinePlaybackRate)
+            ?? Defaults.timelinePlaybackRate
         randomGlobalEffect = try c.decodeIfPresent(Bool.self, forKey: .randomGlobalEffect)
             ?? Defaults.randomGlobalEffect
         randomGlobalEffectFrequency = try c.decodeIfPresent(Double.self, forKey: .randomGlobalEffectFrequency)
@@ -373,6 +387,7 @@ struct Settings: Codable, MediaLibrarySettings {
         try c.encode(keyboardAccessibilityOverridesEnabled, forKey: .keyboardAccessibilityOverridesEnabled)
         try c.encode(transitionStyle, forKey: .transitionStyle)
         try c.encode(transitionDuration, forKey: .transitionDuration)
+        try c.encode(timelinePlaybackRate, forKey: .timelinePlaybackRate)
         try c.encode(randomGlobalEffect, forKey: .randomGlobalEffect)
         try c.encode(randomGlobalEffectFrequency, forKey: .randomGlobalEffectFrequency)
         try c.encode(randomLayerEffect, forKey: .randomLayerEffect)

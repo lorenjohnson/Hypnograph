@@ -110,6 +110,8 @@ final class LivePlayer: ObservableObject {
 
     /// The current clip being displayed (mutable for live effect changes)
     private var currentClip: Hypnogram?
+    /// Snapshot of the currently rendered clip used to freeze outgoing transitions.
+    private var lastRenderedClip: Hypnogram?
 
     // MARK: - Init
 
@@ -341,6 +343,7 @@ final class LivePlayer: ObservableObject {
         currentRecipeDescription = ""
         activeLayerCount = 0
         currentClip = nil
+        lastRenderedClip = nil
         hasContent = false
     }
 
@@ -416,6 +419,14 @@ final class LivePlayer: ObservableObject {
         guard let clip = currentClip, let metalContent = contentView else { return }
         let outputSize = renderSize(aspectRatio: config.aspectRatio, maxDimension: config.playerResolution.maxDimension)
 
+        if hasContent, let outgoingClip = lastRenderedClip {
+            let frozenManager = effectManager.makeTransitionSnapshotManager(
+                frozenClip: outgoingClip,
+                preserveTemporalState: true
+            )
+            metalContent.freezeActiveSlotEffects(using: frozenManager)
+        }
+
         // Build composition using LivePlayer's own EffectManager
         let config = RenderEngine.Config(
             outputSize: outputSize,
@@ -460,7 +471,8 @@ final class LivePlayer: ObservableObject {
                 playerItem: playerItem,
                 transitionType: transitionType,
                 duration: crossfadeDuration,
-                playRate: playRate
+                playRate: playRate,
+                incomingEffectManager: effectManager
             ) { [weak self] in
                 guard let self = self else { return }
                 self.isTransitioning = false
@@ -468,6 +480,7 @@ final class LivePlayer: ObservableObject {
             }
 
             hasContent = true
+            lastRenderedClip = clip
             print("🎬 LivePlayer: Starting Metal \(transitionType.rawValue) transition over \(crossfadeDuration)s")
 
         case .failure(let error):

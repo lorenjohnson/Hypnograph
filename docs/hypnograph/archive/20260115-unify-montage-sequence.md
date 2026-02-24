@@ -50,7 +50,7 @@ Effects (separate window, as today)
 ## Out of scope (moved to its own project)
 
 Saving/rendering a *range* of clips (sequence saving) is tracked separately in:
-`docs/Hypnograph/projects/20250116-save-sequences/overview.md`
+`docs/hypnograph/active/export-clip-history-fcpxml.md`
 
 ---
 

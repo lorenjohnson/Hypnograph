@@ -28,6 +28,11 @@ final class PlayerContentView: NSView {
     /// Which source is currently active
     private var activeSlot: PlayerSlot = .a
 
+    /// Strong references for per-slot effect managers used by compositor instructions.
+    /// Needed because RenderInstruction stores a weak manager reference.
+    private var effectManagerA: EffectManager?
+    private var effectManagerB: EffectManager?
+
     /// Target output volume for this content view (0.0 to 1.0)
     private var baseVolume: Float = 1.0
 
@@ -58,6 +63,24 @@ final class PlayerContentView: NSView {
     enum PlayerSlot {
         case a, b
         var opposite: PlayerSlot { self == .a ? .b : .a }
+    }
+
+    private func source(for slot: PlayerSlot) -> AVPlayerFrameSource? {
+        slot == .a ? sourceA : sourceB
+    }
+
+    private func setEffectManager(_ manager: EffectManager?, for slot: PlayerSlot) {
+        switch slot {
+        case .a: effectManagerA = manager
+        case .b: effectManagerB = manager
+        }
+    }
+
+    private func clearSlot(_ slot: PlayerSlot) {
+        let slotSource = source(for: slot)
+        slotSource?.player.pause()
+        slotSource?.player.replaceCurrentItem(with: nil)
+        setEffectManager(nil, for: slot)
     }
 
     // MARK: - Initialization
@@ -119,6 +142,7 @@ final class PlayerContentView: NSView {
         transitionType: TransitionRenderer.TransitionType = .crossfade,
         duration: TimeInterval = 1.5,
         playRate: Float? = nil,
+        incomingEffectManager: EffectManager? = nil,
         completion: (() -> Void)? = nil
     ) {
         transitionToken &+= 1
@@ -126,7 +150,7 @@ final class PlayerContentView: NSView {
 
         let outgoingSlot = activeSlot
         let nextSlot = outgoingSlot.opposite
-        let nextSource = nextSlot == .a ? sourceA : sourceB
+        let nextSource = source(for: nextSlot)
 
         guard let nextSource = nextSource else {
             print("⚠️ PlayerContentView: Missing frame source")
@@ -134,6 +158,10 @@ final class PlayerContentView: NSView {
         }
 
         // Configure the next source with the player item
+        if let incomingEffectManager {
+            applyEffectManager(incomingEffectManager, to: playerItem)
+        }
+        setEffectManager(incomingEffectManager, for: nextSlot)
         nextSource.configure(with: playerItem)
 
         // Start playback if rate is specified
@@ -149,9 +177,7 @@ final class PlayerContentView: NSView {
             transitionToken &+= 1
 
             // Stop the outgoing player's audio
-            let outgoingSource = outgoingSlot == .a ? sourceA : sourceB
-            outgoingSource?.player.pause()
-            outgoingSource?.player.replaceCurrentItem(with: nil)
+            clearSlot(outgoingSlot)
 
             playerView.cancelTransition()
             playerView.primarySource = nextSource
@@ -164,7 +190,7 @@ final class PlayerContentView: NSView {
         }
 
         // Start the shader transition
-        guard let currentSource = outgoingSlot == .a ? sourceA : sourceB else {
+        guard let currentSource = source(for: outgoingSlot) else {
             // No current source - just set as primary
             playerView.primarySource = nextSource
             activeSlot = nextSlot
@@ -203,9 +229,7 @@ final class PlayerContentView: NSView {
 
             // Stop the outgoing player's audio
             if let outgoingSlot = self.outgoingSlotDuringTransition {
-                let outgoingSource = outgoingSlot == .a ? self.sourceA : self.sourceB
-                outgoingSource?.player.pause()
-                outgoingSource?.player.replaceCurrentItem(with: nil)
+                self.clearSlot(outgoingSlot)
             }
 
             self.outgoingSlotDuringTransition = nil
@@ -218,6 +242,19 @@ final class PlayerContentView: NSView {
         applyAudioMix(progress: 0)
 
         print("🎬 PlayerContentView: Starting \(transitionType.rawValue) transition over \(duration)s")
+    }
+
+    /// Rebind the currently visible slot to a frozen effect manager.
+    /// Used before transitioning to a new clip so the outgoing clip keeps its own
+    /// effect context while the incoming clip renders with the new context.
+    func freezeActiveSlotEffects(using manager: EffectManager) {
+        setEffectManager(manager, for: activeSlot)
+        applyEffectManager(manager, to: activeAVPlayer?.currentItem)
+    }
+
+    private func applyEffectManager(_ manager: EffectManager, to playerItem: AVPlayerItem?) {
+        guard let playerItem else { return }
+        _ = RenderEngine.rebindEffectManager(manager, on: playerItem)
     }
 
     /// Stop all playback
@@ -235,6 +272,8 @@ final class PlayerContentView: NSView {
         sourceB?.player.replaceCurrentItem(with: nil)
 
         activeSlot = .a
+        effectManagerA = nil
+        effectManagerB = nil
     }
 
     // MARK: - Audio Control
