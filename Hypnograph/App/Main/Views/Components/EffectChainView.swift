@@ -4,7 +4,7 @@ import HypnoUI
 
 struct EffectChainView: View {
     @ObservedObject var state: HypnographState
-    @ObservedObject var dream: Main
+    @ObservedObject var main: Main
 
     /// -1 = global, 0+ = layer index
     let layer: Int
@@ -15,7 +15,7 @@ struct EffectChainView: View {
     @State private var expandedEffectIndices: Set<Int> = []
 
     private var chain: EffectChain {
-        dream.activeEffectManager.effectChain(for: layer) ?? EffectChain()
+        main.activeEffectManager.effectChain(for: layer) ?? EffectChain()
     }
 
     var body: some View {
@@ -26,7 +26,7 @@ struct EffectChainView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(Array(chain.effects.enumerated()), id: \.offset) { index, effect in
                         EffectDefinitionRowView(
-                            dream: dream,
+                            main: main,
                             layer: layer,
                             effectIndex: index,
                             effect: effect,
@@ -41,7 +41,7 @@ struct EffectChainView: View {
                     Menu {
                         ForEach(EffectRegistry.availableEffectTypes, id: \.type) { entry in
                             Button(entry.displayName) {
-                                dream.activeEffectManager.addEffectToChain(for: layer, effectType: entry.type)
+                                main.activeEffectManager.addEffectToChain(for: layer, effectType: entry.type)
                             }
                         }
                     } label: {
@@ -77,7 +77,7 @@ struct EffectChainView: View {
                     get: { chain.effects.contains(where: { $0.isEnabled }) },
                     set: { enabled in
                         for idx in chain.effects.indices {
-                            dream.activeEffectManager.setEffectEnabled(for: layer, effectDefIndex: idx, enabled: enabled)
+                            main.activeEffectManager.setEffectEnabled(for: layer, effectDefIndex: idx, enabled: enabled)
                         }
                     }
                 ))
@@ -89,7 +89,7 @@ struct EffectChainView: View {
                 Menu {
                     ForEach(EffectRegistry.availableEffectTypes, id: \.type) { entry in
                         Button(entry.displayName) {
-                            dream.activeEffectManager.addEffectToChain(for: layer, effectType: entry.type)
+                            main.activeEffectManager.addEffectToChain(for: layer, effectType: entry.type)
                             isExpanded = true
                         }
                     }
@@ -111,7 +111,7 @@ struct EffectChainView: View {
         .contextMenu {
             Button {
                 let current = chain
-                _ = dream.effectsLibrarySession.addTemplate(from: current, name: current.name)
+                _ = main.effectsLibrarySession.addTemplate(from: current, name: current.name)
                 AppNotifications.show("Saved to library", flash: true)
             } label: {
                 Label("Save to Library", systemImage: "square.and.arrow.down")
@@ -119,7 +119,7 @@ struct EffectChainView: View {
 
             Button {
                 let current = chain
-                _ = dream.effectsLibrarySession.addTemplate(from: current, name: current.name)
+                _ = main.effectsLibrarySession.addTemplate(from: current, name: current.name)
                 AppNotifications.show("Saved to library", flash: true)
             } label: {
                 Label("Save as New Template...", systemImage: "square.and.arrow.down")
@@ -134,7 +134,7 @@ struct EffectChainView: View {
             Divider()
 
             Button(role: .destructive) {
-                dream.activeEffectManager.clearEffect(for: layer)
+                main.activeEffectManager.clearEffect(for: layer)
                 expandedEffectIndices.removeAll()
             } label: {
                 Label("Clear Effect", systemImage: "trash")

@@ -56,9 +56,6 @@ enum Environment {
         appSupportDirectory.appendingPathComponent("main-settings.json")
     }
 
-    /// Backward-compatibility alias for main settings URL.
-    static var defaultSettingsURL: URL { defaultMainSettingsURL }
-
     /// ~/Library/Application Support/Hypnograph/hypnograph-settings.json
     static var defaultAppSettingsURL: URL {
         appSupportDirectory.appendingPathComponent("hypnograph-settings.json")
@@ -100,11 +97,6 @@ enum Environment {
             bundledURL: bundledURL,
             defaultSettings: MainSettings.defaultValue
         )
-    }
-
-    /// Backward-compatibility alias.
-    static func ensureDefaultSettingsFileExists() {
-        ensureDefaultMainSettingsFileExists()
     }
 
     static func ensureDefaultAppSettingsFileExists() {

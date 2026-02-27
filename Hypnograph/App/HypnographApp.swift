@@ -15,7 +15,7 @@ struct HypnographApp: App {
     private let effectsStudioSettingsStore: EffectsStudioSettingsStore
     @StateObject private var state: HypnographState
     private let renderQueue: RenderEngine.ExportQueue  // Not @StateObject - we don't want to trigger view updates
-    @StateObject private var dream: Main
+    @StateObject private var main: Main
 
     init() {
         // Disable macOS window tabbing (must be set before any windows are created)
@@ -47,14 +47,14 @@ struct HypnographApp: App {
         self.renderQueue = renderQueue
 
         _state = StateObject(wrappedValue: state)
-        _dream = StateObject(wrappedValue: Main(state: state, renderQueue: renderQueue))
+        _main = StateObject(wrappedValue: Main(state: state, renderQueue: renderQueue))
     }
 
     var body: some Scene {
         WindowGroup("Hypnograph", id: "main") {
             ContentView(
                 state: state,
-                dream: dream
+                main: main
             )
             .tint(.blue)
             .preferredColorScheme(.dark)
@@ -77,22 +77,22 @@ struct HypnographApp: App {
                 }
 
                 // Wire up session-based unsaved changes check
-                appDelegate.hasUnsavedEffectChanges = { [weak dream] in
-                    guard let dream = dream else { return false }
-                    return dream.effectsSession.hasUnsavedChanges
+                appDelegate.hasUnsavedEffectChanges = { [weak main] in
+                    guard let main = main else { return false }
+                    return main.effectsSession.hasUnsavedChanges
                 }
 
                 // Wire up session-based save
-                appDelegate.saveEffectSessions = { [weak dream] in
-                    dream?.effectsSession.save()
+                appDelegate.saveEffectSessions = { [weak main] in
+                    main?.effectsSession.save()
                 }
 
                 // Wire up transport and clean screen callbacks
-                appDelegate.togglePlayPause = { [weak dream] in
-                    dream?.activePlayer.isPaused.toggle()
+                appDelegate.togglePlayPause = { [weak main] in
+                    main?.activePlayer.isPaused.toggle()
                 }
-                appDelegate.saveSnapshotImage = { [weak dream] in
-                    dream?.saveSnapshotImage()
+                appDelegate.saveSnapshotImage = { [weak main] in
+                    main?.saveSnapshotImage()
                 }
                 appDelegate.toggleCleanScreen = { [weak state] in
                     state?.windowState.toggleCleanScreen()
@@ -116,32 +116,32 @@ struct HypnographApp: App {
                 }
 
                 // Wire up global effect suspend (` key hold)
-                appDelegate.setGlobalEffectSuspended = { [weak dream] suspended in
-                    guard let dream = dream, !dream.isLiveMode else { return }
-                    dream.player.isGlobalEffectSuspended = suspended
-                    dream.player.effectManager.isGlobalEffectSuspended = suspended
+                appDelegate.setGlobalEffectSuspended = { [weak main] suspended in
+                    guard let main = main, !main.isLiveMode else { return }
+                    main.player.isGlobalEffectSuspended = suspended
+                    main.player.effectManager.isGlobalEffectSuspended = suspended
                 }
 
                 // Wire up flash solo (1-9 key hold)
-                appDelegate.setFlashSolo = { [weak dream] sourceIndex in
-                    guard let dream = dream, !dream.isLiveMode else { return false }
+                appDelegate.setFlashSolo = { [weak main] sourceIndex in
+                    guard let main = main, !main.isLiveMode else { return false }
                     // Only set flash solo if the source exists, otherwise ignore
                     if let index = sourceIndex {
-                        guard index < dream.player.layers.count else { return false }
+                        guard index < main.player.layers.count else { return false }
                     }
-                    dream.player.effectManager.setFlashSolo(sourceIndex)
+                    main.player.effectManager.setFlashSolo(sourceIndex)
                     return true
                 }
 
                 // Wire up 1-9 source selection (used by the flash-solo key monitor)
-                appDelegate.selectSourceIndex = { [weak dream] index in
-                    guard let dream = dream, !dream.isLiveMode else { return }
-                    guard index >= 0, index < dream.player.layers.count else { return }
-                    dream.player.selectSource(index)
+                appDelegate.selectSourceIndex = { [weak main] index in
+                    guard let main = main, !main.isLiveMode else { return }
+                    guard index >= 0, index < main.player.layers.count else { return }
+                    main.player.selectSource(index)
                 }
 
                 // Wire up external file opening (session documents + media sources)
-                appDelegate.openIncomingFiles = { [weak dream] urls in
+                appDelegate.openIncomingFiles = { [weak main] urls in
 
                     let sessionURLs = urls.filter { SessionStore.isSupportedExtension($0.pathExtension) }
                     if let url = sessionURLs.first {
@@ -149,13 +149,13 @@ struct HypnographApp: App {
                             AppNotifications.show("Failed to load session", flash: true)
                             return
                         }
-                        dream?.appendSessionToHistory(session)
+                        main?.appendSessionToHistory(session)
                         AppNotifications.show("Loaded \(url.lastPathComponent)", flash: true)
                     }
 
                     let mediaURLs = urls.filter { !SessionStore.isSupportedExtension($0.pathExtension) }
                     guard !mediaURLs.isEmpty else { return }
-                    _ = dream?.addSourcesAsNewClip(fromFileURLs: mediaURLs)
+                    _ = main?.addSourcesAsNewClip(fromFileURLs: mediaURLs)
                 }
 
                 // Refresh available libraries (includes asset counts for menu)
@@ -179,12 +179,12 @@ struct HypnographApp: App {
         .commands {
             AppCommands(
                 state: state,
-                dream: dream
+                main: main
             )
         }
 
         SwiftUI.Settings {
-            AppSettingsView(state: state, dream: dream)
+            AppSettingsView(state: state, main: main)
                 .frame(minWidth: 420, idealWidth: 480, maxWidth: 560, minHeight: 380)
         }
         .windowStyle(.hiddenTitleBar)

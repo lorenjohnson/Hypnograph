@@ -1,7 +1,7 @@
 # Hypnograph Code Organization and Architecture Refactor
 
 **Date:** 2026-02-27  
-**Status:** Active (Phase 0-2 implemented)
+**Status:** Completed (archived 2026-02-27)
 
 ## Goal
 
@@ -184,3 +184,11 @@ Practical approach:
 ## Recommended Next Step
 
 Proceed with Phase 3: targeted audit/split of oversized files (starting with `EffectsStudioView` and optionally `HypnographAppDelegate`) plus cleanup of deferred naming/session terminology.
+
+
+## Completion Summary
+
+- Phase 0 completed (scope and naming/settings policy alignment).
+- Phase 1 completed (App/Main/EffectsStudio/Common structural reorganization and Dream->Main transition).
+- Phase 2 completed (settings split to AppSettings/MainSettings/EffectsStudioSettings).
+- Phase 3 initiated via follow-on project: `active/hypnograph-code-audit-and-convergence.md`.

@@ -3,11 +3,11 @@ import HypnoCore
 
 struct LeftSidebarView: View {
     @ObservedObject var state: HypnographState
-    @ObservedObject var dream: Main
+    @ObservedObject var main: Main
     @ObservedObject var player: MainPlayerState
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
 
-    private var isLiveMode: Bool { dream.isLiveMode }
+    private var isLiveMode: Bool { main.isLiveMode }
 
     var body: some View {
         ScrollView {
@@ -68,7 +68,7 @@ struct LeftSidebarView: View {
                     row {
                         Text("Aspect Ratio")
                         Spacer()
-                        Picker("", selection: isLiveMode ? .constant(dream.livePlayer.config.aspectRatio) : $player.config.aspectRatio) {
+                        Picker("", selection: isLiveMode ? .constant(main.livePlayer.config.aspectRatio) : $player.config.aspectRatio) {
                             ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
                                 Text(ratio.menuLabel)
                                     .lineLimit(1)

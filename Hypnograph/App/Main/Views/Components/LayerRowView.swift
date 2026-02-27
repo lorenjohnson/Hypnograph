@@ -6,7 +6,7 @@ import AppKit
 
 struct LayerRowView: View {
     @ObservedObject var state: HypnographState
-    @ObservedObject var dream: Main
+    @ObservedObject var main: Main
     @ObservedObject var thumbnailStore: LayerThumbnailStore
 
     let index: Int
@@ -40,7 +40,7 @@ struct LayerRowView: View {
     }
 
     private var isSoloActive: Bool {
-        dream.activePlayer.effectManager.flashSoloIndex == index
+        main.activePlayer.effectManager.flashSoloIndex == index
     }
 
     var body: some View {
@@ -99,9 +99,9 @@ struct LayerRowView: View {
 
             Button {
                 if isSoloActive {
-                    dream.activePlayer.effectManager.setFlashSolo(nil)
+                    main.activePlayer.effectManager.setFlashSolo(nil)
                 } else {
-                    dream.activePlayer.effectManager.setFlashSolo(index)
+                    main.activePlayer.effectManager.setFlashSolo(index)
                 }
             } label: {
                 Text("S")
@@ -194,7 +194,7 @@ struct LayerRowView: View {
                     set: { newValue in
                         guard index != 0 else { return }
                         layer.blendMode = newValue
-                        dream.activePlayer.notifySessionMutated()
+                        main.activePlayer.notifySessionMutated()
                     }
                 )) {
                     Text("Normal").tag(BlendMode.sourceOver)
@@ -229,14 +229,14 @@ struct LayerRowView: View {
                         if layer.opacity > 0.001 {
                             lastVisibleOpacity = layer.opacity
                         }
-                        dream.activePlayer.notifySessionMutated()
+                        main.activePlayer.notifySessionMutated()
                     }
                 ), in: 0...1)
             }
 
             EffectChainView(
                 state: state,
-                dream: dream,
+                main: main,
                 layer: index,
                 title: "Effects",
                 isCollapsible: true
@@ -251,7 +251,7 @@ struct LayerRowView: View {
             lastVisibleOpacity = layer.opacity
             layer.opacity = 0
         }
-        dream.activePlayer.notifySessionMutated()
+        main.activePlayer.notifySessionMutated()
     }
 
     private func subtitleBase() -> String? {

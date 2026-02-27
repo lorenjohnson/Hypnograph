@@ -2,7 +2,7 @@ import SwiftUI
 import HypnoCore
 
 struct EffectDefinitionRowView: View {
-    @ObservedObject var dream: Main
+    @ObservedObject var main: Main
 
     let layer: Int
     let effectIndex: Int
@@ -56,7 +56,7 @@ struct EffectDefinitionRowView: View {
             Toggle("", isOn: Binding(
                 get: { effect.isEnabled },
                 set: { enabled in
-                    dream.activeEffectManager.setEffectEnabled(for: layer, effectDefIndex: effectIndex, enabled: enabled)
+                    main.activeEffectManager.setEffectEnabled(for: layer, effectDefIndex: effectIndex, enabled: enabled)
                 }
             ))
             .toggleStyle(.switch)
@@ -64,7 +64,7 @@ struct EffectDefinitionRowView: View {
             .labelsHidden()
 
             Button(role: .destructive) {
-                dream.activeEffectManager.removeEffectFromChain(for: layer, effectDefIndex: effectIndex)
+                main.activeEffectManager.removeEffectFromChain(for: layer, effectDefIndex: effectIndex)
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.tertiary)
@@ -91,7 +91,7 @@ struct EffectDefinitionRowView: View {
                         value: value,
                         spec: spec,
                         onChange: { newValue in
-                            dream.activeEffectManager.updateEffectParameter(
+                            main.activeEffectManager.updateEffectParameter(
                                 for: layer,
                                 effectDefIndex: effectIndex,
                                 key: key,

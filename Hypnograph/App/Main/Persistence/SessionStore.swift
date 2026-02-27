@@ -156,7 +156,7 @@ enum SessionStore {
         }
 
         return urls
-            .filter { $0.pathExtension == fileExtension }
+            .filter { isSupportedExtension($0.pathExtension) }
             .sorted { url1, url2 in
                 let date1 = (try? url1.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast
                 let date2 = (try? url2.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast

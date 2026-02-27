@@ -11,7 +11,7 @@ enum RightSidebarTab: Int, Hashable {
 
 struct RightSidebarView: View {
     @ObservedObject var state: HypnographState
-    @ObservedObject var dream: Main
+    @ObservedObject var main: Main
     @ObservedObject var effectsSession: EffectsSession
 
     @State private var selectedTab: RightSidebarTab = .composition
@@ -50,7 +50,7 @@ struct RightSidebarView: View {
                 selectionLimit: 1,
                 onSelection: { identifiers in
                     guard let selectedIdentifier = identifiers.first else { return }
-                    _ = dream.addSource(fromPhotosAssetIdentifier: selectedIdentifier)
+                    _ = main.addSource(fromPhotosAssetIdentifier: selectedIdentifier)
                 }
             )
         }
@@ -88,7 +88,7 @@ struct RightSidebarView: View {
                         }
 
                         Button {
-                            dream.addSource()
+                            main.addSource()
                         } label: {
                             Label("Random Source", systemImage: "dice")
                         }
@@ -101,7 +101,7 @@ struct RightSidebarView: View {
                 .padding(.horizontal, 4)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    let snapshot = dream.activePlayer.layers
+                    let snapshot = main.activePlayer.layers
                     ForEach(snapshot, id: \.mediaClip.file.id) { snapshotLayer in
                         let id = snapshotLayer.mediaClip.file.id
                         let currentIndex = layerIndex(for: id)
@@ -109,15 +109,15 @@ struct RightSidebarView: View {
                         if let currentIndex {
                             LayerRowView(
                                 state: state,
-                                dream: dream,
+                                main: main,
                                 thumbnailStore: thumbnailStore,
                                 index: currentIndex,
                                 layer: bindingForLayer(id: id, fallback: snapshotLayer),
-                                isSelected: dream.activePlayer.currentSourceIndex == currentIndex,
+                                isSelected: main.activePlayer.currentSourceIndex == currentIndex,
                                 isExpanded: expandedLayerIDs.contains(id),
                                 onSelect: {
                                     if let idx = layerIndex(for: id) {
-                                        dream.activePlayer.selectSource(idx)
+                                        main.activePlayer.selectSource(idx)
                                     }
                                 },
                                 onToggleExpanded: {
@@ -125,15 +125,15 @@ struct RightSidebarView: View {
                                 },
                                 onDuplicate: {
                                     if let idx = layerIndex(for: id) {
-                                        dream.activePlayer.selectSource(idx)
+                                        main.activePlayer.selectSource(idx)
                                     }
-                                    dream.duplicateCurrentLayer()
+                                    main.duplicateCurrentLayer()
                                 },
                                 onDelete: {
                                     if let idx = layerIndex(for: id) {
-                                        dream.activePlayer.selectSource(idx)
+                                        main.activePlayer.selectSource(idx)
                                     }
-                                    dream.removeCurrentLayer()
+                                    main.removeCurrentLayer()
                                 }
                             )
                             .contentShape(Rectangle())
@@ -164,7 +164,7 @@ struct RightSidebarView: View {
     private func effectChainsTab() -> some View {
         EffectChainLibraryView(
             state: state,
-            dream: dream,
+            main: main,
             session: effectsSession
         )
     }
@@ -181,7 +181,7 @@ struct RightSidebarView: View {
                     Text("Clip Length")
                         .font(.callout)
                     Spacer()
-                    Text("\(Int(dream.activePlayer.targetDuration.seconds.rounded()))s")
+                    Text("\(Int(main.activePlayer.targetDuration.seconds.rounded()))s")
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
@@ -189,13 +189,13 @@ struct RightSidebarView: View {
                 Slider(
                     value: Binding(
                         get: {
-                            let seconds = dream.activePlayer.targetDuration.seconds
+                            let seconds = main.activePlayer.targetDuration.seconds
                             return max(1, min(seconds, 60))
                         },
                         set: { newValue in
                             let seconds = max(1, min(newValue.rounded(), 60))
-                            dream.activePlayer.targetDuration = CMTime(seconds: seconds, preferredTimescale: 600)
-                            dream.activePlayer.notifySessionMutated()
+                            main.activePlayer.targetDuration = CMTime(seconds: seconds, preferredTimescale: 600)
+                            main.activePlayer.notifySessionMutated()
                         }
                     ),
                     in: 1...60,
@@ -209,52 +209,52 @@ struct RightSidebarView: View {
                     Text("Play Rate")
                         .font(.callout)
                     Spacer()
-                    Text(String(format: "%.0f%%", dream.activePlayer.playRate * 100))
+                    Text(String(format: "%.0f%%", main.activePlayer.playRate * 100))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
 
                 Slider(
                     value: Binding(
-                        get: { dream.activePlayer.playRate },
-                        set: { dream.activePlayer.playRate = $0 }
+                        get: { main.activePlayer.playRate },
+                        set: { main.activePlayer.playRate = $0 }
                     ),
                     in: 0.2...2.0,
                     step: 0.2
                 )
             }
             .padding(.horizontal, 4)
-            .disabled(dream.isLiveMode)
-            .opacity(dream.isLiveMode ? 0.55 : 1.0)
+            .disabled(main.isLiveMode)
+            .opacity(main.isLiveMode ? 0.55 : 1.0)
 
             EffectChainView(
                 state: state,
-                dream: dream,
+                main: main,
                 layer: -1,
                 title: "Effects"
             )
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            dream.activePlayer.selectGlobalLayer()
+            main.activePlayer.selectGlobalLayer()
         }
     }
 
     private func bindingForLayer(id: UUID, fallback: HypnogramLayer) -> Binding<HypnogramLayer> {
         Binding(
-            get: { dream.activePlayer.layers.first(where: { $0.mediaClip.file.id == id }) ?? fallback },
+            get: { main.activePlayer.layers.first(where: { $0.mediaClip.file.id == id }) ?? fallback },
             set: { updated in
-                var layers = dream.activePlayer.layers
+                var layers = main.activePlayer.layers
                 guard let index = layers.firstIndex(where: { $0.mediaClip.file.id == id }) else { return }
                 layers[index] = updated
-                dream.activePlayer.layers = layers
-                dream.activePlayer.notifySessionMutated()
+                main.activePlayer.layers = layers
+                main.activePlayer.notifySessionMutated()
             }
         )
     }
 
     private func layerIndex(for id: UUID) -> Int? {
-        dream.activePlayer.layers.firstIndex(where: { $0.mediaClip.file.id == id })
+        main.activePlayer.layers.firstIndex(where: { $0.mediaClip.file.id == id })
     }
 
     private func toggleExpanded(id: UUID) {
@@ -268,13 +268,13 @@ struct RightSidebarView: View {
     private func moveLayer(sourceID: UUID, targetID: UUID) {
         guard sourceID != targetID else { return }
 
-        var layers = dream.activePlayer.layers
+        var layers = main.activePlayer.layers
         guard let fromIndex = layers.firstIndex(where: { $0.mediaClip.file.id == sourceID }) else { return }
         guard let toIndex = layers.firstIndex(where: { $0.mediaClip.file.id == targetID }) else { return }
         guard fromIndex != toIndex else { return }
 
         let selectedID: UUID? = {
-            let selectedIndex = dream.activePlayer.currentSourceIndex
+            let selectedIndex = main.activePlayer.currentSourceIndex
             guard selectedIndex >= 0, selectedIndex < layers.count else { return nil }
             return layers[selectedIndex].mediaClip.file.id
         }()
@@ -286,14 +286,14 @@ struct RightSidebarView: View {
                 destination -= 1
             }
             layers.insert(movedLayer, at: max(0, min(destination, layers.count)))
-            dream.activePlayer.layers = layers
+            main.activePlayer.layers = layers
         }
 
         if let selectedID, let newIndex = layers.firstIndex(where: { $0.mediaClip.file.id == selectedID }) {
-            dream.activePlayer.selectSource(newIndex)
+            main.activePlayer.selectSource(newIndex)
         }
 
-        dream.activePlayer.notifySessionChanged()
+        main.activePlayer.notifySessionChanged()
     }
 
     private func addLayerFromFiles() {
@@ -304,7 +304,7 @@ struct RightSidebarView: View {
         panel.allowedContentTypes = [.image, .movie]
 
         guard panel.runModal() == .OK, let selectedURL = panel.url else { return }
-        _ = dream.addSource(fromFileURL: selectedURL)
+        _ = main.addSource(fromFileURL: selectedURL)
     }
 
 }

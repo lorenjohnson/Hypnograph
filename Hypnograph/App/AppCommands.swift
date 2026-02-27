@@ -13,7 +13,7 @@ import HypnoUI
 struct AppCommands: Commands {
     @SwiftUI.Environment(\.openWindow) private var openWindow
     @ObservedObject private var state: HypnographState
-    @ObservedObject private var dream: Main
+    @ObservedObject private var main: Main
 
     /// Whether a text field is currently being edited
     private var isTyping: Bool { state.isTyping }
@@ -23,10 +23,10 @@ struct AppCommands: Commands {
 
     init(
         state: HypnographState,
-        dream: Main
+        main: Main
     ) {
         _state = ObservedObject(initialValue: state)
-        _dream = ObservedObject(initialValue: dream)
+        _main = ObservedObject(initialValue: main)
     }
 
     var body: some Commands {
@@ -41,36 +41,36 @@ struct AppCommands: Commands {
 
         CommandGroup(after: .newItem) {
             Button("New") {
-                dream.new()
+                main.new()
             }
             .keyboardShortcut("n", modifiers: [.command])
         }
 
         CommandGroup(replacing: .saveItem) {
             Button("Open Hypnogram…") {
-                dream.openRecipe()
+                main.openRecipe()
             }
             .keyboardShortcut("o", modifiers: [.command])
 
             Divider()
 
             Button("Save Current") {
-                dream.save()
+                main.save()
             }
             .keyboardShortcut("s", modifiers: [.command])
 
             Button("Save Current As…") {
-                dream.saveAs()
+                main.saveAs()
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
 
             Button("Save & Render Current") {
-                dream.renderAndSaveVideo()
+                main.renderAndSaveVideo()
             }
             .keyboardShortcut("s", modifiers: [.option, .command])
 
             Button("Favorite Current Hypnogram") {
-                dream.favoriteCurrentHypnogram()
+                main.favoriteCurrentHypnogram()
             }
             .keyboardShortcut("f", modifiers: [.command])
 
@@ -118,7 +118,7 @@ struct AppCommands: Commands {
                 .disabled(isTyping || !isMainWindowShortcutContext)
             }
 
-            if dream.isLiveModeAvailable {
+            if main.isLiveModeAvailable {
                 Divider()
 
                 Section("Live Display") {
@@ -130,27 +130,27 @@ struct AppCommands: Commands {
                     .disabled(isTyping || !isMainWindowShortcutContext)
 
                     Toggle("Live Mode", isOn: Binding(
-                        get: { dream.isLiveMode },
-                        set: { _ in dream.toggleLiveMode() }
+                        get: { main.isLiveMode },
+                        set: { _ in main.toggleLiveMode() }
                     ))
                     .keyboardShortcut("l", modifiers: [.command])
 
                     Toggle("External Monitor", isOn: Binding(
-                        get: { dream.livePlayer.isVisible },
-                        set: { _ in dream.livePlayer.toggle() }
+                        get: { main.livePlayer.isVisible },
+                        set: { _ in main.livePlayer.toggle() }
                     ))
                     .keyboardShortcut("l", modifiers: [.command, .shift])
 
                     Button("Send to Live Display") {
-                        dream.sendToLivePlayer()
+                        main.sendToLivePlayer()
                     }
                     .keyboardShortcut(.return, modifiers: [.command])
 
                     Button("Reset Live Display") {
-                        dream.livePlayer.reset()
+                        main.livePlayer.reset()
                     }
                     .keyboardShortcut("r", modifiers: [.command, .shift])
-                    .disabled(!dream.livePlayer.isVisible)
+                    .disabled(!main.livePlayer.isVisible)
                 }
             }
 
@@ -161,11 +161,11 @@ struct AppCommands: Commands {
         }
 
         CommandMenu("Composition") {
-            dream.compositionMenu()
+            main.compositionMenu()
         }
 
         CommandMenu("Layer") {
-            dream.sourceMenu()
+            main.sourceMenu()
         }
 
         CommandMenu("Studio") {

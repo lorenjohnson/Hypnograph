@@ -4,7 +4,7 @@ import HypnoCore
 
 struct AppSettingsView: View {
     @ObservedObject var state: HypnographState
-    @ObservedObject var dream: Main
+    @ObservedObject var main: Main
     @StateObject private var audioManager = AudioDeviceManager.shared
     @State private var selectedTab: SettingsTab = .general
 
@@ -77,8 +77,8 @@ struct AppSettingsView: View {
                 ? "Select the audio output device used for preview playback."
                 : "Select the audio output device.",
             selection: Binding(
-                get: { dream.previewAudioDevice },
-                set: { dream.previewAudioDevice = $0 }
+                get: { main.previewAudioDevice },
+                set: { main.previewAudioDevice = $0 }
             )
         )
 
@@ -89,8 +89,8 @@ struct AppSettingsView: View {
                 title: "Audio Output Device (Live)",
                 description: "Select the audio output device used when sending audio to Live.",
                 selection: Binding(
-                    get: { dream.liveAudioDevice },
-                    set: { dream.liveAudioDevice = $0 }
+                    get: { main.liveAudioDevice },
+                    set: { main.liveAudioDevice = $0 }
                 )
             )
         }
@@ -137,7 +137,7 @@ struct AppSettingsView: View {
             buttonTitle: "Clear",
             isDestructive: true
         ) {
-            dream.clearClipHistory()
+            main.clearClipHistory()
         }
         Divider()
 

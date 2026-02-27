@@ -274,7 +274,7 @@ struct EffectsEditorView: View {
     @ObservedObject var viewModel: EffectsEditorViewModel
     @ObservedObject var recentStore: RecentEffectChainsStore
     @ObservedObject var state: HypnographState
-    @ObservedObject var dream: Main
+    @ObservedObject var main: Main
 
     private enum EffectsListSelection: Hashable {
         case current(Int)
@@ -300,12 +300,12 @@ struct EffectsEditorView: View {
 
     /// Current layer being edited (-1 = global, 0+ = source)
     private var currentLayer: Int {
-        dream.activePlayer.currentSourceIndex
+        main.activePlayer.currentSourceIndex
     }
 
     /// Target rows to show in CURRENT (Global + sources in the active recipe)
     private var currentTargets: [Int] {
-        [-1] + Array(0..<dream.activePlayer.layers.count)
+        [-1] + Array(0..<main.activePlayer.layers.count)
     }
 
     /// Computed selected chain from current layer's effect
@@ -320,7 +320,7 @@ struct EffectsEditorView: View {
         guard let selection = listSelection else { return nil }
         switch selection {
         case .current(let layer):
-            guard let chain = dream.activeEffectManager.effectChain(for: layer) else { return nil }
+            guard let chain = main.activeEffectManager.effectChain(for: layer) else { return nil }
             return SelectedChainContext(chain: chain, editableLayer: layer, title: chainDisplayName(chain))
 
         case .recent(let id):
@@ -344,7 +344,7 @@ struct EffectsEditorView: View {
     }
 
     private func applyTemplate(_ template: EffectChain?) {
-        dream.activeEffectManager.applyTemplate(template, to: currentLayer)
+        main.activeEffectManager.applyTemplate(template, to: currentLayer)
         listSelection = .current(currentLayer)
     }
 
@@ -357,7 +357,7 @@ struct EffectsEditorView: View {
         switch selection {
         case .current(let layer):
             return { newName in
-                dream.activeEffectManager.updateChainName(for: layer, name: newName)
+                main.activeEffectManager.updateChainName(for: layer, name: newName)
             }
 
         case .recent(let id):
@@ -379,7 +379,7 @@ struct EffectsEditorView: View {
 
     private func applyRecentEntry(_ entry: RecentEntry) {
         recentStore.addToFront(entry.chain)
-        dream.activeEffectManager.applyChainSnapshot(
+        main.activeEffectManager.applyChainSnapshot(
             entry.chain,
             sourceTemplateId: entry.sourceTemplateId,
             to: currentLayer
@@ -432,10 +432,10 @@ struct EffectsEditorView: View {
                 .cornerRadius(4)
                 .hudTooltip(state.settings.effectsListCollapsed ? "Show Effects List" : "Hide Effects List")
 
-                Text(dream.activePlayer.editingLayerDisplay)
+                Text(main.activePlayer.editingLayerDisplay)
                     .font(.system(.title3, design: .monospaced))
                     .fontWeight(.bold)
-                    .foregroundColor(dream.activePlayer.isOnGlobalLayer ? .cyan : .orange)
+                    .foregroundColor(main.activePlayer.isOnGlobalLayer ? .cyan : .orange)
 
                 Spacer()
 
@@ -502,15 +502,15 @@ struct EffectsEditorView: View {
         // Left/right arrow and Tab/Shift-Tab handled natively by SwiftUI focus system
         .onAppear {
             // Connect view model to the active session
-            viewModel.session = dream.effectsSession
+            viewModel.session = main.effectsSession
             // Set initial focus to effect list immediately
             focusedField = .effectList
             viewModel.activeSection = .effectList
             listSelection = .current(currentLayer)
         }
-        .onChange(of: dream.isLiveMode) { _, _ in
+        .onChange(of: main.isLiveMode) { _, _ in
             // Update session when live mode changes (Edit ↔ Live)
-            viewModel.session = dream.effectsSession
+            viewModel.session = main.effectsSession
         }
         .onChange(of: focusedField) { _, newField in
             // Sync active section when focus changes
@@ -518,7 +518,7 @@ struct EffectsEditorView: View {
                 viewModel.activeSection = field
             }
         }
-        .onChange(of: dream.activePlayer.currentSourceIndex) { _, newValue in
+        .onChange(of: main.activePlayer.currentSourceIndex) { _, newValue in
             // Keep CURRENT selection in sync when the active layer changes externally.
             guard case .some(.current(_)) = listSelection else { return }
             listSelection = .current(newValue)
@@ -530,7 +530,7 @@ struct EffectsEditorView: View {
 
             // Selecting a CURRENT row should switch the active layer (works for keyboard selection too).
             guard case let .some(.current(layer)) = newValue else { return }
-            dream.activePlayer.selectSource(layer)
+            main.activePlayer.selectSource(layer)
         }
         .confirmationDialog(
             "Restore Default Effects Library?",
@@ -555,10 +555,10 @@ struct EffectsEditorView: View {
         // Move CURRENT target selection up/down with wrap-around
         let targets = currentTargets
         guard !targets.isEmpty else { return }
-        let currentIndex = targets.firstIndex(of: dream.activePlayer.currentSourceIndex) ?? 0
+        let currentIndex = targets.firstIndex(of: main.activePlayer.currentSourceIndex) ?? 0
         let nextIndex = (currentIndex + delta + targets.count) % targets.count
         let nextLayer = targets[nextIndex]
-        dream.activePlayer.selectSource(nextLayer)
+        main.activePlayer.selectSource(nextLayer)
         listSelection = .current(nextLayer)
     }
 
@@ -645,7 +645,7 @@ struct EffectsEditorView: View {
 
     @ViewBuilder
     private func currentRow(layer: Int) -> some View {
-        let chain = dream.activeEffectManager.effectChain(for: layer)
+        let chain = main.activeEffectManager.effectChain(for: layer)
         let templateId = chain?.sourceTemplateId
         let canUpdate = templateId != nil && (viewModel.session?.chain(id: templateId!) != nil)
 
@@ -688,7 +688,7 @@ struct EffectsEditorView: View {
                 Divider()
 
                 Button("Clear") {
-                    dream.activeEffectManager.applyTemplate(nil, to: layer)
+                    main.activeEffectManager.applyTemplate(nil, to: layer)
                 }
             } label: {
                 Image(systemName: "chevron.down")
@@ -861,7 +861,7 @@ struct EffectsEditorView: View {
         guard let session = viewModel.session else { return }
         let baseName = chain.name?.isEmpty == false ? chain.name! : "Effect"
         let newId = session.addTemplate(from: chain, name: "\(baseName) Copy")
-        dream.activeEffectManager.updateSourceTemplateId(for: layer, sourceTemplateId: newId)
+        main.activeEffectManager.updateSourceTemplateId(for: layer, sourceTemplateId: newId)
         AppNotifications.show("Copied to library", flash: true)
     }
 
@@ -1015,7 +1015,7 @@ struct EffectsEditorView: View {
                     currentIndex: childIndex,
                     draggingIndex: $draggingEffectIndex,
                     onReorder: { from, to in
-                        dream.activeEffectManager.reorderEffectsInChain(for: layer, fromIndex: from, toIndex: to)
+                        main.activeEffectManager.reorderEffectsInChain(for: layer, fromIndex: from, toIndex: to)
                     }
                 ))
             }
@@ -1067,7 +1067,7 @@ struct EffectsEditorView: View {
 
                 // Randomize button
                 Button(action: {
-                    dream.activeEffectManager.randomizeEffect(for: layer, effectDefIndex: childIndex)
+                    main.activeEffectManager.randomizeEffect(for: layer, effectDefIndex: childIndex)
                 }) {
                     Image(systemName: "dice")
                         .font(.system(size: 10, weight: .medium))
@@ -1078,7 +1078,7 @@ struct EffectsEditorView: View {
 
                 // Reset to defaults button
                 Button(action: {
-                    dream.activeEffectManager.resetEffectToDefaults(for: layer, effectDefIndex: childIndex)
+                    main.activeEffectManager.resetEffectToDefaults(for: layer, effectDefIndex: childIndex)
                 }) {
                     Image(systemName: "arrow.uturn.backward")
                         .font(.system(size: 10, weight: .medium))
@@ -1089,7 +1089,7 @@ struct EffectsEditorView: View {
 
                 // Delete button
                 Button(action: {
-                    dream.activeEffectManager.removeEffectFromChain(for: layer, effectDefIndex: childIndex)
+                    main.activeEffectManager.removeEffectFromChain(for: layer, effectDefIndex: childIndex)
                     // Clean up expanded indices
                     expandedEffectIndices.remove(childIndex)
                     // Shift down indices above the deleted one
@@ -1106,7 +1106,7 @@ struct EffectsEditorView: View {
                 Toggle("", isOn: Binding(
                     get: { isEnabled },
                     set: { newValue in
-                        dream.activeEffectManager.setEffectEnabled(for: layer, effectDefIndex: childIndex, enabled: newValue)
+                        main.activeEffectManager.setEffectEnabled(for: layer, effectDefIndex: childIndex, enabled: newValue)
                     }
                 ))
                 .toggleStyle(.darkModeSwitchCompact)
@@ -1191,7 +1191,7 @@ struct EffectsEditorView: View {
         Menu {
             ForEach(viewModel.availableEffectTypes, id: \.type) { effect in
                 Button(effect.displayName) {
-                    dream.activeEffectManager.addEffectToChain(for: layer, effectType: effect.type)
+                    main.activeEffectManager.addEffectToChain(for: layer, effectType: effect.type)
                 }
             }
         } label: {
@@ -1226,7 +1226,7 @@ struct EffectsEditorView: View {
                         effectType: effectDef.type,
                         spec: specs[key],
                         onChange: { newValue in
-                            dream.activeEffectManager.updateEffectParameter(
+                            main.activeEffectManager.updateEffectParameter(
                                 for: layer,
                                 effectDefIndex: effectDefIndex,
                                 key: key,

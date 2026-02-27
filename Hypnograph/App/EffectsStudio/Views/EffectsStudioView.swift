@@ -10,13 +10,6 @@ import SwiftUI
 import AppKit
 
 struct EffectsStudioView: View {
-    private enum EffectsStudioPanelID: String, CaseIterable, Identifiable {
-        case code
-        case parameters
-        case manifest
-        var id: String { rawValue }
-    }
-
     private struct EffectsStudioCleanScreenSnapshot {
         let showCodePanel: Bool
         let showInspectorPanel: Bool
@@ -48,20 +41,6 @@ struct EffectsStudioView: View {
     @State private var showLiveControlsPanel = EffectsStudioSettings.defaultValue.showLiveControlsPanel
     @State private var showLogOverlay = EffectsStudioSettings.defaultValue.showLogOverlay
 
-    @State private var codePanelX: Double = 20
-    @State private var codePanelY: Double = 20
-    @State private var codePanelW: Double = 720
-    @State private var codePanelH: Double = 520
-
-    @State private var inspectorPanelX: Double = 780
-    @State private var inspectorPanelY: Double = 20
-    @State private var inspectorPanelW: Double = 390
-    @State private var inspectorPanelH: Double = 520
-    @State private var manifestPanelX: Double = 860
-    @State private var manifestPanelY: Double = 140
-    @State private var manifestPanelW: Double = 420
-    @State private var manifestPanelH: Double = 420
-    @State private var panelStack: [EffectsStudioPanelID] = [.code, .parameters, .manifest]
     @State private var showEffectsStudioChrome = true
     @State private var cleanScreenSnapshot: EffectsStudioCleanScreenSnapshot?
 
@@ -197,56 +176,6 @@ struct EffectsStudioView: View {
                     .stroke(Color.white.opacity(0.14), lineWidth: 1)
             )
             .clipShape(RoundedRectangle(cornerRadius: 10))
-    }
-
-    @ViewBuilder
-    private func panelOverlay(totalWidth: CGFloat, totalHeight: CGFloat) -> some View {
-        let canvas = CGSize(width: max(100, totalWidth - 24), height: max(100, totalHeight - 24))
-
-        ZStack(alignment: .topLeading) {
-            if showCodePanel {
-                FloatingEffectsStudioPanel(
-                    title: "Code",
-                    x: $codePanelX,
-                    y: $codePanelY,
-                    width: $codePanelW,
-                    height: $codePanelH,
-                    containerSize: canvas,
-                    minWidth: 380,
-                    minHeight: 260,
-                    maxWidth: max(380, canvas.width),
-                    maxHeight: max(260, canvas.height),
-                    panelOpacity: panelOpacity,
-                    onFrameCommit: persistCodePanelFrame,
-                    onInteractionBegan: { bringPanelToFront(.code) }
-                ) {
-                    codePanelContent
-                }
-                .zIndex(zIndex(for: .code))
-            }
-
-            if showInspectorPanel {
-                FloatingEffectsStudioPanel(
-                    title: "Parameters",
-                    x: $inspectorPanelX,
-                    y: $inspectorPanelY,
-                    width: $inspectorPanelW,
-                    height: $inspectorPanelH,
-                    containerSize: canvas,
-                    minWidth: 300,
-                    minHeight: 260,
-                    maxWidth: min(max(300, canvas.width), 620),
-                    maxHeight: max(260, canvas.height),
-                    panelOpacity: panelOpacity,
-                    onFrameCommit: persistInspectorPanelFrame,
-                    onInteractionBegan: { bringPanelToFront(.parameters) }
-                ) {
-                    inspectorPanelContent
-                }
-                .zIndex(zIndex(for: .parameters))
-            }
-        }
-        .padding(12)
     }
 
     private var previewBackdrop: some View {
@@ -416,10 +345,6 @@ struct EffectsStudioView: View {
         }
     }
 
-    private func persistCodePanelFrame(_ rect: CGRect) {}
-
-    private func persistInspectorPanelFrame(_ rect: CGRect) {}
-
     private func applyEffectsStudioUIState(_ state: EffectsStudioSettings) {
         isApplyingStoredEffectsStudioUIState = true
         panelOpacity = state.panelOpacity
@@ -440,21 +365,6 @@ struct EffectsStudioView: View {
             value.showManifestPanel = showManifestPanel
             value.showLiveControlsPanel = showLiveControlsPanel
             value.showLogOverlay = showLogOverlay
-        }
-    }
-
-    private func zIndex(for panel: EffectsStudioPanelID) -> Double {
-        guard let index = panelStack.firstIndex(of: panel) else { return 1 }
-        return Double(index + 1)
-    }
-
-    private func bringPanelToFront(_ panel: EffectsStudioPanelID) {
-        guard panelStack.last != panel else { return }
-        var transaction = Transaction(animation: nil)
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-        panelStack.removeAll { $0 == panel }
-        panelStack.append(panel)
         }
     }
 

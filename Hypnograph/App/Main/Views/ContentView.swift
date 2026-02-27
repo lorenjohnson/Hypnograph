@@ -8,15 +8,15 @@ import HypnoUI
 
 struct ContentView: View {
     @ObservedObject var state: HypnographState
-    @ObservedObject var dream: Main
+    @ObservedObject var main: Main
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
     @State private var isPlayerControlsVisible: Bool = true
 
     private var clipTrimContexts: [ClipTrimContext] {
-        let layers = dream.activePlayer.layers
+        let layers = main.activePlayer.layers
         guard !layers.isEmpty else { return [] }
 
-        let maxSelectionForClip = max(0.1, dream.activePlayer.targetDuration.seconds)
+        let maxSelectionForClip = max(0.1, main.activePlayer.targetDuration.seconds)
 
         func makeContext(layer: HypnogramLayer, index: Int) -> ClipTrimContext? {
             guard layer.mediaClip.file.mediaKind == .video else { return nil }
@@ -38,13 +38,13 @@ struct ContentView: View {
             )
         }
 
-        if dream.activePlayer.currentSourceIndex == -1 {
+        if main.activePlayer.currentSourceIndex == -1 {
             return layers.enumerated().compactMap { index, layer in
                 makeContext(layer: layer, index: index)
             }
         }
 
-        let index = dream.activePlayer.currentSourceIndex
+        let index = main.activePlayer.currentSourceIndex
         guard index >= 0, index < layers.count else { return [] }
         guard let context = makeContext(layer: layers[index], index: index) else { return [] }
         return [context]
@@ -71,37 +71,37 @@ struct ContentView: View {
 
     private var topRightIndicator: (text: String, color: Color)? {
         // LIVE indicator (same placement/size as the layer indicator)
-        if dream.isLiveMode {
+        if main.isLiveMode {
             return ("LIVE", .red)
         }
 
-        if let clipText = dream.clipHistoryIndicatorText {
+        if let clipText = main.clipHistoryIndicatorText {
             return (clipText, .blue)
         }
 
         // Layer indicators: show during flash solo (1-9 hold) or global hold (`) while global effects are suspended.
-        guard !dream.activePlayer.layers.isEmpty else { return nil }
+        guard !main.activePlayer.layers.isEmpty else { return nil }
 
-        if dream.activePlayer.effectManager.flashSoloIndex != nil {
-            return ("\(dream.activePlayer.currentSourceIndex + 1)/\(dream.activePlayer.layers.count)", .red)
+        if main.activePlayer.effectManager.flashSoloIndex != nil {
+            return ("\(main.activePlayer.currentSourceIndex + 1)/\(main.activePlayer.layers.count)", .red)
         }
 
-        if dream.activePlayer.isGlobalEffectSuspended {
-            return ("GLOBAL/\(dream.activePlayer.layers.count)", .red)
+        if main.activePlayer.isGlobalEffectSuspended {
+            return ("GLOBAL/\(main.activePlayer.layers.count)", .red)
         }
 
         return nil
     }
 
     private var shouldAutoHideCursor: Bool {
-        if dream.isLiveMode {
-            guard let player = dream.livePlayer.activeAVPlayer else { return false }
+        if main.isLiveMode {
+            guard let player = main.livePlayer.activeAVPlayer else { return false }
             return player.rate != 0
         }
 
-        let clip = dream.activePlayer.currentHypnogram
+        let clip = main.activePlayer.currentHypnogram
         let hasVideo = clip.layers.contains { $0.mediaClip.file.mediaKind == .video }
-        return hasVideo && (dream.activePlayer.isPaused == false)
+        return hasVideo && (main.activePlayer.isPaused == false)
     }
 
     @ViewBuilder
@@ -119,37 +119,37 @@ struct ContentView: View {
         VStack(spacing: 0) {
             if isPlayerControlsVisible {
                 PlayerControlsBar(
-                    isPaused: dream.activePlayer.isPaused,
-                    isLoopCurrentClipEnabled: dream.isLoopCurrentClipEnabled,
-                    currentClipText: dream.currentClipIndicatorText,
-                    clipLengthSeconds: dream.activePlayer.targetDuration.seconds,
+                    isPaused: main.activePlayer.isPaused,
+                    isLoopCurrentClipEnabled: main.isLoopCurrentClipEnabled,
+                    currentClipText: main.currentClipIndicatorText,
+                    clipLengthSeconds: main.activePlayer.targetDuration.seconds,
                     clipTrimContexts: clipTrimContexts,
                     previewVolume: Binding(
-                        get: { Double(dream.previewVolume) },
-                        set: { dream.previewVolume = Float($0) }
+                        get: { Double(main.previewVolume) },
+                        set: { main.previewVolume = Float($0) }
                     ),
-                    timelinePlaybackRate: dream.timelinePlaybackRate,
+                    timelinePlaybackRate: main.timelinePlaybackRate,
                     timelinePlaybackControlValue: Binding(
-                        get: { dream.timelinePlaybackControlValue },
-                        set: { dream.timelinePlaybackControlValue = $0 }
+                        get: { main.timelinePlaybackControlValue },
+                        set: { main.timelinePlaybackControlValue = $0 }
                     ),
                     isTimelinePlaybackReverse: Binding(
-                        get: { dream.isTimelinePlaybackReverse },
-                        set: { dream.isTimelinePlaybackReverse = $0 }
+                        get: { main.isTimelinePlaybackReverse },
+                        set: { main.isTimelinePlaybackReverse = $0 }
                     ),
-                    onPrevious: { dream.previousClip() },
-                    onPlayPause: { dream.togglePause() },
-                    onNext: { dream.nextClip() },
-                    onToggleLoopCurrentClipMode: { dream.toggleLoopCurrentClipMode() },
-                    onSnapshotCurrent: { dream.saveSnapshotImage() },
-                    onSaveCurrent: { dream.save() },
-                    onRenderCurrent: { dream.renderAndSaveVideo() },
+                    onPrevious: { main.previousClip() },
+                    onPlayPause: { main.togglePause() },
+                    onNext: { main.nextClip() },
+                    onToggleLoopCurrentClipMode: { main.toggleLoopCurrentClipMode() },
+                    onSnapshotCurrent: { main.saveSnapshotImage() },
+                    onSaveCurrent: { main.save() },
+                    onRenderCurrent: { main.renderAndSaveVideo() },
                     onCommitClipTrimRange: { layerIndex, range in
-                        dream.setLayerClipRange(
+                        main.setLayerClipRange(
                             sourceIndex: layerIndex,
                             startSeconds: range.lowerBound,
                             endSeconds: range.upperBound,
-                            maxDurationSeconds: dream.activePlayer.targetDuration.seconds
+                            maxDurationSeconds: main.activePlayer.targetDuration.seconds
                         )
                     }
                 )
@@ -168,7 +168,7 @@ struct ContentView: View {
                 .ignoresSafeArea()
 
             // Main display
-            dream.makeDisplayView()
+            main.makeDisplayView()
                 .ignoresSafeArea()
 
             CursorAutoHideView(isEnabled: shouldAutoHideCursor, idleSeconds: 3.0)
@@ -191,28 +191,28 @@ struct ContentView: View {
                                 AppNotifications.show("Failed to load recipe", flash: true)
                                 return
                             }
-                            dream.appendSessionToHistory(session)
+                            main.appendSessionToHistory(session)
                             AppNotifications.show("Loaded: \(entry.name)", flash: true)
                         }
                     )
                     .transition(.move(edge: .leading).combined(with: .opacity))
                 }
             }
-            .padding(.top, dream.isLiveMode ? 56 : 12)
+            .padding(.top, main.isLiveMode ? 56 : 12)
             .padding(.leading, 12)
             .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("hypnogramList"))
         }
         .overlay(alignment: .center) {
             HStack(spacing: 0) {
                 if state.windowState.isVisible("leftSidebar") {
-                    LeftSidebarView(state: state, dream: dream, player: dream.activePlayer)
+                    LeftSidebarView(state: state, main: main, player: main.activePlayer)
                         .transition(.move(edge: .leading).combined(with: .opacity))
                 }
 
                 Spacer(minLength: 0)
 
                 if state.windowState.isVisible("rightSidebar") {
-                    RightSidebarView(state: state, dream: dream, effectsSession: dream.effectsLibrarySession)
+                    RightSidebarView(state: state, main: main, effectsSession: main.effectsLibrarySession)
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
@@ -222,12 +222,12 @@ struct ContentView: View {
         }
         .overlay(alignment: .top) {
             VStack(spacing: 8) {
-                if !state.windowState.isCleanScreen && dream.isLiveModeAvailable {
+                if !state.windowState.isCleanScreen && main.isLiveModeAvailable {
                     Picker("", selection: Binding(
-                        get: { dream.isLiveMode ? 1 : 0 },
+                        get: { main.isLiveMode ? 1 : 0 },
                         set: { newValue in
-                            if (newValue == 1) != dream.isLiveMode {
-                                dream.toggleLiveMode()
+                            if (newValue == 1) != main.isLiveMode {
+                                main.toggleLiveMode()
                             }
                         }
                     )) {
@@ -265,9 +265,9 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
 
-                if dream.isLiveModeAvailable && state.windowState.isVisible("livePreview") {
+                if main.isLiveModeAvailable && state.windowState.isVisible("livePreview") {
                     LivePreviewPanel(
-                        livePlayer: dream.livePlayer,
+                        livePlayer: main.livePlayer,
                         onClose: {
                             state.windowState.set("livePreview", visible: false)
                         }

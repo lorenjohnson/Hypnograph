@@ -64,7 +64,7 @@ struct HUDItem {
 /// Includes source file list at the bottom.
 struct HUDView: View {
     @ObservedObject var state: HypnographState
-    @ObservedObject var dream: Main
+    @ObservedObject var main: Main
     @ObservedObject private var tooltipManager = TooltipManager.shared
 
     var body: some View {
@@ -82,19 +82,19 @@ struct HUDView: View {
                     .font(.subheadline)
                     .foregroundColor(.white)
 
-                if dream.activePlayer.layers.isEmpty {
+                if main.activePlayer.layers.isEmpty {
                     Text("No layers")
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.7))
                 } else {
-                    ForEach(Array(dream.activePlayer.layers.enumerated()), id: \.offset) { index, layer in
+                    ForEach(Array(main.activePlayer.layers.enumerated()), id: \.offset) { index, layer in
                         HStack(spacing: 4) {
                             Text("\(index + 1):")
                                 .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(index == dream.activePlayer.currentSourceIndex ? .cyan : .white.opacity(0.7))
+                                .foregroundColor(index == main.activePlayer.currentSourceIndex ? .cyan : .white.opacity(0.7))
                             Text(shortenedPath(layer))
                                 .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(index == dream.activePlayer.currentSourceIndex ? .cyan : .white)
+                                .foregroundColor(index == main.activePlayer.currentSourceIndex ? .cyan : .white)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                         }
@@ -130,7 +130,7 @@ struct HUDView: View {
     }
 
     private func hudItems() -> [HUDItem] {
-        return dream.hudItems().sorted { $0.order < $1.order }
+        return main.hudItems().sorted { $0.order < $1.order }
     }
 
     /// Shorten path by replacing home directory with ~/
@@ -149,7 +149,7 @@ struct HUDView: View {
     }
 
     private var formattedDuration: String {
-        let totalSeconds = dream.activePlayer.targetDuration.seconds
+        let totalSeconds = main.activePlayer.targetDuration.seconds
         if totalSeconds < 60 {
             return String(format: "%.1fs", totalSeconds)
         } else {

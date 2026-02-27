@@ -5,7 +5,7 @@ import HypnoUI
 
 struct EffectChainLibraryView: View {
     @ObservedObject var state: HypnographState
-    @ObservedObject var dream: Main
+    @ObservedObject var main: Main
     @ObservedObject var session: EffectsSession
 
     @State private var renameTargetID: UUID?
@@ -19,8 +19,8 @@ struct EffectChainLibraryView: View {
     @State private var draggedChainID: UUID?
 
     private var selectedLayerIndex: Int? {
-        let idx = dream.activePlayer.currentSourceIndex
-        guard idx >= 0, idx < dream.activePlayer.layers.count else { return nil }
+        let idx = main.activePlayer.currentSourceIndex
+        guard idx >= 0, idx < main.activePlayer.layers.count else { return nil }
         return idx
     }
 
@@ -41,7 +41,7 @@ struct EffectChainLibraryView: View {
                     ForEach(snapshot, id: \.id) { chain in
                         if let chainIndex = session.chainIndex(id: chain.id) {
                             EffectChainLibraryRow(
-                                dream: dream,
+                                main: main,
                                 session: session,
                                 chainIndex: chainIndex,
                                 chain: chain,
@@ -151,7 +151,7 @@ private struct EffectChainReorderDropDelegate: DropDelegate {
 }
 
 private struct EffectChainLibraryRow: View {
-    @ObservedObject var dream: Main
+    @ObservedObject var main: Main
     @ObservedObject var session: EffectsSession
 
     let chainIndex: Int
@@ -192,7 +192,7 @@ private struct EffectChainLibraryRow: View {
             .onTapGesture(perform: onToggleExpanded)
             .contextMenu {
                 Button {
-                    dream.activeEffectManager.applyTemplate(chain, to: -1)
+                    main.activeEffectManager.applyTemplate(chain, to: -1)
                     AppNotifications.show("Applied to Global", flash: true)
                 } label: {
                     Label("Apply to Global", systemImage: "globe")
@@ -200,7 +200,7 @@ private struct EffectChainLibraryRow: View {
 
                 Button {
                     guard let layer = selectedLayerIndex else { return }
-                    dream.activeEffectManager.applyTemplate(chain, to: layer)
+                    main.activeEffectManager.applyTemplate(chain, to: layer)
                     AppNotifications.show("Applied to Layer \(layer + 1)", flash: true)
                 } label: {
                     Label("Apply to Selected Layer", systemImage: "square.stack.3d.up")

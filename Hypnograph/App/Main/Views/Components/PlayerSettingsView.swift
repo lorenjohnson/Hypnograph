@@ -302,7 +302,7 @@ struct AudioDeviceRow: View {
 /// Modal panel for player-specific settings (generation, playback)
 struct PlayerSettingsView: View {
     @ObservedObject var player: MainPlayerState
-    @ObservedObject var dream: Main
+    @ObservedObject var main: Main
     let onClose: () -> Void
 
     /// Format seconds as mm:ss
@@ -328,7 +328,7 @@ struct PlayerSettingsView: View {
 
     /// Config to display - shows live player's config when in live mode, otherwise source player's config
     private var displayedConfig: PlayerConfiguration {
-        dream.isLiveMode ? dream.livePlayer.config : player.config
+        main.isLiveMode ? main.livePlayer.config : player.config
     }
 
     var body: some View {
@@ -356,19 +356,19 @@ struct PlayerSettingsView: View {
                 playerModeButton(
                     icon: "rectangle",
                     label: "Preview",
-                    isSelected: !dream.isLiveMode,
+                    isSelected: !main.isLiveMode,
                     action: {
-                        if dream.isLiveMode { dream.toggleLiveMode() }
+                        if main.isLiveMode { main.toggleLiveMode() }
                     }
                 )
 
-                if dream.isLiveModeAvailable {
+                if main.isLiveModeAvailable {
                     playerModeButton(
                         icon: "play.display",
                         label: "Live",
-                        isSelected: dream.isLiveMode,
+                        isSelected: main.isLiveMode,
                         action: {
-                            if !dream.isLiveMode { dream.toggleLiveMode() }
+                            if !main.isLiveMode { main.toggleLiveMode() }
                         }
                     )
                 }
@@ -385,8 +385,8 @@ struct PlayerSettingsView: View {
                 Spacer()
 
                 Toggle("", isOn: Binding(
-                    get: { dream.state.settings.playbackEndBehavior == .loopCurrentClip },
-                    set: { dream.state.setLoopCurrentClipMode($0) }
+                    get: { main.state.settings.playbackEndBehavior == .loopCurrentClip },
+                    set: { main.state.setLoopCurrentClipMode($0) }
                 ))
                 .toggleStyle(.darkMode)
             }
@@ -394,18 +394,18 @@ struct PlayerSettingsView: View {
             HStack {
                 Text("Max Layers:")
                     .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.white.opacity(dream.isLiveMode ? 0.4 : 0.8))
+                    .foregroundColor(.white.opacity(main.isLiveMode ? 0.4 : 0.8))
 
                 Spacer()
 
                 Text("\(displayedConfig.maxLayers)")
                     .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.white.opacity(dream.isLiveMode ? 0.6 : 1.0))
+                    .foregroundColor(.white.opacity(main.isLiveMode ? 0.6 : 1.0))
                     .frame(minWidth: 30)
 
                 Stepper("", value: $player.config.maxLayers, in: 1...20)
                     .labelsHidden()
-                    .disabled(dream.isLiveMode)
+                    .disabled(main.isLiveMode)
             }
 
             Divider()
@@ -413,11 +413,11 @@ struct PlayerSettingsView: View {
                 .padding(.vertical, 4)
 
             let clipMinBinding = Binding(
-                get: { Int(dream.state.settings.clipLengthMinSeconds.rounded()) },
+                get: { Int(main.state.settings.clipLengthMinSeconds.rounded()) },
                 set: { newValue in
                     let minValue = max(1, newValue)
-                    let maxValue = max(minValue, Int(dream.state.settings.clipLengthMaxSeconds.rounded()))
-                    dream.state.settingsStore.update {
+                    let maxValue = max(minValue, Int(main.state.settings.clipLengthMaxSeconds.rounded()))
+                    main.state.settingsStore.update {
                         $0.clipLengthMinSeconds = Double(minValue)
                         $0.clipLengthMaxSeconds = Double(maxValue)
                     }
@@ -425,50 +425,50 @@ struct PlayerSettingsView: View {
             )
 
             let clipMaxBinding = Binding(
-                get: { Int(dream.state.settings.clipLengthMaxSeconds.rounded()) },
+                get: { Int(main.state.settings.clipLengthMaxSeconds.rounded()) },
                 set: { newValue in
-                    let maxValue = max(newValue, Int(dream.state.settings.clipLengthMinSeconds.rounded()))
-                    dream.state.settingsStore.update { $0.clipLengthMaxSeconds = Double(maxValue) }
+                    let maxValue = max(newValue, Int(main.state.settings.clipLengthMinSeconds.rounded()))
+                    main.state.settingsStore.update { $0.clipLengthMaxSeconds = Double(maxValue) }
                 }
             )
 
             HStack {
                 Text("Clip Length Min:")
                     .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.white.opacity(dream.isLiveMode ? 0.4 : 0.8))
+                    .foregroundColor(.white.opacity(main.isLiveMode ? 0.4 : 0.8))
 
                 Spacer()
 
                 Text("\(clipMinBinding.wrappedValue)s")
                     .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.white.opacity(dream.isLiveMode ? 0.6 : 1.0))
+                    .foregroundColor(.white.opacity(main.isLiveMode ? 0.6 : 1.0))
                     .frame(minWidth: 50)
 
                 Stepper("", value: clipMinBinding, in: 1...60, step: 1)
                     .labelsHidden()
-                    .disabled(dream.isLiveMode)
+                    .disabled(main.isLiveMode)
             }
 
             HStack {
                 Text("Clip Length Max:")
                     .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.white.opacity(dream.isLiveMode ? 0.4 : 0.8))
+                    .foregroundColor(.white.opacity(main.isLiveMode ? 0.4 : 0.8))
 
                 Spacer()
 
                 Text("\(clipMaxBinding.wrappedValue)s")
                     .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.white.opacity(dream.isLiveMode ? 0.6 : 1.0))
+                    .foregroundColor(.white.opacity(main.isLiveMode ? 0.6 : 1.0))
                     .frame(minWidth: 50)
 
                 Stepper("", value: clipMaxBinding, in: clipMinBinding.wrappedValue...120, step: 1)
                     .labelsHidden()
-                    .disabled(dream.isLiveMode)
+                    .disabled(main.isLiveMode)
             }
 
             PlayRateControl(playRate: $player.playRate)
-                .disabled(dream.isLiveMode)
-                .opacity(dream.isLiveMode ? 0.5 : 1.0)
+                .disabled(main.isLiveMode)
+                .opacity(main.isLiveMode ? 0.5 : 1.0)
 
             HStack {
                 Text("Source Framing:")
@@ -478,9 +478,9 @@ struct PlayerSettingsView: View {
                 Spacer()
 
                 Picker("", selection: Binding(
-                    get: { dream.state.settings.sourceFraming },
+                    get: { main.state.settings.sourceFraming },
                     set: { newValue in
-                        dream.state.settingsStore.update { $0.sourceFraming = newValue }
+                        main.state.settingsStore.update { $0.sourceFraming = newValue }
                     }
                 )) {
                     ForEach(SourceFraming.allCases, id: \.self) { framing in
@@ -494,18 +494,18 @@ struct PlayerSettingsView: View {
             HStack {
                 Text("Aspect Ratio:")
                     .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.white.opacity(dream.isLiveMode ? 0.4 : 0.8))
+                    .foregroundColor(.white.opacity(main.isLiveMode ? 0.4 : 0.8))
 
                 Spacer()
 
-                Picker("", selection: dream.isLiveMode ? .constant(displayedConfig.aspectRatio) : $player.config.aspectRatio) {
+                Picker("", selection: main.isLiveMode ? .constant(displayedConfig.aspectRatio) : $player.config.aspectRatio) {
                     ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
                         Text(ratio.menuLabel).tag(ratio)
                     }
                 }
                 .pickerStyle(.menu)
                 .frame(width: 120)
-                .disabled(dream.isLiveMode)
+                .disabled(main.isLiveMode)
             }
 
             Divider()
@@ -524,9 +524,9 @@ struct PlayerSettingsView: View {
                 Spacer()
 
                 Picker("", selection: Binding(
-                    get: { dream.state.settings.transitionStyle },
+                    get: { main.state.settings.transitionStyle },
                     set: { newValue in
-                        dream.state.settingsStore.update { $0.transitionStyle = newValue }
+                        main.state.settingsStore.update { $0.transitionStyle = newValue }
                     }
                 )) {
                     ForEach(TransitionRenderer.TransitionType.allCases, id: \.self) { style in
@@ -544,16 +544,16 @@ struct PlayerSettingsView: View {
 
                 Spacer()
 
-                Text(String(format: "%.1fs", dream.state.settings.transitionDuration))
+                Text(String(format: "%.1fs", main.state.settings.transitionDuration))
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white)
                     .frame(minWidth: 40)
 
                 Slider(
                     value: Binding(
-                        get: { dream.state.settings.transitionDuration },
+                        get: { main.state.settings.transitionDuration },
                         set: { newValue in
-                            dream.state.settingsStore.update { $0.transitionDuration = newValue }
+                            main.state.settingsStore.update { $0.transitionDuration = newValue }
                         }
                     ),
                     in: 0.1...3.0
@@ -573,15 +573,15 @@ struct PlayerSettingsView: View {
             // Audio - Preview
             AudioDeviceRow(
                 label: "Preview",
-                selectedDevice: $dream.previewAudioDevice,
-                volume: $dream.previewVolume
+                selectedDevice: $main.previewAudioDevice,
+                volume: $main.previewVolume
             )
 
             // Audio - Live
             AudioDeviceRow(
                 label: "Live",
-                selectedDevice: $dream.liveAudioDevice,
-                volume: $dream.liveVolume
+                selectedDevice: $main.liveAudioDevice,
+                volume: $main.liveVolume
             )
         }
         .foregroundColor(.white)

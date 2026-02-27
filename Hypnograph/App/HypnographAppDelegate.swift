@@ -45,19 +45,6 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Files received before `openIncomingFiles` callback was wired up.
     private var pendingIncomingFiles: [URL] = []
 
-    /// Backward-compatible alias for session-only open handling.
-    var openSessionFile: ((URL) -> Void)? {
-        didSet {
-            guard let openSessionFile else { return }
-            openIncomingFiles = { urls in
-                guard let sessionURL = urls.first(where: { SessionStore.isSupportedExtension($0.pathExtension) }) else {
-                    return
-                }
-                openSessionFile(sessionURL)
-            }
-        }
-    }
-
     private func requestMainWindowFocus() {
         NSApp.activate(ignoringOtherApps: true)
 

@@ -774,7 +774,7 @@ final class Main: ObservableObject {
         if isLiveMode {
             return AnyView(
                 LivePlayerScreen(livePlayer: livePlayer)
-                    .id("dream-live-\(livePlayer.config.viewID)")
+                    .id("main-live-\(livePlayer.config.viewID)")
             )
         }
 
@@ -812,7 +812,7 @@ final class Main: ObservableObject {
             get: { player.currentClipTimeOffset },
             set: { player.currentClipTimeOffset = $0 }
         )
-        let viewID = "dream-preview-\(player.config.viewID)-\(player.playRate)"
+        let viewID = "main-preview-\(player.config.viewID)-\(player.playRate)"
 
         return AnyView(
             PreviewPlayerView(
