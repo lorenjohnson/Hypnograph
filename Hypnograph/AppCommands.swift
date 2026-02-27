@@ -170,7 +170,7 @@ struct AppCommands: Commands {
 
         CommandMenu("Studio") {
             Button("Open Effect Studio") {
-                openWindow(id: "shaderStudio")
+                openWindow(id: "effectsStudio")
             }
             .keyboardShortcut("k", modifiers: [.command, .option])
         }
@@ -206,7 +206,7 @@ struct AppCommands: Commands {
             windowBelongsToStudio(NSApp.mainWindow)
 
         if studioIsActiveContext {
-            NotificationCenter.default.post(name: .shaderStudioToggleCleanScreen, object: nil)
+            NotificationCenter.default.post(name: .effectsStudioToggleCleanScreen, object: nil)
         } else {
             state.windowState.toggleCleanScreen()
         }

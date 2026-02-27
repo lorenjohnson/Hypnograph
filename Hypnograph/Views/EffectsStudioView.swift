@@ -1,5 +1,5 @@
 //
-//  ShaderStudioView.swift
+//  EffectsStudioView.swift
 //  Hypnograph
 //
 //  Runtime effect authoring studio (v1).
@@ -16,7 +16,7 @@ import Foundation
 import HypnoCore
 
 extension Notification.Name {
-    static let shaderStudioToggleCleanScreen = Notification.Name("Hypnograph.ShaderStudio.ToggleCleanScreen")
+    static let effectsStudioToggleCleanScreen = Notification.Name("Hypnograph.EffectsStudio.ToggleCleanScreen")
 }
 
 enum StudioParamType: String, CaseIterable, Identifiable {
@@ -222,15 +222,15 @@ private struct MetalCodeEditorView: NSViewRepresentable {
 }
 
 @MainActor
-final class ShaderStudioViewModel: ObservableObject {
+final class EffectsStudioViewModel: ObservableObject {
     private enum PersistedSourceKind: String {
         case file
         case photos
         case sample
     }
 
-    private let sourceKindDefaultsKey = "shaderStudio.lastSource.kind"
-    private let sourceValueDefaultsKey = "shaderStudio.lastSource.value"
+    private let sourceKindDefaultsKey = "effectsStudio.lastSource.kind"
+    private let sourceValueDefaultsKey = "effectsStudio.lastSource.value"
 
     @Published var runtimeEffectUUID: String = UUID().uuidString.lowercased()
     @Published var runtimeEffectName: String = "New Effect"
@@ -238,13 +238,13 @@ final class ShaderStudioViewModel: ObservableObject {
     @Published private(set) var runtimeEffects: [StudioRuntimeEffectChoice] = []
     @Published var selectedRuntimeType: String = ""
 
-    @Published var sourceCode: String = ShaderStudioViewModel.defaultShaderBody
+    @Published var sourceCode: String = EffectsStudioViewModel.defaultShaderBody
     @Published var compileLog: String = "Compile to render preview." {
         didSet { appendLogEntry(from: compileLog) }
     }
     @Published private(set) var logEntries: [String] = []
 
-    @Published var parameters: [StudioParameterDraft] = ShaderStudioViewModel.defaultParameters
+    @Published var parameters: [StudioParameterDraft] = EffectsStudioViewModel.defaultParameters
     @Published private(set) var parameterValues: [String: AnyCodableValue] = [:]
     @Published var pendingCodeInsertion: String?
 
@@ -376,8 +376,8 @@ final class ShaderStudioViewModel: ObservableObject {
     }
 
     func resetToTemplate() {
-        sourceCode = ShaderStudioViewModel.defaultShaderBody
-        parameters = ShaderStudioViewModel.defaultParameters
+        sourceCode = EffectsStudioViewModel.defaultShaderBody
+        parameters = EffectsStudioViewModel.defaultParameters
         ensureSystemParameters()
         selectedRuntimeType = ""
         runtimeEffectUUID = UUID().uuidString.lowercased()
@@ -2045,7 +2045,7 @@ private struct StudioParameterDefinitionRow: View {
     }
 }
 
-struct ShaderStudioView: View {
+struct EffectsStudioView: View {
     private enum StudioPanelID: String, CaseIterable, Identifiable {
         case shader
         case parameters
@@ -2063,7 +2063,7 @@ struct ShaderStudioView: View {
     }
 
     @ObservedObject var state: HypnographState
-    @StateObject private var model = ShaderStudioViewModel()
+    @StateObject private var model = EffectsStudioViewModel()
     @StateObject private var panelWindows = StudioPanelWindowController()
     @StateObject private var tabMonitor = StudioTabKeyMonitor()
     @StateObject private var studioUIStore = ShaderStudioUIStore()
@@ -2212,7 +2212,7 @@ struct ShaderStudioView: View {
                 model.loadPhotosSource(identifier: id)
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .shaderStudioToggleCleanScreen)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .effectsStudioToggleCleanScreen)) { _ in
             toggleStudioCleanScreen()
         }
     }
@@ -2892,7 +2892,7 @@ private enum StudioPanelKind: String, CaseIterable {
     }
 
     var autosaveName: String {
-        "Hypnograph.ShaderStudio.\(rawValue)"
+        "Hypnograph.EffectsStudio.\(rawValue)"
     }
 }
 

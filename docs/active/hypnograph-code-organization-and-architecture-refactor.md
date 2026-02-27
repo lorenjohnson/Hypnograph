@@ -5,7 +5,7 @@
 
 ## Goal
 
-Clarify and simplify app architecture after the runtime-effects + Shader Studio spike, without changing product behavior.
+Clarify and simplify app architecture after the runtime-effects + Effect Studio spike, without changing product behavior.
 
 This project is focused on structure and ownership boundaries in the app repo (`Hypnograph`), not on changing the underlying effects runtime in `HypnoCore`.
 
@@ -16,7 +16,7 @@ This project is focused on structure and ownership boundaries in the app repo (`
 - `HypnographApp.swift` defines scenes/windows and wires the app delegate callbacks.
 - Two primary windows now exist:
   - Main app window (`WindowGroup("Hypnograph", id: "main")`) via `ContentView`.
-  - Studio window (`Window("Shader Studio", id: "shaderStudio")`) via `ShaderStudioView`.
+  - Studio window (`Window("Effect Studio", id: "effectsStudio")`) via `EffectsStudioView`.
 - App menu commands are centralized in `AppCommands.swift`, with contextual handling for main-window vs studio-window behavior.
 
 ## Main Runtime Roles
@@ -38,7 +38,7 @@ This project is focused on structure and ownership boundaries in the app repo (`
   - Operational actions (`EffectChainLibraryActions`, `SessionFileActions`).
 - `Dream/` contains most main-window orchestration and playback behavior.
 - `Views/` contains both global views and feature-specific views, with many component files in `Views/Components`.
-- `ShaderStudioView.swift` is currently large and internally owns significant behavior (rendering, authoring, panel/window orchestration, persistence details).
+- `EffectsStudioView.swift` is currently large and internally owns significant behavior (rendering, authoring, panel/window orchestration, persistence details).
 
 ## Why It Feels Mismatched
 
@@ -82,12 +82,12 @@ Hypnograph/
         ContentView.swift
         ...main-window-specific views...
     Studio/
-      ShaderStudioViewModel.swift
+      EffectsStudioViewModel.swift
       StudioPanelWindowController.swift
       Persistence/
         StudioSettingsStore.swift
       Views/
-        ShaderStudioView.swift
+        EffectsStudioView.swift
         ...studio-specific components...
     Common/
       Views/
