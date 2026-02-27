@@ -31,8 +31,8 @@ struct EffectsStudioView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var settingsStore: EffectsStudioSettingsStore
     @StateObject private var model: EffectsStudioViewModel
-    @StateObject private var panelWindows = EffectsStudioPanelWindowController()
-    @StateObject private var tabMonitor = EffectsStudioTabKeyMonitor()
+    @StateObject private var panelHostService: EffectsStudioPanelHostService
+    @StateObject private var tabMonitor: EffectsStudioTabKeyMonitorService
 
     @State private var showPhotosPicker = false
     @State private var selectedPhotosIdentifier: String?
@@ -61,6 +61,8 @@ struct EffectsStudioView: View {
         self.state = state
         self.settingsStore = settingsStore
         _model = StateObject(wrappedValue: dependencies.makeViewModel(settingsStore))
+        _panelHostService = StateObject(wrappedValue: dependencies.makePanelHostService())
+        _tabMonitor = StateObject(wrappedValue: dependencies.makeTabKeyMonitorService())
     }
 
     var body: some View {
@@ -141,7 +143,7 @@ struct EffectsStudioView: View {
         }
         .background(
             EffectsStudioPanelHostBridge(
-                controller: panelWindows,
+                hostService: panelHostService,
                 showCodePanel: showCodePanel,
                 showInspectorPanel: showInspectorPanel,
                 showManifestPanel: showManifestPanel,
@@ -158,7 +160,7 @@ struct EffectsStudioView: View {
             cleanScreenSnapshot = nil
             persistEffectsStudioUIState()
             tabMonitor.stop()
-            panelWindows.teardown()
+            panelHostService.teardown()
         }
         .sheet(isPresented: $showPhotosPicker) {
             PhotosPickerSheet(

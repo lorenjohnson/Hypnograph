@@ -9,6 +9,8 @@ struct EffectsStudioDependencies {
     var runtimeEffectsService: RuntimeEffectsService
     var metalRenderService: MetalRenderService
     var sourcePlaybackService: SourcePlaybackService
+    var makePanelHostService: @MainActor () -> EffectsStudioPanelHostService
+    var makeTabKeyMonitorService: @MainActor () -> EffectsStudioTabKeyMonitorService
 
     @MainActor
     func makeViewModel(_ settingsStore: EffectsStudioSettingsStore) -> EffectsStudioViewModel {
@@ -23,6 +25,8 @@ struct EffectsStudioDependencies {
     static let live = EffectsStudioDependencies(
         runtimeEffectsService: .live,
         metalRenderService: .live,
-        sourcePlaybackService: .live
+        sourcePlaybackService: .live,
+        makePanelHostService: { EffectsStudioPanelHostService() },
+        makeTabKeyMonitorService: { EffectsStudioTabKeyMonitorService() }
     )
 }
