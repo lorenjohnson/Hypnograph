@@ -5,7 +5,9 @@ last_reviewed: 2026-02-27
 
 ## v0.1 Release
 - [x] [fx-studio-architecture-refactor](archive/20260227-fx-studio-architecture-refactor.md)
+- [ ] [main-architecture-refactor](active/main-architecture-refactor.md)
 - [ ] [timeline-transition-effect-isolation-refactor](active/timeline-transition-effect-isolation-refactor.md)
+- [ ] [grab-bag-bugs-and-ui-ux-conundrums](active/grab-bag-bugs-and-ui-ux-conundrums.md)
 - [ ] Setting global effect preset is a little weird unexpected... Single press clearing of current Effect Chain selection, selecting of another one... Right now feels like adding effects is like adding a chain but actually mutatin ga chain...
 - [ ] the "h" hypnograms window. what to do with it...
 - [ ] Rendering/saving some Hypnograms results in an error: "🔴 RenderEngine.export failed - RenderError: Export failed: Cannot Decode. Render job failed: The operation couldn't be completed. (Hypnograph.RenderError error 6.)" — happens if any effects load operation were done first
