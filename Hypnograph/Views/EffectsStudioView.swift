@@ -19,6 +19,10 @@ extension Notification.Name {
     static let effectsStudioToggleCleanScreen = Notification.Name("Hypnograph.EffectsStudio.ToggleCleanScreen")
 }
 
+// Transitional aliases keep naming consistent in this file while underlying store types remain unchanged.
+private typealias EffectsStudioUIStore = ShaderStudioUIStore
+private typealias EffectsStudioUIState = ShaderStudioUIState
+
 enum StudioParamType: String, CaseIterable, Identifiable {
     case float
     case int
@@ -2066,7 +2070,7 @@ struct EffectsStudioView: View {
     @StateObject private var model = EffectsStudioViewModel()
     @StateObject private var panelWindows = StudioPanelWindowController()
     @StateObject private var tabMonitor = StudioTabKeyMonitor()
-    @StateObject private var studioUIStore = ShaderStudioUIStore()
+    @StateObject private var studioUIStore = EffectsStudioUIStore()
 
     @State private var showPhotosPicker = false
     @State private var selectedPhotosIdentifier: String?
@@ -2077,12 +2081,12 @@ struct EffectsStudioView: View {
     @State private var didLoadStudioUIState = false
     @State private var isApplyingStoredStudioUIState = false
 
-    @State private var panelOpacity: Double = ShaderStudioUIState.defaultValue.panelOpacity
-    @State private var showShaderPanel = ShaderStudioUIState.defaultValue.showShaderPanel
-    @State private var showInspectorPanel = ShaderStudioUIState.defaultValue.showInspectorPanel
-    @State private var showManifestPanel = ShaderStudioUIState.defaultValue.showManifestPanel
-    @State private var showLiveControlsPanel = ShaderStudioUIState.defaultValue.showLiveControlsPanel
-    @State private var showLogOverlay = ShaderStudioUIState.defaultValue.showLogOverlay
+    @State private var panelOpacity: Double = EffectsStudioUIState.defaultValue.panelOpacity
+    @State private var showShaderPanel = EffectsStudioUIState.defaultValue.showShaderPanel
+    @State private var showInspectorPanel = EffectsStudioUIState.defaultValue.showInspectorPanel
+    @State private var showManifestPanel = EffectsStudioUIState.defaultValue.showManifestPanel
+    @State private var showLiveControlsPanel = EffectsStudioUIState.defaultValue.showLiveControlsPanel
+    @State private var showLogOverlay = EffectsStudioUIState.defaultValue.showLogOverlay
 
     @State private var shaderPanelX: Double = 20
     @State private var shaderPanelY: Double = 20
@@ -2451,7 +2455,7 @@ struct EffectsStudioView: View {
 
     private func persistInspectorPanelFrame(_ rect: CGRect) {}
 
-    private func applyStudioUIState(_ state: ShaderStudioUIState) {
+    private func applyStudioUIState(_ state: EffectsStudioUIState) {
         isApplyingStoredStudioUIState = true
         panelOpacity = state.panelOpacity
         showShaderPanel = state.showShaderPanel
