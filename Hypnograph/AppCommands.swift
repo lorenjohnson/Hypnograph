@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 import HypnoCore
 import HypnoUI
 
@@ -16,6 +17,9 @@ struct AppCommands: Commands {
 
     /// Whether a text field is currently being edited
     private var isTyping: Bool { state.isTyping }
+    private var isMainWindowShortcutContext: Bool {
+        windowBelongsToMain(NSApp.keyWindow)
+    }
 
     init(
         state: HypnographState,
@@ -77,7 +81,7 @@ struct AppCommands: Commands {
                 set: { _ in state.windowState.toggle("hypnogramList") }
             ))
             .keyboardShortcut("h", modifiers: [])
-            .disabled(isTyping)
+            .disabled(isTyping || !isMainWindowShortcutContext)
         }
 
         CommandGroup(replacing: .sidebar) {
@@ -87,19 +91,19 @@ struct AppCommands: Commands {
                     set: { _ in state.windowState.toggle("leftSidebar") }
                 ))
                 .keyboardShortcut("[", modifiers: [])
-                .disabled(isTyping)
+                .disabled(isTyping || !isMainWindowShortcutContext)
 
                 Toggle("Right Sidebar", isOn: Binding(
                     get: { state.windowState.isVisible("rightSidebar") },
                     set: { _ in state.windowState.toggle("rightSidebar") }
                 ))
                 .keyboardShortcut("]", modifiers: [])
-                .disabled(isTyping)
+                .disabled(isTyping || !isMainWindowShortcutContext)
 
                 // Clean Screen: Tab key handled via NSEvent monitor in app delegate
                 // (workaround for SwiftUI menu shortcut not registering until menu opened)
                 Button("Clean Screen (Tab)") {
-                    state.windowState.toggleCleanScreen()
+                    toggleCleanScreenForActiveWindow()
                 }
             }
 
@@ -111,7 +115,7 @@ struct AppCommands: Commands {
                     set: { state.setLoopCurrentClipMode($0) }
                 ))
                 .keyboardShortcut("l", modifiers: [])
-                .disabled(isTyping)
+                .disabled(isTyping || !isMainWindowShortcutContext)
             }
 
             if dream.isLiveModeAvailable {
@@ -123,7 +127,7 @@ struct AppCommands: Commands {
                         set: { _ in state.windowState.toggle("livePreview") }
                     ))
                     .keyboardShortcut("w", modifiers: [])
-                    .disabled(isTyping)
+                    .disabled(isTyping || !isMainWindowShortcutContext)
 
                     Toggle("Live Mode", isOn: Binding(
                         get: { dream.isLiveMode },
@@ -162,6 +166,49 @@ struct AppCommands: Commands {
 
         CommandMenu("Layer") {
             dream.sourceMenu()
+        }
+
+        CommandMenu("Studio") {
+            Button("Open Shader Studio") {
+                openWindow(id: "shaderStudio")
+            }
+            .keyboardShortcut("k", modifiers: [.command, .option])
+        }
+    }
+
+    private func windowBelongsToMain(_ window: NSWindow?) -> Bool {
+        guard let window else { return false }
+        if window.title == "Hypnograph" {
+            return true
+        }
+        if let parent = window.parent {
+            return windowBelongsToMain(parent)
+        }
+        return false
+    }
+
+    private func windowBelongsToStudio(_ window: NSWindow?) -> Bool {
+        guard let window else { return false }
+        if window.title == "Shader Studio" {
+            return true
+        }
+        if let parent = window.parent {
+            return windowBelongsToStudio(parent)
+        }
+        return false
+    }
+
+    private func toggleCleanScreenForActiveWindow() {
+        let activeWindow = NSApp.keyWindow ?? NSApp.mainWindow
+        let studioIsActiveContext =
+            windowBelongsToStudio(activeWindow) ||
+            windowBelongsToStudio(NSApp.keyWindow) ||
+            windowBelongsToStudio(NSApp.mainWindow)
+
+        if studioIsActiveContext {
+            NotificationCenter.default.post(name: .shaderStudioToggleCleanScreen, object: nil)
+        } else {
+            state.windowState.toggleCleanScreen()
         }
     }
 

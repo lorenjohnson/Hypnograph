@@ -159,6 +159,18 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     private var lastSourceKeyIndex: Int = -1
     private var isSoloLatched: Bool = false
 
+    private func shouldHandleKeyboardOverride(_ event: NSEvent) -> Bool {
+        guard isKeyboardAccessibilityOverridesEnabled?() ?? true else { return false }
+        guard isTypingActive?() != true else { return false }
+        guard let main = resolveMainWindow() else { return false }
+        mainWindow = main
+        guard NSApp.keyWindow === main else { return false }
+        if let eventWindow = event.window, eventWindow !== main {
+            return false
+        }
+        return true
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Request notification authorization
         AppNotifications.configure(identity: .fromBundle())
@@ -172,12 +184,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
                   event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty else {
                 return event
             }
-
-            if self.isTypingActive?() == true {
-                return event
-            }
-
-            guard self.isKeyboardAccessibilityOverridesEnabled?() ?? true else {
+            guard self.shouldHandleKeyboardOverride(event) else {
                 return event
             }
 
@@ -201,12 +208,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
                   event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty else {
                 return event
             }
-
-            if self.isTypingActive?() == true {
-                return event
-            }
-
-            guard self.isKeyboardAccessibilityOverridesEnabled?() ?? true else {
+            guard self.shouldHandleKeyboardOverride(event) else {
                 return event
             }
 
@@ -234,12 +236,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
             guard isTab, (isPlainTab || isShiftTab) else {
                 return event
             }
-
-            if self.isTypingActive?() == true {
-                return event
-            }
-
-            guard self.isKeyboardAccessibilityOverridesEnabled?() ?? true else {
+            guard self.shouldHandleKeyboardOverride(event) else {
                 return event
             }
 
@@ -259,7 +256,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
         sidebarKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
             guard event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty else { return event }
-            if self.isTypingActive?() == true { return event }
+            guard self.shouldHandleKeyboardOverride(event) else { return event }
             if event.isARepeat { return event }
 
             switch event.charactersIgnoringModifiers {
@@ -281,12 +278,12 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
                   event.charactersIgnoringModifiers == "`" else {
                 return event
             }
-            // Don't intercept if user is typing
-            if self?.isTypingActive?() == true {
+            guard let self else { return event }
+            guard self.shouldHandleKeyboardOverride(event) else {
                 return event
             }
             // Suspend on keyDown, resume on keyUp
-            self?.setGlobalEffectSuspended?(event.type == .keyDown)
+            self.setGlobalEffectSuspended?(event.type == .keyDown)
             return event  // Don't consume - let SwiftUI handle the key press for layer selection
         }
 
@@ -301,10 +298,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
                   event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty else {
                 return event
             }
-            // Don't intercept if user is typing
-            if self.isTypingActive?() == true {
-                return event
-            }
+            guard self.shouldHandleKeyboardOverride(event) else { return event }
             // Consume key repeats (prevents menu key equivalents from stalling playback while held).
             if event.isARepeat {
                 return nil
@@ -632,5 +626,10 @@ struct HypnographApp: App {
         }
         .defaultSize(width: 720, height: 245)
         .windowResizability(.contentSize)
+
+        Window("Shader Studio", id: "shaderStudio") {
+            ShaderStudioView(state: state)
+        }
+        .defaultSize(width: 1320, height: 860)
     }
 }

@@ -1,5 +1,5 @@
 ---
-last_reviewed: 2026-01-18T00:00:00Z
+last_reviewed: 2026-02-26T00:00:00Z
 ---
 
 # Effects System Architecture
@@ -117,3 +117,28 @@ metatypes and provides:
 - `EffectsEditorView` edits `EffectsSession` and uses `EffectManager` to apply
   changes to the active recipe.
 - The internal compositor reads the recipe and applies chains each frame.
+
+## Runtime Effect Identity + Version Policy
+
+Runtime effects are user-editable assets stored in Application Support under
+`runtime-effects/<uuid>/effect.json` + `shader.metal`.
+
+Rules:
+- `uuid` is immutable identity for an effect.
+- `name` is user-facing only (not identity).
+- `version` uses semver and is used for same-UUID update checks.
+
+Bundled seed/update behavior:
+- First run: bundled runtime assets are copied into user space.
+- Later runs: for an existing UUID, bundled asset replaces local only when
+  bundled `version` is newer.
+- If bundled `version` is equal or older, local copy is kept.
+
+Change policy:
+- Non-breaking fixes for an existing effect can use same UUID + version bump.
+- Visual/behavioral look changes should ship as a new UUID (new effect), not an
+  in-place replacement, so existing recipes keep their look.
+
+Authoring guidance:
+- User-edited variants should be treated as new effects (new UUID, new name),
+  not modifications of canonical bundled UUIDs.

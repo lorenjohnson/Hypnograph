@@ -163,8 +163,10 @@ struct ParameterSliderRow: View {
 
     /// Get the default value for this parameter from the registry
     private var defaultValue: AnyCodableValue? {
-        guard let type = effectType else { return nil }
-        return EffectRegistry.defaults(for: type)[name]
+        if let type = effectType {
+            return EffectRegistry.defaults(for: type)[name]
+        }
+        return spec?.defaultValue
     }
 
     /// Reset the parameter to its default value
@@ -363,6 +365,11 @@ struct ParameterSliderRow: View {
     /// Slider range - from registry if available, else heuristic
     /// Always returns a valid range where min < max
     private var sliderRange: ClosedRange<Double> {
+        // Prefer explicit schema range when provided
+        if let range = spec?.rangeAsDoubles, range.min < range.max {
+            return range.min...range.max
+        }
+
         // Try to get range from registry
         if let type = effectType, let range = EffectRegistry.range(for: type, param: name) {
             // Ensure valid range (min < max)
@@ -396,6 +403,11 @@ struct ParameterSliderRow: View {
 
     /// Slider step - from registry if available, must be positive and less than range
     private var sliderStep: Double? {
+        if let step = spec?.step, step > 0 {
+            let span = sliderRange.upperBound - sliderRange.lowerBound
+            return step < span ? step : nil
+        }
+
         guard let type = effectType,
               let range = EffectRegistry.range(for: type, param: name),
               let step = range.step,

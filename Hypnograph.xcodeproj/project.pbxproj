@@ -184,15 +184,11 @@
 		};
 		042F99152EC8990C006D4CDE /* HypnographTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = HypnographTests;
 			sourceTree = "<group>";
 		};
 		042F991F2EC8990C006D4CDE /* HypnographUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = HypnographUITests;
 			sourceTree = "<group>";
 		};
@@ -206,15 +202,11 @@
 		};
 		049B39052F26C1A300FFF6A8 /* SwiftUIPreviewHost */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = SwiftUIPreviewHost;
 			sourceTree = "<group>";
 		};
 		D1E2F3A4B5C6D7E8F9A0B1C3 /* HypnogramQuickLookTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = HypnogramQuickLookTests;
 			sourceTree = "<group>";
 		};
@@ -621,7 +613,7 @@
 			mainGroup = 042F98F82EC8990A006D4CDE;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "HypnoPackages" */,
+				F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "../HypnoPackages" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 042F99022EC8990B006D4CDE /* Products */;
@@ -1245,7 +1237,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "HypnoPackages" */ = {
+		F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "../HypnoPackages" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../HypnoPackages;
 		};
@@ -1254,22 +1246,22 @@
 /* Begin XCSwiftPackageProductDependency section */
 		4D989C67E2DF4FD885791B0F /* HypnoCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "HypnoPackages" */;
+			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "../HypnoPackages" */;
 			productName = HypnoCore;
 		};
 		6B4E93992CE0046E9A47D568 /* HypnoCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "HypnoPackages" */;
+			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "../HypnoPackages" */;
 			productName = HypnoCore;
 		};
 		E668AB4C346BB9907570FA1D /* HypnoUI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "HypnoPackages" */;
+			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "../HypnoPackages" */;
 			productName = HypnoUI;
 		};
 		EB154B2C5C3272CE2685E2EC /* HypnoCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "HypnoPackages" */;
+			package = F439BC86A2FE43602B2EA467 /* XCLocalSwiftPackageReference "../HypnoPackages" */;
 			productName = HypnoCore;
 		};
 /* End XCSwiftPackageProductDependency section */
