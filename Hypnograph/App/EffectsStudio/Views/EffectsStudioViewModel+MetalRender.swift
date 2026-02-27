@@ -26,45 +26,16 @@ extension EffectsStudioViewModel {
                 compileLog = "Fix parameter issues before compile:\n- " + validationProblems.joined(separator: "\n- ")
                 return false
             }
-
-            let generatedSource: String
-            if sourceContainsHypnoParamsStruct {
-                generatedSource = sourceCode
-            } else {
-                generatedSource = generatedParamStructSource() + "\n\n" + sourceCode
-            }
-            let library = try device.makeLibrary(source: generatedSource, options: nil)
-
-            guard let function = library.makeFunction(name: effectFunctionName) else {
-                compileLog = "Compile succeeded, but function '\(effectFunctionName)' was not found."
-                return false
-            }
-
-            var reflection: MTLAutoreleasedComputePipelineReflection?
-            let pipeline = try device.makeComputePipelineState(
-                function: function,
-                options: [.argumentInfo, .bufferTypeInfo],
-                reflection: &reflection
+            let compileResult = try metalRenderService.compile(
+                device: device,
+                sourceCode: sourceCode,
+                parameters: parameters,
+                effectFunctionName: effectFunctionName,
+                activeBindings: activeBindings
             )
 
-            let args = reflection?.arguments.filter(\.isActive) ?? []
-            if let signatureError = validateSignature(arguments: args) {
-                pipelineState = nil
-                parameterBufferLayout = nil
-                compileLog = signatureError
-                return false
-            }
-
-            let layout = buildParameterBufferLayout(arguments: args)
-            if activeBindings.parameterBufferIndex != nil && layout == nil {
-                pipelineState = nil
-                parameterBufferLayout = nil
-                compileLog = "Compile succeeded, but could not infer parameter buffer layout."
-                return false
-            }
-
-            pipelineState = pipeline
-            parameterBufferLayout = layout
+            pipelineState = compileResult.pipelineState
+            parameterBufferLayout = compileResult.parameterBufferLayout
             compileLog = "Compiled successfully. Kernel '\(effectFunctionName)' is ready."
             resetPreviewHistory()
             renderPreview()
@@ -89,47 +60,41 @@ extension EffectsStudioViewModel {
         let height = Int(previewSize.height)
         guard width > 0, height > 0 else { return }
 
-        guard let inputTexture = makeTexture(from: baseImage, width: width, height: height, device: device) else {
-            return
-        }
-
-        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .rgba8Unorm,
+        guard let inputTexture = metalRenderService.makeTexture(
+            from: baseImage,
             width: width,
             height: height,
-            mipmapped: false
-        )
-        descriptor.usage = [.shaderRead, .shaderWrite]
-
-        guard let outputTexture = device.makeTexture(descriptor: descriptor),
-              let commandBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeComputeCommandEncoder() else {
+            device: device,
+            ciContext: ciContext,
+            colorSpace: colorSpace
+        ) else {
             return
         }
 
-        encoder.setComputePipelineState(pipelineState)
-
-        var boundTextures: [Int: MTLTexture] = [:]
+        var inputTextures: [Int: MTLTexture] = [:]
         for binding in activeBindings.inputTextures {
             switch binding.source {
             case .currentFrame:
-                boundTextures[binding.argumentIndex] = inputTexture
+                inputTextures[binding.argumentIndex] = inputTexture
 
             case .historyFrame:
                 let offset = resolvedHistoryOffset(for: binding)
                 let historyImage = previewHistoryImage(offset: offset, fallback: baseImage)
-                guard let historyTexture = makeTexture(from: historyImage, width: width, height: height, device: device) else {
+                guard let historyTexture = metalRenderService.makeTexture(
+                    from: historyImage,
+                    width: width,
+                    height: height,
+                    device: device,
+                    ciContext: ciContext,
+                    colorSpace: colorSpace
+                ) else {
                     return
                 }
-                boundTextures[binding.argumentIndex] = historyTexture
+                inputTextures[binding.argumentIndex] = historyTexture
             }
         }
-        boundTextures[activeBindings.outputTextureIndex] = outputTexture
 
-        for index in boundTextures.keys.sorted() {
-            encoder.setTexture(boundTextures[index], index: index)
-        }
-
+        var parameterBuffer: MetalRenderService.ParameterBufferBytes?
         if let parameterBufferIndex = activeBindings.parameterBufferIndex,
            let parameterBufferLayout {
             var paramsBytes = Data(count: max(parameterBufferLayout.length, 1))
@@ -141,37 +106,27 @@ extension EffectsStudioViewModel {
                 frameIndex: Int(frameCounter),
                 time: CMTime(seconds: time, preferredTimescale: 600)
             )
-
-            paramsBytes.withUnsafeBytes { bytes in
-                guard let base = bytes.baseAddress else { return }
-                encoder.setBytes(base, length: paramsBytes.count, index: parameterBufferIndex)
-            }
+            parameterBuffer = .init(index: parameterBufferIndex, bytes: paramsBytes)
         }
 
-        let threadWidth = pipelineState.threadExecutionWidth
-        let threadHeight = max(1, pipelineState.maxTotalThreadsPerThreadgroup / max(threadWidth, 1))
-        let threadsPerGroup = MTLSize(width: threadWidth, height: threadHeight, depth: 1)
-        let threadgroups = MTLSize(
-            width: (width + threadWidth - 1) / threadWidth,
-            height: (height + threadHeight - 1) / threadHeight,
-            depth: 1
-        )
-
-        encoder.dispatchThreadgroups(threadgroups, threadsPerThreadgroup: threadsPerGroup)
-        encoder.endEncoding()
-        commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
-
-        guard let ciOutput = CIImage(mtlTexture: outputTexture, options: [.colorSpace: colorSpace]) else {
-            return
+        do {
+            let result = try metalRenderService.render(
+                pipelineState: pipelineState,
+                device: device,
+                commandQueue: commandQueue,
+                activeBindings: activeBindings,
+                inputTextures: inputTextures,
+                parameterBuffer: parameterBuffer,
+                width: width,
+                height: height,
+                colorSpace: colorSpace
+            )
+            previewImage = result.nsImage
+            appendPreviewHistory(image: result.ciImage)
+            frameCounter &+= 1
+        } catch {
+            compileLog = "Render failed: \(error.localizedDescription)"
         }
-
-        let rep = NSCIImageRep(ciImage: ciOutput)
-        let image = NSImage(size: rep.size)
-        image.addRepresentation(rep)
-        previewImage = image
-        appendPreviewHistory(image: ciOutput)
-        frameCounter &+= 1
     }
 
     private func validateParameterDrafts() -> [String] {
@@ -211,103 +166,6 @@ extension EffectsStudioViewModel {
         }
 
         return issues
-    }
-
-    private func generatedParamStructSource() -> String {
-        var lines: [String] = [
-            "struct HypnoParams {"
-        ]
-
-        if parameters.isEmpty {
-            lines.append("    float _studioUnused;")
-        } else {
-            for param in parameters {
-                let name = param.name.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !name.isEmpty else { continue }
-                lines.append("    \(param.type.metalType) \(name);")
-            }
-        }
-
-        lines.append("};")
-        return lines.joined(separator: "\n")
-    }
-
-    private var sourceContainsHypnoParamsStruct: Bool {
-        if let regex = try? NSRegularExpression(pattern: #"\bstruct\s+HypnoParams\b"#) {
-            let range = NSRange(sourceCode.startIndex..<sourceCode.endIndex, in: sourceCode)
-            return regex.firstMatch(in: sourceCode, options: [], range: range) != nil
-        }
-        return sourceCode.contains("struct HypnoParams")
-    }
-
-    private func validateSignature(arguments: [MTLArgument]) -> String? {
-        let activeTextureIndices = Set(
-            arguments
-                .filter { $0.type == .texture }
-                .map { Int($0.index) }
-        )
-
-        var expectedTextureIndices = Set(activeBindings.inputTextures.map(\.argumentIndex))
-        expectedTextureIndices.insert(activeBindings.outputTextureIndex)
-        if activeTextureIndices != expectedTextureIndices {
-            let missing = expectedTextureIndices.subtracting(activeTextureIndices).sorted()
-            let extra = activeTextureIndices.subtracting(expectedTextureIndices).sorted()
-            return "Texture bindings mismatch. Missing: \(missing), extra: \(extra)."
-        }
-
-        let textureArgs = arguments.filter { $0.type == .texture }
-        guard let outputArg = textureArgs.first(where: { Int($0.index) == activeBindings.outputTextureIndex }) else {
-            return "Output texture must be declared at texture(\(activeBindings.outputTextureIndex))."
-        }
-        if outputArg.access == .readOnly {
-            return "Output texture at texture(\(activeBindings.outputTextureIndex)) must be write or read_write."
-        }
-
-        if let parameterBufferIndex = activeBindings.parameterBufferIndex {
-            let activeBufferIndices = Set(
-                arguments
-                    .filter { $0.type == .buffer }
-                    .map { Int($0.index) }
-            )
-            if !activeBufferIndices.contains(parameterBufferIndex) {
-                return "Metal code must declare constant HypnoParams& params at buffer(\(parameterBufferIndex))."
-            }
-        }
-
-        return nil
-    }
-
-    private func buildParameterBufferLayout(arguments: [MTLArgument]) -> EffectsStudioParamBufferLayout? {
-        guard let parameterBufferIndex = activeBindings.parameterBufferIndex,
-              let bufferArg = arguments.first(where: { $0.type == .buffer && Int($0.index) == parameterBufferIndex }) else {
-            return nil
-        }
-
-        let members: [EffectsStudioParamBufferMemberLayout]
-        if let structType = bufferArg.bufferStructType {
-            members = structType.members
-                .sorted { $0.offset < $1.offset }
-                .compactMap { member in
-                    guard let valueType = Self.scalarType(for: member.dataType),
-                          let size = Self.scalarSize(for: valueType) else {
-                        return nil
-                    }
-
-                    return EffectsStudioParamBufferMemberLayout(
-                        name: member.name,
-                        offset: Int(member.offset),
-                        size: size,
-                        valueType: valueType
-                    )
-                }
-        } else {
-            members = []
-        }
-
-        return EffectsStudioParamBufferLayout(
-            length: max(Int(bufferArg.bufferDataSize), 1),
-            members: members
-        )
     }
 
     private func fillParameterBuffer(
@@ -422,20 +280,6 @@ extension EffectsStudioViewModel {
             return Int(doubleValue.rounded())
         }
         return nil
-    }
-
-    private func makeTexture(from image: CIImage, width: Int, height: Int, device: MTLDevice) -> MTLTexture? {
-        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .rgba8Unorm,
-            width: width,
-            height: height,
-            mipmapped: false
-        )
-        descriptor.usage = [.shaderRead, .shaderWrite]
-
-        guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
-        ciContext.render(image, to: texture, commandBuffer: nil, bounds: image.extent, colorSpace: colorSpace)
-        return texture
     }
 
     func resetPreviewHistory() {

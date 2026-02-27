@@ -7,16 +7,19 @@ import Foundation
 
 struct EffectsStudioDependencies {
     var runtimeEffectsService: RuntimeEffectsService
+    var metalRenderService: MetalRenderService
 
     @MainActor
     func makeViewModel(_ settingsStore: EffectsStudioSettingsStore) -> EffectsStudioViewModel {
         EffectsStudioViewModel(
             settingsStore: settingsStore,
-            runtimeEffectsService: runtimeEffectsService
+            runtimeEffectsService: runtimeEffectsService,
+            metalRenderService: metalRenderService
         )
     }
 
     static let live = EffectsStudioDependencies(
-        runtimeEffectsService: .live
+        runtimeEffectsService: .live,
+        metalRenderService: .live
     )
 }

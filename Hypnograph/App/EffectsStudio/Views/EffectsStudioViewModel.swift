@@ -23,6 +23,7 @@ final class EffectsStudioViewModel: ObservableObject {
 
     let settingsStore: EffectsStudioSettingsStore
     let runtimeEffectsService: RuntimeEffectsService
+    let metalRenderService: MetalRenderService
 
     @Published var runtimeEffectUUID: String = UUID().uuidString.lowercased()
     @Published var runtimeEffectName: String = "New Effect"
@@ -83,10 +84,12 @@ final class EffectsStudioViewModel: ObservableObject {
 
     init(
         settingsStore: EffectsStudioSettingsStore,
-        runtimeEffectsService: RuntimeEffectsService = .live
+        runtimeEffectsService: RuntimeEffectsService = .live,
+        metalRenderService: MetalRenderService = .live
     ) {
         self.settingsStore = settingsStore
         self.runtimeEffectsService = runtimeEffectsService
+        self.metalRenderService = metalRenderService
         self.device = SharedRenderer.metalDevice
         self.commandQueue = device?.makeCommandQueue()
 
