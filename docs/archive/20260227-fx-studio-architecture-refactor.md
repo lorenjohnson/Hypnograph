@@ -1,7 +1,7 @@
 ---
 created: 2026-02-27
 updated: 2026-02-27
-status: active
+status: completed
 ---
 
 # FX Studio Architecture Refactor
@@ -211,7 +211,8 @@ This map is the starting point and can be adjusted during extraction:
 Verification notes (2026-02-27):
 - Manual Studio behavior checks were completed by user and reported as passing.
 - Temporal runtime effect manifests for Ghost Blur, Color Echo, and Frame Difference were verified in `HypnoPackages/HypnoCore/Renderer/Effects/RuntimeAssets/*/effect.json` with unified `runtimeKind: "metal"` and expected lookback bindings.
-- `xcodebuild ... test` currently fails in `HypnographTests/HypnogramTests.swift` due unresolved `Settings` symbol references; this appears pre-existing and unrelated to the Effects Studio refactor.
+- `xcodebuild ... test` now passes after updating stale `HypnogramTests.swift` references (`Settings` -> `MainSettings`) and removing the obsolete empty `HypnographUITests` target.
+- Local runtime effect cache under `~/Library/Application Support/Hypnograph/runtime-effects` was normalized to unified `runtimeKind: "metal"` for legacy temporal entries.
 
 ## Risks and Mitigations
 

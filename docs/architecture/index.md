@@ -1,5 +1,5 @@
 ---
-last_reviewed: 2026-01-18T00:00:00Z
+last_reviewed: 2026-02-27T00:00:00Z
 ---
 
 # Architecture
@@ -68,6 +68,7 @@ These docs are currently a mix of shared (`HypnoCore`) and app-specific (Hypnogr
 
 - Rendering: `rendering.md`
 - Effects: `effects.md`
+- Effects Studio: `effects-studio.md`
 - Media Library: `media-library.md`
 - Dream Players: `dream-players.md`
 - Settings: `settings.md`
@@ -115,9 +116,10 @@ Effect-specific details live in `effects.md`.
 
 ## Docs Layout
 
-- `docs/hypnograph/` — Hypnograph-specific docs
-- `docs/divine/` — Divine-specific docs
-- `docs/shared/ontology/` — shared core ontology + diagrams (generated)
+- `docs/architecture/` — architecture and system-design notes
+- `docs/active/` — active project write-ups
+- `docs/archive/` — completed project write-ups
+- `docs/reference/` — operator/user references
 
 ## Logging Convention
 
