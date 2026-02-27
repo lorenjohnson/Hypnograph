@@ -11,24 +11,6 @@ import Metal
 import Foundation
 import HypnoCore
 
-enum EffectsStudioScalarValueType {
-    case float
-    case int
-    case uint
-    case bool
-}
-
-struct EffectsStudioParamBufferMemberLayout {
-    var name: String
-    var offset: Int
-    var size: Int
-    var valueType: EffectsStudioScalarValueType
-}
-
-struct EffectsStudioParamBufferLayout {
-    var length: Int
-    var members: [EffectsStudioParamBufferMemberLayout]
-}
 @MainActor
 final class EffectsStudioViewModel: ObservableObject {
     static let defaultRuntimeBindings = RuntimeMetalBindingsManifest(

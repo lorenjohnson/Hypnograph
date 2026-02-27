@@ -139,7 +139,7 @@ Phase gate:
 ### Phase 2: Model + Support Extraction
 
 - [x] Move pure parameter/manifest mapping and sanitization logic into `Models/`.
-- [ ] Move buffer layout/support structs (`EffectsStudioParamBufferLayout`, etc.) into `Support/` or `Models/` as appropriate.
+- [x] Move buffer layout/support structs (`EffectsStudioParamBufferLayout`, etc.) into `Support/` or `Models/` as appropriate.
 - [x] Keep state mutation in state layer, keep conversion rules pure.
 
 Phase gate:
