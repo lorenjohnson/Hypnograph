@@ -10,7 +10,7 @@ import HypnoCore
 
 extension EffectsStudioViewModel {
     var runtimeEffectsDirectoryPath: String {
-        runtimeEffectsDirectoryURL.path
+        runtimeEffectsService.runtimeEffectsDirectoryURL.path
     }
 
     var manifestPreviewJSON: String {
@@ -96,12 +96,9 @@ extension EffectsStudioViewModel {
     }
 
     func refreshRuntimeEffectList() {
-        RuntimeMetalEffectLibrary.shared.reload()
-
-        let effects = EffectRegistry.availableEffectTypes
-            .filter { RuntimeMetalEffectLibrary.isRuntimeType($0.type) }
+        let effects = runtimeEffectsService
+            .refreshAvailableRuntimeEffects()
             .map { EffectsStudioRuntimeEffectChoice(type: $0.type, displayName: $0.displayName) }
-            .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
 
         runtimeEffects = effects
 
@@ -126,23 +123,15 @@ extension EffectsStudioViewModel {
             return
         }
 
-        guard let directory = runtimeEffectDirectoryURL(forUUID: uuid) else {
-            compileLog = "Runtime effect '\(uuid)' was not found."
-            return
-        }
-        let manifestURL = directory.appendingPathComponent("effect.json")
-        let shaderURL = directory.appendingPathComponent("shader.metal")
-
         do {
-            let manifestData = try Data(contentsOf: manifestURL)
-            let manifest = try JSONDecoder().decode(RuntimeMetalEffectManifest.self, from: manifestData)
-            let shader = try String(contentsOf: shaderURL, encoding: .utf8)
+            let loaded = try runtimeEffectsService.loadRuntimeEffectAsset(uuid: uuid)
+            let manifest = loaded.manifest
 
             runtimeEffectUUID = manifest.uuid
             runtimeEffectName = manifest.name
             runtimeEffectVersion = manifest.version
-            selectedRuntimeType = RuntimeMetalEffectLibrary.typeName(forUUID: manifest.uuid)
-            sourceCode = shader
+            selectedRuntimeType = runtimeEffectsService.typeName(forUUID: manifest.uuid)
+            sourceCode = loaded.shaderSource
             activeRuntimeKind = manifest.runtimeKind ?? .metal
             activeRequiredLookback = max(0, manifest.requiredLookback ?? 0)
             activeUsesPersistentState = manifest.usesPersistentState ?? false
@@ -167,26 +156,20 @@ extension EffectsStudioViewModel {
         }
         runtimeEffectUUID = uuid
 
-        let fm = FileManager.default
-        let directory = runtimeEffectsDirectoryURL.appendingPathComponent(uuid, isDirectory: true)
-        let manifestURL = directory.appendingPathComponent("effect.json")
-        let shaderURL = directory.appendingPathComponent("shader.metal")
-
         do {
-            if !fm.fileExists(atPath: directory.path) {
-                try fm.createDirectory(at: directory, withIntermediateDirectories: true)
-            }
-
             let manifest = runtimeManifestFromCurrentState()
             guard let json = encodeRuntimeManifestJSON(manifest) else {
                 compileLog = "Failed to encode effect manifest."
                 return
             }
 
-            try json.write(to: manifestURL, atomically: true, encoding: .utf8)
-            try sourceCode.write(to: shaderURL, atomically: true, encoding: .utf8)
+            let directory = try runtimeEffectsService.saveRuntimeEffectAsset(
+                uuid: uuid,
+                manifestJSON: json,
+                sourceCode: sourceCode
+            )
             refreshRuntimeEffectList()
-            selectedRuntimeType = RuntimeMetalEffectLibrary.typeName(forUUID: uuid)
+            selectedRuntimeType = runtimeEffectsService.typeName(forUUID: uuid)
             compileLog = "Saved runtime effect '\(runtimeEffectName)' (\(uuid)) to \(directory.path)"
         } catch {
             compileLog = "Failed to save runtime effect '\(uuid)': \(error.localizedDescription)"
@@ -200,13 +183,8 @@ extension EffectsStudioViewModel {
             return
         }
 
-        guard let directory = runtimeEffectDirectoryURL(forUUID: uuid) else {
-            compileLog = "Runtime effect '\(uuid)' was not found."
-            return
-        }
-
         do {
-            try FileManager.default.removeItem(at: directory)
+            try runtimeEffectsService.deleteRuntimeEffectAsset(uuid: uuid)
             refreshRuntimeEffectList()
 
             if runtimeEffects.isEmpty {

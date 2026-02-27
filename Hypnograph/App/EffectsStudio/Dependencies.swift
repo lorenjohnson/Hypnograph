@@ -6,11 +6,17 @@
 import Foundation
 
 struct EffectsStudioDependencies {
-    var makeViewModel: @MainActor (_ settingsStore: EffectsStudioSettingsStore) -> EffectsStudioViewModel
+    var runtimeEffectsService: RuntimeEffectsService
+
+    @MainActor
+    func makeViewModel(_ settingsStore: EffectsStudioSettingsStore) -> EffectsStudioViewModel {
+        EffectsStudioViewModel(
+            settingsStore: settingsStore,
+            runtimeEffectsService: runtimeEffectsService
+        )
+    }
 
     static let live = EffectsStudioDependencies(
-        makeViewModel: { settingsStore in
-            EffectsStudioViewModel(settingsStore: settingsStore)
-        }
+        runtimeEffectsService: .live
     )
 }

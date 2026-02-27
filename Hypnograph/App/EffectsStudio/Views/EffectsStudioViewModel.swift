@@ -22,6 +22,7 @@ final class EffectsStudioViewModel: ObservableObject {
     )
 
     let settingsStore: EffectsStudioSettingsStore
+    let runtimeEffectsService: RuntimeEffectsService
 
     @Published var runtimeEffectUUID: String = UUID().uuidString.lowercased()
     @Published var runtimeEffectName: String = "New Effect"
@@ -80,8 +81,12 @@ final class EffectsStudioViewModel: ObservableObject {
         RuntimeMetalEffectLibrary.defaultFunctionName
     }
 
-    init(settingsStore: EffectsStudioSettingsStore) {
+    init(
+        settingsStore: EffectsStudioSettingsStore,
+        runtimeEffectsService: RuntimeEffectsService = .live
+    ) {
         self.settingsStore = settingsStore
+        self.runtimeEffectsService = runtimeEffectsService
         self.device = SharedRenderer.metalDevice
         self.commandQueue = device?.makeCommandQueue()
 

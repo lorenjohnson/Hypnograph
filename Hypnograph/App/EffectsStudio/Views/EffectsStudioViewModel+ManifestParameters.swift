@@ -25,8 +25,7 @@ extension EffectsStudioViewModel {
     }
 
     func runtimeEffectDirectoryURL(forUUID uuid: String) -> URL? {
-        let direct = runtimeEffectsDirectoryURL.appendingPathComponent(uuid, isDirectory: true)
-        return FileManager.default.fileExists(atPath: direct.path) ? direct : nil
+        runtimeEffectsService.runtimeEffectDirectoryURL(forUUID: uuid)
     }
 
     func appendLogEntry(from message: String) {
