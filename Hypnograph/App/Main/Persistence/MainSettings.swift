@@ -40,6 +40,12 @@ enum PlaybackEndBehavior: String, Codable, CaseIterable {
     case loopCurrentClip
 }
 
+enum RenderVideoSaveDestination: String, Codable, CaseIterable {
+    case diskAndPhotosIfAvailable
+    case photosIfAvailableOtherwiseDisk
+    case diskOnly
+}
+
 // MARK: - MainSettings
 
 struct MainSettings: Codable, MediaLibrarySettings {
@@ -67,6 +73,9 @@ struct MainSettings: Codable, MediaLibrarySettings {
 
     /// Output resolution for disk rendering
     var outputResolution: OutputResolution
+
+    /// Where rendered video outputs should be persisted after export succeeds.
+    var renderVideoSaveDestination: RenderVideoSaveDestination
 
     /// Global source framing behavior (Fill vs Fit)
     var sourceFraming: SourceFraming
@@ -143,6 +152,7 @@ struct MainSettings: Codable, MediaLibrarySettings {
         static let activeLibraries: [String] = []
         static let aspectRatio: AspectRatio = .ratio16x9
         static let outputResolution: OutputResolution = .p1080
+        static let renderVideoSaveDestination: RenderVideoSaveDestination = .diskAndPhotosIfAvailable
         static let playerResolution: OutputResolution = .p1080
         static let maxLayers = 1
         static let sourceFraming: SourceFraming = .fill
@@ -179,6 +189,7 @@ struct MainSettings: Codable, MediaLibrarySettings {
             historyLimit: Defaults.historyLimit,
             activeLibraries: Defaults.activeLibraries,
             outputResolution: Defaults.outputResolution,
+            renderVideoSaveDestination: Defaults.renderVideoSaveDestination,
             sourceFraming: Defaults.sourceFraming,
             sourceMediaTypes: Defaults.sourceMediaTypes,
             effectsListCollapsed: Defaults.effectsListCollapsed,
@@ -209,7 +220,7 @@ struct MainSettings: Codable, MediaLibrarySettings {
         case clipPlayRateMin, clipPlayRateMax
         case historyLimit
         case activeLibraries
-        case outputResolution, sourceFraming, sourceMediaTypes
+        case outputResolution, renderVideoSaveDestination, sourceFraming, sourceMediaTypes
         case effectsListCollapsed
         case liveModeEnabled
         case transitionStyle, transitionDuration
@@ -235,6 +246,7 @@ struct MainSettings: Codable, MediaLibrarySettings {
         historyLimit: Int = Defaults.historyLimit,
         activeLibraries: [String] = Defaults.activeLibraries,
         outputResolution: OutputResolution = Defaults.outputResolution,
+        renderVideoSaveDestination: RenderVideoSaveDestination = Defaults.renderVideoSaveDestination,
         sourceFraming: SourceFraming = Defaults.sourceFraming,
         sourceMediaTypes: Set<MediaType> = Defaults.sourceMediaTypes,
         effectsListCollapsed: Bool = Defaults.effectsListCollapsed,
@@ -263,6 +275,7 @@ struct MainSettings: Codable, MediaLibrarySettings {
         self.historyLimit = historyLimit
         self.activeLibraries = activeLibraries
         self.outputResolution = outputResolution
+        self.renderVideoSaveDestination = renderVideoSaveDestination
         self.sourceFraming = sourceFraming
         self.sourceMediaTypes = sourceMediaTypes
         self.effectsListCollapsed = effectsListCollapsed
@@ -312,6 +325,8 @@ struct MainSettings: Codable, MediaLibrarySettings {
             ?? Defaults.activeLibraries
         outputResolution = try c.decodeIfPresent(OutputResolution.self, forKey: .outputResolution)
             ?? Defaults.outputResolution
+        renderVideoSaveDestination = try c.decodeIfPresent(RenderVideoSaveDestination.self, forKey: .renderVideoSaveDestination)
+            ?? Defaults.renderVideoSaveDestination
         sourceFraming = try c.decodeIfPresent(SourceFraming.self, forKey: .sourceFraming)
             ?? Defaults.sourceFraming
         if let types = try c.decodeIfPresent([MediaType].self, forKey: .sourceMediaTypes) {
@@ -370,6 +385,7 @@ struct MainSettings: Codable, MediaLibrarySettings {
         try c.encode(historyLimit, forKey: .historyLimit)
         try c.encode(activeLibraries, forKey: .activeLibraries)
         try c.encode(outputResolution, forKey: .outputResolution)
+        try c.encode(renderVideoSaveDestination, forKey: .renderVideoSaveDestination)
         try c.encode(sourceFraming, forKey: .sourceFraming)
         try c.encode(Array(sourceMediaTypes), forKey: .sourceMediaTypes)
         try c.encode(effectsListCollapsed, forKey: .effectsListCollapsed)

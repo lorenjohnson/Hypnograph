@@ -5,6 +5,7 @@
     "From Finder Helper": []
   },
   "outputFolder": "~/Movies/Hypnograph/renders",
+  "renderVideoSaveDestination": "diskAndPhotosIfAvailable",
   "snapshotsFolder": "~/Movies/Hypnograph/snapshots",
   "clipLengthMinSeconds": 5,
   "clipLengthMaxSeconds": 20,

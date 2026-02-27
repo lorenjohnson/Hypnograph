@@ -336,7 +336,14 @@ extension Main {
             clip: renderHypnogram,
             outputFolder: state.settings.outputURL,
             outputSize: outputSize,
-            sourceFraming: state.settings.sourceFraming
+            sourceFraming: state.settings.sourceFraming,
+            notifyExternalDestinationHooks: false,
+            completion: { [weak self] result in
+                guard let self else { return }
+                Task { @MainActor in
+                    await self.handleRenderedVideoDestination(result: result)
+                }
+            }
         )
 
         // Reset for next hypnogram
@@ -344,6 +351,38 @@ extension Main {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             self.new()
+        }
+    }
+
+    private func handleRenderedVideoDestination(result: Result<URL, RenderError>) async {
+        guard case .success(let outputURL) = result else { return }
+
+        switch state.settings.renderVideoSaveDestination {
+        case .diskOnly:
+            return
+
+        case .diskAndPhotosIfAvailable:
+            guard ApplePhotos.shared.status.canWrite else { return }
+            let saved = await ApplePhotos.shared.saveVideo(at: outputURL)
+            if !saved {
+                AppNotifications.show("Saved to disk (Photos save failed)", flash: true, duration: 2.0)
+            }
+
+        case .photosIfAvailableOtherwiseDisk:
+            guard ApplePhotos.shared.status.canWrite else { return }
+            let saved = await ApplePhotos.shared.saveVideo(at: outputURL)
+            guard saved else {
+                AppNotifications.show("Saved to disk (Photos save failed)", flash: true, duration: 2.0)
+                return
+            }
+
+            do {
+                try FileManager.default.removeItem(at: outputURL)
+                AppNotifications.show("Saved to Apple Photos", flash: true, duration: 1.5)
+            } catch {
+                print("Main: failed to remove local render after Photos save: \(error)")
+                AppNotifications.show("Saved to Photos and disk", flash: true, duration: 1.75)
+            }
         }
     }
 

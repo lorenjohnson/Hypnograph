@@ -95,7 +95,8 @@ struct AppSettingsView: View {
 
         settingsActionRow(
             title: "Show Settings Folder",
-            description: "Opens your Hypnograph settings directory in Finder."
+            description: "Opens your Hypnograph settings directory in Finder.",
+            buttonTitle: "Show"
         ) {
             Environment.showSettingsFolderInFinder()
         }
@@ -108,6 +109,18 @@ struct AppSettingsView: View {
             Environment.installCLI()
             Environment.installAutomatorQuickAction()
         }
+        Divider()
+
+        settingsRenderDestinationRow(
+            title: "Rendered Video Destination",
+            description: "Choose disk, Photos, or both. Will fall back to disk when Photos write access is unavailable.",
+            selection: Binding(
+                get: { state.settings.renderVideoSaveDestination },
+                set: { newValue in
+                    state.settingsStore.update { $0.renderVideoSaveDestination = newValue }
+                }
+            )
+        )
         Divider()
 
         settingsFolderRow(
@@ -341,6 +354,35 @@ struct AppSettingsView: View {
         .padding(.vertical, 12)
     }
 
+    @ViewBuilder
+    private func settingsRenderDestinationRow(
+        title: String,
+        description: String,
+        selection: Binding<RenderVideoSaveDestination>
+    ) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body)
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .layoutPriority(1)
+            Spacer(minLength: 12)
+            Picker("", selection: selection) {
+                ForEach(RenderVideoSaveDestination.allCases, id: \.self) { destination in
+                    Text(destination.displayName).tag(destination)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(minWidth: 180, idealWidth: 220, maxWidth: 240, alignment: .trailing)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+    }
+
     private func chooseOutputFolder() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
@@ -384,6 +426,19 @@ struct AppSettingsView: View {
             return "~" + expandedPath.dropFirst(homePath.count)
         }
         return expandedPath
+    }
+}
+
+private extension RenderVideoSaveDestination {
+    var displayName: String {
+        switch self {
+        case .diskAndPhotosIfAvailable:
+            return "Disk + Apple Photos"
+        case .photosIfAvailableOtherwiseDisk:
+            return "Apple Photos only"
+        case .diskOnly:
+            return "Disk only"
+        }
     }
 }
 
