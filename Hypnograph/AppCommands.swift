@@ -169,7 +169,7 @@ struct AppCommands: Commands {
         }
 
         CommandMenu("Studio") {
-            Button("Open Shader Studio") {
+            Button("Open Effect Studio") {
                 openWindow(id: "shaderStudio")
             }
             .keyboardShortcut("k", modifiers: [.command, .option])
@@ -189,7 +189,7 @@ struct AppCommands: Commands {
 
     private func windowBelongsToStudio(_ window: NSWindow?) -> Bool {
         guard let window else { return false }
-        if window.title == "Shader Studio" {
+        if window.title == "Effect Studio" {
             return true
         }
         if let parent = window.parent {

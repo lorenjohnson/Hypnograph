@@ -627,7 +627,7 @@ struct HypnographApp: App {
         .defaultSize(width: 720, height: 245)
         .windowResizability(.contentSize)
 
-        Window("Shader Studio", id: "shaderStudio") {
+        Window("Effect Studio", id: "shaderStudio") {
             ShaderStudioView(state: state)
         }
         .defaultSize(width: 1320, height: 860)

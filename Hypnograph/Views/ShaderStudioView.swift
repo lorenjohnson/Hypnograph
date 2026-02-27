@@ -2745,7 +2745,7 @@ struct ShaderStudioView: View {
 
     private func isStudioWindow(_ window: NSWindow?) -> Bool {
         guard let window else { return false }
-        if window.title == "Shader Studio" {
+        if window.title == "Effect Studio" {
             return true
         }
         if let parent = window.parent {
@@ -2798,7 +2798,7 @@ struct ShaderStudioView: View {
     }
 
     private func focusStudioHostWindow() {
-        guard let studioWindow = NSApp.windows.first(where: { $0.title == "Shader Studio" }) else { return }
+        guard let studioWindow = NSApp.windows.first(where: { $0.title == "Effect Studio" }) else { return }
         studioWindow.makeKeyAndOrderFront(nil)
     }
 
@@ -3461,5 +3461,5 @@ private struct FloatingPanelInteractionOverlay: NSViewRepresentable {
 }
 
 #Preview {
-    Text("Shader Studio")
+    Text("Effect Studio")
 }
