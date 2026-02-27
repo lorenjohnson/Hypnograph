@@ -40,11 +40,11 @@ struct HypnographTests {
         Environment.ensureSettingsFileExists(
             at: settingsURL,
             bundledURL: bundledURL,
-            defaultSettings: Settings.defaultValue
+            defaultSettings: MainSettings.defaultValue
         )
 
         let data = try Data(contentsOf: settingsURL)
-        let settings = try JSONDecoder().decode(Settings.self, from: data)
+        let settings = try JSONDecoder().decode(MainSettings.self, from: data)
 
         #expect(settings.sources.libraries["default"]?.contains("~/Movies/Hypnograph/sources") == true)
         #expect(settings.sources.libraries["From Finder Helper"] != nil)
@@ -62,11 +62,11 @@ struct HypnographTests {
         Environment.ensureSettingsFileExists(
             at: settingsURL,
             bundledURL: nil,
-            defaultSettings: Settings.defaultValue
+            defaultSettings: MainSettings.defaultValue
         )
 
         let data = try Data(contentsOf: settingsURL)
-        _ = try JSONDecoder().decode(Settings.self, from: data)
+        _ = try JSONDecoder().decode(MainSettings.self, from: data)
 
         let names = try fm.contentsOfDirectory(atPath: dir.path)
         let backups = names.filter { $0.hasPrefix("hypnograph-settings.invalid-") && $0.hasSuffix(".json") }
