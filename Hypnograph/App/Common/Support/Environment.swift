@@ -112,7 +112,7 @@ enum Environment {
         let url = defaultAppSettingsURL
         guard !fm.fileExists(atPath: url.path) else { return }
 
-        let migratedKeyboardOverride = legacyKeyboardAccessibilityOverrideFromMainSettings()
+        let migratedKeyboardOverride = keyboardAccessibilityOverrideFromMainSettings()
             ?? AppSettings.defaultValue.keyboardAccessibilityOverridesEnabled
         let appSettings = AppSettings(
             keyboardAccessibilityOverridesEnabled: migratedKeyboardOverride
@@ -129,7 +129,6 @@ enum Environment {
     }
 
     static func ensureDefaultSettingsFilesExist() {
-        migrateSettingsFilenamesIfNeeded()
         ensureDefaultMainSettingsFileExists()
         ensureDefaultAppSettingsFileExists()
         ensureDefaultEffectsStudioSettingsFileExists()
@@ -217,76 +216,14 @@ enum Environment {
         }
     }
 
-    private static func legacyKeyboardAccessibilityOverrideFromMainSettings() -> Bool? {
-        let urlCandidates = [defaultMainSettingsURL, legacyMainSettingsURL]
-        for url in urlCandidates {
-            guard let data = try? Data(contentsOf: url),
-                  let json = try? JSONSerialization.jsonObject(with: data, options: []),
-                  let dict = json as? [String: Any],
-                  let value = dict["keyboardAccessibilityOverridesEnabled"] as? Bool else {
-                continue
-            }
-            return value
+    private static func keyboardAccessibilityOverrideFromMainSettings() -> Bool? {
+        guard let data = try? Data(contentsOf: defaultMainSettingsURL),
+              let json = try? JSONSerialization.jsonObject(with: data, options: []),
+              let dict = json as? [String: Any],
+              let value = dict["keyboardAccessibilityOverridesEnabled"] as? Bool else {
+            return nil
         }
-        return nil
-    }
-
-    private static var legacyMainSettingsURL: URL {
-        appSupportDirectory.appendingPathComponent("hypnograph-settings.json")
-    }
-
-    private static var legacyAppSettingsURL: URL {
-        appSupportDirectory.appendingPathComponent("hypnograph-app-settings.json")
-    }
-
-    private static func migrateSettingsFilenamesIfNeeded() {
-        let fm = FileManager.default
-        let newMainURL = defaultMainSettingsURL
-        let newAppURL = defaultAppSettingsURL
-        let oldMainURL = legacyMainSettingsURL
-        let oldAppURL = legacyAppSettingsURL
-
-        // If this is an upgrade from the pre-split naming where main settings lived at
-        // hypnograph-settings.json, move that file to main-settings.json first.
-        if !fm.fileExists(atPath: newMainURL.path),
-           fm.fileExists(atPath: oldMainURL.path),
-           decodesMainSettings(at: oldMainURL) {
-            do {
-                try fm.moveItem(at: oldMainURL, to: newMainURL)
-                print("Migrated main settings to \(newMainURL.lastPathComponent)")
-            } catch {
-                print("Failed migrating main settings filename: \(error)")
-            }
-        }
-
-        // If app settings still live at the old split-era filename, move them to
-        // hypnograph-settings.json (new app settings location).
-        if !fm.fileExists(atPath: newAppURL.path),
-           fm.fileExists(atPath: oldAppURL.path),
-           decodesAppSettings(at: oldAppURL) {
-            do {
-                try fm.moveItem(at: oldAppURL, to: newAppURL)
-                print("Migrated app settings to \(newAppURL.lastPathComponent)")
-            } catch {
-                print("Failed migrating app settings filename: \(error)")
-            }
-        }
-    }
-
-    private static func decodesMainSettings(at url: URL) -> Bool {
-        guard let data = try? Data(contentsOf: url),
-              (try? JSONDecoder().decode(MainSettings.self, from: data)) != nil else {
-            return false
-        }
-        return true
-    }
-
-    private static func decodesAppSettings(at url: URL) -> Bool {
-        guard let data = try? Data(contentsOf: url),
-              (try? JSONDecoder().decode(AppSettings.self, from: data)) != nil else {
-            return false
-        }
-        return true
+        return value
     }
 
     private static func stableJSONEncoder() -> JSONEncoder {
