@@ -1,0 +1,170 @@
+//
+//  MainAudioController.swift
+//  Hypnograph
+//
+//  Manages audio output devices and volumes for preview and live players.
+//  Handles device discovery, selection persistence, and device disconnect handling.
+//
+
+import Foundation
+import Combine
+import HypnoCore
+
+/// Manages audio output routing for Main's preview and live players
+@MainActor
+final class MainAudioController: ObservableObject {
+
+    // MARK: - Published State
+
+    /// Selected audio output device for Preview player (nil = system default)
+    @Published var previewAudioDevice: AudioOutputDevice?
+
+    /// Selected audio output device for Live player (nil = system default)
+    @Published var liveAudioDevice: AudioOutputDevice?
+
+    /// Volume level for Preview audio (0.0 to 1.0)
+    @Published var previewVolume: Float = 1.0
+
+    /// Volume level for Live audio (0.0 to 1.0)
+    @Published var liveVolume: Float = 1.0
+
+    // MARK: - Dependencies
+
+    private let audioManager = AudioDeviceManager.shared
+    private weak var settingsStore: MainSettingsStore?
+    private weak var livePlayer: LivePlayer?
+    private var subscriptions: Set<AnyCancellable> = []
+
+    // MARK: - Computed Properties
+
+    /// Get the device UID for preview audio routing (nil = system default)
+    var previewAudioDeviceUID: String? {
+        previewAudioDevice?.uid
+    }
+
+    /// Get the device UID for live audio routing (nil = system default)
+    var liveAudioDeviceUID: String? {
+        liveAudioDevice?.uid
+    }
+
+    // MARK: - Init
+
+    init(settingsStore: MainSettingsStore, livePlayer: LivePlayer) {
+        self.settingsStore = settingsStore
+        self.livePlayer = livePlayer
+
+        loadAudioSettings(from: settingsStore.value)
+        setupSubscriptions()
+    }
+
+    // MARK: - Setup
+
+    private func setupSubscriptions() {
+        // Watch for device list changes (device disconnected)
+        audioManager.$outputDevices
+            .receive(on: RunLoop.main)
+            .sink { [weak self] devices in
+                self?.handleDeviceListChange(devices)
+            }
+            .store(in: &subscriptions)
+
+        // Live volume changes
+        $liveVolume
+            .receive(on: RunLoop.main)
+            .dropFirst()  // Skip initial value (loaded from settings)
+            .sink { [weak self] volume in
+                guard let self = self else { return }
+                self.livePlayer?.setVolume(volume)
+                self.saveAudioSettings()
+            }
+            .store(in: &subscriptions)
+
+        // Live audio device changes
+        $liveAudioDevice
+            .receive(on: RunLoop.main)
+            .dropFirst()  // Skip initial value (loaded from settings)
+            .sink { [weak self] device in
+                guard let self = self else { return }
+                let deviceUID = device?.uid
+                print("🔊 MainAudioController: liveAudioDevice changed to \(device?.name ?? "nil"), uid=\(deviceUID ?? "System Default")")
+                self.livePlayer?.setAudioDevice(deviceUID)
+                self.saveAudioSettings()
+            }
+            .store(in: &subscriptions)
+
+        // Preview audio device changes (for saving settings)
+        $previewAudioDevice
+            .receive(on: RunLoop.main)
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.saveAudioSettings()
+            }
+            .store(in: &subscriptions)
+
+        // Preview volume changes (for saving settings)
+        $previewVolume
+            .receive(on: RunLoop.main)
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.saveAudioSettings()
+            }
+            .store(in: &subscriptions)
+    }
+
+    // MARK: - MainSettings Persistence
+
+    /// Load audio device and volume settings from MainSettings
+    private func loadAudioSettings(from settings: MainSettings) {
+        // Load volumes
+        previewVolume = settings.previewVolume
+        liveVolume = settings.liveVolume
+
+        // Load devices by UID, defaulting to system default if not found
+        previewAudioDevice = findAudioDevice(byUID: settings.previewAudioDeviceUID)
+        liveAudioDevice = findAudioDevice(byUID: settings.liveAudioDeviceUID)
+
+        // Apply initial live audio settings to LivePlayer
+        // (subscriptions use .dropFirst() so initial values aren't applied via Combine)
+        livePlayer?.setVolume(liveVolume)
+        livePlayer?.setAudioDevice(liveAudioDevice?.uid)
+
+        print("🔊 MainAudioController: Loaded audio settings - preview: \(previewAudioDevice?.name ?? "System Default") @ \(previewVolume), live: \(liveAudioDevice?.name ?? "System Default") @ \(liveVolume)")
+    }
+
+    /// Save audio device and volume settings to MainSettings
+    private func saveAudioSettings() {
+        settingsStore?.update { settings in
+            settings.previewAudioDeviceUID = previewAudioDevice?.uid
+            settings.previewVolume = previewVolume
+            settings.liveAudioDeviceUID = liveAudioDevice?.uid
+            settings.liveVolume = liveVolume
+        }
+    }
+
+    // MARK: - Device Management
+
+    /// Find audio device by UID, returns system default if not found
+    private func findAudioDevice(byUID uid: String?) -> AudioOutputDevice? {
+        guard let uid = uid else { return audioManager.systemDefault }
+        return audioManager.outputDevices.first { $0.uid == uid } ?? audioManager.systemDefault
+    }
+
+    /// Handle device list changes - switch to system default if current device is no longer available
+    private func handleDeviceListChange(_ devices: [AudioOutputDevice]) {
+        // Check preview device
+        if let preview = previewAudioDevice,
+           !preview.isSystemDefault,
+           !devices.contains(where: { $0.uid == preview.uid }) {
+            print("🔊 MainAudioController: Preview audio device '\(preview.name)' disconnected, switching to System Default")
+            previewAudioDevice = audioManager.systemDefault
+        }
+
+        // Check live device
+        if let live = liveAudioDevice,
+           !live.isSystemDefault,
+           !devices.contains(where: { $0.uid == live.uid }) {
+            print("🔊 MainAudioController: Live audio device '\(live.name)' disconnected, switching to System Default")
+            liveAudioDevice = audioManager.systemDefault
+        }
+    }
+}
