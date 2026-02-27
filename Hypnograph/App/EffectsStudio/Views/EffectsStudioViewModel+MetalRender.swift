@@ -174,7 +174,7 @@ extension EffectsStudioViewModel {
         frameCounter &+= 1
     }
 
-    func validateParameterDrafts() -> [String] {
+    private func validateParameterDrafts() -> [String] {
         var issues: [String] = []
         var seen: Set<String> = []
 
@@ -213,7 +213,7 @@ extension EffectsStudioViewModel {
         return issues
     }
 
-    func generatedParamStructSource() -> String {
+    private func generatedParamStructSource() -> String {
         var lines: [String] = [
             "struct HypnoParams {"
         ]
@@ -232,7 +232,7 @@ extension EffectsStudioViewModel {
         return lines.joined(separator: "\n")
     }
 
-    var sourceContainsHypnoParamsStruct: Bool {
+    private var sourceContainsHypnoParamsStruct: Bool {
         if let regex = try? NSRegularExpression(pattern: #"\bstruct\s+HypnoParams\b"#) {
             let range = NSRange(sourceCode.startIndex..<sourceCode.endIndex, in: sourceCode)
             return regex.firstMatch(in: sourceCode, options: [], range: range) != nil
@@ -240,7 +240,7 @@ extension EffectsStudioViewModel {
         return sourceCode.contains("struct HypnoParams")
     }
 
-    func validateSignature(arguments: [MTLArgument]) -> String? {
+    private func validateSignature(arguments: [MTLArgument]) -> String? {
         let activeTextureIndices = Set(
             arguments
                 .filter { $0.type == .texture }
@@ -277,7 +277,7 @@ extension EffectsStudioViewModel {
         return nil
     }
 
-    func buildParameterBufferLayout(arguments: [MTLArgument]) -> EffectsStudioParamBufferLayout? {
+    private func buildParameterBufferLayout(arguments: [MTLArgument]) -> EffectsStudioParamBufferLayout? {
         guard let parameterBufferIndex = activeBindings.parameterBufferIndex,
               let bufferArg = arguments.first(where: { $0.type == .buffer && Int($0.index) == parameterBufferIndex }) else {
             return nil
@@ -310,7 +310,7 @@ extension EffectsStudioViewModel {
         )
     }
 
-    func fillParameterBuffer(
+    private func fillParameterBuffer(
         data: inout Data,
         layout: EffectsStudioParamBufferLayout,
         width: Int,
@@ -349,7 +349,7 @@ extension EffectsStudioViewModel {
         }
     }
 
-    func resolvedParameterValue(
+    private func resolvedParameterValue(
         named name: String,
         width: Int,
         height: Int,
@@ -380,7 +380,7 @@ extension EffectsStudioViewModel {
         return .double(0)
     }
 
-    func writeScalar<T>(_ value: T, into data: inout Data, offset: Int, size: Int) {
+    private func writeScalar<T>(_ value: T, into data: inout Data, offset: Int, size: Int) {
         guard offset >= 0, size > 0 else { return }
         let byteCount = MemoryLayout<T>.size
         guard byteCount <= size, offset + byteCount <= data.count else { return }
@@ -390,7 +390,7 @@ extension EffectsStudioViewModel {
         }
     }
 
-    func resolvedIntValue(for parameterName: String, from value: AnyCodableValue) -> Int? {
+    private func resolvedIntValue(for parameterName: String, from value: AnyCodableValue) -> Int? {
         if let intValue = value.intValue {
             return intValue
         }
@@ -424,7 +424,7 @@ extension EffectsStudioViewModel {
         return nil
     }
 
-    func makeTexture(from image: CIImage, width: Int, height: Int, device: MTLDevice) -> MTLTexture? {
+    private func makeTexture(from image: CIImage, width: Int, height: Int, device: MTLDevice) -> MTLTexture? {
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba8Unorm,
             width: width,
@@ -443,7 +443,7 @@ extension EffectsStudioViewModel {
         frameCounter = 0
     }
 
-    func appendPreviewHistory(image: CIImage) {
+    private func appendPreviewHistory(image: CIImage) {
         previewFrameHistory.insert(image, at: 0)
         let historyLimit = max(1, previewHistoryLimit())
         if previewFrameHistory.count > historyLimit {
@@ -451,13 +451,13 @@ extension EffectsStudioViewModel {
         }
     }
 
-    func previewHistoryImage(offset: Int, fallback: CIImage) -> CIImage {
+    private func previewHistoryImage(offset: Int, fallback: CIImage) -> CIImage {
         let index = max(0, offset - 1)
         guard index < previewFrameHistory.count else { return fallback }
         return previewFrameHistory[index]
     }
 
-    func previewHistoryLimit() -> Int {
+    private func previewHistoryLimit() -> Int {
         let maxBindingOffset = activeBindings.inputTextures.reduce(0) { partial, binding in
             guard binding.source == .historyFrame else { return partial }
             return max(partial, resolvedHistoryOffset(for: binding))
@@ -465,7 +465,7 @@ extension EffectsStudioViewModel {
         return max(2, max(activeRequiredLookback, maxBindingOffset) + 2)
     }
 
-    func resolvedHistoryOffset(for binding: RuntimeMetalTextureBindingManifest) -> Int {
+    private func resolvedHistoryOffset(for binding: RuntimeMetalTextureBindingManifest) -> Int {
         if let parameterName = binding.historyOffsetParameter {
             let runtimeValue = parameterValues[parameterName]
             let parameterDefault: AnyCodableValue? = {

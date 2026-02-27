@@ -29,14 +29,8 @@ extension EffectsStudioViewModel {
     }
 
     func useGeneratedSample() {
-        sourceStillImage = nil
-        sourceVideoAsset = nil
-        invalidateVideoFrameCache()
-        resetPreviewHistory()
-        inputSourceLabel = "Generated Sample"
+        clearToGeneratedSampleSource()
         persistLastSourceSample()
-        updateTimelineDurationFromCurrentSource()
-        renderPreview()
     }
 
     func loadRandomSource(from library: MediaLibrary, preferredLength: Double = 8.0) {
@@ -85,36 +79,27 @@ extension EffectsStudioViewModel {
             if clip.file.mediaKind == .image {
                 let image = await clip.file.loadImage()
                 await MainActor.run {
-                    sourceStillImage = image
-                    sourceVideoAsset = nil
-                    self.invalidateVideoFrameCache()
-                    self.resetPreviewHistory()
-                    inputSourceLabel = "Random \(clip.file.displayName)"
-                    compileLog = image == nil ? "Failed to load random image source." : compileLog
-                    if image != nil {
-                        persistSource(file: clip.file)
+                    if let image {
+                        applyLoadedStillImage(image, label: "Random \(clip.file.displayName)") {
+                            self.persistSource(file: clip.file)
+                        }
+                    } else {
+                        compileLog = "Failed to load random image source."
                     }
-                    isPlaying = false
-                    updateTimelineDurationFromCurrentSource()
-                    renderPreview()
                 }
                 return
             }
 
             let asset = await clip.file.loadAsset()
             await MainActor.run {
-                sourceStillImage = nil
-                sourceVideoAsset = asset
-                self.invalidateVideoFrameCache()
-                self.resetPreviewHistory()
-                inputSourceLabel = "Random \(clip.file.displayName)"
-                compileLog = asset == nil ? "Failed to load random video source." : compileLog
-                if asset != nil {
-                    persistSource(file: clip.file)
+                if let asset {
+                    applyLoadedVideoAsset(asset, label: "Random \(clip.file.displayName)") {
+                        self.persistSource(file: clip.file)
+                    }
+                } else {
+                    compileLog = "Failed to load random video source."
+                    clearToGeneratedSampleSource()
                 }
-                isPlaying = asset != nil
-                updateTimelineDurationFromCurrentSource()
-                renderPreview()
             }
         }
     }
@@ -145,18 +130,13 @@ extension EffectsStudioViewModel {
             if asset.mediaType == .image {
                 let image = await ApplePhotos.shared.requestCIImage(for: asset)
                 await MainActor.run {
-                    sourceStillImage = image
-                    sourceVideoAsset = nil
-                    self.invalidateVideoFrameCache()
-                    self.resetPreviewHistory()
-                    inputSourceLabel = "Apple Photos Image"
-                    compileLog = image == nil ? "Failed to load Apple Photos image." : compileLog
-                    if image != nil {
-                        persistLastPhotosSource(identifier: identifier)
+                    if let image {
+                        applyLoadedStillImage(image, label: "Apple Photos Image") {
+                            self.persistLastPhotosSource(identifier: identifier)
+                        }
+                    } else {
+                        compileLog = "Failed to load Apple Photos image."
                     }
-                    isPlaying = false
-                    updateTimelineDurationFromCurrentSource()
-                    renderPreview()
                 }
                 return
             }
@@ -164,19 +144,12 @@ extension EffectsStudioViewModel {
             if asset.mediaType == .video {
                 let avAsset = await ApplePhotos.shared.requestAVAsset(for: asset)
                 await MainActor.run {
-                    sourceStillImage = nil
                     if let avAsset {
-                        sourceVideoAsset = avAsset
-                        self.invalidateVideoFrameCache()
-                        self.resetPreviewHistory()
-                        inputSourceLabel = "Apple Photos Video"
-                        persistLastPhotosSource(identifier: identifier)
-                        isPlaying = true
-                        updateTimelineDurationFromCurrentSource()
-                        renderPreview()
+                        applyLoadedVideoAsset(avAsset, label: "Apple Photos Video") {
+                            self.persistLastPhotosSource(identifier: identifier)
+                        }
                     } else {
-                        sourceVideoAsset = nil
-                        isPlaying = false
+                        clearToGeneratedSampleSource()
                         compileLog = "Failed to load selected Apple Photos video asset."
                     }
                 }
@@ -195,66 +168,24 @@ extension EffectsStudioViewModel {
         let videoExts: Set<String> = ["mov", "mp4", "m4v", "avi", "mkv", "webm"]
 
         if imageExts.contains(ext), let image = CIImage(contentsOf: url) {
-            sourceStillImage = image
-            sourceVideoAsset = nil
-            invalidateVideoFrameCache()
-            resetPreviewHistory()
-            inputSourceLabel = "File Image: \(url.lastPathComponent)"
-            if persist {
-                persistLastFileSource(url: url)
+            applyLoadedStillImage(image, label: "File Image: \(url.lastPathComponent)") {
+                if persist {
+                    self.persistLastFileSource(url: url)
+                }
             }
-            isPlaying = false
-            updateTimelineDurationFromCurrentSource()
-            renderPreview()
             return
         }
 
         if videoExts.contains(ext) {
-            sourceStillImage = nil
-            sourceVideoAsset = AVURLAsset(url: url)
-            invalidateVideoFrameCache()
-            resetPreviewHistory()
-            inputSourceLabel = "File Video: \(url.lastPathComponent)"
-            if persist {
-                persistLastFileSource(url: url)
+            applyLoadedVideoAsset(AVURLAsset(url: url), label: "File Video: \(url.lastPathComponent)") {
+                if persist {
+                    self.persistLastFileSource(url: url)
+                }
             }
-            updateTimelineDurationFromCurrentSource()
-            isPlaying = true
-            renderPreview()
             return
         }
 
         compileLog = "Unsupported file type. Pick an image or video."
-    }
-
-    func persistSource(file: MediaFile) {
-        switch file.source {
-        case .url(let url):
-            persistLastFileSource(url: url)
-        case .external(let identifier):
-            persistLastPhotosSource(identifier: identifier)
-        }
-    }
-
-    func persistLastFileSource(url: URL) {
-        settingsStore.update { value in
-            value.lastSourceKind = .file
-            value.lastSourceValue = url.path
-        }
-    }
-
-    func persistLastPhotosSource(identifier: String) {
-        settingsStore.update { value in
-            value.lastSourceKind = .photos
-            value.lastSourceValue = identifier
-        }
-    }
-
-    func persistLastSourceSample() {
-        settingsStore.update { value in
-            value.lastSourceKind = .sample
-            value.lastSourceValue = nil
-        }
     }
 
     func currentSourceImage(time: Double) -> CIImage {
@@ -269,99 +200,10 @@ extension EffectsStudioViewModel {
         return makeGeneratedPreviewImage(size: previewSize, time: Float(time))
     }
 
-    func videoFrame(from asset: AVAsset, at time: Double) -> CIImage? {
-        let duration = asset.duration.seconds
-        let sampleTimeSeconds: Double
-
-        if duration.isFinite, duration > 0 {
-            sampleTimeSeconds = time.truncatingRemainder(dividingBy: duration)
-        } else {
-            sampleTimeSeconds = 0
-        }
-
-        let sampleTime = CMTime(seconds: max(0, sampleTimeSeconds), preferredTimescale: 600)
-        let assetID = ObjectIdentifier(asset)
-
-        if videoFrameGenerator == nil || videoFrameGeneratorAssetID != assetID {
-            let generator = AVAssetImageGenerator(asset: asset)
-            generator.appliesPreferredTrackTransform = true
-            generator.requestedTimeToleranceBefore = CMTime(seconds: 1.0 / 120.0, preferredTimescale: 600)
-            generator.requestedTimeToleranceAfter = CMTime(seconds: 1.0 / 120.0, preferredTimescale: 600)
-            videoFrameGenerator = generator
-            videoFrameGeneratorAssetID = assetID
-            lastVideoFrameImage = nil
-        }
-
-        guard let generator = videoFrameGenerator else {
-            return lastVideoFrameImage
-        }
-        guard let cgImage = try? generator.copyCGImage(at: sampleTime, actualTime: nil) else {
-            return lastVideoFrameImage
-        }
-
-        let image = CIImage(cgImage: cgImage)
-        lastVideoFrameImage = image
-        return image
-    }
-
     func invalidateVideoFrameCache() {
         videoFrameGenerator = nil
         videoFrameGeneratorAssetID = nil
         lastVideoFrameImage = nil
-    }
-
-    func aspectFill(image: CIImage, to size: CGSize) -> CIImage {
-        let extent = image.extent
-        guard extent.width > 0, extent.height > 0 else {
-            return makeGeneratedPreviewImage(size: size, time: 0)
-        }
-
-        let normalized = image.transformed(by: .init(translationX: -extent.origin.x, y: -extent.origin.y))
-        let scale = max(size.width / extent.width, size.height / extent.height)
-        let scaled = normalized.transformed(by: .init(scaleX: scale, y: scale))
-        let x = (size.width - scaled.extent.width) * 0.5
-        let y = (size.height - scaled.extent.height) * 0.5
-
-        return scaled
-            .transformed(by: .init(translationX: x, y: y))
-            .cropped(to: CGRect(origin: .zero, size: size))
-    }
-
-    func makeGeneratedPreviewImage(size: CGSize, time: Float) -> CIImage {
-        let rect = CGRect(origin: .zero, size: size)
-        var image = CIImage(color: CIColor(red: 0.06, green: 0.07, blue: 0.11, alpha: 1)).cropped(to: rect)
-
-        if let checker = CIFilter(name: "CICheckerboardGenerator") {
-            checker.setValue(CIVector(x: size.width * 0.5 + CGFloat(sin(Double(time)) * 120.0), y: size.height * 0.5), forKey: "inputCenter")
-            checker.setValue(CIColor(red: 0.12, green: 0.16, blue: 0.26, alpha: 1), forKey: "inputColor0")
-            checker.setValue(CIColor(red: 0.03, green: 0.04, blue: 0.08, alpha: 1), forKey: "inputColor1")
-            checker.setValue(34.0, forKey: "inputWidth")
-            checker.setValue(0.95, forKey: "inputSharpness")
-
-            if let board = checker.outputImage?.cropped(to: rect),
-               let overlay = CIFilter(name: "CISoftLightBlendMode") {
-                overlay.setValue(board, forKey: kCIInputImageKey)
-                overlay.setValue(image, forKey: kCIInputBackgroundImageKey)
-                image = overlay.outputImage?.cropped(to: rect) ?? image
-            }
-        }
-
-        if let radial = CIFilter(name: "CIRadialGradient") {
-            radial.setValue(CIVector(x: size.width * 0.5, y: size.height * 0.5), forKey: "inputCenter")
-            radial.setValue(size.height * 0.10, forKey: "inputRadius0")
-            radial.setValue(size.height * 0.48, forKey: "inputRadius1")
-            radial.setValue(CIColor(red: 1.0, green: 0.35, blue: 0.1, alpha: 0.32), forKey: "inputColor0")
-            radial.setValue(CIColor(red: 0, green: 0, blue: 0, alpha: 0), forKey: "inputColor1")
-
-            if let glow = radial.outputImage?.cropped(to: rect),
-               let comp = CIFilter(name: "CISourceOverCompositing") {
-                comp.setValue(glow, forKey: kCIInputImageKey)
-                comp.setValue(image, forKey: kCIInputBackgroundImageKey)
-                image = comp.outputImage?.cropped(to: rect) ?? image
-            }
-        }
-
-        return image
     }
 
     func updatePlaybackLoop() {
@@ -425,5 +267,167 @@ extension EffectsStudioViewModel {
         if !time.isFinite || time < 0 {
             time = 0
         }
+    }
+
+    private func clearToGeneratedSampleSource() {
+        sourceStillImage = nil
+        sourceVideoAsset = nil
+        invalidateVideoFrameCache()
+        resetPreviewHistory()
+        inputSourceLabel = "Generated Sample"
+        isPlaying = false
+        updateTimelineDurationFromCurrentSource()
+        renderPreview()
+    }
+
+    private func applyLoadedStillImage(
+        _ image: CIImage,
+        label: String,
+        persist: (() -> Void)? = nil
+    ) {
+        sourceStillImage = image
+        sourceVideoAsset = nil
+        invalidateVideoFrameCache()
+        resetPreviewHistory()
+        inputSourceLabel = label
+        persist?()
+        isPlaying = false
+        updateTimelineDurationFromCurrentSource()
+        renderPreview()
+    }
+
+    private func applyLoadedVideoAsset(
+        _ asset: AVAsset,
+        label: String,
+        persist: (() -> Void)? = nil
+    ) {
+        sourceStillImage = nil
+        sourceVideoAsset = asset
+        invalidateVideoFrameCache()
+        resetPreviewHistory()
+        inputSourceLabel = label
+        persist?()
+        isPlaying = true
+        updateTimelineDurationFromCurrentSource()
+        renderPreview()
+    }
+
+    private func persistSource(file: MediaFile) {
+        switch file.source {
+        case .url(let url):
+            persistLastFileSource(url: url)
+        case .external(let identifier):
+            persistLastPhotosSource(identifier: identifier)
+        }
+    }
+
+    private func persistLastFileSource(url: URL) {
+        settingsStore.update { value in
+            value.lastSourceKind = .file
+            value.lastSourceValue = url.path
+        }
+    }
+
+    private func persistLastPhotosSource(identifier: String) {
+        settingsStore.update { value in
+            value.lastSourceKind = .photos
+            value.lastSourceValue = identifier
+        }
+    }
+
+    private func persistLastSourceSample() {
+        settingsStore.update { value in
+            value.lastSourceKind = .sample
+            value.lastSourceValue = nil
+        }
+    }
+
+    private func videoFrame(from asset: AVAsset, at time: Double) -> CIImage? {
+        let duration = asset.duration.seconds
+        let sampleTimeSeconds: Double
+
+        if duration.isFinite, duration > 0 {
+            sampleTimeSeconds = time.truncatingRemainder(dividingBy: duration)
+        } else {
+            sampleTimeSeconds = 0
+        }
+
+        let sampleTime = CMTime(seconds: max(0, sampleTimeSeconds), preferredTimescale: 600)
+        let assetID = ObjectIdentifier(asset)
+
+        if videoFrameGenerator == nil || videoFrameGeneratorAssetID != assetID {
+            let generator = AVAssetImageGenerator(asset: asset)
+            generator.appliesPreferredTrackTransform = true
+            generator.requestedTimeToleranceBefore = CMTime(seconds: 1.0 / 120.0, preferredTimescale: 600)
+            generator.requestedTimeToleranceAfter = CMTime(seconds: 1.0 / 120.0, preferredTimescale: 600)
+            videoFrameGenerator = generator
+            videoFrameGeneratorAssetID = assetID
+            lastVideoFrameImage = nil
+        }
+
+        guard let generator = videoFrameGenerator else {
+            return lastVideoFrameImage
+        }
+        guard let cgImage = try? generator.copyCGImage(at: sampleTime, actualTime: nil) else {
+            return lastVideoFrameImage
+        }
+
+        let image = CIImage(cgImage: cgImage)
+        lastVideoFrameImage = image
+        return image
+    }
+
+    private func aspectFill(image: CIImage, to size: CGSize) -> CIImage {
+        let extent = image.extent
+        guard extent.width > 0, extent.height > 0 else {
+            return makeGeneratedPreviewImage(size: size, time: 0)
+        }
+
+        let normalized = image.transformed(by: .init(translationX: -extent.origin.x, y: -extent.origin.y))
+        let scale = max(size.width / extent.width, size.height / extent.height)
+        let scaled = normalized.transformed(by: .init(scaleX: scale, y: scale))
+        let x = (size.width - scaled.extent.width) * 0.5
+        let y = (size.height - scaled.extent.height) * 0.5
+
+        return scaled
+            .transformed(by: .init(translationX: x, y: y))
+            .cropped(to: CGRect(origin: .zero, size: size))
+    }
+
+    private func makeGeneratedPreviewImage(size: CGSize, time: Float) -> CIImage {
+        let rect = CGRect(origin: .zero, size: size)
+        var image = CIImage(color: CIColor(red: 0.06, green: 0.07, blue: 0.11, alpha: 1)).cropped(to: rect)
+
+        if let checker = CIFilter(name: "CICheckerboardGenerator") {
+            checker.setValue(CIVector(x: size.width * 0.5 + CGFloat(sin(Double(time)) * 120.0), y: size.height * 0.5), forKey: "inputCenter")
+            checker.setValue(CIColor(red: 0.12, green: 0.16, blue: 0.26, alpha: 1), forKey: "inputColor0")
+            checker.setValue(CIColor(red: 0.03, green: 0.04, blue: 0.08, alpha: 1), forKey: "inputColor1")
+            checker.setValue(34.0, forKey: "inputWidth")
+            checker.setValue(0.95, forKey: "inputSharpness")
+
+            if let board = checker.outputImage?.cropped(to: rect),
+               let overlay = CIFilter(name: "CISoftLightBlendMode") {
+                overlay.setValue(board, forKey: kCIInputImageKey)
+                overlay.setValue(image, forKey: kCIInputBackgroundImageKey)
+                image = overlay.outputImage?.cropped(to: rect) ?? image
+            }
+        }
+
+        if let radial = CIFilter(name: "CIRadialGradient") {
+            radial.setValue(CIVector(x: size.width * 0.5, y: size.height * 0.5), forKey: "inputCenter")
+            radial.setValue(size.height * 0.10, forKey: "inputRadius0")
+            radial.setValue(size.height * 0.48, forKey: "inputRadius1")
+            radial.setValue(CIColor(red: 1.0, green: 0.35, blue: 0.1, alpha: 0.32), forKey: "inputColor0")
+            radial.setValue(CIColor(red: 0, green: 0, blue: 0, alpha: 0), forKey: "inputColor1")
+
+            if let glow = radial.outputImage?.cropped(to: rect),
+               let comp = CIFilter(name: "CISourceOverCompositing") {
+                comp.setValue(glow, forKey: kCIInputImageKey)
+                comp.setValue(image, forKey: kCIInputBackgroundImageKey)
+                image = comp.outputImage?.cropped(to: rect) ?? image
+            }
+        }
+
+        return image
     }
 }

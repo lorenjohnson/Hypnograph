@@ -19,6 +19,15 @@ struct EffectsStudioView: View {
         let showChrome: Bool
     }
 
+    private struct EffectsStudioUIPanelState: Equatable {
+        let panelOpacity: Double
+        let showCodePanel: Bool
+        let showInspectorPanel: Bool
+        let showManifestPanel: Bool
+        let showLiveControlsPanel: Bool
+        let showLogOverlay: Bool
+    }
+
     @ObservedObject var state: HypnographState
     @ObservedObject var settingsStore: EffectsStudioSettingsStore
     @StateObject private var model: EffectsStudioViewModel
@@ -117,12 +126,9 @@ struct EffectsStudioView: View {
         }
         .onChange(of: model.sourceCode) { _, _ in queueAutoCompile() }
         .onChange(of: model.parameters) { _, _ in queueAutoCompile() }
-        .onChange(of: panelOpacity) { _, _ in persistEffectsStudioUIState() }
-        .onChange(of: showCodePanel) { _, _ in persistEffectsStudioUIState() }
-        .onChange(of: showInspectorPanel) { _, _ in persistEffectsStudioUIState() }
-        .onChange(of: showManifestPanel) { _, _ in persistEffectsStudioUIState() }
-        .onChange(of: showLiveControlsPanel) { _, _ in persistEffectsStudioUIState() }
-        .onChange(of: showLogOverlay) { _, _ in persistEffectsStudioUIState() }
+        .onChange(of: uiPanelState) { _, _ in
+            persistEffectsStudioUIState()
+        }
         .task(id: compileGeneration) {
             guard autoCompile else { return }
             try? await Task.sleep(nanoseconds: 350_000_000)
@@ -164,6 +170,17 @@ struct EffectsStudioView: View {
         .onReceive(NotificationCenter.default.publisher(for: .effectsStudioToggleCleanScreen)) { _ in
             toggleEffectsStudioCleanScreen()
         }
+    }
+
+    private var uiPanelState: EffectsStudioUIPanelState {
+        EffectsStudioUIPanelState(
+            panelOpacity: panelOpacity,
+            showCodePanel: showCodePanel,
+            showInspectorPanel: showInspectorPanel,
+            showManifestPanel: showManifestPanel,
+            showLiveControlsPanel: showLiveControlsPanel,
+            showLogOverlay: showLogOverlay
+        )
     }
 
     private func panelWindowSurface<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -658,14 +675,14 @@ struct EffectsStudioView: View {
         // If there is literally nothing visible, clean-screen toggle is a no-op.
         guard hasAnyVisibleOverlay || showEffectsStudioChrome else { return }
 
-            cleanScreenSnapshot = EffectsStudioCleanScreenSnapshot(
-                showCodePanel: showCodePanel,
-                showInspectorPanel: showInspectorPanel,
-                showManifestPanel: showManifestPanel,
-                showLiveControlsPanel: showLiveControlsPanel,
-                showLogOverlay: showLogOverlay,
-                showChrome: showEffectsStudioChrome
-            )
+        cleanScreenSnapshot = EffectsStudioCleanScreenSnapshot(
+            showCodePanel: showCodePanel,
+            showInspectorPanel: showInspectorPanel,
+            showManifestPanel: showManifestPanel,
+            showLiveControlsPanel: showLiveControlsPanel,
+            showLogOverlay: showLogOverlay,
+            showChrome: showEffectsStudioChrome
+        )
 
         showCodePanel = false
         showInspectorPanel = false
