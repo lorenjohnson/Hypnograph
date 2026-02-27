@@ -69,16 +69,6 @@
                ReferencedContainer = "container:Hypnograph.xcodeproj">
             </BuildableReference>
          </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "042F991B2EC8990C006D4CDE"
-               BuildableName = "HypnographUITests.xctest"
-               BlueprintName = "HypnographUITests"
-               ReferencedContainer = "container:Hypnograph.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
