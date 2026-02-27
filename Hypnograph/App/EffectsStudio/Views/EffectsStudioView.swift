@@ -53,10 +53,14 @@ struct EffectsStudioView: View {
     @State private var showEffectsStudioChrome = true
     @State private var cleanScreenSnapshot: EffectsStudioCleanScreenSnapshot?
 
-    init(state: HypnographState, settingsStore: EffectsStudioSettingsStore) {
+    init(
+        state: HypnographState,
+        settingsStore: EffectsStudioSettingsStore,
+        dependencies: EffectsStudioDependencies = .live
+    ) {
         self.state = state
         self.settingsStore = settingsStore
-        _model = StateObject(wrappedValue: EffectsStudioViewModel(settingsStore: settingsStore))
+        _model = StateObject(wrappedValue: dependencies.makeViewModel(settingsStore))
     }
 
     var body: some View {

@@ -128,22 +128,22 @@ Purpose:
 
 ### Phase 1: Structure + Composition Root
 
-- [ ] Add `EffectsStudio.swift` composition root.
-- [ ] Add `Dependencies.swift` and `live` wiring.
-- [ ] Create `State/`, `Models/`, `Services/`, `Support/` folders.
-- [ ] Keep behavior unchanged in this phase.
+- [x] Add `EffectsStudio.swift` composition root.
+- [x] Add `Dependencies.swift` and `live` wiring.
+- [x] Create `State/`, `Models/`, `Services/`, `Support/` folders.
+- [x] Keep behavior unchanged in this phase.
 
 Phase gate:
-- [ ] Build passes and Studio behavior is unchanged.
+- [x] Build passes and Studio behavior is unchanged.
 
 ### Phase 2: Model + Support Extraction
 
-- [ ] Move pure parameter/manifest mapping and sanitization logic into `Models/`.
+- [x] Move pure parameter/manifest mapping and sanitization logic into `Models/`.
 - [ ] Move buffer layout/support structs (`EffectsStudioParamBufferLayout`, etc.) into `Support/` or `Models/` as appropriate.
-- [ ] Keep state mutation in state layer, keep conversion rules pure.
+- [x] Keep state mutation in state layer, keep conversion rules pure.
 
 Phase gate:
-- [ ] No behavior drift; logic moved is pure and has no side effects.
+- [x] No behavior drift; logic moved is pure and has no side effects.
 
 ### Phase 3: Service Extraction
 

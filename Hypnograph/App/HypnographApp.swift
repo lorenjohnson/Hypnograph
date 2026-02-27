@@ -196,7 +196,7 @@ struct HypnographApp: App {
         .windowResizability(.contentSize)
 
         Window("Effect Studio", id: "effectsStudio") {
-            EffectsStudioView(state: state, settingsStore: effectsStudioSettingsStore)
+            EffectsStudio(state: state, settingsStore: effectsStudioSettingsStore)
         }
         .defaultSize(width: 1320, height: 860)
     }
