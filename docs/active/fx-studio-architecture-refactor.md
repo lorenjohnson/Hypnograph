@@ -1,7 +1,10 @@
-# FX Studio Architecture Refactor
+---
+created: 2026-02-27
+updated: 2026-02-27
+status: active
+---
 
-**Date:** 2026-02-27  
-**Status:** Active
+# FX Studio Architecture Refactor
 
 ## Goal
 
@@ -21,6 +24,35 @@ Known pressure points:
 - Broad extension surface area (`Type+Concern.swift`) with implicit internal contracts.
 - Side effects (IO, compile, render, windowing, playback) mixed with state orchestration.
 
+## Current Snapshot (2026-02-27)
+
+Current file layout under `Hypnograph/App/EffectsStudio`:
+
+```text
+Persistence/
+  EffectsStudioSettings.swift
+  EffectsStudioSettingsStore.swift
+
+Views/
+  EffectsStudioMetalCodeEditorView.swift
+  EffectsStudioPanelWindows.swift
+  EffectsStudioParameterDefinitionRow.swift
+  EffectsStudioTypes.swift
+  EffectsStudioView.swift
+  EffectsStudioViewModel.swift
+  EffectsStudioViewModel+ManifestParameters.swift
+  EffectsStudioViewModel+MetalRender.swift
+  EffectsStudioViewModel+RuntimeEffects.swift
+  EffectsStudioViewModel+SourcePlayback.swift
+```
+
+Current concentration of logic (line count):
+- `EffectsStudioViewModel.swift` + extensions: ~1859 lines total.
+- Runtime effects IO + load/save/delete + picker: `EffectsStudioViewModel+RuntimeEffects.swift`.
+- Compile/render/pipeline/reflection/parameter-buffer layout: `EffectsStudioViewModel+MetalRender.swift`.
+- Source loading + playback loop + frame extraction/caching: `EffectsStudioViewModel+SourcePlayback.swift`.
+- Manifest synthesis and parameter schema logic: `EffectsStudioViewModel+ManifestParameters.swift`.
+
 ## Scope
 
 ### In Scope
@@ -38,7 +70,7 @@ Known pressure points:
 ## Target Structure
 
 ```text
-App/EffectsStudio
+Hypnograph/App/EffectsStudio
   EffectsStudio.swift
   Dependencies.swift
 
@@ -52,7 +84,15 @@ App/EffectsStudio
 
 Notes:
 - Keep names concise inside this feature folder (no redundant `EffectsStudio*` prefix unless needed to avoid collisions).
-- Favor explicit module boundaries over large extension-file slices.
+- Favor explicit feature types over large extension-file slices.
+- `EffectsStudio.swift` is the composition root; it wires dependencies and initializes state/view model.
+
+## Architecture Invariants
+
+These behaviors must remain correct throughout the refactor:
+- Studio preview must honor runtime manifest bindings (`inputTextures`, `outputTextureIndex`, optional `parameterBufferIndex`).
+- Temporal/history effects must preserve current behavior (history texture lookup + lookback behavior).
+- Phase 1 and Phase 2 are structure-focused and must not intentionally change user-visible behavior.
 
 ## Boundary Rules
 
@@ -63,33 +103,105 @@ Notes:
 - `Persistence/`: Studio settings persistence only.
 - `Support/`: small shared utility types/constants local to Studio.
 
+Service scope rule:
+- A service should own side effects (Metal/AppKit/IO/Photos/timers/tasks).
+- Pure mapping/validation/default-resolution logic belongs in `Models/`.
+
 ## Dependency Strategy
 
 Studio gets collaborators through a local dependency container:
-- `Dependencies.swift` defines required collaborators and a `live` wiring.
-- `EffectsStudio.swift` is the feature entry/composition root.
+- `Dependencies.swift` defines required collaborator protocols and `live` implementations.
+- `EffectsStudio.swift` creates and injects dependencies into state/view model.
 
 Purpose:
 - Make boundaries explicit.
 - Enable local previews/tests with fakes.
 - Avoid direct reach-through from Studio state into concrete implementations.
 
-## Plan
+## API Surface Rules
 
-1. Create the new folder/file skeleton (no behavior changes).
-2. Move code by concern into `Views/State/Models/Services/Persistence/Support`.
-3. Introduce Studio dependency container and composition root.
-4. Collapse extension-surface APIs into explicit types where practical.
-5. Validate runtime compile/preview/source workflows and panel behavior.
-6. Remove stale transitional structures once replacement paths are stable.
+- Avoid creating new broad `Type+Concern` internal surfaces.
+- Prefer small explicit types with narrow, responsibility-specific interfaces.
+- Keep state mutation centralized in state-layer types.
+
+## Migration Plan
+
+### Phase 1: Structure + Composition Root
+
+- [ ] Add `EffectsStudio.swift` composition root.
+- [ ] Add `Dependencies.swift` and `live` wiring.
+- [ ] Create `State/`, `Models/`, `Services/`, `Support/` folders.
+- [ ] Keep behavior unchanged in this phase.
+
+Phase gate:
+- [ ] Build passes and Studio behavior is unchanged.
+
+### Phase 2: Model + Support Extraction
+
+- [ ] Move pure parameter/manifest mapping and sanitization logic into `Models/`.
+- [ ] Move buffer layout/support structs (`EffectsStudioParamBufferLayout`, etc.) into `Support/` or `Models/` as appropriate.
+- [ ] Keep state mutation in state layer, keep conversion rules pure.
+
+Phase gate:
+- [ ] No behavior drift; logic moved is pure and has no side effects.
+
+### Phase 3: Service Extraction
+
+- [ ] Extract runtime effect asset IO into a `RuntimeEffectsService`.
+- [ ] Extract Metal compile/render/reflection into a `MetalRenderService`.
+- [ ] Extract source load/playback/frame extraction into a `SourcePlaybackService`.
+- [ ] Extract panel/window side effects behind a panel host service.
+
+Phase gate:
+- [ ] Old side-effect paths are removed after extraction (no duplicated active paths).
+
+### Phase 4: State Consolidation
+
+- [ ] Reduce `EffectsStudioViewModel` to orchestration and published state.
+- [ ] Replace extension-heavy surface with explicit state/coordinator types in `State/`.
+- [ ] Remove dead code paths left from transition.
+
+Phase gate:
+- [ ] State layer owns orchestration only; side effects are dependency-driven.
+
+### Phase 5: Verification + Cleanup
+
+- [ ] Full macOS build verification.
+- [ ] Manual behavior verification for compile, preview, source playback, and panel operations.
+- [ ] Update docs with resulting architecture decisions and file map.
+
+Phase gate:
+- [ ] Regression checklist passes, including temporal runtime effects.
+
+## Initial File Move Map
+
+This map is the starting point and can be adjusted during extraction:
+
+- `Views/EffectsStudioViewModel+ManifestParameters.swift` -> split across `Models/` (pure manifest/parameter mapping) and `State/` (mutation hooks).
+- `Views/EffectsStudioViewModel+MetalRender.swift` -> `Services/MetalRenderService.swift` + state orchestration calls in `State/`.
+- `Views/EffectsStudioViewModel+RuntimeEffects.swift` -> `Services/RuntimeEffectsService.swift` + state orchestration in `State/`.
+- `Views/EffectsStudioViewModel+SourcePlayback.swift` -> `Services/SourcePlaybackService.swift` + state orchestration in `State/`.
+- `Views/EffectsStudioPanelWindows.swift` -> `Services/PanelHostService.swift` (or keep thin UI glue in `Views/` and move host side effects to service).
+- `Views/EffectsStudioTypes.swift` -> split into `Models/` and `Support/` based on concern.
 
 ## Verification Checklist
 
-- `xcodebuild -project Hypnograph.xcodeproj -scheme Hypnograph -destination 'platform=macOS' build` passes.
-- Effects list load/save/delete still works.
-- Studio compile + live preview still works for simple and temporal effects.
-- Source selection (random/files/photos/sample) + playback behavior still works.
-- Panel window behavior (show/hide/move/resize/clean-screen) still works.
+- [ ] `xcodebuild -project Hypnograph.xcodeproj -scheme Hypnograph -destination 'platform=macOS' build` passes.
+- [ ] Effects list load/save/delete still works.
+- [ ] Studio compile + live preview still works for simple and temporal effects.
+- [ ] Explicit temporal checks pass in Studio for: Ghost Blur, Color Echo, Frame Difference.
+- [ ] Source selection (random/files/photos/sample) + playback behavior still works.
+- [ ] Source switch + recompile + playback still updates output correctly for temporal effects.
+- [ ] Panel window behavior (show/hide/move/resize/clean-screen) still works.
+
+## Risks and Mitigations
+
+- Risk: behavior drift while extracting side effects.
+  - Mitigation: phase-by-phase extraction with build + manual checks each phase.
+- Risk: unclear ownership between state and services.
+  - Mitigation: keep service API side-effect-focused; keep state mutation in state layer.
+- Risk: extension removal creates oversized replacement types.
+  - Mitigation: prefer small, explicit types by responsibility instead of one new large coordinator.
 
 ## Deliverables
 
