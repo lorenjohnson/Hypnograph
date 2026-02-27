@@ -4,6 +4,8 @@
 //
 
 import Foundation
+import AppKit
+import UniformTypeIdentifiers
 import HypnoCore
 
 enum RuntimeEffectsServiceError: LocalizedError {
@@ -102,5 +104,28 @@ struct RuntimeEffectsService {
 
         try fileManager.removeItem(at: directory)
         runtimeLibrary.reload()
+    }
+
+    func chooseCodeSourceFileURL() -> URL? {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+
+        var contentTypes: [UTType] = [.plainText, .sourceCode]
+        if let metalType = UTType(filenameExtension: "metal") {
+            contentTypes.append(metalType)
+        }
+        panel.allowedContentTypes = contentTypes
+
+        panel.title = "Open Metal Source"
+        panel.message = "Select a .metal or text source file."
+
+        guard panel.runModal() == .OK else { return nil }
+        return panel.url
+    }
+
+    func loadCodeSource(from url: URL) throws -> String {
+        try String(contentsOf: url, encoding: .utf8)
     }
 }

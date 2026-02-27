@@ -29,9 +29,25 @@ Known pressure points:
 Current file layout under `Hypnograph/App/EffectsStudio`:
 
 ```text
+Models/
+  EffectsStudioParameterModeling.swift
+
+Services/
+  MetalRenderService.swift
+  PanelHostService.swift
+  RuntimeEffectsService.swift
+  SourcePlaybackService.swift
+
 Persistence/
   EffectsStudioSettings.swift
   EffectsStudioSettingsStore.swift
+
+State/
+  EffectsStudioViewModel.swift
+  ManifestParameterState.swift
+  MetalRenderState.swift
+  RuntimeEffectsState.swift
+  SourcePlaybackState.swift
 
 Views/
   EffectsStudioMetalCodeEditorView.swift
@@ -39,19 +55,17 @@ Views/
   EffectsStudioParameterDefinitionRow.swift
   EffectsStudioTypes.swift
   EffectsStudioView.swift
-  EffectsStudioViewModel.swift
-  EffectsStudioViewModel+ManifestParameters.swift
-  EffectsStudioViewModel+MetalRender.swift
-  EffectsStudioViewModel+RuntimeEffects.swift
-  EffectsStudioViewModel+SourcePlayback.swift
+
+Support/
+  EffectsStudioParameterBufferLayout.swift
 ```
 
 Current concentration of logic (line count):
-- `EffectsStudioViewModel.swift` + extensions: ~1859 lines total.
-- Runtime effects IO + load/save/delete + picker: `EffectsStudioViewModel+RuntimeEffects.swift`.
-- Compile/render/pipeline/reflection/parameter-buffer layout: `EffectsStudioViewModel+MetalRender.swift`.
-- Source loading + playback loop + frame extraction/caching: `EffectsStudioViewModel+SourcePlayback.swift`.
-- Manifest synthesis and parameter schema logic: `EffectsStudioViewModel+ManifestParameters.swift`.
+- `State/EffectsStudioViewModel.swift` + state slices: ~1185 lines total.
+- Runtime effects orchestration: `State/RuntimeEffectsState.swift`.
+- Compile/render orchestration: `State/MetalRenderState.swift`.
+- Source orchestration/playback loop: `State/SourcePlaybackState.swift`.
+- Manifest synthesis and parameter schema orchestration: `State/ManifestParameterState.swift`.
 
 ## Scope
 
@@ -157,18 +171,18 @@ Phase gate:
 
 ### Phase 4: State Consolidation
 
-- [ ] Reduce `EffectsStudioViewModel` to orchestration and published state.
-- [ ] Replace extension-heavy surface with explicit state/coordinator types in `State/`.
-- [ ] Remove dead code paths left from transition.
+- [x] Reduce `EffectsStudioViewModel` to orchestration and published state.
+- [x] Replace extension-heavy surface with explicit state/coordinator types in `State/`.
+- [x] Remove dead code paths left from transition.
 
 Phase gate:
-- [ ] State layer owns orchestration only; side effects are dependency-driven.
+- [x] State layer owns orchestration only; side effects are dependency-driven.
 
 ### Phase 5: Verification + Cleanup
 
-- [ ] Full macOS build verification.
+- [x] Full macOS build verification.
 - [ ] Manual behavior verification for compile, preview, source playback, and panel operations.
-- [ ] Update docs with resulting architecture decisions and file map.
+- [x] Update docs with resulting architecture decisions and file map.
 
 Phase gate:
 - [ ] Regression checklist passes, including temporal runtime effects.
@@ -186,7 +200,7 @@ This map is the starting point and can be adjusted during extraction:
 
 ## Verification Checklist
 
-- [ ] `xcodebuild -project Hypnograph.xcodeproj -scheme Hypnograph -destination 'platform=macOS' build` passes.
+- [x] `xcodebuild -project Hypnograph.xcodeproj -scheme Hypnograph -destination 'platform=macOS' build` passes.
 - [ ] Effects list load/save/delete still works.
 - [ ] Studio compile + live preview still works for simple and temporal effects.
 - [ ] Explicit temporal checks pass in Studio for: Ghost Blur, Color Echo, Frame Difference.

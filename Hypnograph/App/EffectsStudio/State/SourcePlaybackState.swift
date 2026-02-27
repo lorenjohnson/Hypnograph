@@ -1,5 +1,5 @@
 //
-//  EffectsStudioViewModel+SourcePlayback.swift
+//  SourcePlaybackState.swift
 //  Hypnograph
 //
 

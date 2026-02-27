@@ -1,11 +1,9 @@
 //
-//  EffectsStudioViewModel+RuntimeEffects.swift
+//  RuntimeEffectsState.swift
 //  Hypnograph
 //
 
 import Foundation
-import AppKit
-import UniformTypeIdentifiers
 import HypnoCore
 
 extension EffectsStudioViewModel {
@@ -200,24 +198,10 @@ extension EffectsStudioViewModel {
     }
 
     func chooseCodeSourceFile() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-
-        var contentTypes: [UTType] = [.plainText, .sourceCode]
-        if let metalType = UTType(filenameExtension: "metal") {
-            contentTypes.append(metalType)
-        }
-        panel.allowedContentTypes = contentTypes
-
-        panel.title = "Open Metal Source"
-        panel.message = "Select a .metal or text source file."
-
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = runtimeEffectsService.chooseCodeSourceFileURL() else { return }
 
         do {
-            sourceCode = try String(contentsOf: url, encoding: .utf8)
+            sourceCode = try runtimeEffectsService.loadCodeSource(from: url)
             compileLog = "Loaded shader source: \(url.lastPathComponent)"
         } catch {
             compileLog = "Failed to load shader source: \(error.localizedDescription)"

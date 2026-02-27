@@ -1,5 +1,5 @@
 //
-//  EffectsStudioViewModel+ManifestParameters.swift
+//  ManifestParameterState.swift
 //  Hypnograph
 //
 

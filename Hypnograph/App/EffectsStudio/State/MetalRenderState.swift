@@ -1,5 +1,5 @@
 //
-//  EffectsStudioViewModel+MetalRender.swift
+//  MetalRenderState.swift
 //  Hypnograph
 //
 
