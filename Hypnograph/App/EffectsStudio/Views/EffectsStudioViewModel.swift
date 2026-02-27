@@ -24,6 +24,7 @@ final class EffectsStudioViewModel: ObservableObject {
     let settingsStore: EffectsStudioSettingsStore
     let runtimeEffectsService: RuntimeEffectsService
     let metalRenderService: MetalRenderService
+    let sourcePlaybackService: SourcePlaybackService
 
     @Published var runtimeEffectUUID: String = UUID().uuidString.lowercased()
     @Published var runtimeEffectName: String = "New Effect"
@@ -70,9 +71,6 @@ final class EffectsStudioViewModel: ObservableObject {
 
     var sourceStillImage: CIImage?
     var sourceVideoAsset: AVAsset?
-    var videoFrameGenerator: AVAssetImageGenerator?
-    var videoFrameGeneratorAssetID: ObjectIdentifier?
-    var lastVideoFrameImage: CIImage?
     var playbackTask: Task<Void, Never>?
     var lastPlaybackTickUptimeNs: UInt64?
     var frameCounter: UInt32 = 0
@@ -85,11 +83,13 @@ final class EffectsStudioViewModel: ObservableObject {
     init(
         settingsStore: EffectsStudioSettingsStore,
         runtimeEffectsService: RuntimeEffectsService = .live,
-        metalRenderService: MetalRenderService = .live
+        metalRenderService: MetalRenderService = .live,
+        sourcePlaybackService: SourcePlaybackService = .live
     ) {
         self.settingsStore = settingsStore
         self.runtimeEffectsService = runtimeEffectsService
         self.metalRenderService = metalRenderService
+        self.sourcePlaybackService = sourcePlaybackService
         self.device = SharedRenderer.metalDevice
         self.commandQueue = device?.makeCommandQueue()
 

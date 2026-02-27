@@ -149,7 +149,7 @@ Phase gate:
 
 - [x] Extract runtime effect asset IO into a `RuntimeEffectsService`.
 - [x] Extract Metal compile/render/reflection into a `MetalRenderService`.
-- [ ] Extract source load/playback/frame extraction into a `SourcePlaybackService`.
+- [x] Extract source load/playback/frame extraction into a `SourcePlaybackService`.
 - [ ] Extract panel/window side effects behind a panel host service.
 
 Phase gate:
