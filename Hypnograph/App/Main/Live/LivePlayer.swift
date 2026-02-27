@@ -40,12 +40,12 @@ final class LivePlayer: ObservableObject {
     @Published private(set) var activeLayerCount: Int = 0
     @Published private(set) var hasContent: Bool = false
 
-    /// The currently active AVPlayer (for preview mirroring)
+    /// The currently active AVPlayer (for in-app live-panel mirroring)
     var activeAVPlayer: AVPlayer? {
         return contentView?.activeAVPlayer
     }
 
-    /// Create a mirror view for the in-app Live preview
+    /// Create a mirror view for the in-app Live panel
     /// The mirror shares the same frame sources as the main content view,
     /// so both windows show identical content simultaneously
     func createMirrorView() -> PlayerContentMirrorView? {
@@ -102,7 +102,7 @@ final class LivePlayer: ObservableObject {
     /// End observer for notification-based looping
     private var endObserver: Any?
 
-    /// This display's own EffectManager - independent of preview
+    /// This display's own EffectManager - independent of in-app playback
     let effectManager = EffectManager()
 
     /// This display's own effects session - for live mode effects
@@ -294,7 +294,7 @@ final class LivePlayer: ObservableObject {
         isVisible = true
     }
     
-    /// Hide the live display window (keeps content/players running for preview)
+    /// Hide the live display window (keeps content/players running for the live panel)
     func hide() {
         guard window != nil else { return }
 

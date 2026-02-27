@@ -25,8 +25,8 @@
   "randomGlobalEffectFrequency": 0.7,
   "randomLayerEffect": false,
   "randomLayerEffectFrequency": 0.3,
-  "previewAudioDeviceUID": null,
-  "previewVolume": 0.8,
+  "audioDeviceUID": null,
+  "volume": 0.8,
   "liveAudioDeviceUID": null,
   "liveVolume": 1
 }

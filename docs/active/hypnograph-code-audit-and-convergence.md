@@ -29,6 +29,8 @@ This follows completion of the app-structure/settings split refactor and focuses
 - Effects Studio split completed into dedicated files (`view`, `view model`, `types`, `panel windows`, `parameter row`, code editor bridge).
 - App delegate extracted to dedicated lifecycle file.
 - Settings split completed (`AppSettings`, `MainSettings`, `EffectsStudioSettings`).
+- Live feature UI components moved under `App/Main/Live/Views/Components`.
+- Unused `ModalPanel` path removed after call-site verification.
 - Builds passing locally.
 
 ## Audit Priorities
@@ -85,3 +87,37 @@ This project is complete when:
 - Dead code paths introduced by refactor transition are removed.
 - Naming and structure are materially clearer at app boundary layers.
 - Build and core multi-window workflows remain stable.
+
+## Current Working Notes (2026-02-27)
+
+- Confirmed naming collision between app-level `PlayerView` and `HypnoCore.PlayerView`.
+- Decided direction: rename HypnoCore render-surface type from `PlayerView` to `RendererView` to keep app-level `PlayerView` user-facing.
+- Completed: HypnoCore docs/ontology references updated to match `RendererView`.
+- Treat the HypnoCore rename as a breaking API change for external consumers; use a conventional-commits style message and bump package version before merge.
+- Main app cleanup to evaluate now:
+  - Completed: moved `PlayerView` and `PlayerContentView` under `App/Main/Views`.
+  - Completed: moved `LivePlayer` and `LiveWindow` into `App/Main/Live`.
+  - Completed: moved `LivePreviewPanel` and `LivePlayerScreen` into `App/Main/Live/Views/Components`.
+  - Completed: removed unused `ModalPanel` / `ModalPanelStyle.livePreview`.
+  - Completed: renamed primary audio symbols from `preview*` to neutral names (`audioDevice`, `volume`) across Main/UI/controller/settings.
+  - Completed: added temporary backward-compatible decode for legacy settings keys (`previewAudioDeviceUID`, `previewVolume`) while writing new keys (`audioDeviceUID`, `volume`).
+  - Completed: command routing for clean-screen now resolves deterministic active window context (key window first, then main window).
+  - Verified: session extension handling is consistent for `.hypno` + `.hypnogram` in list/filter/open paths (`SessionStore.fileExtensions`, `isSupportedExtension`, `listSavedRecipes`, and open/save panel type filters).
+  - Verified: clean-screen keyboard scopes remain context-correct (`HypnographAppDelegate` handles Main-only tab override; Effects Studio has its own local tab monitor).
+  - P2 cleanup note: no remaining in-view floating panel drag/resize state from pre-AppKit host architecture was found; panel behavior is owned by `EffectsStudioPanelWindows` + NSPanel autosave.
+  - Completed: removed stale compatibility-only dead methods from `EffectsEditorViewModel` (`syncFromConfig`, legacy no-layer selection overloads) after call-site verification.
+  - Completed: removed stale migration/phase wording in compatibility code comments while retaining only active persisted-data protections (`PlayerConfiguration` fallback key, `HypnogramStore.recipeURL`, `LegacySessionMigration` rewrite path); removed obsolete `preview*` audio decode fallbacks from `MainSettings`.
+  - Verified: no remaining app-boundary `dream` naming in source code (`App/**`); no additional P3 rename required in this pass.
+  - Follow-on architecture: move toward per-window key routers (`MainKeyRouter`, `EffectsStudioKeyRouter`) and reduce `HypnographAppDelegate` to lifecycle/event wiring only.
+  - P4 status: `EffectsEditorView` decomposition pass is complete and build-verified (`EffectsEditorViewModel`, `EffectsEditorField`, `EditableEffectNameHeader`, and `EffectDropDelegate` extracted to dedicated files).
+  - P4 completed: `EffectsStudioViewModel.swift` decomposition is now build-verified across focused files:
+    - `EffectsStudioViewModel.swift` (core state/init shell)
+    - `EffectsStudioViewModel+RuntimeEffects.swift`
+    - `EffectsStudioViewModel+ManifestParameters.swift`
+    - `EffectsStudioViewModel+MetalRender.swift`
+    - `EffectsStudioViewModel+SourcePlayback.swift`
+  - P4 completed: `Main.swift` decomposition is now build-verified by concern seams:
+    - `Main.swift` (core state/init/display shell)
+    - `ClipHistoryAndLayerActions.swift`
+    - `SessionAndSourceActions.swift`
+  - Follow-up naming cleanup: decide whether to keep `Type+Concern.swift` filenames for extension-backed splits or rename to domain-oriented files without `+` while preserving the same behavior.

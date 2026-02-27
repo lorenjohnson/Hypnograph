@@ -11,6 +11,12 @@ import HypnoCore
 import HypnoUI
 
 struct AppCommands: Commands {
+    private enum ActiveWindowContext {
+        case main
+        case studio
+        case unknown
+    }
+
     @SwiftUI.Environment(\.openWindow) private var openWindow
     @ObservedObject private var state: HypnographState
     @ObservedObject private var main: Main
@@ -18,7 +24,7 @@ struct AppCommands: Commands {
     /// Whether a text field is currently being edited
     private var isTyping: Bool { state.isTyping }
     private var isMainWindowShortcutContext: Bool {
-        windowBelongsToMain(NSApp.keyWindow)
+        activeWindowContext == .main
     }
 
     init(
@@ -198,14 +204,21 @@ struct AppCommands: Commands {
         return false
     }
 
-    private func toggleCleanScreenForActiveWindow() {
-        let activeWindow = NSApp.keyWindow ?? NSApp.mainWindow
-        let studioIsActiveContext =
-            windowBelongsToStudio(activeWindow) ||
-            windowBelongsToStudio(NSApp.keyWindow) ||
-            windowBelongsToStudio(NSApp.mainWindow)
+    private var activeWindowContext: ActiveWindowContext {
+        let candidates: [NSWindow?] = [NSApp.keyWindow, NSApp.mainWindow]
+        for candidate in candidates {
+            if windowBelongsToStudio(candidate) {
+                return .studio
+            }
+            if windowBelongsToMain(candidate) {
+                return .main
+            }
+        }
+        return .unknown
+    }
 
-        if studioIsActiveContext {
+    private func toggleCleanScreenForActiveWindow() {
+        if activeWindowContext == .studio {
             NotificationCenter.default.post(name: .effectsStudioToggleCleanScreen, object: nil)
         } else {
             state.windowState.toggleCleanScreen()

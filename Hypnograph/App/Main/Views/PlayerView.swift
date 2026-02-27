@@ -1,8 +1,8 @@
 //
-//  PreviewPlayerView.swift
+//  PlayerView.swift
 //  Hypnograph
 //
-//  Preview player using the Metal playback pipeline.
+//  Main player view using the Metal playback pipeline.
 //  Uses PlayerContentView for A/B player transitions with shader effects.
 //
 
@@ -12,9 +12,9 @@ import CoreMedia
 import QuartzCore
 import HypnoCore
 
-/// Preview player view for Main module layered playback.
+/// Main player view for layered playback.
 /// Uses PlayerContentView for GPU-accelerated frame display with shader transitions.
-struct PreviewPlayerView: NSViewRepresentable {
+struct PlayerView: NSViewRepresentable {
     let clip: Hypnogram
     let aspectRatio: AspectRatio
     let displayResolution: OutputResolution
@@ -176,7 +176,7 @@ struct PreviewPlayerView: NSViewRepresentable {
             return
         }
 
-        // Use display resolution for preview
+        // Use display resolution for in-app playback
         let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: displayResolution.maxDimension)
 
         let newID = compositionIdentity(for: clip)
@@ -226,7 +226,7 @@ struct PreviewPlayerView: NSViewRepresentable {
                     }
 
                     // Set content mode based on aspect ratio
-                    let contentMode: PlayerView.ContentMode = aspectRatio.isFillWindow ? .aspectFill : .aspectFit
+                    let contentMode: HypnoCore.RendererView.ContentMode = aspectRatio.isFillWindow ? .aspectFill : .aspectFit
                     content.setContentMode(contentMode)
 
                     // Add content view to container if needed
@@ -293,7 +293,7 @@ struct PreviewPlayerView: NSViewRepresentable {
                     self.setupPlaybackEndHandling(content: content, coordinator: c)
 
                 case .failure(let error):
-                    error.log(context: "PreviewPlayerView")
+                    error.log(context: "PlayerView")
                     c.compositionID = nil
                     c.isAutoAdvanceInFlight = false
                     if currentSourceTime != nil {

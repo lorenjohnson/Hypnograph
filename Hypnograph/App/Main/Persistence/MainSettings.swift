@@ -71,7 +71,7 @@ struct MainSettings: Codable, MediaLibrarySettings {
     /// Global source framing behavior (Fill vs Fit)
     var sourceFraming: SourceFraming
 
-    /// Player configuration for the preview deck
+    /// Player configuration for the primary in-app deck
     var playerConfig: PlayerConfiguration
 
     /// Which media types to include in sources: "photos", "videos", or both
@@ -80,12 +80,12 @@ struct MainSettings: Codable, MediaLibrarySettings {
     /// Whether the effects list column is collapsed in the Effects Editor
     var effectsListCollapsed: Bool
 
-    /// Feature flag for live display workflows (preview panel, external monitor, live mode)
+    /// Feature flag for live display workflows (live panel, external monitor, live mode)
     var liveModeEnabled: Bool
 
     // MARK: - Transition MainSettings
 
-    /// Transition style for playback (shared by Preview and Live)
+    /// Transition style for playback (shared by in-app and Live)
     var transitionStyle: TransitionRenderer.TransitionType
 
     /// Duration of transitions in seconds
@@ -114,11 +114,11 @@ struct MainSettings: Codable, MediaLibrarySettings {
 
     // MARK: - Audio MainSettings
 
-    /// Preview audio device UID (nil = None/muted)
-    var previewAudioDeviceUID: String?
+    /// Primary in-app audio device UID (nil = None/muted)
+    var audioDeviceUID: String?
 
-    /// Preview audio volume (0.0 to 1.0)
-    var previewVolume: Float
+    /// Primary in-app audio volume (0.0 to 1.0)
+    var volume: Float
 
     /// Live player audio device UID (nil = None/muted)
     var liveAudioDeviceUID: String?
@@ -159,8 +159,8 @@ struct MainSettings: Codable, MediaLibrarySettings {
         static let randomLayerEffect: Bool = false
         static let randomLayerEffectFrequency: Double = 0.3
         // Audio defaults: nil UID = system default, volume = 1.0
-        static let previewAudioDeviceUID: String? = nil
-        static let previewVolume: Float = 0.8
+        static let audioDeviceUID: String? = nil
+        static let volume: Float = 0.8
         static let liveAudioDeviceUID: String? = nil
         static let liveVolume: Float = 1.0
     }
@@ -190,8 +190,8 @@ struct MainSettings: Codable, MediaLibrarySettings {
             randomGlobalEffectFrequency: Defaults.randomGlobalEffectFrequency,
             randomLayerEffect: Defaults.randomLayerEffect,
             randomLayerEffectFrequency: Defaults.randomLayerEffectFrequency,
-            previewAudioDeviceUID: Defaults.previewAudioDeviceUID,
-            previewVolume: Defaults.previewVolume,
+            audioDeviceUID: Defaults.audioDeviceUID,
+            volume: Defaults.volume,
             liveAudioDeviceUID: Defaults.liveAudioDeviceUID,
             liveVolume: Defaults.liveVolume,
             playerConfig: PlayerConfiguration(
@@ -216,10 +216,10 @@ struct MainSettings: Codable, MediaLibrarySettings {
         case timelinePlaybackRate
         case randomGlobalEffect, randomGlobalEffectFrequency
         case randomLayerEffect, randomLayerEffectFrequency
-        case previewAudioDeviceUID, previewVolume
+        case audioDeviceUID, volume
         case liveAudioDeviceUID, liveVolume
         case playerConfig
-        // Legacy (pre-unify): montagePlayerConfig, sequencePlayerConfig
+        // Backward-compatible decode keys from pre-unified player config.
         case montagePlayerConfig, sequencePlayerConfig
     }
 
@@ -246,8 +246,8 @@ struct MainSettings: Codable, MediaLibrarySettings {
         randomGlobalEffectFrequency: Double = Defaults.randomGlobalEffectFrequency,
         randomLayerEffect: Bool = Defaults.randomLayerEffect,
         randomLayerEffectFrequency: Double = Defaults.randomLayerEffectFrequency,
-        previewAudioDeviceUID: String? = Defaults.previewAudioDeviceUID,
-        previewVolume: Float = Defaults.previewVolume,
+        audioDeviceUID: String? = Defaults.audioDeviceUID,
+        volume: Float = Defaults.volume,
         liveAudioDeviceUID: String? = Defaults.liveAudioDeviceUID,
         liveVolume: Float = Defaults.liveVolume,
         playerConfig: PlayerConfiguration? = nil
@@ -274,8 +274,8 @@ struct MainSettings: Codable, MediaLibrarySettings {
         self.randomGlobalEffectFrequency = randomGlobalEffectFrequency
         self.randomLayerEffect = randomLayerEffect
         self.randomLayerEffectFrequency = randomLayerEffectFrequency
-        self.previewAudioDeviceUID = previewAudioDeviceUID
-        self.previewVolume = previewVolume
+        self.audioDeviceUID = audioDeviceUID
+        self.volume = volume
         self.liveAudioDeviceUID = liveAudioDeviceUID
         self.liveVolume = liveVolume
 
@@ -337,10 +337,10 @@ struct MainSettings: Codable, MediaLibrarySettings {
             ?? Defaults.randomLayerEffect
         randomLayerEffectFrequency = try c.decodeIfPresent(Double.self, forKey: .randomLayerEffectFrequency)
             ?? Defaults.randomLayerEffectFrequency
-        previewAudioDeviceUID = try c.decodeIfPresent(String.self, forKey: .previewAudioDeviceUID)
-            ?? Defaults.previewAudioDeviceUID
-        previewVolume = try c.decodeIfPresent(Float.self, forKey: .previewVolume)
-            ?? Defaults.previewVolume
+        audioDeviceUID = try c.decodeIfPresent(String.self, forKey: .audioDeviceUID)
+            ?? Defaults.audioDeviceUID
+        volume = try c.decodeIfPresent(Float.self, forKey: .volume)
+            ?? Defaults.volume
         liveAudioDeviceUID = try c.decodeIfPresent(String.self, forKey: .liveAudioDeviceUID)
             ?? Defaults.liveAudioDeviceUID
         liveVolume = try c.decodeIfPresent(Float.self, forKey: .liveVolume)
@@ -381,8 +381,8 @@ struct MainSettings: Codable, MediaLibrarySettings {
         try c.encode(randomGlobalEffectFrequency, forKey: .randomGlobalEffectFrequency)
         try c.encode(randomLayerEffect, forKey: .randomLayerEffect)
         try c.encode(randomLayerEffectFrequency, forKey: .randomLayerEffectFrequency)
-        try c.encodeIfPresent(previewAudioDeviceUID, forKey: .previewAudioDeviceUID)
-        try c.encode(previewVolume, forKey: .previewVolume)
+        try c.encodeIfPresent(audioDeviceUID, forKey: .audioDeviceUID)
+        try c.encode(volume, forKey: .volume)
         try c.encodeIfPresent(liveAudioDeviceUID, forKey: .liveAudioDeviceUID)
         try c.encode(liveVolume, forKey: .liveVolume)
         try c.encode(playerConfig, forKey: .playerConfig)

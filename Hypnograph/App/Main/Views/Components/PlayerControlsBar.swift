@@ -6,7 +6,7 @@ struct PlayerControlsBar: View {
     let currentClipText: String
     let clipLengthSeconds: Double
     let clipTrimContexts: [ClipTrimContext]
-    @Binding var previewVolume: Double
+    @Binding var volume: Double
     let timelinePlaybackRate: Double
     @Binding var timelinePlaybackControlValue: Double
     @Binding var isTimelinePlaybackReverse: Bool
@@ -22,7 +22,7 @@ struct PlayerControlsBar: View {
     @State private var pendingTooltipWorkItem: DispatchWorkItem?
     @State private var visibleTooltipControlID: String?
     @State private var visibleTooltipText: String?
-    @State private var previousPreviewVolumeBeforeMute: Double = 0.8
+    @State private var previousVolumeBeforeMute: Double = 0.8
     @State private var showTimelineSpeedPopover: Bool = false
 
     private let tooltipDelay: TimeInterval = 0.85
@@ -47,9 +47,9 @@ struct PlayerControlsBar: View {
                 )
         )
         .shadow(color: .black.opacity(0.35), radius: 12, x: 0, y: 6)
-        .onChange(of: previewVolume) { _, newValue in
+        .onChange(of: volume) { _, newValue in
             if newValue > 0.001 {
-                previousPreviewVolumeBeforeMute = newValue
+                previousVolumeBeforeMute = newValue
             }
         }
         .onDisappear {
@@ -88,18 +88,18 @@ struct PlayerControlsBar: View {
             Spacer(minLength: 6)
 
             HStack(spacing: 6) {
-                Button(action: togglePreviewMute) {
-                    Image(systemName: previewVolume <= 0.001 ? "speaker.slash.fill" : "speaker.fill")
+                Button(action: toggleMute) {
+                    Image(systemName: volume <= 0.001 ? "speaker.slash.fill" : "speaker.fill")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(.secondary)
                         .frame(width: 16, height: 16)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help(previewVolume <= 0.001 ? "Unmute Preview" : "Mute Preview")
-                Slider(value: $previewVolume, in: 0...1)
+                .help(volume <= 0.001 ? "Unmute" : "Mute")
+                Slider(value: $volume, in: 0...1)
                     .frame(width: 120)
-                    .help("Preview Volume")
+                    .help("Volume")
                 Image(systemName: "speaker.wave.3.fill")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
@@ -246,14 +246,14 @@ struct PlayerControlsBar: View {
         .frame(width: 300)
     }
 
-    private func togglePreviewMute() {
-        if previewVolume <= 0.001 {
-            let restored = max(previousPreviewVolumeBeforeMute, 0.05)
-            previewVolume = min(restored, 1.0)
+    private func toggleMute() {
+        if volume <= 0.001 {
+            let restored = max(previousVolumeBeforeMute, 0.05)
+            volume = min(restored, 1.0)
             return
         }
-        previousPreviewVolumeBeforeMute = previewVolume
-        previewVolume = 0
+        previousVolumeBeforeMute = volume
+        volume = 0
     }
 
     private var formattedClipLength: String {

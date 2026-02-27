@@ -2,7 +2,7 @@
 //  PlayerConfiguration.swift
 //  Hypnograph
 //
-//  Per-player configuration (preview + live).
+//  Per-player configuration (in-app + live).
 //  Groups related display and generation settings into a single, cohesive structure.
 //
 //  Note: targetDuration and playRate are stored on Hypnogram (within HypnographSession), not here.
@@ -11,7 +11,7 @@
 import Foundation
 import HypnoCore
 
-/// Configuration for a player (preview or live).
+/// Configuration for a player (in-app or live).
 /// Each player maintains its own independent configuration.
 ///
 /// Note: `targetDuration` and `playRate` live on the recipe, not here.
@@ -50,7 +50,7 @@ struct PlayerConfiguration: Codable {
 
     private enum CodingKeys: String, CodingKey {
         case aspectRatio, playerResolution, maxLayers
-        // Legacy (pre-unify): maxSourcesForNew
+        // Backward-compatible decode key used by older settings files.
         case maxSourcesForNew
     }
 

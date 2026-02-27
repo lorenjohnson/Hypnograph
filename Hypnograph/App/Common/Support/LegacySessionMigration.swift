@@ -2,10 +2,7 @@
 //  LegacySessionMigration.swift
 //  Hypnograph
 //
-//  Temporary legacy support helpers for on-disk .hypno/.hypnogram JSON.
-//
-//  Remove this file (and its call site in SessionStore) once all legacy files
-//  have been migrated and legacy decoding support can be dropped.
+//  Compatibility helpers for on-disk .hypno/.hypnogram JSON written by older schemas.
 //
 
 import Foundation
@@ -13,15 +10,12 @@ import HypnoCore
 
 enum LegacySessionMigration {
 
-    /// Detect legacy session schema and, if needed, rewrite the file using the new schema.
-    ///
-    /// This is intentionally separate from SessionStore so it can be removed as a single unit later.
+    /// Detect older session schema variants and rewrite using the current schema after decode.
     static func migrateSessionFileIfNeeded(originalData: Data, url: URL, decodedSession: HypnographSession) {
         guard shouldMigrateSessionJSON(data: originalData) else { return }
 
-        // Temporary migration (Phase 4/5) — remove later:
-        // We successfully decoded legacy keys via Codable fallbacks in HypnographSession/Hypnogram/HypnogramLayer.
-        // Now re-save the file in the new schema (`hypnograms`, `layers`, `mediaClip`) for faster future loads.
+        // We decoded via backward-compatible Codable fallbacks.
+        // Re-save in the current schema (`hypnograms`, `layers`, `mediaClip`) to normalize on-disk data.
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         if let migrated = try? encoder.encode(decodedSession) {
@@ -36,10 +30,9 @@ enum LegacySessionMigration {
 
         if json["hypnograms"] != nil { return false }
 
-        // Legacy variants:
-        // - Phase 1–3: `clips: [...]`
-        // - Pre-multi-clip: `sources: [...]` (single hypnogram at top-level)
+        // Older variants:
+        // - `clips: [...]`
+        // - `sources: [...]` (single hypnogram at top-level)
         return json["clips"] != nil || json["sources"] != nil
     }
 }
-

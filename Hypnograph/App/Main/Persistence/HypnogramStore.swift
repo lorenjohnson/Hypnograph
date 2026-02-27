@@ -26,7 +26,7 @@ struct HypnogramEntry: Identifiable, Codable {
     private enum CodingKeys: String, CodingKey {
         case id, name, createdAt, favoritedAt, sessionURL, thumbnailBase64, isFavorite
 
-        // Legacy key (Phase 1–3 schema)
+        // Backward-compatible decode key from older store schema.
         case recipeURL
     }
 
@@ -58,7 +58,6 @@ struct HypnogramEntry: Identifiable, Codable {
         if let url = try container.decodeIfPresent(URL.self, forKey: .sessionURL) {
             sessionURL = url
         } else {
-            // Temporary migration support (Phase 4, Option A):
             // Older store entries used `recipeURL`.
             sessionURL = try container.decode(URL.self, forKey: .recipeURL)
         }

@@ -301,7 +301,7 @@ struct AudioDeviceRow: View {
 
 /// Modal panel for player-specific settings (generation, playback)
 struct PlayerSettingsView: View {
-    @ObservedObject var player: MainPlayerState
+    @ObservedObject var player: PlayerState
     @ObservedObject var main: Main
     let onClose: () -> Void
 
@@ -355,7 +355,7 @@ struct PlayerSettingsView: View {
             HStack(spacing: 6) {
                 playerModeButton(
                     icon: "rectangle",
-                    label: "Preview",
+                    label: "Edit",
                     isSelected: !main.isLiveMode,
                     action: {
                         if main.isLiveMode { main.toggleLiveMode() }
@@ -570,11 +570,11 @@ struct PlayerSettingsView: View {
                 .font(.system(.headline, design: .monospaced))
                 .foregroundColor(.white)
 
-            // Audio - Preview
+            // Audio - Edit
             AudioDeviceRow(
-                label: "Preview",
-                selectedDevice: $main.previewAudioDevice,
-                volume: $main.previewVolume
+                label: "Edit",
+                selectedDevice: $main.audioDevice,
+                volume: $main.volume
             )
 
             // Audio - Live

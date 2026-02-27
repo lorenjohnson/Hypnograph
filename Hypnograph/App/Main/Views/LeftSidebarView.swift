@@ -4,7 +4,7 @@ import HypnoCore
 struct LeftSidebarView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Main
-    @ObservedObject var player: MainPlayerState
+    @ObservedObject var player: PlayerState
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
 
     private var isLiveMode: Bool { main.isLiveMode }

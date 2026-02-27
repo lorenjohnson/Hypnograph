@@ -70,19 +70,16 @@ struct AppSettingsView: View {
 
     @ViewBuilder
     private var generalSettingsRows: some View {
-        let liveModeEnabled = state.settings.liveModeEnabled
         settingsDeviceRow(
-            title: liveModeEnabled ? "Audio Output Device (Preview)" : "Audio Output Device",
-            description: liveModeEnabled
-                ? "Select the audio output device used for preview playback."
-                : "Select the audio output device.",
+            title: "Audio Output Device",
+            description: "Select the audio output device.",
             selection: Binding(
-                get: { main.previewAudioDevice },
-                set: { main.previewAudioDevice = $0 }
+                get: { main.audioDevice },
+                set: { main.audioDevice = $0 }
             )
         )
 
-        if liveModeEnabled {
+        if state.settings.liveModeEnabled {
             Divider()
 
             settingsDeviceRow(
@@ -158,7 +155,7 @@ struct AppSettingsView: View {
     private var advancedSettingsRows: some View {
         settingsToggleRow(
             title: "Live/Performance mode options",
-            description: "Enables controls for live preview, live mode, and external monitor output.",
+            description: "Enables controls for the live panel, live mode, and external monitor output.",
             isOn: Binding(
                 get: { state.settings.liveModeEnabled },
                 set: { newValue in

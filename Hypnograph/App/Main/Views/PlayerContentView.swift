@@ -3,7 +3,7 @@
 //  Hypnograph
 //
 //  Content view with A/B player sources for shader-based transitions.
-//  Used by both Preview and Live displays.
+//  Used by both in-app and Live displays.
 //
 
 import AppKit
@@ -11,13 +11,13 @@ import AVFoundation
 import HypnoCore
 
 /// Content view with A/B player sources for shader-based transitions.
-/// Used by both Preview and Live displays with a single unified Metal surface.
+/// Used by both in-app and Live displays with a single unified Metal surface.
 final class PlayerContentView: NSView {
 
     // MARK: - Properties
 
     /// The Metal view for display
-    let playerView: PlayerView
+    let playerView: HypnoCore.RendererView
 
     /// Frame source A (for A/B transitions)
     private var sourceA: AVPlayerFrameSource?
@@ -87,7 +87,7 @@ final class PlayerContentView: NSView {
 
     override init(frame frameRect: NSRect) {
         // Create Metal view
-        playerView = PlayerView(frame: frameRect, device: SharedRenderer.metalDevice)
+        playerView = HypnoCore.RendererView(frame: frameRect, device: SharedRenderer.metalDevice)
 
         super.init(frame: frameRect)
 
@@ -331,7 +331,7 @@ final class PlayerContentView: NSView {
     // MARK: - Content Mode
 
     /// Set the content display mode
-    func setContentMode(_ mode: PlayerView.ContentMode) {
+    func setContentMode(_ mode: HypnoCore.RendererView.ContentMode) {
         playerView.contentMode = mode
     }
 
@@ -347,7 +347,7 @@ final class PlayerContentView: NSView {
 
     /// Set a content-aware focus point (e.g. human head) used to offset aspect-fill framing.
     /// Pass `nil` to clear and return to centered framing.
-    func setContentFocus(_ focus: PlayerView.ContentFocus?) {
+    func setContentFocus(_ focus: HypnoCore.RendererView.ContentFocus?) {
         playerView.contentFocus = focus
         mirrorViews.removeAll { $0.view == nil }
         for ref in mirrorViews {
@@ -412,7 +412,7 @@ final class PlayerContentView: NSView {
 /// Shares the same frame sources but has its own Metal rendering surface
 final class PlayerContentMirrorView: NSView {
 
-    private let playerView: PlayerView
+    private let playerView: HypnoCore.RendererView
     private let sourceA: FrameSource
     private let sourceB: FrameSource
     private let transitionStateProvider: () -> (PlayerContentView.PlayerSlot, TransitionRenderer.TransitionType?, CFTimeInterval?, CFTimeInterval, UInt32)
@@ -425,7 +425,7 @@ final class PlayerContentMirrorView: NSView {
         self.transitionStateProvider = transitionStateProvider
         self.sourceA = sourceA
         self.sourceB = sourceB
-        self.playerView = PlayerView(frame: .zero, device: SharedRenderer.metalDevice)
+        self.playerView = HypnoCore.RendererView(frame: .zero, device: SharedRenderer.metalDevice)
 
         super.init(frame: .zero)
 
@@ -476,11 +476,11 @@ final class PlayerContentMirrorView: NSView {
     }
 
     /// Set the content display mode
-    func setContentMode(_ mode: PlayerView.ContentMode) {
+    func setContentMode(_ mode: HypnoCore.RendererView.ContentMode) {
         playerView.contentMode = mode
     }
 
-    func setContentFocus(_ focus: PlayerView.ContentFocus?) {
+    func setContentFocus(_ focus: HypnoCore.RendererView.ContentFocus?) {
         playerView.contentFocus = focus
     }
 }

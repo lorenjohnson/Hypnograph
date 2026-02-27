@@ -47,20 +47,11 @@ final class EffectsStudioTabKeyMonitor: ObservableObject {
     }
 }
 
-private enum EffectsStudioPanelKind: String, CaseIterable {
+private enum EffectsStudioPanelKind: String {
     case code
     case parameters
     case manifest
     case liveControls
-
-    var title: String {
-        switch self {
-        case .code: return "Code"
-        case .parameters: return "Parameters"
-        case .manifest: return "Manifest"
-        case .liveControls: return "Live Controls"
-        }
-    }
 
     var defaultSize: CGSize {
         switch self {

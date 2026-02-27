@@ -1,9 +1,9 @@
 //
-//  MainPlayerState.swift
+//  PlayerState.swift
 //  Hypnograph
 //
 //  Independent player state for Main module.
-//  Holds the current session, effects, and settings for the preview deck.
+//  Holds the current session, effects, and settings for the in-app deck.
 //
 
 import Foundation
@@ -11,10 +11,10 @@ import CoreMedia
 import Combine
 import HypnoCore
 
-/// Independent player state for the Main preview deck.
+/// Independent player state for the Main in-app deck.
 /// Maintains its own session, playback state, and generation settings.
 @MainActor
-final class MainPlayerState: ObservableObject {
+final class PlayerState: ObservableObject {
 
     // MARK: - Session (the composition)
 

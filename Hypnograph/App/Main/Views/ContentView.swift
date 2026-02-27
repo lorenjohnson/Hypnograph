@@ -124,9 +124,9 @@ struct ContentView: View {
                     currentClipText: main.currentClipIndicatorText,
                     clipLengthSeconds: main.activePlayer.targetDuration.seconds,
                     clipTrimContexts: clipTrimContexts,
-                    previewVolume: Binding(
-                        get: { Double(main.previewVolume) },
-                        set: { main.previewVolume = Float($0) }
+                    volume: Binding(
+                        get: { Double(main.volume) },
+                        set: { main.volume = Float($0) }
                     ),
                     timelinePlaybackRate: main.timelinePlaybackRate,
                     timelinePlaybackControlValue: Binding(
@@ -231,7 +231,7 @@ struct ContentView: View {
                             }
                         }
                     )) {
-                        Text("Preview").tag(0)
+                        Text("Edit").tag(0)
                         Text("Live").tag(1)
                     }
                     .pickerStyle(.segmented)
@@ -261,7 +261,7 @@ struct ContentView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            // Right-side panels: Live preview (bottom)
+            // Right-side panels: Live panel (bottom)
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
 

@@ -112,8 +112,7 @@ enum SessionStore {
 
             let session = try JSONDecoder().decode(HypnographSession.self, from: data)
 
-            // Temporary migration/writeback for legacy schemas.
-            // Encapsulated for easy removal once legacy files are gone.
+            // Rewrites legacy-compatible files in current schema after successful decode.
             LegacySessionMigration.migrateSessionFileIfNeeded(
                 originalData: data,
                 url: url,
@@ -227,5 +226,5 @@ enum SessionStore {
         return jpegData.base64EncodedString()
     }
 
-    // Legacy migration/writeback logic lives in `Hypnograph/LegacySessionMigration.swift`.
+    // Compatibility rewrite logic lives in `Hypnograph/LegacySessionMigration.swift`.
 }
