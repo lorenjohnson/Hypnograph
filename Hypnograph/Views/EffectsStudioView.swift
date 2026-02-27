@@ -19,9 +19,90 @@ extension Notification.Name {
     static let effectsStudioToggleCleanScreen = Notification.Name("Hypnograph.EffectsStudio.ToggleCleanScreen")
 }
 
-// Transitional aliases keep naming consistent in this file while underlying store types remain unchanged.
-private typealias EffectsStudioUIStore = ShaderStudioUIStore
-private typealias EffectsStudioUIState = ShaderStudioUIState
+private struct EffectsStudioUIState: Codable {
+    var panelOpacity: Double
+    var showCodePanel: Bool
+    var showInspectorPanel: Bool
+    var showManifestPanel: Bool
+    var showLiveControlsPanel: Bool
+    var showLogOverlay: Bool
+
+    static let defaultValue = EffectsStudioUIState(
+        panelOpacity: 0.72,
+        showCodePanel: true,
+        showInspectorPanel: true,
+        showManifestPanel: false,
+        showLiveControlsPanel: true,
+        showLogOverlay: true
+    )
+
+    private enum CodingKeys: String, CodingKey {
+        case panelOpacity
+        case showCodePanel
+        case showInspectorPanel
+        case showManifestPanel
+        case showLiveControlsPanel
+        case showLogOverlay
+    }
+
+    init(
+        panelOpacity: Double,
+        showCodePanel: Bool,
+        showInspectorPanel: Bool,
+        showManifestPanel: Bool,
+        showLiveControlsPanel: Bool,
+        showLogOverlay: Bool
+    ) {
+        self.panelOpacity = panelOpacity
+        self.showCodePanel = showCodePanel
+        self.showInspectorPanel = showInspectorPanel
+        self.showManifestPanel = showManifestPanel
+        self.showLiveControlsPanel = showLiveControlsPanel
+        self.showLogOverlay = showLogOverlay
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        panelOpacity = try container.decodeIfPresent(Double.self, forKey: .panelOpacity) ?? Self.defaultValue.panelOpacity
+        showCodePanel = try container.decodeIfPresent(Bool.self, forKey: .showCodePanel) ?? Self.defaultValue.showCodePanel
+        showInspectorPanel = try container.decodeIfPresent(Bool.self, forKey: .showInspectorPanel) ?? Self.defaultValue.showInspectorPanel
+        showManifestPanel = try container.decodeIfPresent(Bool.self, forKey: .showManifestPanel) ?? Self.defaultValue.showManifestPanel
+        showLiveControlsPanel = try container.decodeIfPresent(Bool.self, forKey: .showLiveControlsPanel) ?? Self.defaultValue.showLiveControlsPanel
+        showLogOverlay = try container.decodeIfPresent(Bool.self, forKey: .showLogOverlay) ?? Self.defaultValue.showLogOverlay
+    }
+}
+
+@MainActor
+private final class EffectsStudioUIStore: ObservableObject {
+    @Published private(set) var value: EffectsStudioUIState
+
+    private let primaryKey = "effectsStudio.uiState"
+
+    init() {
+        value = Self.load(key: primaryKey) ?? .defaultValue
+    }
+
+    func update(_ transform: (inout EffectsStudioUIState) -> Void) {
+        var next = value
+        transform(&next)
+        value = next
+        save(next)
+    }
+
+    private func save(_ value: EffectsStudioUIState) {
+        guard let data = try? JSONEncoder().encode(value) else { return }
+        UserDefaults.standard.set(data, forKey: primaryKey)
+    }
+
+    private static func load(key: String) -> EffectsStudioUIState? {
+        let defaults = UserDefaults.standard
+        if let data = defaults.data(forKey: key),
+           let decoded = try? JSONDecoder().decode(EffectsStudioUIState.self, from: data) {
+            return decoded
+        }
+        return nil
+    }
+}
 
 enum StudioParamType: String, CaseIterable, Identifiable {
     case float
@@ -127,16 +208,16 @@ private enum StudioScalarValueType {
     case bool
 }
 
-private struct StudioShaderMemberLayout {
+private struct StudioParamBufferMemberLayout {
     var name: String
     var offset: Int
     var size: Int
     var valueType: StudioScalarValueType
 }
 
-private struct StudioShaderBufferLayout {
+private struct StudioParamBufferLayout {
     var length: Int
-    var members: [StudioShaderMemberLayout]
+    var members: [StudioParamBufferMemberLayout]
 }
 
 struct StudioRuntimeEffectChoice: Identifiable, Hashable {
@@ -242,7 +323,7 @@ final class EffectsStudioViewModel: ObservableObject {
     @Published private(set) var runtimeEffects: [StudioRuntimeEffectChoice] = []
     @Published var selectedRuntimeType: String = ""
 
-    @Published var sourceCode: String = EffectsStudioViewModel.defaultShaderBody
+    @Published var sourceCode: String = EffectsStudioViewModel.defaultCodeBody
     @Published var compileLog: String = "Compile to render preview." {
         didSet { appendLogEntry(from: compileLog) }
     }
@@ -272,7 +353,7 @@ final class EffectsStudioViewModel: ObservableObject {
     private let ciContext: CIContext
 
     private var pipelineState: MTLComputePipelineState?
-    private var parameterBufferLayout: StudioShaderBufferLayout?
+    private var parameterBufferLayout: StudioParamBufferLayout?
     private var hasAppliedInitialRuntimeSelection = false
 
     private var sourceStillImage: CIImage?
@@ -306,7 +387,7 @@ final class EffectsStudioViewModel: ObservableObject {
         if device == nil {
             compileLog = "Metal device unavailable on this machine."
         } else {
-            _ = compileShader()
+            _ = compileCode()
         }
     }
 
@@ -380,7 +461,7 @@ final class EffectsStudioViewModel: ObservableObject {
     }
 
     func resetToTemplate() {
-        sourceCode = EffectsStudioViewModel.defaultShaderBody
+        sourceCode = EffectsStudioViewModel.defaultCodeBody
         parameters = EffectsStudioViewModel.defaultParameters
         ensureSystemParameters()
         selectedRuntimeType = ""
@@ -442,7 +523,7 @@ final class EffectsStudioViewModel: ObservableObject {
             parameters = Self.parameterDrafts(from: manifest)
             ensureSystemParameters()
             rebuildParameterValues(preserveExisting: false)
-            _ = compileShader()
+            _ = compileCode()
             refreshRuntimeEffectList()
             compileLog = "Loaded runtime effect '\(manifest.name)' (\(manifest.uuid))."
         } catch {
@@ -512,7 +593,7 @@ final class EffectsStudioViewModel: ObservableObject {
         }
     }
 
-    func chooseShaderSourceFile() {
+    func chooseCodeSourceFile() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
@@ -524,7 +605,7 @@ final class EffectsStudioViewModel: ObservableObject {
         }
         panel.allowedContentTypes = contentTypes
 
-        panel.title = "Open Metal Shader Source"
+        panel.title = "Open Metal Source"
         panel.message = "Select a .metal or text source file."
 
         guard panel.runModal() == .OK, let url = panel.url else { return }
@@ -708,7 +789,7 @@ final class EffectsStudioViewModel: ObservableObject {
     }
 
     @discardableResult
-    func compileShader() -> Bool {
+    func compileCode() -> Bool {
         guard let device else {
             pipelineState = nil
             parameterBufferLayout = nil
@@ -911,11 +992,11 @@ final class EffectsStudioViewModel: ObservableObject {
         let buffers = arguments.filter { $0.type == .buffer }
 
         guard textures.contains(where: { Int($0.index) == 0 }) else {
-            return "Shader must declare input texture at texture(0)."
+            return "Metal code must declare input texture at texture(0)."
         }
 
         guard let outputArg = textures.first(where: { Int($0.index) == 1 }) else {
-            return "Shader must declare output texture at texture(1)."
+            return "Metal code must declare output texture at texture(1)."
         }
 
         if outputArg.access == .readOnly {
@@ -923,19 +1004,19 @@ final class EffectsStudioViewModel: ObservableObject {
         }
 
         guard buffers.contains(where: { Int($0.index) == 0 }) else {
-            return "Shader must declare constant HypnoParams& params at buffer(0)."
+            return "Metal code must declare constant HypnoParams& params at buffer(0)."
         }
 
         return nil
     }
 
-    private func buildParameterBufferLayout(arguments: [MTLArgument]) -> StudioShaderBufferLayout? {
+    private func buildParameterBufferLayout(arguments: [MTLArgument]) -> StudioParamBufferLayout? {
         guard let bufferArg = arguments.first(where: { $0.type == .buffer && Int($0.index) == 0 }),
               let structType = bufferArg.bufferStructType else {
             return nil
         }
 
-        let members: [StudioShaderMemberLayout] = structType.members
+        let members: [StudioParamBufferMemberLayout] = structType.members
             .sorted { $0.offset < $1.offset }
             .compactMap { member in
                 guard let valueType = Self.scalarType(for: member.dataType),
@@ -943,7 +1024,7 @@ final class EffectsStudioViewModel: ObservableObject {
                     return nil
                 }
 
-                return StudioShaderMemberLayout(
+                return StudioParamBufferMemberLayout(
                     name: member.name,
                     offset: Int(member.offset),
                     size: size,
@@ -951,7 +1032,7 @@ final class EffectsStudioViewModel: ObservableObject {
                 )
             }
 
-        return StudioShaderBufferLayout(
+        return StudioParamBufferLayout(
             length: max(Int(bufferArg.bufferDataSize), 1),
             members: members
         )
@@ -959,7 +1040,7 @@ final class EffectsStudioViewModel: ObservableObject {
 
     private func fillParameterBuffer(
         data: inout Data,
-        layout: StudioShaderBufferLayout,
+        layout: StudioParamBufferLayout,
         width: Int,
         height: Int,
         frameIndex: Int,
@@ -1781,7 +1862,7 @@ final class EffectsStudioViewModel: ObservableObject {
         )
     ]
 
-    private static let defaultShaderBody: String = """
+    private static let defaultCodeBody: String = """
     #include <metal_stdlib>
     using namespace metal;
 
@@ -2051,14 +2132,14 @@ private struct StudioParameterDefinitionRow: View {
 
 struct EffectsStudioView: View {
     private enum StudioPanelID: String, CaseIterable, Identifiable {
-        case shader
+        case code
         case parameters
         case manifest
         var id: String { rawValue }
     }
 
     private struct StudioCleanScreenSnapshot {
-        let showShaderPanel: Bool
+        let showCodePanel: Bool
         let showInspectorPanel: Bool
         let showManifestPanel: Bool
         let showLiveControlsPanel: Bool
@@ -2082,16 +2163,16 @@ struct EffectsStudioView: View {
     @State private var isApplyingStoredStudioUIState = false
 
     @State private var panelOpacity: Double = EffectsStudioUIState.defaultValue.panelOpacity
-    @State private var showShaderPanel = EffectsStudioUIState.defaultValue.showShaderPanel
+    @State private var showCodePanel = EffectsStudioUIState.defaultValue.showCodePanel
     @State private var showInspectorPanel = EffectsStudioUIState.defaultValue.showInspectorPanel
     @State private var showManifestPanel = EffectsStudioUIState.defaultValue.showManifestPanel
     @State private var showLiveControlsPanel = EffectsStudioUIState.defaultValue.showLiveControlsPanel
     @State private var showLogOverlay = EffectsStudioUIState.defaultValue.showLogOverlay
 
-    @State private var shaderPanelX: Double = 20
-    @State private var shaderPanelY: Double = 20
-    @State private var shaderPanelW: Double = 720
-    @State private var shaderPanelH: Double = 520
+    @State private var codePanelX: Double = 20
+    @State private var codePanelY: Double = 20
+    @State private var codePanelW: Double = 720
+    @State private var codePanelH: Double = 520
 
     @State private var inspectorPanelX: Double = 780
     @State private var inspectorPanelY: Double = 20
@@ -2101,7 +2182,7 @@ struct EffectsStudioView: View {
     @State private var manifestPanelY: Double = 140
     @State private var manifestPanelW: Double = 420
     @State private var manifestPanelH: Double = 420
-    @State private var panelStack: [StudioPanelID] = [.shader, .parameters, .manifest]
+    @State private var panelStack: [StudioPanelID] = [.code, .parameters, .manifest]
     @State private var showStudioChrome = true
     @State private var cleanScreenSnapshot: StudioCleanScreenSnapshot?
 
@@ -2173,7 +2254,7 @@ struct EffectsStudioView: View {
         .onChange(of: model.sourceCode) { _, _ in queueAutoCompile() }
         .onChange(of: model.parameters) { _, _ in queueAutoCompile() }
         .onChange(of: panelOpacity) { _, _ in persistStudioUIState() }
-        .onChange(of: showShaderPanel) { _, _ in persistStudioUIState() }
+        .onChange(of: showCodePanel) { _, _ in persistStudioUIState() }
         .onChange(of: showInspectorPanel) { _, _ in persistStudioUIState() }
         .onChange(of: showManifestPanel) { _, _ in persistStudioUIState() }
         .onChange(of: showLiveControlsPanel) { _, _ in persistStudioUIState() }
@@ -2182,17 +2263,17 @@ struct EffectsStudioView: View {
             guard autoCompile else { return }
             try? await Task.sleep(nanoseconds: 350_000_000)
             guard !Task.isCancelled else { return }
-            _ = model.compileShader()
+            _ = model.compileCode()
         }
         .background(
             StudioPanelHostBridge(
                 controller: panelWindows,
-                showShaderPanel: showShaderPanel,
+                showCodePanel: showCodePanel,
                 showInspectorPanel: showInspectorPanel,
                 showManifestPanel: showManifestPanel,
                 showLiveControlsPanel: showLiveControlsPanel,
                 panelOpacity: panelOpacity,
-                shaderContent: AnyView(panelWindowSurface { shaderPanelContent }),
+                codeContent: AnyView(panelWindowSurface { codePanelContent }),
                 inspectorContent: AnyView(panelWindowSurface { inspectorPanelContent }),
                 manifestContent: AnyView(panelWindowSurface { manifestPanelContent }),
                 liveControlsContent: AnyView(panelWindowSurface { liveControlsPanelContent })
@@ -2238,25 +2319,25 @@ struct EffectsStudioView: View {
         let canvas = CGSize(width: max(100, totalWidth - 24), height: max(100, totalHeight - 24))
 
         ZStack(alignment: .topLeading) {
-            if showShaderPanel {
+            if showCodePanel {
                 FloatingStudioPanel(
-                    title: "Shader",
-                    x: $shaderPanelX,
-                    y: $shaderPanelY,
-                    width: $shaderPanelW,
-                    height: $shaderPanelH,
+                    title: "Code",
+                    x: $codePanelX,
+                    y: $codePanelY,
+                    width: $codePanelW,
+                    height: $codePanelH,
                     containerSize: canvas,
                     minWidth: 380,
                     minHeight: 260,
                     maxWidth: max(380, canvas.width),
                     maxHeight: max(260, canvas.height),
                     panelOpacity: panelOpacity,
-                    onFrameCommit: persistShaderPanelFrame,
-                    onInteractionBegan: { bringPanelToFront(.shader) }
+                    onFrameCommit: persistCodePanelFrame,
+                    onInteractionBegan: { bringPanelToFront(.code) }
                 ) {
-                    shaderPanelContent
+                    codePanelContent
                 }
-                .zIndex(zIndex(for: .shader))
+                .zIndex(zIndex(for: .code))
             }
 
             if showInspectorPanel {
@@ -2359,7 +2440,7 @@ struct EffectsStudioView: View {
                 }
 
                 HStack(spacing: 8) {
-                    panelToggleButton("Shader", isOn: $showShaderPanel)
+                    panelToggleButton("Code", isOn: $showCodePanel)
                     panelToggleButton("Parameters", isOn: $showInspectorPanel)
                     panelToggleButton("Live Controls", isOn: $showLiveControlsPanel)
                     panelToggleButton("Log", isOn: $showLogOverlay)
@@ -2377,9 +2458,9 @@ struct EffectsStudioView: View {
                     Toggle("Live", isOn: $autoCompile)
                         .toggleStyle(.switch)
                         .controlSize(.small)
-                        .help("Automatically compile after shader or parameter edits.")
+                        .help("Automatically compile after code or parameter edits.")
 
-                    Button("Compile") { _ = model.compileShader() }
+                    Button("Compile") { _ = model.compileCode() }
                         .buttonStyle(.borderedProminent)
                 }
             }
@@ -2451,14 +2532,14 @@ struct EffectsStudioView: View {
         }
     }
 
-    private func persistShaderPanelFrame(_ rect: CGRect) {}
+    private func persistCodePanelFrame(_ rect: CGRect) {}
 
     private func persistInspectorPanelFrame(_ rect: CGRect) {}
 
     private func applyStudioUIState(_ state: EffectsStudioUIState) {
         isApplyingStoredStudioUIState = true
         panelOpacity = state.panelOpacity
-        showShaderPanel = state.showShaderPanel
+        showCodePanel = state.showCodePanel
         showInspectorPanel = state.showInspectorPanel
         showManifestPanel = state.showManifestPanel
         showLiveControlsPanel = state.showLiveControlsPanel
@@ -2470,7 +2551,7 @@ struct EffectsStudioView: View {
         guard didLoadStudioUIState, !isApplyingStoredStudioUIState else { return }
         studioUIStore.update { value in
             value.panelOpacity = panelOpacity
-            value.showShaderPanel = showShaderPanel
+            value.showCodePanel = showCodePanel
             value.showInspectorPanel = showInspectorPanel
             value.showManifestPanel = showManifestPanel
             value.showLiveControlsPanel = showLiveControlsPanel
@@ -2493,10 +2574,10 @@ struct EffectsStudioView: View {
         }
     }
 
-    private var shaderPanelContent: some View {
+    private var codePanelContent: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Text("Live Metal Shader")
+                Text("Live Metal Code")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 0)
@@ -2761,7 +2842,7 @@ struct EffectsStudioView: View {
     private func toggleStudioCleanScreen() {
         if let snapshot = cleanScreenSnapshot {
             // Always restore exactly what was visible when entering clean screen.
-            showShaderPanel = snapshot.showShaderPanel
+            showCodePanel = snapshot.showCodePanel
             showInspectorPanel = snapshot.showInspectorPanel
             showManifestPanel = snapshot.showManifestPanel
             showLiveControlsPanel = snapshot.showLiveControlsPanel
@@ -2774,7 +2855,7 @@ struct EffectsStudioView: View {
         }
 
         let hasAnyVisibleOverlay =
-            showShaderPanel ||
+            showCodePanel ||
             showInspectorPanel ||
             showManifestPanel ||
             showLiveControlsPanel ||
@@ -2784,7 +2865,7 @@ struct EffectsStudioView: View {
         guard hasAnyVisibleOverlay || showStudioChrome else { return }
 
             cleanScreenSnapshot = StudioCleanScreenSnapshot(
-                showShaderPanel: showShaderPanel,
+                showCodePanel: showCodePanel,
                 showInspectorPanel: showInspectorPanel,
                 showManifestPanel: showManifestPanel,
                 showLiveControlsPanel: showLiveControlsPanel,
@@ -2792,7 +2873,7 @@ struct EffectsStudioView: View {
                 showChrome: showStudioChrome
             )
 
-        showShaderPanel = false
+        showCodePanel = false
         showInspectorPanel = false
         showManifestPanel = false
         showLiveControlsPanel = false
@@ -2854,14 +2935,14 @@ private final class StudioTabKeyMonitor: ObservableObject {
 }
 
 private enum StudioPanelKind: String, CaseIterable {
-    case shader
+    case code
     case parameters
     case manifest
     case liveControls
 
     var title: String {
         switch self {
-        case .shader: return "Shader"
+        case .code: return "Code"
         case .parameters: return "Parameters"
         case .manifest: return "Manifest"
         case .liveControls: return "Live Controls"
@@ -2870,7 +2951,7 @@ private enum StudioPanelKind: String, CaseIterable {
 
     var defaultSize: CGSize {
         switch self {
-        case .shader: return CGSize(width: 760, height: 560)
+        case .code: return CGSize(width: 760, height: 560)
         case .parameters: return CGSize(width: 460, height: 620)
         case .manifest: return CGSize(width: 460, height: 460)
         case .liveControls: return CGSize(width: 420, height: 520)
@@ -2879,7 +2960,7 @@ private enum StudioPanelKind: String, CaseIterable {
 
     var minSize: CGSize {
         switch self {
-        case .shader: return CGSize(width: 420, height: 280)
+        case .code: return CGSize(width: 420, height: 280)
         case .parameters: return CGSize(width: 360, height: 360)
         case .manifest: return CGSize(width: 340, height: 280)
         case .liveControls: return CGSize(width: 320, height: 300)
@@ -2888,7 +2969,7 @@ private enum StudioPanelKind: String, CaseIterable {
 
     var defaultOffset: CGPoint {
         switch self {
-        case .shader: return CGPoint(x: 36, y: 80)
+        case .code: return CGPoint(x: 36, y: 80)
         case .parameters: return CGPoint(x: 820, y: 70)
         case .manifest: return CGPoint(x: 860, y: 160)
         case .liveControls: return CGPoint(x: 900, y: 260)
@@ -2935,12 +3016,12 @@ private final class StudioPanelWindowController: ObservableObject {
 
     func sync(
         parentWindow: NSWindow?,
-        showShaderPanel: Bool,
+        showCodePanel: Bool,
         showInspectorPanel: Bool,
         showManifestPanel: Bool,
         showLiveControlsPanel: Bool,
         panelOpacity: Double,
-        shaderContent: AnyView,
+        codeContent: AnyView,
         inspectorContent: AnyView,
         manifestContent: AnyView,
         liveControlsContent: AnyView
@@ -2965,7 +3046,7 @@ private final class StudioPanelWindowController: ObservableObject {
         configureParentWindowForFullScreen(parentWindow)
 
         let opacity = min(max(panelOpacity, 0.15), 1.0)
-        syncPanel(kind: .shader, visible: showShaderPanel, opacity: opacity, content: shaderContent, parentWindow: parentWindow)
+        syncPanel(kind: .code, visible: showCodePanel, opacity: opacity, content: codeContent, parentWindow: parentWindow)
         syncPanel(kind: .parameters, visible: showInspectorPanel, opacity: opacity, content: inspectorContent, parentWindow: parentWindow)
         syncPanel(kind: .manifest, visible: showManifestPanel, opacity: opacity, content: manifestContent, parentWindow: parentWindow)
         syncPanel(kind: .liveControls, visible: showLiveControlsPanel, opacity: opacity, content: liveControlsContent, parentWindow: parentWindow)
@@ -3104,12 +3185,12 @@ private final class StudioPanelWindowController: ObservableObject {
 
 private struct StudioPanelHostBridge: NSViewRepresentable {
     @ObservedObject var controller: StudioPanelWindowController
-    let showShaderPanel: Bool
+    let showCodePanel: Bool
     let showInspectorPanel: Bool
     let showManifestPanel: Bool
     let showLiveControlsPanel: Bool
     let panelOpacity: Double
-    let shaderContent: AnyView
+    let codeContent: AnyView
     let inspectorContent: AnyView
     let manifestContent: AnyView
     let liveControlsContent: AnyView
@@ -3133,12 +3214,12 @@ private struct StudioPanelHostBridge: NSViewRepresentable {
         context.coordinator.controller = controller
         context.coordinator.controller.sync(
             parentWindow: nsView.window,
-            showShaderPanel: showShaderPanel,
+            showCodePanel: showCodePanel,
             showInspectorPanel: showInspectorPanel,
             showManifestPanel: showManifestPanel,
             showLiveControlsPanel: showLiveControlsPanel,
             panelOpacity: panelOpacity,
-            shaderContent: shaderContent,
+            codeContent: codeContent,
             inspectorContent: inspectorContent,
             manifestContent: manifestContent,
             liveControlsContent: liveControlsContent
