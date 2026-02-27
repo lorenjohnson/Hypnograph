@@ -12,6 +12,7 @@ import Foundation
 import Combine
 import CoreMedia
 import CoreGraphics
+import AppKit
 import HypnoCore
 import HypnoUI
 
@@ -46,6 +47,9 @@ final class HypnographState: ObservableObject {
 
     /// Whether a text field is currently being edited (convenience for disabling shortcuts)
     @Published private(set) var isTyping: Bool = false
+
+    /// Persisted fullscreen preference for the main app window.
+    @Published var mainWindowFullScreen: Bool = true
 
     /// Unified window visibility state with clean screen support
     @Published var windowState = WindowState()
@@ -301,6 +305,11 @@ final class HypnographState: ObservableObject {
 
     // MARK: - Window State Persistence
 
+    private struct PersistedWindowState: Codable {
+        let windowState: WindowState
+        let mainWindowFullScreen: Bool
+    }
+
     /// File URL for window state storage
     private var windowStateFileURL: URL {
         Environment.appSupportDirectory
@@ -313,8 +322,19 @@ final class HypnographState: ObservableObject {
 
         do {
             let data = try Data(contentsOf: windowStateFileURL)
-            windowState = try JSONDecoder().decode(WindowState.self, from: data)
-            print("HypnographState: Loaded window state from disk")
+            let decoder = JSONDecoder()
+
+            if let persisted = try? decoder.decode(PersistedWindowState.self, from: data) {
+                windowState = persisted.windowState
+                mainWindowFullScreen = persisted.mainWindowFullScreen
+                print("HypnographState: Loaded window state from disk")
+                return
+            }
+
+            // Legacy support: previous format encoded WindowState directly.
+            windowState = try decoder.decode(WindowState.self, from: data)
+            mainWindowFullScreen = true
+            print("HypnographState: Loaded legacy window state from disk")
         } catch {
             print("HypnographState: Failed to load window state: \(error)")
         }
@@ -325,11 +345,25 @@ final class HypnographState: ObservableObject {
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(windowState)
+            let persisted = PersistedWindowState(
+                windowState: windowState,
+                mainWindowFullScreen: mainWindowFullScreen
+            )
+            let data = try encoder.encode(persisted)
             try data.write(to: windowStateFileURL)
             print("HypnographState: Saved window state to disk")
         } catch {
             print("HypnographState: Failed to save window state: \(error)")
         }
+    }
+
+    func setMainWindowFullScreen(_ isFullScreen: Bool) {
+        guard mainWindowFullScreen != isFullScreen else { return }
+        mainWindowFullScreen = isFullScreen
+        saveWindowStateToDisk()
+    }
+
+    var isKeyboardTextInputActive: Bool {
+        KeyboardTextInputContext.isTypingInKeyOrMainWindow()
     }
 }

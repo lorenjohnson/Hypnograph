@@ -175,8 +175,11 @@ struct ContentView: View {
                 .allowsHitTesting(false)
 
             MouseIdleVisibilityView(
-                isEnabled: state.windowState.isCleanScreen,
+                isEnabled: true,
                 idleSeconds: 3.0,
+                startHiddenOnEnable: state.windowState.isCleanScreen,
+                activityIgnoreLeftInset: state.windowState.isVisible("leftSidebar") ? (SidebarMetrics.leftWidth + 12) : 0,
+                activityIgnoreRightInset: state.windowState.isVisible("rightSidebar") ? (SidebarMetrics.rightWidth + 12) : 0,
                 isVisible: $isPlayerControlsVisible
             )
             .allowsHitTesting(false)

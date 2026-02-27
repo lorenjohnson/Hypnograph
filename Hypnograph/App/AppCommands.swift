@@ -22,7 +22,7 @@ struct AppCommands: Commands {
     @ObservedObject private var main: Main
 
     /// Whether a text field is currently being edited
-    private var isTyping: Bool { state.isTyping }
+    private var isTyping: Bool { state.isKeyboardTextInputActive }
     private var isMainWindowShortcutContext: Bool {
         activeWindowContext == .main
     }
@@ -40,6 +40,15 @@ struct AppCommands: Commands {
         CommandGroup(replacing: .appInfo) {
             Button("About Hypnograph") {
                 openWindow(id: "about")
+            }
+        }
+
+        CommandGroup(after: .appInfo) {
+            if state.appSettings.effectsStudioEnabled {
+                Button("Open Effects Studio") {
+                    openWindow(id: "effectsStudio")
+                }
+                .keyboardShortcut("k", modifiers: [.command, .option])
             }
         }
 
@@ -174,12 +183,6 @@ struct AppCommands: Commands {
             main.sourceMenu()
         }
 
-        CommandMenu("Studio") {
-            Button("Open Effect Studio") {
-                openWindow(id: "effectsStudio")
-            }
-            .keyboardShortcut("k", modifiers: [.command, .option])
-        }
     }
 
     private func windowBelongsToMain(_ window: NSWindow?) -> Bool {

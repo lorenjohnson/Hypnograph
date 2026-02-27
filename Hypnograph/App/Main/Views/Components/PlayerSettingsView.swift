@@ -477,18 +477,7 @@ struct PlayerSettingsView: View {
 
                 Spacer()
 
-                Picker("", selection: Binding(
-                    get: { main.state.settings.sourceFraming },
-                    set: { newValue in
-                        main.state.settingsStore.update { $0.sourceFraming = newValue }
-                    }
-                )) {
-                    ForEach(SourceFraming.allCases, id: \.self) { framing in
-                        Text(framing.displayName).tag(framing)
-                    }
-                }
-                .pickerStyle(.menu)
-                .frame(width: 120)
+                sourceFramingButtons
             }
 
             HStack {
@@ -498,13 +487,7 @@ struct PlayerSettingsView: View {
 
                 Spacer()
 
-                Picker("", selection: main.isLiveMode ? .constant(displayedConfig.aspectRatio) : $player.config.aspectRatio) {
-                    ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
-                        Text(ratio.menuLabel).tag(ratio)
-                    }
-                }
-                .pickerStyle(.menu)
-                .frame(width: 120)
+                aspectRatioButtons
                 .disabled(main.isLiveMode)
             }
 
@@ -589,6 +572,65 @@ struct PlayerSettingsView: View {
         .frame(width: 320)
         .background(Color.black.opacity(0.6))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    @ViewBuilder
+    private var sourceFramingButtons: some View {
+        HStack(spacing: 6) {
+            ForEach(SourceFraming.allCases, id: \.self) { framing in
+                let isSelected = main.state.settings.sourceFraming == framing
+                Button {
+                    main.state.settingsStore.update { $0.sourceFraming = framing }
+                } label: {
+                    Text(shortFramingLabel(for: framing))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(isSelected ? Color.white : Color.secondary)
+                        .frame(width: 36, height: 22)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(isSelected ? Color.blue.opacity(0.84) : Color.white.opacity(0.14))
+                        )
+                }
+                .buttonStyle(.plain)
+                .help(framing.displayName)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var aspectRatioButtons: some View {
+        let selectedRatio = displayedConfig.aspectRatio
+        HStack(spacing: 4) {
+            ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
+                let isSelected = selectedRatio == ratio
+                Button {
+                    guard !main.isLiveMode else { return }
+                    player.config.aspectRatio = ratio
+                } label: {
+                    Text(shortAspectRatioLabel(for: ratio))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(isSelected ? Color.white : Color.secondary)
+                        .frame(width: 35, height: 22)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(isSelected ? Color.blue.opacity(0.84) : Color.white.opacity(0.14))
+                        )
+                }
+                .buttonStyle(.plain)
+                .help(ratio.menuLabel)
+            }
+        }
+    }
+
+    private func shortFramingLabel(for framing: SourceFraming) -> String {
+        let key = framing.displayName.lowercased()
+        if key.contains("fit") { return "Fit" }
+        if key.contains("fill") { return "Fill" }
+        return framing.displayName
+    }
+
+    private func shortAspectRatioLabel(for ratio: AspectRatio) -> String {
+        ratio.isFillWindow ? "Fill" : ratio.displayString
     }
 
     /// Helper to create a player mode button with icon and label

@@ -64,7 +64,7 @@ struct HypnographApp: App {
                         ?? NSApp.mainWindow
                         ?? NSApp.windows.first(where: { $0.title != "About Hypnograph" })
                         ?? NSApp.windows.first else { return }
-                    appDelegate.mainWindow = window
+                    appDelegate.registerMainWindow(window)
                 }
 
                 appDelegate.renderQueue = renderQueue
@@ -104,7 +104,7 @@ struct HypnographApp: App {
                     _ = state?.windowState.toggle("rightSidebar")
                 }
                 appDelegate.isTypingActive = { [weak state] in
-                    state?.isTyping ?? false
+                    state?.isKeyboardTextInputActive ?? false
                 }
                 appDelegate.isKeyboardAccessibilityOverridesEnabled = { [weak state] in
                     state?.appSettings.keyboardAccessibilityOverridesEnabled ?? true
@@ -114,6 +114,13 @@ struct HypnographApp: App {
                 appDelegate.saveWindowState = { [weak state] in
                     state?.saveWindowStateToDisk()
                 }
+                appDelegate.setMainWindowFullScreenState = { [weak state] isFullScreen in
+                    state?.setMainWindowFullScreen(isFullScreen)
+                }
+                appDelegate.shouldRestoreMainWindowFullScreenState = { [weak state] in
+                    state?.mainWindowFullScreen ?? true
+                }
+                appDelegate.applyStoredMainWindowFullscreenPreferenceIfNeeded()
 
                 // Wire up global effect suspend (` key hold)
                 appDelegate.setGlobalEffectSuspended = { [weak main] suspended in

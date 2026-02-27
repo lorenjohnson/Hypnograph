@@ -25,7 +25,7 @@ extension Main {
     // MARK: - Menus
 
     /// Whether a text field is being edited - disables single-key shortcuts
-    fileprivate var isTyping: Bool { state.isTyping }
+    fileprivate var isTyping: Bool { state.isKeyboardTextInputActive }
     fileprivate var isMainWindowShortcutContext: Bool {
         windowBelongsToMain(NSApp.keyWindow)
     }

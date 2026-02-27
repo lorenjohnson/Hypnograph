@@ -52,6 +52,7 @@ struct EffectsStudioView: View {
 
     @State private var showEffectsStudioChrome = true
     @State private var cleanScreenSnapshot: EffectsStudioCleanScreenSnapshot?
+    @State private var pendingParameterScrollTarget: UUID?
 
     init(
         state: HypnographState,
@@ -226,22 +227,7 @@ struct EffectsStudioView: View {
         panelCard {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
-                    Picker("", selection: $model.selectedRuntimeType) {
-                        if model.runtimeEffects.isEmpty {
-                            Text("No runtime effects").tag("")
-                        } else {
-                            Text("Draft (unsaved)").tag("")
-                            ForEach(model.runtimeEffects) { effect in
-                                Text(effect.displayName).tag(effect.type)
-                            }
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .frame(width: 260)
-                    .disabled(model.runtimeEffects.isEmpty)
-
-                    Button("Refresh") { model.refreshRuntimeEffectList() }
-                        .buttonStyle(.bordered)
+                    runtimeEffectPicker
 
                     Rectangle()
                         .fill(Color.white.opacity(0.18))
@@ -318,6 +304,57 @@ struct EffectsStudioView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
         }
+    }
+
+    @ViewBuilder
+    private var runtimeEffectPicker: some View {
+        Menu {
+            if model.runtimeEffects.isEmpty {
+                Text("No runtime effects")
+            } else {
+                Button("Draft (unsaved)") {
+                    model.selectedRuntimeType = ""
+                }
+                Divider()
+                ForEach(model.runtimeEffects) { effect in
+                    Button(effect.displayName) {
+                        model.selectedRuntimeType = effect.type
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(currentRuntimeSelectionLabel)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 6)
+                Image(systemName: "chevron.down")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: 260, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(Color.black.opacity(0.22))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(model.runtimeEffects.isEmpty)
+    }
+
+    private var currentRuntimeSelectionLabel: String {
+        if model.runtimeEffects.isEmpty {
+            return "No runtime effects"
+        }
+        if model.selectedRuntimeType.isEmpty {
+            return "Draft (unsaved)"
+        }
+        return model.runtimeEffects.first(where: { $0.type == model.selectedRuntimeType })?.displayName
+            ?? model.selectedRuntimeType
     }
 
     private func bindingForParameter(id: UUID) -> Binding<EffectsStudioParameterDraft>? {
@@ -517,15 +554,6 @@ struct EffectsStudioView: View {
 
     private var parameterDefinitionSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Effect ID (UUID) is managed automatically. Edit Name/Version in the top bar.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text("System params `timeSeconds`, `textureWidth`, and `textureHeight` are host-managed and implicit.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-
             HStack {
                 Text("Parameter Definitions")
                     .font(.headline)
@@ -534,30 +562,45 @@ struct EffectsStudioView: View {
 
                 Button {
                     model.addParameter()
+                    pendingParameterScrollTarget = model.editableParameterDefinitions.last?.id
                 } label: {
                     Label("Add", systemImage: "plus")
                 }
                 .buttonStyle(.bordered)
             }
 
-            ScrollView {
-                LazyVStack(spacing: 8) {
-                    ForEach(model.editableParameterDefinitions) { parameter in
-                        if let parameterBinding = bindingForParameter(id: parameter.id) {
-                            EffectsStudioParameterDefinitionRow(
-                                parameter: parameterBinding,
-                                onChanged: { model.parameterDefinitionDidChange() },
-                                onInsert: { name in model.insertParameterUsage(name: name) },
-                                onRemove: { model.removeParameter(id: parameter.id) }
-                            )
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(model.editableParameterDefinitions) { parameter in
+                            if let parameterBinding = bindingForParameter(id: parameter.id) {
+                                EffectsStudioParameterDefinitionRow(
+                                    parameter: parameterBinding,
+                                    onChanged: { model.parameterDefinitionDidChange() },
+                                    onInsert: { name in model.insertParameterUsage(name: name) },
+                                    onRemove: { model.removeParameter(id: parameter.id) }
+                                )
+                                .id(parameter.id)
+                            }
                         }
                     }
+                    .padding(.bottom, 2)
                 }
-                .padding(.bottom, 2)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.black.opacity(0.07))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .onChange(of: model.editableParameterDefinitions.count) { _, _ in
+                    guard let targetID = pendingParameterScrollTarget else { return }
+                    guard model.editableParameterDefinitions.contains(where: { $0.id == targetID }) else {
+                        pendingParameterScrollTarget = nil
+                        return
+                    }
+                    withAnimation(.easeOut(duration: 0.14)) {
+                        proxy.scrollTo(targetID, anchor: .bottom)
+                    }
+                    pendingParameterScrollTarget = nil
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.black.opacity(0.07))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
     }
 
@@ -610,10 +653,9 @@ struct EffectsStudioView: View {
                         ForEach(model.editableParameterNames, id: \.self) { name in
                             if let value = model.parameterValue(named: name),
                                let spec = model.parameterSpec(named: name) {
-                                ParameterSliderRow(
+                                EffectParameterRowView(
                                     name: name,
                                     value: value,
-                                    effectType: nil,
                                     spec: spec
                                 ) { newValue in
                                     model.updateControlParameter(name: name, value: newValue)

@@ -32,6 +32,15 @@ struct EffectDefinitionRowView: View {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(.quaternary)
         )
+        .contextMenu {
+            Button("Reset to Defaults") {
+                resetEffectToDefaults()
+            }
+
+            Button("Randomize Parameters") {
+                randomizeEffectParameters()
+            }
+        }
     }
 
     private var header: some View {
@@ -52,6 +61,24 @@ struct EffectDefinitionRowView: View {
             .buttonStyle(.plain)
 
             Spacer()
+
+            Button {
+                resetEffectToDefaults()
+            } label: {
+                Image(systemName: "arrow.uturn.backward.circle")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .help("Reset effect to defaults")
+
+            Button {
+                randomizeEffectParameters()
+            } label: {
+                Image(systemName: "dice")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .help("Randomize effect parameters")
 
             Toggle("", isOn: Binding(
                 get: { effect.isEnabled },
@@ -101,6 +128,32 @@ struct EffectDefinitionRowView: View {
                     )
                 }
             }
+        }
+    }
+
+    private func resetEffectToDefaults() {
+        let specs = EffectRegistry.parameterSpecs(for: effect.type)
+        for (key, spec) in specs {
+            guard key != "_enabled" else { continue }
+            main.activeEffectManager.updateEffectParameter(
+                for: layer,
+                effectDefIndex: effectIndex,
+                key: key,
+                value: spec.defaultValue
+            )
+        }
+    }
+
+    private func randomizeEffectParameters() {
+        let specs = EffectRegistry.parameterSpecs(for: effect.type)
+        for (key, spec) in specs {
+            guard key != "_enabled", key.lowercased() != "opacity" else { continue }
+            main.activeEffectManager.updateEffectParameter(
+                for: layer,
+                effectDefIndex: effectIndex,
+                key: key,
+                value: spec.randomValue()
+            )
         }
     }
 }

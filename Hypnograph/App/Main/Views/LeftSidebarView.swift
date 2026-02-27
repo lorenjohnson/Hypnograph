@@ -51,33 +51,14 @@ struct LeftSidebarView: View {
                     row {
                         Text("Source Framing")
                         Spacer()
-                        Picker("", selection: Binding(
-                            get: { state.settings.sourceFraming },
-                            set: { newValue in
-                                state.settingsStore.update { $0.sourceFraming = newValue }
-                            }
-                        )) {
-                            ForEach(SourceFraming.allCases, id: \.self) { framing in
-                                Text(framing.displayName).tag(framing)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .frame(width: 140, alignment: .trailing)
+                        sourceFramingButtons
                     }
 
                     row {
                         Text("Aspect Ratio")
                         Spacer()
-                        Picker("", selection: isLiveMode ? .constant(main.livePlayer.config.aspectRatio) : $player.config.aspectRatio) {
-                            ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
-                                Text(ratio.menuLabel)
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                    .tag(ratio)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .frame(width: 170, alignment: .trailing)
+                        aspectRatioButtons
+                            .frame(width: 170, alignment: .trailing)
                         .disabled(isLiveMode)
                         .opacity(isLiveMode ? 0.55 : 1.0)
                     }
@@ -175,6 +156,66 @@ struct LeftSidebarView: View {
     private func sectionDivider() -> some View {
         GlassDivider()
             .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private var sourceFramingButtons: some View {
+        HStack(spacing: 5) {
+            ForEach(SourceFraming.allCases, id: \.self) { framing in
+                let isSelected = state.settings.sourceFraming == framing
+                Button {
+                    state.settingsStore.update { $0.sourceFraming = framing }
+                } label: {
+                    Text(shortFramingLabel(for: framing))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(isSelected ? Color.white : Color.secondary)
+                        .frame(width: 34, height: 20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(isSelected ? Color.accentColor.opacity(0.86) : Color.white.opacity(0.10))
+                        )
+                }
+                .buttonStyle(.plain)
+                .help(framing.displayName)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var aspectRatioButtons: some View {
+        let selectedRatio = isLiveMode ? main.livePlayer.config.aspectRatio : player.config.aspectRatio
+
+        HStack(spacing: 4) {
+            ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
+                let isSelected = selectedRatio == ratio
+                Button {
+                    guard !isLiveMode else { return }
+                    player.config.aspectRatio = ratio
+                } label: {
+                    Text(shortAspectRatioLabel(for: ratio))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(isSelected ? Color.white : Color.secondary)
+                        .frame(width: 30, height: 20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(isSelected ? Color.accentColor.opacity(0.86) : Color.white.opacity(0.10))
+                        )
+                }
+                .buttonStyle(.plain)
+                .help(ratio.menuLabel)
+            }
+        }
+    }
+
+    private func shortFramingLabel(for framing: SourceFraming) -> String {
+        let key = framing.displayName.lowercased()
+        if key.contains("fit") { return "Fit" }
+        if key.contains("fill") { return "Fill" }
+        return framing.displayName
+    }
+
+    private func shortAspectRatioLabel(for ratio: AspectRatio) -> String {
+        ratio.isFillWindow ? "Fill" : ratio.displayString
     }
 
     @ViewBuilder

@@ -5,8 +5,17 @@ import HypnoCore
 struct AppSettingsView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Main
+    @ObservedObject private var settingsStore: MainSettingsStore
+    @ObservedObject private var appSettingsStore: AppSettingsStore
     @StateObject private var audioManager = AudioDeviceManager.shared
     @State private var selectedTab: SettingsTab = .general
+
+    init(state: HypnographState, main: Main) {
+        self.state = state
+        self.main = main
+        _settingsStore = ObservedObject(initialValue: state.settingsStore)
+        _appSettingsStore = ObservedObject(initialValue: state.appSettingsStore)
+    }
 
     private enum SettingsTab: CaseIterable {
         case general
@@ -79,7 +88,7 @@ struct AppSettingsView: View {
             )
         )
 
-        if state.settings.liveModeEnabled {
+        if settingsStore.value.liveModeEnabled {
             Divider()
 
             settingsDeviceRow(
@@ -115,9 +124,9 @@ struct AppSettingsView: View {
             title: "Rendered Video Destination",
             description: "Choose disk, Photos, or both. Will fall back to disk when Photos write access is unavailable.",
             selection: Binding(
-                get: { state.settings.renderVideoSaveDestination },
+                get: { settingsStore.value.renderVideoSaveDestination },
                 set: { newValue in
-                    state.settingsStore.update { $0.renderVideoSaveDestination = newValue }
+                    settingsStore.update { $0.renderVideoSaveDestination = newValue }
                 }
             )
         )
@@ -126,7 +135,7 @@ struct AppSettingsView: View {
         settingsFolderRow(
             title: "Render Output Folder",
             description: "Where rendered videos are saved.",
-            path: state.settings.outputFolder
+            path: settingsStore.value.outputFolder
         ) {
             chooseOutputFolder()
         }
@@ -135,7 +144,7 @@ struct AppSettingsView: View {
         settingsFolderRow(
             title: "Snapshot Folder",
             description: "Where camera snapshots are saved.",
-            path: state.settings.snapshotsFolder
+            path: settingsStore.value.snapshotsFolder
         ) {
             chooseSnapshotsFolder()
         }
@@ -155,9 +164,9 @@ struct AppSettingsView: View {
             title: "History Limit",
             description: "Max clips in history.",
             value: Binding(
-                get: { max(1, state.settings.historyLimit) },
+                get: { max(1, settingsStore.value.historyLimit) },
                 set: { newValue in
-                    state.settingsStore.update { $0.historyLimit = max(1, newValue) }
+                    settingsStore.update { $0.historyLimit = max(1, newValue) }
                 }
             ),
             range: 1...5000
@@ -170,9 +179,21 @@ struct AppSettingsView: View {
             title: "Live/Performance mode options",
             description: "Enables controls for the live panel, live mode, and external monitor output.",
             isOn: Binding(
-                get: { state.settings.liveModeEnabled },
+                get: { settingsStore.value.liveModeEnabled },
                 set: { newValue in
-                    state.settingsStore.update { $0.liveModeEnabled = newValue }
+                    settingsStore.update { $0.liveModeEnabled = newValue }
+                }
+            )
+        )
+        Divider()
+
+        settingsToggleRow(
+            title: "Enable Effects Studio",
+            description: "Shows the Effect Studio command and allows opening the Effect Studio window.",
+            isOn: Binding(
+                get: { appSettingsStore.value.effectsStudioEnabled },
+                set: { newValue in
+                    appSettingsStore.update { $0.effectsStudioEnabled = newValue }
                 }
             )
         )
@@ -182,9 +203,9 @@ struct AppSettingsView: View {
             title: "Override Keyboard Accessibility Keys (Space, Tab)",
             description: "When enabled, Space controls Play/Pause and Tab toggles Clean Screen.",
             isOn: Binding(
-                get: { state.appSettings.keyboardAccessibilityOverridesEnabled },
+                get: { appSettingsStore.value.keyboardAccessibilityOverridesEnabled },
                 set: { newValue in
-                    state.appSettingsStore.update { $0.keyboardAccessibilityOverridesEnabled = newValue }
+                    appSettingsStore.update { $0.keyboardAccessibilityOverridesEnabled = newValue }
                 }
             )
         )
@@ -391,10 +412,10 @@ struct AppSettingsView: View {
         panel.canCreateDirectories = true
         panel.prompt = "Choose"
         panel.title = "Choose Render Output Folder"
-        panel.directoryURL = state.settings.outputURL
+        panel.directoryURL = settingsStore.value.outputURL
 
         guard panel.runModal() == .OK, let folderURL = panel.url else { return }
-        state.settingsStore.update { settings in
+        settingsStore.update { settings in
             settings.outputFolder = storagePath(from: folderURL)
         }
     }
@@ -407,10 +428,10 @@ struct AppSettingsView: View {
         panel.canCreateDirectories = true
         panel.prompt = "Choose"
         panel.title = "Choose Snapshot Folder"
-        panel.directoryURL = state.settings.snapshotsURL
+        panel.directoryURL = settingsStore.value.snapshotsURL
 
         guard panel.runModal() == .OK, let folderURL = panel.url else { return }
-        state.settingsStore.update { settings in
+        settingsStore.update { settings in
             settings.snapshotsFolder = storagePath(from: folderURL)
         }
     }

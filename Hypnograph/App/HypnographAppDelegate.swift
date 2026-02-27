@@ -70,10 +70,63 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
             ?? NSApp.windows.first(where: { $0.title != "About Hypnograph" })
     }
 
+    private func clearMainWindowFullscreenObservers() {
+        for observer in mainWindowFullscreenObservers {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        mainWindowFullscreenObservers.removeAll()
+    }
+
+    private func observeMainWindowFullscreen(_ window: NSWindow) {
+        clearMainWindowFullscreenObservers()
+
+        let center = NotificationCenter.default
+        let didEnter = center.addObserver(
+            forName: NSWindow.didEnterFullScreenNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            self?.setMainWindowFullScreenState?(true)
+        }
+        let didExit = center.addObserver(
+            forName: NSWindow.didExitFullScreenNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            self?.setMainWindowFullScreenState?(false)
+        }
+
+        mainWindowFullscreenObservers = [didEnter, didExit]
+    }
+
+    func registerMainWindow(_ window: NSWindow) {
+        if mainWindow !== window {
+            mainWindow = window
+            didApplyMainWindowFullscreenRestore = false
+            observeMainWindowFullscreen(window)
+        }
+
+        applyStoredMainWindowFullscreenPreferenceIfNeeded()
+    }
+
+    func applyStoredMainWindowFullscreenPreferenceIfNeeded() {
+        guard !didApplyMainWindowFullscreenRestore else { return }
+        guard let window = resolveMainWindow() else { return }
+        guard let shouldRestoreMainWindowFullScreenState else { return }
+
+        didApplyMainWindowFullscreenRestore = true
+        guard shouldRestoreMainWindowFullScreenState() else { return }
+        guard !window.styleMask.contains(.fullScreen) else { return }
+
+        DispatchQueue.main.async {
+            window.toggleFullScreen(nil)
+        }
+    }
+
     @discardableResult
     private func focusMainWindowNow() -> Bool {
         guard let window = resolveMainWindow() else { return false }
-        mainWindow = window
+        registerMainWindow(window)
 
         if window.isMiniaturized {
             window.deminiaturize(nil)
@@ -115,6 +168,13 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
 
     /// Callback to save window state (injected by app)
     var saveWindowState: (() -> Void)?
+    /// Callback to persist whether the main app window is fullscreen.
+    var setMainWindowFullScreenState: ((Bool) -> Void)?
+    /// Callback to read whether fullscreen should be restored on launch.
+    var shouldRestoreMainWindowFullScreenState: (() -> Bool)?
+
+    private var mainWindowFullscreenObservers: [NSObjectProtocol] = []
+    private var didApplyMainWindowFullscreenRestore = false
 
     /// Callback to suspend/resume global effects (injected by app)
     var setGlobalEffectSuspended: ((Bool) -> Void)?
@@ -154,7 +214,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
         guard isKeyboardAccessibilityOverridesEnabled?() ?? true else { return false }
         guard isTypingActive?() != true else { return false }
         guard let main = resolveMainWindow() else { return false }
-        mainWindow = main
+        registerMainWindow(main)
         guard NSApp.keyWindow === main else { return false }
         if let eventWindow = event.window, eventWindow !== main {
             return false
@@ -385,10 +445,10 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
             default:
                 break
             }
-
-            // Save window state before terminating
-            saveWindowState?()
         }
+
+        // Save window state before terminating.
+        saveWindowState?()
 
         // Check for active render jobs
         guard let queue = renderQueue else {
@@ -433,5 +493,9 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         requestMainWindowFocus()
         return true
+    }
+
+    deinit {
+        clearMainWindowFullscreenObservers()
     }
 }

@@ -43,6 +43,10 @@ struct LayerRowView: View {
         main.activePlayer.effectManager.flashSoloIndex == index
     }
 
+    private var isMuted: Bool {
+        layer.isMuted
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerRow
@@ -96,6 +100,23 @@ struct LayerRowView: View {
             }
 
             Spacer(minLength: 8)
+
+            Button {
+                layer.isMuted.toggle()
+                main.activePlayer.notifySessionMutated()
+            } label: {
+                Text("M")
+                    .font(.caption.weight(.bold))
+                    .frame(width: 20, height: 20)
+                    .background(isMuted ? Color.red : Color.clear)
+                    .foregroundStyle(isMuted ? .white : .secondary)
+                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
 
             Button {
                 if isSoloActive {

@@ -1,7 +1,8 @@
 # Save Fullscreen State
 
-**Status:** Planning
+**Status:** Completed
 **Created:** 2026-01-24
+**Updated:** 2026-02-27
 
 ## Overview
 
@@ -9,11 +10,18 @@ SwiftUI windows remember size/position between launches but not fullscreen state
 
 ## Plan
 
-Extend existing `WindowState.swift` with a `mainWindowFullScreen` bool. The persistence and save-on-terminate logic is already wired up in `HypnographAppDelegate`.
+Persist fullscreen preference alongside window state and restore it on launch.
 
-- [ ] Add `mainWindowFullScreen: Bool` to `WindowState` (default: `true` for first launch)
-- [ ] Save state when window enters/exits fullscreen
-- [ ] Restore on launch via `window.toggleFullScreen(nil)` if flag is true
+- [x] Persist `mainWindowFullScreen` (default: `true` for first launch) in window-state storage
+- [x] Save state when window enters/exits fullscreen
+- [x] Restore on launch via `window.toggleFullScreen(nil)` when preference is true
+- [x] Save window state consistently on app terminate (not only when unsaved effect changes exist)
+
+## Implementation Notes
+
+- Added fullscreen enter/exit observers on the resolved main app window in `HypnographAppDelegate`.
+- Added persisted `mainWindowFullScreen` support in `HypnographState` window-state load/save flow with legacy decode fallback.
+- Wired callbacks in `HypnographApp` so fullscreen changes are captured and persisted immediately.
 
 (Could also just use UserDefaults directly — simpler if we're not already invested in WindowState.)
 

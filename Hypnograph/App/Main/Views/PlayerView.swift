@@ -489,10 +489,11 @@ struct PlayerView: NSViewRepresentable {
             let name = layer.mediaClip.file.displayName
             let start = layer.mediaClip.startTime.seconds
             let dur = layer.mediaClip.duration.seconds
+            let muted = layer.isMuted ? "1" : "0"
             let transformsStr = layer.transforms.map { t in
                 "\(t.a),\(t.b),\(t.c),\(t.d),\(t.tx),\(t.ty)"
             }.joined(separator: ";")
-            return "\(name)|\(start)|\(dur)|\(transformsStr)"
+            return "\(name)|\(start)|\(dur)|\(muted)|\(transformsStr)"
         }
         let durationPart = "dur=\(clip.targetDuration.seconds)"
         let framingPart = "framing=\(sourceFraming.rawValue)"

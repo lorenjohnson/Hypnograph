@@ -13,9 +13,18 @@ struct EffectChainView: View {
 
     @State private var isExpanded: Bool = true
     @State private var expandedEffectIndices: Set<Int> = []
+    @State private var draggingEffectIndex: Int?
 
     private var chain: EffectChain {
         main.activeEffectManager.effectChain(for: layer) ?? EffectChain()
+    }
+
+    private var availableLibraryChains: [EffectChain] {
+        main.effectsLibrarySession.chains
+            .filter { !$0.effects.isEmpty }
+            .sorted { lhs, rhs in
+                templateDisplayName(lhs).localizedCaseInsensitiveCompare(templateDisplayName(rhs)) == .orderedAscending
+            }
     }
 
     var body: some View {
@@ -35,15 +44,27 @@ struct EffectChainView: View {
                                 toggleEffectExpanded(index)
                             }
                         )
+                        .opacity(draggingEffectIndex == index ? 0.5 : 1.0)
+                        .onDrag {
+                            draggingEffectIndex = index
+                            return NSItemProvider(object: String(index) as NSString)
+                        }
+                        .onDrop(of: [.text], delegate: EffectDropDelegate(
+                            currentIndex: index,
+                            draggingIndex: $draggingEffectIndex,
+                            onReorder: { from, to in
+                                main.activeEffectManager.reorderEffectsInChain(
+                                    for: layer,
+                                    fromIndex: from,
+                                    toIndex: to
+                                )
+                            }
+                        ))
                         .animation(.easeInOut(duration: 0.15), value: expandedEffectIndices)
                     }
 
                     Menu {
-                        ForEach(EffectRegistry.availableEffectTypes, id: \.type) { entry in
-                            Button(entry.displayName) {
-                                main.activeEffectManager.addEffectToChain(for: layer, effectType: entry.type)
-                            }
-                        }
+                        addEffectMenuContent
                     } label: {
                         Label("Add Effect", systemImage: "plus")
                             .font(.callout)
@@ -87,12 +108,7 @@ struct EffectChainView: View {
                 .onTapGesture { }
             } else {
                 Menu {
-                    ForEach(EffectRegistry.availableEffectTypes, id: \.type) { entry in
-                        Button(entry.displayName) {
-                            main.activeEffectManager.addEffectToChain(for: layer, effectType: entry.type)
-                            isExpanded = true
-                        }
-                    }
+                    addEffectMenuContent
                 } label: {
                     Text("Add...")
                 }
@@ -119,17 +135,21 @@ struct EffectChainView: View {
 
             Button {
                 let current = chain
-                _ = main.effectsLibrarySession.addTemplate(from: current, name: current.name)
-                AppNotifications.show("Saved to library", flash: true)
+                let baseName = templateDisplayName(current)
+                let uniqueName = uniqueTemplateName(from: baseName)
+                _ = main.effectsLibrarySession.addTemplate(from: current, name: uniqueName)
+                AppNotifications.show("Saved as \(uniqueName)", flash: true)
             } label: {
                 Label("Save as New Template...", systemImage: "square.and.arrow.down")
             }
 
             Button {
-                AppNotifications.show("Use Effect Chains tab to load templates", flash: true, duration: 1.25)
+                randomizeChainParameters()
+                AppNotifications.show("Randomized chain parameters", flash: true, duration: 1.1)
             } label: {
-                Label("Load from Library...", systemImage: "folder")
+                Label("Randomize Parameters", systemImage: "dice")
             }
+            .disabled(!hasChain)
 
             Divider()
 
@@ -147,6 +167,74 @@ struct EffectChainView: View {
             expandedEffectIndices.remove(index)
         } else {
             expandedEffectIndices.insert(index)
+        }
+    }
+
+    @ViewBuilder
+    private var addEffectMenuContent: some View {
+        if !availableLibraryChains.isEmpty {
+            Section("Effect Chains") {
+                ForEach(availableLibraryChains, id: \.id) { libraryChain in
+                    Button(templateDisplayName(libraryChain)) {
+                        main.activeEffectManager.applyTemplate(libraryChain, to: layer)
+                        isExpanded = true
+                    }
+                }
+            }
+        }
+
+        Section("FX") {
+            ForEach(EffectRegistry.availableEffectTypes, id: \.type) { entry in
+                Button(entry.displayName) {
+                    main.activeEffectManager.addEffectToChain(for: layer, effectType: entry.type)
+                    isExpanded = true
+                }
+            }
+        }
+    }
+
+    private func templateDisplayName(_ chain: EffectChain) -> String {
+        let trimmed = chain.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !trimmed.isEmpty {
+            return trimmed
+        }
+        return chain.effects.isEmpty ? "Untitled" : "Custom"
+    }
+
+    private func uniqueTemplateName(from baseName: String) -> String {
+        let trimmedBase = baseName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallbackBase = trimmedBase.isEmpty ? "Untitled" : trimmedBase
+        let existing = Set(
+            main.effectsLibrarySession.chains.compactMap { chain in
+                let name = chain.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                return name.isEmpty ? nil : name
+            }
+        )
+
+        guard existing.contains(fallbackBase) else { return fallbackBase }
+
+        var suffix = 1
+        while existing.contains("\(fallbackBase) (\(suffix))") {
+            suffix += 1
+        }
+        return "\(fallbackBase) (\(suffix))"
+    }
+
+    private func randomizeChainParameters() {
+        let effects = chain.effects
+        guard !effects.isEmpty else { return }
+
+        for (effectIndex, effectDef) in effects.enumerated() {
+            let specs = EffectRegistry.parameterSpecs(for: effectDef.type)
+            for (key, spec) in specs {
+                guard key != "_enabled", key.lowercased() != "opacity" else { continue }
+                main.activeEffectManager.updateEffectParameter(
+                    for: layer,
+                    effectDefIndex: effectIndex,
+                    key: key,
+                    value: spec.randomValue()
+                )
+            }
         }
     }
 }

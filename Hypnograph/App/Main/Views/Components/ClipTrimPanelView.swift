@@ -57,7 +57,7 @@ private struct ClipTrimRangeStrip: View {
 
     private let trackHeight: CGFloat = 38
     private let handleWidth: CGFloat = 10
-    private let handleHitWidth: CGFloat = 28
+    private let handleHitWidth: CGFloat = 20
     private let minimumDurationSeconds: Double = 0.1
 
     init(
@@ -231,15 +231,25 @@ private struct ClipTrimRangeStrip: View {
 
                     let startX = xPosition(forSeconds: activeRange.lowerBound, trackWidth: trackWidth)
                     let endX = xPosition(forSeconds: activeRange.upperBound, trackWidth: trackWidth)
+                    let selectedWidth = max(0, endX - startX)
                     let leftDistance = abs(value.startLocation.x - startX)
                     let rightDistance = abs(value.startLocation.x - endX)
+                    let insideSelectedRange = value.startLocation.x >= startX && value.startLocation.x <= endX
+                    let edgeGrabTolerance = min(
+                        handleHitWidth * 0.5,
+                        max(3, selectedWidth * 0.25)
+                    )
 
-                    if leftDistance <= handleHitWidth * 0.5 {
+                    if insideSelectedRange {
+                        if leftDistance <= edgeGrabTolerance || rightDistance <= edgeGrabTolerance {
+                            dragMode = leftDistance <= rightDistance ? .leadingHandle : .trailingHandle
+                        } else {
+                            dragMode = .window
+                        }
+                    } else if leftDistance <= handleHitWidth * 0.5 {
                         dragMode = .leadingHandle
                     } else if rightDistance <= handleHitWidth * 0.5 {
                         dragMode = .trailingHandle
-                    } else if value.startLocation.x >= startX, value.startLocation.x <= endX {
-                        dragMode = .window
                     } else {
                         dragMode = leftDistance < rightDistance ? .leadingHandle : .trailingHandle
                     }
