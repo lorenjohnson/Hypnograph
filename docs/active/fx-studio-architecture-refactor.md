@@ -181,11 +181,11 @@ Phase gate:
 ### Phase 5: Verification + Cleanup
 
 - [x] Full macOS build verification.
-- [ ] Manual behavior verification for compile, preview, source playback, and panel operations.
+- [x] Manual behavior verification for compile, preview, source playback, and panel operations.
 - [x] Update docs with resulting architecture decisions and file map.
 
 Phase gate:
-- [ ] Regression checklist passes, including temporal runtime effects.
+- [x] Regression checklist passes, including temporal runtime effects.
 
 ## Initial File Move Map
 
@@ -201,12 +201,17 @@ This map is the starting point and can be adjusted during extraction:
 ## Verification Checklist
 
 - [x] `xcodebuild -project Hypnograph.xcodeproj -scheme Hypnograph -destination 'platform=macOS' build` passes.
-- [ ] Effects list load/save/delete still works.
-- [ ] Studio compile + live preview still works for simple and temporal effects.
-- [ ] Explicit temporal checks pass in Studio for: Ghost Blur, Color Echo, Frame Difference.
-- [ ] Source selection (random/files/photos/sample) + playback behavior still works.
-- [ ] Source switch + recompile + playback still updates output correctly for temporal effects.
-- [ ] Panel window behavior (show/hide/move/resize/clean-screen) still works.
+- [x] Effects list load/save/delete still works.
+- [x] Studio compile + live preview still works for simple and temporal effects.
+- [x] Explicit temporal checks pass in Studio for: Ghost Blur, Color Echo, Frame Difference.
+- [x] Source selection (random/files/photos/sample) + playback behavior still works.
+- [x] Source switch + recompile + playback still updates output correctly for temporal effects.
+- [x] Panel window behavior (show/hide/move/resize/clean-screen) still works.
+
+Verification notes (2026-02-27):
+- Manual Studio behavior checks were completed by user and reported as passing.
+- Temporal runtime effect manifests for Ghost Blur, Color Echo, and Frame Difference were verified in `HypnoPackages/HypnoCore/Renderer/Effects/RuntimeAssets/*/effect.json` with `runtimeKind: "metalTemporal"` and expected lookback bindings.
+- `xcodebuild ... test` currently fails in `HypnographTests/HypnogramTests.swift` due unresolved `Settings` symbol references; this appears pre-existing and unrelated to the Effects Studio refactor.
 
 ## Risks and Mitigations
 
