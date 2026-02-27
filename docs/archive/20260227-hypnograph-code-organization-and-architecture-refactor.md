@@ -191,4 +191,5 @@ Proceed with Phase 3: targeted audit/split of oversized files (starting with `Ef
 - Phase 0 completed (scope and naming/settings policy alignment).
 - Phase 1 completed (App/Main/EffectsStudio/Common structural reorganization and Dream->Main transition).
 - Phase 2 completed (settings split to AppSettings/MainSettings/EffectsStudioSettings).
-- Phase 3 initiated via follow-on project: `active/hypnograph-code-audit-and-convergence.md`.
+- Phase 3 completed via follow-on project: `archive/20260227-hypnograph-code-audit-and-convergence.md`.
+- Next follow-on project: `active/fx-studio-architecture-refactor.md`.
