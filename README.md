@@ -29,9 +29,26 @@ The app currently centers on:
 
 ## Quick Start (Dev)
 
+Prerequisite layout (important):
+- This project uses a local Swift Package reference to `../HypnoPackages`.
+- The easiest setup is to clone both repos as siblings:
+  - `/path/to/dev/Hypnograph`
+  - `/path/to/dev/HypnoPackages`
+
+Bootstrap:
+1. `cd /path/to/dev`
+2. `git clone https://github.com/lorenjohnson/Hypnograph.git`
+3. `git clone https://github.com/lorenjohnson/HypnoPackages.git`
+
+Run:
 1. Open [Hypnograph.xcodeproj](Hypnograph.xcodeproj) in Xcode 15+.
 2. Select the `Hypnograph` scheme.
 3. Build and run on macOS.
+
+If your `HypnoPackages` path differs:
+1. In Xcode, remove the existing local package reference to `../HypnoPackages`.
+2. Re-add it via `File > Add Package Dependencies... > Add Local...` and pick your `HypnoPackages` folder.
+3. Ensure `HypnoCore` / `HypnoUI` are linked on the `Hypnograph` target.
 
 Website draft/dev preview:
 1. `cd website`
