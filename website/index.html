@@ -15,76 +15,122 @@
 </head>
 <body>
   <div class="noise"></div>
-  <header class="site-header">
-    <a href="#top" class="brand" aria-label="Hypnograph home">
-      <img src="assets/hypnograph-icon.png" alt="Hypnograph icon">
-      <span>Hypnograph</span>
-    </a>
-    <nav>
-      <a href="#about">About</a>
-      <a href="features.html">Features</a>
-      <a href="use-cases.html">Use Cases</a>
-      <a href="#roadmap">Roadmap</a>
-      <a href="#beta">Beta</a>
-    </nav>
-  </header>
-
-  <main id="top">
-    <section class="showcase-hero hero-main section-reveal">
-      <div class="hero-copy">
-        <p class="eyebrow">THE Anarchiving Dream Machine</p>
-        <h1>Your archive, alive.</h1>
-        <p class="lede">
-          Looking back should feel more like a dream than a management activity. Playback your photos and videos as an evolving and unexpected sequence.
-          Hypnograph is a dream machine for your archive: experimental enough to surprise you, productive enough to return to every day.
-          Built to behave like reliable software while intentionally generating unpredictable visual outcomes.
-        </p>
-        <div class="cta-row">
-          <a class="button button-ghost" href="features.html">Explore Features</a>
-          <a class="button button-ghost" href="use-cases.html">See Use Cases</a>
-          <a class="button button-primary" href="#beta">Get Beta Access</a>
-        </div>
+  <section class="cinema-intro" id="top" aria-label="Hypnograph introduction">
+    <div class="cinema-media-shell" aria-hidden="true">
+      <div class="cinema-video-stack" id="cinema-video-stack" hidden>
+        <video
+          id="cinema-video-a"
+          class="cinema-video is-active"
+          autoplay
+          muted
+          playsinline
+          preload="metadata"
+          poster="assets/hypnograph-hero-poster.jpg"
+        ></video>
+        <video
+          id="cinema-video-b"
+          class="cinema-video"
+          muted
+          playsinline
+          preload="metadata"
+          poster="assets/hypnograph-hero-poster.jpg"
+        ></video>
       </div>
-
-      <div class="hero-media-wrap">
-        <div class="hero-media-frame">
-          <iframe
-            class="hero-media"
-            title="Hypnograph playback sequence"
-            src="https://iframe.videodelivery.net/6948b43abd96d022bccc2228064ceecd?autoplay=true&muted=true&loop=true&controls=false&preload=true"
-            loading="eager"
-            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
-            allowfullscreen
-          >
-          </iframe>
-        </div>
+      <div class="cinema-iframe-fallback" id="cinema-iframe-fallback">
+        <iframe
+          class="cinema-iframe"
+          title="Hypnograph playback sequence"
+          src="https://iframe.videodelivery.net/6948b43abd96d022bccc2228064ceecd?autoplay=true&muted=true&loop=true&controls=false&preload=true"
+          loading="eager"
+          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+        >
+        </iframe>
       </div>
-    </section>
-    <!-- Slider concept paused for now. -->
+      <img
+        class="cinema-poster-fallback"
+        src="assets/hypnograph-hero-poster.jpg"
+        alt=""
+      >
+      <div class="cinema-vignette"></div>
+    </div>
 
-    <section id="about" class="about section-reveal">
+    <header class="cinema-hud">
+      <a href="#top" class="brand" aria-label="Hypnograph home">
+        <img src="assets/hypnograph-icon.png" alt="Hypnograph icon">
+        <span>Hypnograph</span>
+      </a>
+      <nav>
+        <a href="#about">Manifesto</a>
+        <a href="features.html">Features</a>
+        <a href="use-cases.html">Use Cases</a>
+        <a href="#beta">Beta</a>
+      </nav>
+    </header>
+
+    <div class="cinema-caption-wrap">
+      <p class="eyebrow">The Anarchiving Dream Machine</p>
+      <h1 id="cinema-headline">Your archive, alive.</h1>
+      <p class="cinema-caption" id="cinema-caption">
+        Looking back should feel like turning on a strange late-night channel that is entirely yours.
+      </p>
+      <p class="cinema-subtle" id="cinema-count">Scene 1 / 8</p>
+    </div>
+
+    <div class="cinema-controls">
+      <button type="button" class="button button-ghost" id="cinema-toggle-play">Pause</button>
+      <button type="button" class="button button-ghost" id="cinema-toggle-mute">Unmute</button>
+      <button type="button" class="button button-ghost" id="cinema-toggle-voice">Voiceover Soon</button>
+      <a class="button button-primary" href="#about">Enter Hypnograph</a>
+    </div>
+
+    <button class="cinema-enter" id="cinema-enter" aria-label="Scroll to manifesto">Scroll</button>
+  </section>
+
+  <main>
+    <section id="about" class="manifesto section-reveal">
       <div class="section-head">
-        <p class="eyebrow">What it is</p>
-        <h2>An instrument for memory, not media management.</h2>
+        <p class="eyebrow">Manifesto</p>
+        <h2>Memory is fragile. Digital memory is absolute until it vanishes.</h2>
       </div>
       <div class="about-grid">
         <article class="glass-card">
-          <h3>Less curation, more immersion</h3>
+          <h3>The digital paradox</h3>
           <p>
-            It opens space to experience your captured life without turning reflection into an executive task.
+            You keep thousands of files that never age, then lose entire years during one device migration. The archive is either all there or gone.
           </p>
         </article>
         <article class="glass-card">
-          <h3>Your library, remixed</h3>
+          <h3>The living album</h3>
           <p>
-            Generate evolving sequences from the media you already have and rediscover moments through fresh context.
+            A family photo from 1942 fades, curls, and carries time with it. Hypnograph brings that feeling of presence back to your digital media.
           </p>
         </article>
         <article class="glass-card">
-          <h3>Built in public</h3>
+          <h3>Surprise over search</h3>
           <p>
-            The UX direction is collaborative and shaped by real use from artists, experimenters, and memory-keepers.
+            You do not need another catalog to manage. You need a stream where forgotten moments can collide, return, and become meaningful again.
           </p>
+        </article>
+      </div>
+    </section>
+
+    <section class="about section-reveal">
+      <div class="section-head">
+        <p class="eyebrow">How it feels</p>
+        <h2>Not a highlight reel. Not nostalgia theater. A raw channel into your own past.</h2>
+      </div>
+      <div class="roadmap-grid">
+        <article>
+          <h3>Let it run</h3>
+          <p>Open Hypnograph like turning on a TV and slip into your own footage without planning a narrative first.</p>
+        </article>
+        <article>
+          <h3>Intervene in seconds</h3>
+          <p>A scene flashes by. Rewind. Favorite it. Delete it. Keep moving. Shape the stream while staying inside the feeling.</p>
+        </article>
+        <article>
+          <h3>Export the spark</h3>
+          <p>When an unexpected sequence works, capture it instantly and share it as a clip that is yours, not AI-imagined.</p>
         </article>
       </div>
     </section>
@@ -92,9 +138,9 @@
     <section id="beta" class="beta section-reveal">
       <div class="section-head">
         <p class="eyebrow">Beta</p>
-        <h2>Give it a try</h2>
+        <h2>Help shape the first true memory montage instrument.</h2>
         <p>
-          Hypnograph is in active beta, and we're seeking active users who are excited to help shape its future.
+          Hypnograph is in active beta, and we're looking for early users who want to push it, break it, and define what this medium can become.
         </p>
       </div>
 
@@ -123,25 +169,24 @@
 
     <section id="roadmap" class="roadmap section-reveal">
       <div class="section-head">
-        <p class="eyebrow">Where it's heading</p>
-        <h2>From single clips to movies</h2>
+        <p class="eyebrow">Roadmap</p>
+        <h2>From hypnotic stream to deliberate film output.</h2>
       </div>
       <div class="roadmap-grid">
         <article>
           <h3>Near-term</h3>
-          <p>Introduce a clear, dependable timeline manager for composing, selecting, and exporting multiple clips into a single movie, while continuing effect-chain UX polish and onboarding clarity.</p>
+          <p>Ship dependable timeline controls so multiple clip discoveries can be assembled and exported into one coherent movie.</p>
         </article>
         <article>
           <h3>Mid-term</h3>
-          <p>Introduce a timeline export option for import into nonlinear editors, and add deeper randomization controls for effect parameters including fully random effect chains.</p>
+          <p>Add deeper randomization and remix controls, including richer effect-chain mutation and better sequence pacing tools.</p>
         </article>
         <article>
           <h3>Long-term</h3>
-          <p>Deepen community-informed tooling for visual experimentation and memory work with groups or in workshop formats, and add text/audio composition sources with recursive random directory selection plus curated soundtrack or text sets.</p>
+          <p>Expand into text and audio-responsive montage modes so archives can be recomposed as living audiovisual essays.</p>
         </article>
       </div>
     </section>
-
   </main>
 
   <footer class="site-footer">
