@@ -3,196 +3,79 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hypnograph | Revisit Your Memories in Motion</title>
-  <meta name="description" content="Hypnograph turns your own photos and videos into immersive visual sequences, so revisiting your archive feels reflective instead of administrative.">
+  <title>Hypnograph | Starting Experience</title>
+  <meta name="description" content="Loading Hypnograph...">
   <meta name="theme-color" content="#111318">
   <meta property="og:title" content="Hypnograph">
   <meta property="og:description" content="A memory-forward visual instrument that generates reflective outputs from your own photos and videos.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="assets/hypnograph-hero-poster.jpg">
   <link rel="icon" href="assets/hypnograph-icon.png" type="image/png">
+  <link rel="preconnect" href="https://iframe.videodelivery.net" crossorigin>
   <link rel="stylesheet" href="styles.css">
+  <noscript><meta http-equiv="refresh" content="0;url=home.html"></noscript>
 </head>
-<body>
-  <div class="noise"></div>
-  <section class="cinema-intro" id="top" aria-label="Hypnograph introduction">
-    <div class="cinema-media-shell" aria-hidden="true">
-      <div class="cinema-video-stack" id="cinema-video-stack" hidden>
-        <video
-          id="cinema-video-a"
-          class="cinema-video is-active"
-          autoplay
-          muted
-          playsinline
-          preload="metadata"
-          poster="assets/hypnograph-hero-poster.jpg"
-        ></video>
-        <video
-          id="cinema-video-b"
-          class="cinema-video"
-          muted
-          playsinline
-          preload="metadata"
-          poster="assets/hypnograph-hero-poster.jpg"
-        ></video>
+<body class="countdown-page">
+  <main class="countdown-shell" aria-label="Hypnograph countdown intro">
+    <div class="film-countdown" id="cinema-countdown" role="status" aria-live="polite">
+      <div class="film-countdown-target">
+        <span class="film-countdown-ring ring-outer" aria-hidden="true"></span>
+        <span class="film-countdown-ring ring-inner" aria-hidden="true"></span>
+        <span class="film-countdown-cross cross-horizontal" aria-hidden="true"></span>
+        <span class="film-countdown-cross cross-vertical" aria-hidden="true"></span>
+        <p class="film-countdown-value" id="cinema-countdown-value">3</p>
       </div>
-      <div class="cinema-iframe-fallback" id="cinema-iframe-fallback">
-        <iframe
-          class="cinema-iframe"
-          title="Hypnograph playback sequence"
-          src="https://iframe.videodelivery.net/6948b43abd96d022bccc2228064ceecd?autoplay=true&muted=true&loop=true&controls=false&preload=true"
-          loading="eager"
-          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
-        >
-        </iframe>
-      </div>
-      <img
-        class="cinema-poster-fallback"
-        src="assets/hypnograph-hero-poster.jpg"
-        alt=""
-      >
-      <div class="cinema-vignette"></div>
     </div>
-
-    <header class="cinema-hud">
-      <a href="#top" class="brand" aria-label="Hypnograph home">
-        <img src="assets/hypnograph-icon.png" alt="Hypnograph icon">
-        <span>Hypnograph</span>
-      </a>
-      <nav>
-        <a href="#about">Manifesto</a>
-        <a href="features.html">Features</a>
-        <a href="use-cases.html">Use Cases</a>
-        <a href="#beta">Beta</a>
-      </nav>
-    </header>
-
-    <div class="cinema-caption-wrap">
-      <p class="eyebrow">The Anarchiving Dream Machine</p>
-      <h1 id="cinema-headline">Your archive, alive.</h1>
-      <p class="cinema-caption" id="cinema-caption">
-        Looking back should feel like turning on a strange late-night channel that is entirely yours.
-      </p>
-      <p class="cinema-subtle" id="cinema-count">Scene 1 / 8</p>
-    </div>
-
-    <div class="cinema-controls">
-      <button type="button" class="button button-ghost" id="cinema-toggle-play">Pause</button>
-      <button type="button" class="button button-ghost" id="cinema-toggle-mute">Unmute</button>
-      <button type="button" class="button button-ghost" id="cinema-toggle-voice">Voiceover Soon</button>
-      <a class="button button-primary" href="#about">Enter Hypnograph</a>
-    </div>
-
-    <button class="cinema-enter" id="cinema-enter" aria-label="Scroll to manifesto">Scroll</button>
-  </section>
-
-  <main>
-    <section id="about" class="manifesto section-reveal">
-      <div class="section-head">
-        <p class="eyebrow">Manifesto</p>
-        <h2>Memory is fragile. Digital memory is absolute until it vanishes.</h2>
-      </div>
-      <div class="about-grid">
-        <article class="glass-card">
-          <h3>The digital paradox</h3>
-          <p>
-            You keep thousands of files that never age, then lose entire years during one device migration. The archive is either all there or gone.
-          </p>
-        </article>
-        <article class="glass-card">
-          <h3>The living album</h3>
-          <p>
-            A family photo from 1942 fades, curls, and carries time with it. Hypnograph brings that feeling of presence back to your digital media.
-          </p>
-        </article>
-        <article class="glass-card">
-          <h3>Surprise over search</h3>
-          <p>
-            You do not need another catalog to manage. You need a stream where forgotten moments can collide, return, and become meaningful again.
-          </p>
-        </article>
-      </div>
-    </section>
-
-    <section class="about section-reveal">
-      <div class="section-head">
-        <p class="eyebrow">How it feels</p>
-        <h2>Not a highlight reel. Not nostalgia theater. A raw channel into your own past.</h2>
-      </div>
-      <div class="roadmap-grid">
-        <article>
-          <h3>Let it run</h3>
-          <p>Open Hypnograph like turning on a TV and slip into your own footage without planning a narrative first.</p>
-        </article>
-        <article>
-          <h3>Intervene in seconds</h3>
-          <p>A scene flashes by. Rewind. Favorite it. Delete it. Keep moving. Shape the stream while staying inside the feeling.</p>
-        </article>
-        <article>
-          <h3>Export the spark</h3>
-          <p>When an unexpected sequence works, capture it instantly and share it as a clip that is yours, not AI-imagined.</p>
-        </article>
-      </div>
-    </section>
-
-    <section id="beta" class="beta section-reveal">
-      <div class="section-head">
-        <p class="eyebrow">Beta</p>
-        <h2>Help shape the first true memory montage instrument.</h2>
-        <p>
-          Hypnograph is in active beta, and we're looking for early users who want to push it, break it, and define what this medium can become.
-        </p>
-      </div>
-
-      <div class="beta-capture">
-        <form
-          id="beta-invite-form"
-          class="beta-inline-form"
-          action="https://formsubmit.co/lorenjohnson@gmail.com"
-          method="POST"
-        >
-          <input type="text" name="_honey" class="sr-only" tabindex="-1" autocomplete="off" aria-hidden="true">
-          <input type="hidden" name="_subject" value="Hypnograph Beta Invite Request">
-          <input type="hidden" name="_template" value="table">
-          <input type="hidden" name="_next" value="https://hypnogra.ph/thank-you.html">
-          <input
-            type="hidden"
-            name="_autoresponse"
-            value="Thanks so much for joining the Hypnograph beta invite list. I am really glad you want to participate. As part of this beta, I may reach out to schedule a short call to hear about your experience, and I am also happy to support you directly while you use the app. Hypnograph is built by one developer as an art-driven project, and your perspective is genuinely valuable: how you use it, where you get blocked, what feels exciting, and what feels strange. Bug reports and feature notes are always welcome, but the biggest gift is hearing your lived experience with the project."
-          >
-          <input type="email" name="email" autocomplete="email" placeholder="you@example.com" aria-label="Email" required>
-          <button type="submit" class="button button-primary">Request Invite</button>
-        </form>
-        <p class="tiny-note" id="beta-invite-note" aria-live="polite">You will receive a confirmation email after submission.</p>
-      </div>
-    </section>
-
-    <section id="roadmap" class="roadmap section-reveal">
-      <div class="section-head">
-        <p class="eyebrow">Roadmap</p>
-        <h2>From hypnotic stream to deliberate film output.</h2>
-      </div>
-      <div class="roadmap-grid">
-        <article>
-          <h3>Near-term</h3>
-          <p>Ship dependable timeline controls so multiple clip discoveries can be assembled and exported into one coherent movie.</p>
-        </article>
-        <article>
-          <h3>Mid-term</h3>
-          <p>Add deeper randomization and remix controls, including richer effect-chain mutation and better sequence pacing tools.</p>
-        </article>
-        <article>
-          <h3>Long-term</h3>
-          <p>Expand into text and audio-responsive montage modes so archives can be recomposed as living audiovisual essays.</p>
-        </article>
-      </div>
-    </section>
   </main>
 
-  <footer class="site-footer">
-    <p>Hypnograph • Slowing down by looking back.</p>
-  </footer>
+  <iframe
+    class="countdown-preload"
+    title="Preload Hypnograph intro video"
+    src="https://iframe.videodelivery.net/6948b43abd96d022bccc2228064ceecd?autoplay=true&muted=true&loop=true&controls=false&preload=true"
+    loading="eager"
+    allow="autoplay; encrypted-media; picture-in-picture"
+    tabindex="-1"
+    aria-hidden="true"
+  ></iframe>
 
-  <script src="app.js"></script>
+  <script>
+    (function () {
+      const overlay = document.getElementById("cinema-countdown");
+      const valueNode = document.getElementById("cinema-countdown-value");
+      const frames = ["3", "2", "1"];
+      const stepMs = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 500 : 900;
+      const requestedHash = window.location.hash || "";
+      const redirectPath = `home.html${requestedHash}`;
+
+      const warmPoster = new Image();
+      warmPoster.src = "assets/hypnograph-hero-poster.jpg";
+      fetch(redirectPath, { cache: "force-cache" }).catch(() => {});
+
+      if (!overlay || !valueNode) {
+        window.location.replace(redirectPath);
+        return;
+      }
+
+      let index = 0;
+      const tick = function () {
+        if (index >= frames.length) {
+          overlay.classList.add("is-finished");
+          window.setTimeout(function () {
+            window.location.replace(redirectPath);
+          }, 420);
+          return;
+        }
+
+        valueNode.textContent = frames[index];
+        overlay.classList.remove("is-ticking");
+        void overlay.offsetWidth;
+        overlay.classList.add("is-ticking");
+        index += 1;
+        window.setTimeout(tick, stepMs);
+      };
+
+      tick();
+    })();
+  </script>
 </body>
 </html>

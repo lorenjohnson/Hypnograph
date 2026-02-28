@@ -51,11 +51,19 @@
         <p class="eyebrow">Feature Catalog</p>
         <h2>A broader look at what Hypnograph can do right now.</h2>
         <p class="lede">
-          This list covers current capabilities in the beta build. Some interactions are still evolving, but the core workflow is already usable for exploratory visual practice.
+          This list covers current capabilities in the beta build, including the new Metal Shader Effects Studio for runtime effect authoring.
         </p>
       </div>
 
       <div class="feature-list">
+        <article class="feature-item">
+          <h3>Metal Shader Effects Studio</h3>
+          <p>Author runtime Metal effects in a dedicated studio with live code editing, compile feedback, source preview playback, parameter definition tools, and save/load/delete for your own reusable effect assets.</p>
+        </article>
+        <article class="feature-item">
+          <h3>Runtime Bindings + Temporal Lookback Controls</h3>
+          <p>Inspect manifest bindings, auto-bound host parameters (time, frame index, texture dimensions), and history-frame lookback behavior so effects can be tuned for both single-frame and temporal processing.</p>
+        </article>
         <article class="feature-item">
           <h3>Apple Photos Integrated</h3>
           <p>When Apple Photos access is granted, Hypnograph works directly with your library and saves Hypnograms snapshots, favorites, and exclusions back into Apple Photos under a dedicated Hypnographs folder.</p>
@@ -90,7 +98,7 @@
         </article>
         <article class="feature-item">
           <h3>Metal-Native Effect Chains</h3>
-          <p>Effects are Apple Metal-native shaders with extensive parameter control, designed to be chained for entirely custom looks.</p>
+          <p>Effects are Apple Metal-native shaders with extensive parameter control, designed to be chained for entirely custom looks and extended through Effects Studio-authored runtime effects.</p>
         </article>
         <article class="feature-item">
           <h3>Global + Per-Layer Control</h3>
@@ -140,6 +148,6 @@
     </section>
   </main>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20260228e"></script>
 </body>
 </html>

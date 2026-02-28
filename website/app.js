@@ -1,3 +1,14 @@
+if (typeof window !== "undefined" && window.location?.pathname) {
+  const path = window.location.pathname;
+  if (/home\.html$/i.test(path)) {
+    const rootPath = path.replace(/home\.html$/i, "") || "/";
+    const target = `${rootPath}${window.location.search || ""}${window.location.hash || ""}`;
+    if (target !== `${path}${window.location.search || ""}${window.location.hash || ""}`) {
+      window.history.replaceState({}, "", target);
+    }
+  }
+}
+
 const sections = document.querySelectorAll(".section-reveal");
 const observer = new IntersectionObserver(
   (entries) => {
@@ -21,7 +32,8 @@ if (inviteForm) {
   const nextField = inviteForm.querySelector('input[name="_next"]');
   let isSubmitting = false;
 
-  inviteForm.addEventListener("submit", () => {
+  inviteForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
     if (isSubmitting) return;
     isSubmitting = true;
 
@@ -39,7 +51,39 @@ if (inviteForm) {
 
     if (inviteNote) {
       inviteNote.textContent =
-        "Submitting... if the confirmation page does not load, email lorenjohnson@gmail.com.";
+        "Submitting...";
+    }
+
+    const action = inviteForm.getAttribute("action") || "https://formsubmit.co/lorenjohnson@gmail.com";
+    const ajaxAction =
+      action.includes("formsubmit.co/") && !action.includes("/ajax/")
+        ? action.replace("formsubmit.co/", "formsubmit.co/ajax/")
+        : action;
+    const formData = new FormData(inviteForm);
+
+    try {
+      const response = await fetch(ajaxAction, {
+        method: "POST",
+        body: formData,
+        headers: {
+          Accept: "application/json"
+        }
+      });
+
+      if (!response.ok) throw new Error(`Submission failed (${response.status})`);
+
+      const nextUrl = nextField?.value || "thank-you.html";
+      window.location.assign(nextUrl);
+    } catch {
+      isSubmitting = false;
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = "Request Invite";
+      }
+      if (inviteNote) {
+        inviteNote.textContent =
+          "Could not submit right now. Please try again, or email lorenjohnson@gmail.com.";
+      }
     }
   });
 }
@@ -47,33 +91,48 @@ if (inviteForm) {
 const cinemaIntro = document.querySelector(".cinema-intro");
 
 if (cinemaIntro) {
+  const mediaShell = document.querySelector(".cinema-media-shell");
   const captionWrap = document.querySelector(".cinema-caption-wrap");
   const headlineNode = document.getElementById("cinema-headline");
   const captionNode = document.getElementById("cinema-caption");
-  const countNode = document.getElementById("cinema-count");
+  const finalSceneCta = document.getElementById("cinema-final-cta");
+  const prevSceneButton = document.getElementById("cinema-scene-prev");
 
   const playToggle = document.getElementById("cinema-toggle-play");
+  const nextSceneButton = document.getElementById("cinema-scene-next");
   const muteToggle = document.getElementById("cinema-toggle-mute");
-  const voiceToggle = document.getElementById("cinema-toggle-voice");
-  const enterButton = document.getElementById("cinema-enter");
 
   const videoStack = document.getElementById("cinema-video-stack");
   const iframeFallback = document.getElementById("cinema-iframe-fallback");
+  const hostedIframe = document.getElementById("cinema-hosted-iframe");
   const primaryVideo = document.getElementById("cinema-video-a");
-  const secondaryVideo = document.getElementById("cinema-video-b");
+  const countdownOverlay = document.getElementById("cinema-countdown");
+  const countdownValue = document.getElementById("cinema-countdown-value");
 
   const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const defaultCinemaAspectRatio = 1920 / 1242;
+  const hostedStreamManifestSource =
+    "https://videodelivery.net/6948b43abd96d022bccc2228064ceecd/manifest/video.m3u8";
+  const countdownFrames = ["3", "2", "1"];
 
-  // Drop lightweight MP4 clips in assets/montages and list them here.
-  const montageSources = [
+  // Fallback rotating clips (used when per-scene clips are not configured).
+  const montagePlaylistSources = [
     // "assets/montages/hypnograph-intro-01.mp4",
     // "assets/montages/hypnograph-intro-02.mp4",
     // "assets/montages/hypnograph-intro-03.mp4",
     // "assets/montages/hypnograph-intro-04.mp4"
   ];
 
-  const voiceoverSources = [
-    // "assets/voiceover/hypnograph-intro-voiceover.mp3"
+  // Scene-linked clips. When this has one valid file per scene, scenes and video stay locked together.
+  const sceneClipSources = [
+    // "assets/montages/scene-01.mp4",
+    // "assets/montages/scene-02.mp4",
+    // "assets/montages/scene-03.mp4",
+    // "assets/montages/scene-04.mp4",
+    // "assets/montages/scene-05.mp4",
+    // "assets/montages/scene-06.mp4",
+    // "assets/montages/scene-07.mp4",
+    // "assets/montages/scene-08.mp4"
   ];
 
   const scriptScenes = [
@@ -121,31 +180,180 @@ if (cinemaIntro) {
 
   let sceneIndex = 0;
   let sceneTimerId = null;
-  let introIsPlaying = !reducedMotionQuery.matches;
+  let introIsPlaying = false;
   let introIsMuted = true;
-  let localMontageMode = false;
-  let localMontageSources = [];
+  let hasShowStarted = false;
+  let mediaMode = "hosted";
+  let playlistSources = [];
+  let sceneSources = [];
   let clipCursor = 0;
-  let voiceoverEnabled = false;
-  let voiceoverReady = false;
+  let activeVideoSource = "";
   const sceneDurationMs = reducedMotionQuery.matches ? 12000 : 6500;
-  const voiceoverAudio = typeof Audio === "function" ? new Audio() : null;
+  const iconMarkup = {
+    play:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"></path></svg>',
+    pause:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 5h3v14H7zm7 0h3v14h-3z"></path></svg>',
+    muted:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14 5v14l-6-4H4V9h4zm4.59 2L20 8.41 17.41 11 20 13.59 18.59 15 16 12.41 13.41 15 12 13.59 14.59 11 12 8.41 13.41 7 16 9.59z"></path></svg>',
+    volume:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14 5v14l-6-4H4V9h4z"></path><path d="M16.5 8.5a4.5 4.5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>'
+  };
 
-  if (voiceoverAudio) {
-    voiceoverAudio.preload = "metadata";
-    voiceoverAudio.loop = true;
+  function setIconButton(button, icon, label) {
+    if (!button) return;
+    const markup = iconMarkup[icon] || "";
+    button.innerHTML = `${markup}<span class="sr-only">${label}</span>`;
+    button.setAttribute("aria-label", label);
+    button.setAttribute("title", label);
+  }
+
+  function setCinemaAspectRatio(ratio) {
+    if (!mediaShell || !Number.isFinite(ratio) || ratio <= 0) return;
+    mediaShell.style.setProperty("--cinema-media-ratio", String(ratio));
+  }
+
+  function ensureHostedIframeLoaded() {
+    if (!hostedIframe) return;
+    if (hostedIframe.getAttribute("src")) return;
+    const deferredSrc = hostedIframe.dataset.src;
+    if (deferredSrc) hostedIframe.setAttribute("src", deferredSrc);
+  }
+
+  function isSceneSyncedMode() {
+    return mediaMode === "scene";
+  }
+
+  function hasLocalVideoMode() {
+    return mediaMode === "scene" || mediaMode === "playlist";
+  }
+
+  function shouldUseTimedSceneLoop() {
+    return introIsPlaying && !isSceneSyncedMode();
+  }
+
+  function updateHostedFreezeVisual() {
+    if (!mediaShell) return;
+    // Hosted iframe playback cannot be paused reliably across browsers, so keep it visible.
+    mediaShell.classList.remove("is-frozen");
+  }
+
+  function setLocalPlaybackVisibility(isLocalPlaybackVisible) {
+    if (videoStack) videoStack.hidden = !isLocalPlaybackVisible;
+    if (primaryVideo) primaryVideo.classList.toggle("is-active", isLocalPlaybackVisible);
+    if (iframeFallback) iframeFallback.hidden = isLocalPlaybackVisible ? true : !hasShowStarted;
+  }
+
+  function updateSceneNavigationState() {
+    const hasMultipleScenes = scriptScenes.length > 1;
+    if (prevSceneButton) prevSceneButton.disabled = !hasMultipleScenes || sceneIndex <= 0;
+    if (nextSceneButton) nextSceneButton.disabled = !hasMultipleScenes || sceneIndex >= scriptScenes.length - 1;
+  }
+
+  function updateFinalSceneCta() {
+    if (!finalSceneCta) return;
+    finalSceneCta.hidden = sceneIndex !== scriptScenes.length - 1;
+  }
+
+  function playVideoSource(source) {
+    if (!primaryVideo || !source) return;
+    setLocalPlaybackVisibility(true);
+
+    if (activeVideoSource !== source) {
+      activeVideoSource = source;
+      primaryVideo.src = source;
+      primaryVideo.load();
+    }
+
+    if (!introIsPlaying) {
+      primaryVideo.pause();
+      return;
+    }
+
+    primaryVideo.play().catch(() => {
+      fallbackToHostedPlayback();
+    });
+  }
+
+  function syncSceneVideo() {
+    if (!isSceneSyncedMode()) return;
+    const sceneSource = sceneSources[sceneIndex];
+    if (!sceneSource) {
+      fallbackToHostedPlayback();
+      return;
+    }
+    playVideoSource(sceneSource);
+  }
+
+  function beginIntroShow() {
+    if (hasShowStarted) return;
+    hasShowStarted = true;
+    introIsPlaying = true;
+
+    if (!hasLocalVideoMode()) {
+      ensureHostedIframeLoaded();
+      setLocalPlaybackVisibility(false);
+    }
+
+    startSceneLoop();
+
+    if (hasLocalVideoMode()) {
+      if (isSceneSyncedMode()) {
+        syncSceneVideo();
+      } else if (activeVideoSource) {
+        playVideoSource(activeVideoSource);
+      } else if (playlistSources.length > 0) {
+        playVideoSource(playlistSources[clipCursor % playlistSources.length]);
+      } else {
+        fallbackToHostedPlayback();
+      }
+    }
+
+    updatePlayButton();
+    updateHostedFreezeVisual();
+  }
+
+  function runCountdown() {
+    if (!countdownOverlay || !countdownValue) return Promise.resolve();
+
+    const stepMs = reducedMotionQuery.matches ? 650 : 900;
+    countdownOverlay.hidden = false;
+    countdownOverlay.classList.remove("is-finished");
+
+    return new Promise((resolve) => {
+      let frameIndex = 0;
+
+      const tick = () => {
+        if (frameIndex >= countdownFrames.length) {
+          countdownOverlay.classList.add("is-finished");
+          window.setTimeout(() => {
+            countdownOverlay.hidden = true;
+            resolve();
+          }, 340);
+          return;
+        }
+
+        countdownValue.textContent = countdownFrames[frameIndex];
+        countdownOverlay.classList.remove("is-ticking");
+        void countdownOverlay.offsetWidth;
+        countdownOverlay.classList.add("is-ticking");
+        frameIndex += 1;
+        window.setTimeout(tick, stepMs);
+      };
+
+      tick();
+    });
   }
 
   function renderScene(index, immediate = false) {
     const scene = scriptScenes[index];
-    if (!scene || !headlineNode || !captionNode || !countNode) return;
+    if (!scene || !headlineNode || !captionNode) return;
 
     if (!immediate && captionWrap) {
       captionWrap.classList.add("is-swapping");
       window.setTimeout(() => {
         headlineNode.textContent = scene.headline;
         captionNode.textContent = scene.caption;
-        countNode.textContent = `Scene ${index + 1} / ${scriptScenes.length}`;
         captionWrap.classList.remove("is-swapping");
       }, 150);
       return;
@@ -153,59 +361,83 @@ if (cinemaIntro) {
 
     headlineNode.textContent = scene.headline;
     captionNode.textContent = scene.caption;
-    countNode.textContent = `Scene ${index + 1} / ${scriptScenes.length}`;
   }
 
   function advanceScene() {
-    sceneIndex = (sceneIndex + 1) % scriptScenes.length;
+    if (sceneIndex >= scriptScenes.length - 1) {
+      updateSceneNavigationState();
+      updateFinalSceneCta();
+      return false;
+    }
+
+    sceneIndex += 1;
     renderScene(sceneIndex);
+    updateSceneNavigationState();
+    updateFinalSceneCta();
+    syncSceneVideo();
+    return true;
   }
 
   function stopSceneLoop() {
     if (sceneTimerId) {
-      window.clearInterval(sceneTimerId);
+      window.clearTimeout(sceneTimerId);
       sceneTimerId = null;
     }
   }
 
   function startSceneLoop() {
     stopSceneLoop();
-    if (!introIsPlaying) return;
-    sceneTimerId = window.setInterval(advanceScene, sceneDurationMs);
+    if (!shouldUseTimedSceneLoop()) return;
+    sceneTimerId = window.setTimeout(() => {
+      const didAdvance = advanceScene();
+      if (!didAdvance) {
+        stopSceneLoop();
+        return;
+      }
+      startSceneLoop();
+    }, sceneDurationMs);
+  }
+
+  function stepScene(step) {
+    const nextIndex = Math.min(Math.max(sceneIndex + step, 0), scriptScenes.length - 1);
+    if (nextIndex === sceneIndex) return;
+    sceneIndex = nextIndex;
+    renderScene(sceneIndex);
+    updateSceneNavigationState();
+    updateFinalSceneCta();
+    syncSceneVideo();
+    if (shouldUseTimedSceneLoop()) startSceneLoop();
   }
 
   function updatePlayButton() {
     if (!playToggle) return;
-    playToggle.textContent = introIsPlaying ? "Pause" : "Play";
+    if (introIsPlaying) {
+      setIconButton(playToggle, "pause", "Pause intro");
+      return;
+    }
+
+    setIconButton(playToggle, "play", "Play intro");
   }
 
   function updateMuteButton() {
     if (!muteToggle) return;
-    if (!localMontageMode) {
+    if (!hasLocalVideoMode()) {
       muteToggle.disabled = true;
-      muteToggle.textContent = "Muted";
+      setIconButton(muteToggle, "muted", "Audio unavailable");
       return;
     }
 
     muteToggle.disabled = false;
-    muteToggle.textContent = introIsMuted ? "Unmute" : "Mute";
-  }
-
-  function updateVoiceButton() {
-    if (!voiceToggle) return;
-    if (!voiceoverReady) {
-      voiceToggle.disabled = true;
-      voiceToggle.textContent = "Voiceover Soon";
+    if (introIsMuted) {
+      setIconButton(muteToggle, "muted", "Unmute intro");
       return;
     }
 
-    voiceToggle.disabled = false;
-    voiceToggle.textContent = voiceoverEnabled ? "Voice Off" : "Voice On";
+    setIconButton(muteToggle, "volume", "Mute intro");
   }
 
   function applyMuteState() {
     if (primaryVideo) primaryVideo.muted = introIsMuted;
-    if (secondaryVideo) secondaryVideo.muted = introIsMuted;
     updateMuteButton();
   }
 
@@ -219,90 +451,143 @@ if (cinemaIntro) {
     }
   }
 
-  async function findLocalMontages() {
+  async function resolveExistingSources(sources) {
     const checks = await Promise.all(
-      montageSources.map(async (path) => ((await sourceExists(path)) ? path : null))
+      sources.map(async (path) => ((await sourceExists(path)) ? path : null))
     );
-    return checks.filter(Boolean);
-  }
-
-  async function findVoiceoverTrack() {
-    const checks = await Promise.all(
-      voiceoverSources.map(async (path) => ((await sourceExists(path)) ? path : null))
-    );
-    return checks.find(Boolean) || null;
-  }
-
-  function syncVoiceoverPlayback() {
-    if (!voiceoverReady || !voiceoverAudio) return;
-
-    if (!voiceoverEnabled || !introIsPlaying) {
-      voiceoverAudio.pause();
-      return;
-    }
-
-    voiceoverAudio.play().catch(() => {
-      voiceoverEnabled = false;
-      updateVoiceButton();
-    });
-  }
-
-  async function setupVoiceover() {
-    if (!voiceoverAudio || voiceoverSources.length === 0) {
-      updateVoiceButton();
-      return;
-    }
-
-    const track = await findVoiceoverTrack();
-    if (!track) {
-      updateVoiceButton();
-      return;
-    }
-
-    voiceoverAudio.src = track;
-    voiceoverReady = true;
-    updateVoiceButton();
+    return checks;
   }
 
   function fallbackToHostedPlayback() {
-    localMontageMode = false;
-    if (videoStack) videoStack.hidden = true;
-    if (iframeFallback) iframeFallback.hidden = false;
+    mediaMode = "hosted";
+    activeVideoSource = "";
+    if (primaryVideo) {
+      primaryVideo.pause();
+      primaryVideo.loop = false;
+    }
+    setLocalPlaybackVisibility(false);
+    ensureHostedIframeLoaded();
+    setCinemaAspectRatio(defaultCinemaAspectRatio);
     updateMuteButton();
+    updateHostedFreezeVisual();
   }
 
-  function playNextClip() {
-    if (!localMontageMode || !primaryVideo || localMontageSources.length === 0) return;
+  function playNextPlaylistClip() {
+    if (mediaMode !== "playlist" || playlistSources.length === 0) return;
 
-    primaryVideo.src = localMontageSources[clipCursor];
-    primaryVideo.load();
-    clipCursor = (clipCursor + 1) % localMontageSources.length;
-
-    if (!introIsPlaying) return;
-    primaryVideo.play().catch(() => {
-      fallbackToHostedPlayback();
-    });
+    const source = playlistSources[clipCursor % playlistSources.length];
+    clipCursor = (clipCursor + 1) % playlistSources.length;
+    playVideoSource(source);
   }
 
-  async function setupLocalMontage() {
+  function setupHostedStreamVideoFallback() {
+    if (!primaryVideo) return false;
+    mediaMode = "playlist";
+    playlistSources = [hostedStreamManifestSource];
+    clipCursor = 0;
+    primaryVideo.loop = true;
+    primaryVideo.preload = "auto";
+    setLocalPlaybackVisibility(true);
+    applyMuteState();
+    playVideoSource(hostedStreamManifestSource);
+    return true;
+  }
+
+  async function setupIntroMediaMode() {
     if (!primaryVideo || !videoStack) return;
 
-    localMontageSources = await findLocalMontages();
-    if (localMontageSources.length === 0) {
-      fallbackToHostedPlayback();
+    const hasSceneClipConfig = sceneClipSources.length === scriptScenes.length;
+    if (hasSceneClipConfig) {
+      const resolvedScenes = await resolveExistingSources(sceneClipSources);
+      const allSceneSourcesFound = resolvedScenes.every(Boolean);
+      if (allSceneSourcesFound) {
+        mediaMode = "scene";
+        sceneSources = resolvedScenes;
+        primaryVideo.loop = false;
+        setLocalPlaybackVisibility(true);
+        applyMuteState();
+        syncSceneVideo();
+        return;
+      }
+    }
+
+    const resolvedPlaylist = await resolveExistingSources(montagePlaylistSources);
+    playlistSources = resolvedPlaylist.filter(Boolean);
+    if (playlistSources.length > 0) {
+      mediaMode = "playlist";
+      clipCursor = 0;
+      primaryVideo.loop = false;
+      setLocalPlaybackVisibility(true);
+      applyMuteState();
+      playNextPlaylistClip();
       return;
     }
 
-    localMontageMode = true;
-    videoStack.hidden = false;
-    if (iframeFallback) iframeFallback.hidden = true;
-    if (secondaryVideo) secondaryVideo.hidden = true;
+    if (setupHostedStreamVideoFallback()) return;
 
+    fallbackToHostedPlayback();
+  }
+
+  function togglePlayback() {
+    if (!hasShowStarted) {
+      beginIntroShow();
+      return;
+    }
+
+    introIsPlaying = !introIsPlaying;
+    updatePlayButton();
+    updateHostedFreezeVisual();
+
+    if (introIsPlaying) {
+      startSceneLoop();
+      if (hasLocalVideoMode()) {
+        if (isSceneSyncedMode()) {
+          syncSceneVideo();
+        } else if (activeVideoSource) {
+          playVideoSource(activeVideoSource);
+        } else if (playlistSources.length > 0) {
+          playVideoSource(playlistSources[clipCursor % playlistSources.length]);
+        } else {
+          fallbackToHostedPlayback();
+        }
+      } else {
+        ensureHostedIframeLoaded();
+      }
+      return;
+    }
+
+    stopSceneLoop();
+    if (hasLocalVideoMode() && primaryVideo) primaryVideo.pause();
+  }
+
+  function toggleMute() {
+    if (!hasLocalVideoMode()) return;
+    introIsMuted = !introIsMuted;
     applyMuteState();
-    playNextClip();
+  }
+
+  function showPreviousScene() {
+    stepScene(-1);
+  }
+
+  function showNextScene() {
+    stepScene(1);
+  }
+
+  if (primaryVideo) {
+    primaryVideo.addEventListener("loadedmetadata", () => {
+      if (primaryVideo.videoWidth && primaryVideo.videoHeight) {
+        setCinemaAspectRatio(primaryVideo.videoWidth / primaryVideo.videoHeight);
+      }
+    });
 
     primaryVideo.addEventListener("ended", () => {
-      playNextClip();
+      if (!introIsPlaying) return;
+      if (isSceneSyncedMode()) {
+        advanceScene();
+        return;
+      }
+      playNextPlaylistClip();
     });
 
     primaryVideo.addEventListener("error", () => {
@@ -310,60 +595,14 @@ if (cinemaIntro) {
     });
   }
 
-  function togglePlayback() {
-    introIsPlaying = !introIsPlaying;
-    updatePlayButton();
-
-    if (introIsPlaying) {
-      startSceneLoop();
-      if (localMontageMode && primaryVideo) {
-        primaryVideo.play().catch(() => {
-          fallbackToHostedPlayback();
-        });
-      }
-      syncVoiceoverPlayback();
-      return;
-    }
-
-    stopSceneLoop();
-    if (localMontageMode && primaryVideo) primaryVideo.pause();
-    syncVoiceoverPlayback();
-  }
-
-  function toggleMute() {
-    if (!localMontageMode) return;
-    introIsMuted = !introIsMuted;
-    applyMuteState();
-  }
-
-  function toggleVoiceover() {
-    if (!voiceoverReady) return;
-    voiceoverEnabled = !voiceoverEnabled;
-    updateVoiceButton();
-    syncVoiceoverPlayback();
-  }
-
-  function scrollToManifesto() {
-    const manifesto = document.getElementById("about");
-    if (!manifesto) return;
-    manifesto.scrollIntoView({
-      behavior: reducedMotionQuery.matches ? "auto" : "smooth",
-      block: "start"
-    });
-  }
-
   if (playToggle) playToggle.addEventListener("click", togglePlayback);
+  if (prevSceneButton) prevSceneButton.addEventListener("click", showPreviousScene);
+  if (nextSceneButton) nextSceneButton.addEventListener("click", showNextScene);
   if (muteToggle) muteToggle.addEventListener("click", toggleMute);
-  if (voiceToggle) voiceToggle.addEventListener("click", toggleVoiceover);
-  if (enterButton) enterButton.addEventListener("click", scrollToManifesto);
 
-  const handleReducedMotionChange = (event) => {
-    if (!event.matches) return;
-    introIsPlaying = false;
-    updatePlayButton();
-    stopSceneLoop();
-    if (localMontageMode && primaryVideo) primaryVideo.pause();
-    syncVoiceoverPlayback();
+  const handleReducedMotionChange = () => {
+    if (!hasShowStarted || !introIsPlaying) return;
+    startSceneLoop();
   };
 
   if (typeof reducedMotionQuery.addEventListener === "function") {
@@ -373,10 +612,15 @@ if (cinemaIntro) {
   }
 
   renderScene(sceneIndex, true);
+  updateSceneNavigationState();
+  updateFinalSceneCta();
+  setCinemaAspectRatio(defaultCinemaAspectRatio);
   updatePlayButton();
   updateMuteButton();
-  updateVoiceButton();
-  startSceneLoop();
-  setupLocalMontage();
-  setupVoiceover();
+  updateHostedFreezeVisual();
+  ensureHostedIframeLoaded();
+  setupIntroMediaMode();
+  runCountdown().then(() => {
+    beginIntroShow();
+  });
 }
