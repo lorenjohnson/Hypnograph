@@ -6,6 +6,7 @@ last_reviewed: 2026-02-27
 ## v0.1 Release
 - [x] [fx-studio-architecture-refactor](archive/20260227-fx-studio-architecture-refactor.md)
 - [ ] [main-architecture-refactor](active/main-architecture-refactor.md)
+- [ ] [sidebar-windowization](active/sidebar-windowization.md)
 - [ ] [timeline-transition-effect-isolation-refactor](active/timeline-transition-effect-isolation-refactor.md)
 - [ ] [grab-bag-bugs-and-ui-ux-conundrums](active/grab-bag-bugs-and-ui-ux-conundrums.md)
 - [ ] Setting global effect preset is a little weird unexpected... Single press clearing of current Effect Chain selection, selecting of another one... Right now feels like adding effects is like adding a chain but actually mutatin ga chain...
@@ -22,6 +23,9 @@ last_reviewed: 2026-02-27
 - [ ] [volume-leveling](backlog/volume-leveling.md)
 
 ## Backlog
+- [composition-timeline-pivot-spike](backlog/composition-timeline-pivot-spike.md)
+- [effects-chain-composition-spike](backlog/effects-chain-composition-spike.md)
+- [sources-window](backlog/sources-window.md)
 - clip start / stop potins and duration not just duration (like the range selector for randomize clip speed in behaviour including being able to set an individual frame 
 - [add-history-to-hypnograms-favorite-recent-window](active/add-history-to-hypnograms-favorite-recent-window.md)
 - [ ] I'd like to be able to enable/disable effect chain options from the right side bar Effects Cahin tab. Just a round checkbox not a slider.
