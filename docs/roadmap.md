@@ -4,7 +4,6 @@ last_reviewed: 2026-02-27
 # Roadmap
 
 ## v0.1 Release
-- [x] [fx-studio-architecture-refactor](archive/20260227-fx-studio-architecture-refactor.md)
 - [ ] [main-architecture-refactor](active/main-architecture-refactor.md)
 - [ ] [sidebar-windowization](active/sidebar-windowization.md)
 - [ ] [timeline-transition-effect-isolation-refactor](active/timeline-transition-effect-isolation-refactor.md)
@@ -25,6 +24,7 @@ last_reviewed: 2026-02-27
 ## Backlog
 - [composition-timeline-pivot-spike](backlog/composition-timeline-pivot-spike.md)
 - [effects-chain-composition-spike](backlog/effects-chain-composition-spike.md)
+- [effects-engine-pass-graph-pivot-spike](backlog/effects-engine-pass-graph-pivot-spike.md)
 - [sources-window](backlog/sources-window.md)
 - clip start / stop potins and duration not just duration (like the range selector for randomize clip speed in behaviour including being able to set an individual frame 
 - [add-history-to-hypnograms-favorite-recent-window](active/add-history-to-hypnograms-favorite-recent-window.md)
