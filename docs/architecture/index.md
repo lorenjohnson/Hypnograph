@@ -69,7 +69,7 @@ These docs are currently a mix of shared (`HypnoCore`) and app-specific (Hypnogr
 - Rendering: `rendering.md`
 - Effects: `effects.md`
 - Effects Studio: `effects-studio.md`
-- Media Library: `media-library.md`
+- Media Library: `media-library-integration.md`
 - Dream Players: `dream-players.md`
 - Settings: `settings.md`
 - Recipes: `recipes.md`

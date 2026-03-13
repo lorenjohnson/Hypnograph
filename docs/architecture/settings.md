@@ -1,79 +1,79 @@
 ---
-last_reviewed: 2026-01-03T21:17:01Z
+last_reviewed: 2026-03-12T00:00:00Z
 ---
 
 # Settings Architecture
 
 ## Scope
-This document describes settings storage, defaults, and related persistent state.
+This document describes current settings storage, defaults, and related persistent state for Hypnograph.
 
 ## Sources
-- `Hypnograph/Settings.swift`
-- `Hypnograph/Environment.swift`
-- `Hypnograph/HypnographState.swift`
-- `Hypnograph/PlayerConfiguration.swift`
+- `Hypnograph/App/Common/Support/Environment.swift`
+- `Hypnograph/App/HypnographState.swift`
+- `Hypnograph/App/Main/Persistence/MainSettings.swift`
+- `Hypnograph/App/Main/Persistence/MainSettingsStore.swift`
+- `Hypnograph/App/AppSettings.swift`
+- `Hypnograph/App/AppSettingsStore.swift`
+- `Hypnograph/App/EffectsStudio/Persistence/EffectsStudioSettings.swift`
+- `Hypnograph/App/EffectsStudio/Persistence/EffectsStudioSettingsStore.swift`
+- `HypnoCore/Cache/PersistentStore.swift`
 - `HypnoCore/HypnoCoreConfig.swift`
-- `HypnoCore/Cache/PersistentIdentifierStore.swift` (ExclusionStore, SourceFavoritesStore)
 
-## Settings File
+## Settings Files
 
-### Location
-- `Environment.defaultSettingsURL` ->
-  `~/Library/Application Support/Hypnograph/hypnograph-settings.json`.
-- `Environment.ensureDefaultSettingsFileExists()` copies the bundled
-  `default-settings.json` if no file exists.
+### Main Settings
+- Path: `~/Library/Application Support/Hypnograph/main-settings.json`
+- Store: `MainSettingsStore`
+- Contains primary playback/composition settings, including:
+  - source libraries (`sources`, `activeLibraries`, `sourceMediaTypes`)
+  - output/snapshot folders
+  - resolution, framing, transition, history, and playback defaults
 
-### Settings Schema (Settings.swift)
-- Output and snapshots:
-  - `outputFolder`
-  - `snapshotsFolder`
-- Source libraries and filters:
-  - `sources` (polymorphic array or dictionary)
-  - `activeLibraries`
-  - `sourceMediaTypes` (images/videos)
-- Rendering defaults:
-  - `outputResolution`
-  - `sourceFraming`
-  - `playerConfig` (legacy: `montagePlayerConfig` / `sequencePlayerConfig`)
-- UI state:
-  - `effectsListCollapsed`
-- Watch mode:
-  - `watch`
-- Audio routing:
-  - `previewAudioDeviceUID`, `previewVolume`
-  - `liveAudioDeviceUID`, `liveVolume`
-- Legacy keys are supported for backward compatibility.
+### App Settings
+- Path: `~/Library/Application Support/Hypnograph/hypnograph-settings.json`
+- Store: `AppSettingsStore`
+- Contains app-global UI policy flags, currently:
+  - `keyboardAccessibilityOverridesEnabled`
+  - `effectsStudioEnabled`
 
-### Derived Values
-- `outputURL`, `snapshotsURL`, `sourceLibraries`, `sourceLibraryOrder`.
+### Effects Studio Settings
+- Path: `~/Library/Application Support/Hypnograph/effects-studio-settings.json`
+- Store: `EffectsStudioSettingsStore`
+- Contains Effects Studio panel/UI state.
 
-## Settings Lifecycle
-- `HypnographState` loads settings on init and calls `saveSettingsToDisk()` when
-  settings change.
-- Settings writes are JSON-encoded with stable ordering for diff readability.
-- Settings are loaded on init and saved via `saveSettingsToDisk()` when modified.
+## Initialization and Lifecycle
+- On app startup, `HypnographApp` calls `Environment.ensureDefaultSettingsFilesExist()`.
+- Each store is a `PersistentStore<T>`:
+  - loads from disk on init
+  - exposes reactive `value`
+  - persists updates with debounced saves
+- App runtime reads/writes through stores:
+  - `HypnographState.settingsStore` for main runtime settings
+  - `HypnographState.appSettingsStore` for app-global settings
+
+## Source Configuration Note
+- Source paths/globs are read from `MainSettings.sources` in `main-settings.json`.
+- `hypnograph-settings.json` does not contain source libraries.
+- Source pattern semantics (literal path vs glob recursion behavior) are documented in `docs/architecture/media-library-integration.md`.
 
 ## Related Persistent State
 
 ### Window State
-- Stored separately at `~/Library/Application Support/Hypnograph/window-state.json`.
-- Encoded via `WindowState` and saved by `HypnographState.saveWindowStateToDisk()`.
+- `~/Library/Application Support/Hypnograph/window-state.json`
+- Managed by `HypnographState` (`WindowState`).
 
 ### Custom Photos Selection
-- Stored in `custom-photos-selection.json` under Application Support.
+- `~/Library/Application Support/Hypnograph/custom-photos-selection.json`
 - Managed by `HypnographState.setCustomPhotosAssets()`.
 
-### Exclusions and Favorites
-- `exclusions.json` via `ExclusionStore`.
-- `source-favorites.json` via `SourceFavoritesStore`.
-
-### Effects Libraries
-- Stored in `~/Library/Application Support/Hypnograph/effect-libraries/` and
-  managed by `EffectsSession` (see effects architecture document).
+### Exclusions and Effects Data
+- `exclusions.json` via `ExclusionStore`
+- effects libraries under `effect-libraries/`
+- runtime effects under `runtime-effects/`
 
 ## Environment Paths
 - `Environment.appSupportDirectory` is the base path for app state.
-- Additional directories:
+- Additional directories include:
   - `Environment.lutsDirectory`
   - `Environment.toolsDirectory`
   - `Environment.userServicesDirectory`
