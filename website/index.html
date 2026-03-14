@@ -66,6 +66,20 @@
       padding-left: 12px;
       color: #c6ccd8;
     }
+    .document .contains-task-list {
+      list-style: none;
+      padding-left: 0;
+    }
+    .document .task-list-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .document .task-list-item input[type="checkbox"] {
+      margin-top: 0.2rem;
+      width: 1rem;
+      height: 1rem;
+    }
   </style>
 </head>
 <body>
@@ -74,6 +88,7 @@
     <article class="document" id="document"></article>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it-task-lists@2.1.1/dist/markdown-it-task-lists.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
   <script>
     const statusEl = document.getElementById("status");
@@ -101,6 +116,14 @@
         return "<pre><code>" + markdownUtils.escapeHtml(code) + "</code></pre>";
       }
     });
+    markdown.use(window.markdownitTaskLists, {
+      enabled: false
+    });
+
+    function stripFrontMatter(text) {
+      const frontMatterPattern = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
+      return text.replace(frontMatterPattern, "");
+    }
 
     function resolveDocPath(pathname) {
       const normalizedPath = pathname.replace(/\/+$/, "");
@@ -124,7 +147,7 @@
         }
         const text = await response.text();
         if (text !== lastText) {
-          documentEl.innerHTML = markdown.render(text);
+          documentEl.innerHTML = markdown.render(stripFrontMatter(text));
           lastText = text;
         }
         statusEl.textContent = "Live view of " + resolvedDocPath;
