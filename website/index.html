@@ -42,10 +42,25 @@
     const statusEl = document.getElementById("status");
     const documentEl = document.getElementById("document");
     let lastText = "";
+    const resolvedDocPath = resolveDocPath(window.location.pathname);
 
-    async function loadCollaboratorsDoc() {
+    function resolveDocPath(pathname) {
+      const normalizedPath = pathname.replace(/\/+$/, "");
+
+      if (normalizedPath === "" || normalizedPath === "/") {
+        return "/docs/collaborators.md";
+      }
+
+      if (normalizedPath.startsWith("/docs/")) {
+        return normalizedPath.endsWith(".md") ? normalizedPath : normalizedPath + ".md";
+      }
+
+      return "/docs" + (normalizedPath.endsWith(".md") ? normalizedPath : normalizedPath + ".md");
+    }
+
+    async function loadDoc() {
       try {
-        const response = await fetch("/docs/collaborators.md?ts=" + Date.now(), { cache: "no-store" });
+        const response = await fetch(resolvedDocPath + "?ts=" + Date.now(), { cache: "no-store" });
         if (!response.ok) {
           throw new Error("HTTP " + response.status);
         }
@@ -54,14 +69,14 @@
           documentEl.textContent = text;
           lastText = text;
         }
-        statusEl.textContent = "Live view of /docs/collaborators.md";
+        statusEl.textContent = "Live view of " + resolvedDocPath;
       } catch (error) {
-        statusEl.textContent = "Unable to load /docs/collaborators.md (" + error.message + ")";
+        statusEl.textContent = "Unable to load " + resolvedDocPath + " (" + error.message + ")";
       }
     }
 
-    loadCollaboratorsDoc();
-    setInterval(loadCollaboratorsDoc, 1500);
+    loadDoc();
+    setInterval(loadDoc, 1500);
   </script>
 </body>
 </html>
