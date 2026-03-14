@@ -4,6 +4,7 @@ last_reviewed: 2026-02-27
 # Roadmap
 
 ## Current
+- [ ] [website-docs-sync-to-files](active/website-docs-sync-to-files.md)
 - [ ] [main-architecture-refactor](active/main-architecture-refactor.md)
 - [ ] [sidebar-windowization](active/sidebar-windowization.md)
 - [ ] [grab-bag-bugs-and-ui-ux-conundrums](active/grab-bag-bugs-and-ui-ux-conundrums.md)

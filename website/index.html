@@ -4,80 +4,64 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>What Is Hypnograph</title>
-  <meta name="description" content="Hypnograph is a macOS visual instrument for real-time composition with your own photo and video archive.">
+  <meta name="description" content="Live view of /docs/collaborators.md">
   <meta name="theme-color" content="#0f1115">
-  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+    body {
+      margin: 0;
+      font: 16px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #0f1115;
+      color: #e6e8eb;
+    }
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+    .status {
+      margin: 0 0 12px;
+      color: #a5acb8;
+      font-size: 0.9rem;
+    }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
 </head>
 <body>
   <main class="page">
-    <header class="lead">
-      <h1>What Is Hypnograph</h1>
-      <p>
-        Hypnograph is a macOS visual instrument for working with your own photo and video archive in real time.
-        It can begin in a generative mode, where surprising combinations emerge quickly, and it can also be steered
-        into deliberate composition through clip selection, timing, layering, blend modes, and effect chains.
-      </p>
-      <p>
-        The point is not to generate new synthetic media. The point is to re-encounter material that already belongs
-        to your life and shape it into something that feels newly alive.
-      </p>
-      <p>
-        In practice, Hypnograph sits between reflective viewing and creative editing: useful when you want to move
-        fast from raw footage to expressive output, and useful when you want to dwell in discovery and notice what
-        kinds of sequences, textures, and rhythms feel meaningful.
-      </p>
-    </header>
-
-    <section>
-      <h2>Collaborators</h2>
-      <p>
-        Hypnograph is at a turning point where I need to sharpen what the app actually is by grounding it in real use,
-        not only in internal iteration. The immediate need is to involve a small set of collaborators who can work with
-        what already exists, use it seriously, and reflect back what feels meaningful, confusing, exciting, or missing
-        in expected behavior.
-      </p>
-      <p>
-        In this stage, collaborator means user-testing collaborator, not code contributor. The focus is less on
-        bug-hunting as a standalone activity and more on careful rounds of use and feedback: what people try to do with
-        the app, what they expect it to do, what it already does well, and where the product scope should narrow or
-        deepen.
-      </p>
-      <p>
-        The use cases below are the working foundation for that process. They help identify who to invite, what kinds
-        of sessions to run, and what product direction to prioritize while keeping authorship coherent and open to new
-        ideas from people whose use feels relatable and concrete.
-      </p>
-    </section>
-
-    <section>
-      <h2>Use Case 1: Create Shorts for Social Media</h2>
-
-      <h3>Scenario</h3>
-      <p>
-        Start from a recently shot clip in Apple Photos (captured on iPhone, synced to Photos on Mac via iCloud),
-        bring it into Hypnograph, process it with effects/montage, and export a short experimental clip for Instagram
-        Story/Reel style posting.
-      </p>
-
-      <h3>What Already Works Well</h3>
-      <ul>
-        <li>Clip length can be determined globally.</li>
-        <li>A specific section of source clip can be selected and used.</li>
-        <li>Multiple effects can be stacked for rich output.</li>
-        <li>Multiple clips can be composited/montaged together.</li>
-        <li>Existing effects/effects engine already provides a strong range for experimental visual output.</li>
-      </ul>
-
-      <h3>Gaps</h3>
-      <ul>
-        <li>Per-layer rotation controls are missing. Rotate in 90-degree increments per layer would be useful.</li>
-        <li>Rendering multiple clips in sequence, including transitions between clips, is still missing as an integrated UI workflow.</li>
-        <li>No clear playback playhead indicator in layer scrubbing/timeline views.</li>
-        <li>No quick, intuitive frame-by-frame stepping workflow.</li>
-        <li>Missing a quick way (menu and/or keyboard based) for setting in/out points of clips or global range.</li>
-        <li>Global clip-length behavior is asymmetrical: reducing global length appears to reduce layer selection lengths, while increasing it leaves layer selections unchanged and can cause looping.</li>
-      </ul>
-    </section>
+    <p class="status" id="status">Loading /docs/collaborators.md...</p>
+    <pre id="document"></pre>
   </main>
+  <script>
+    const statusEl = document.getElementById("status");
+    const documentEl = document.getElementById("document");
+    let lastText = "";
+
+    async function loadCollaboratorsDoc() {
+      try {
+        const response = await fetch("/docs/collaborators.md?ts=" + Date.now(), { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+        const text = await response.text();
+        if (text !== lastText) {
+          documentEl.textContent = text;
+          lastText = text;
+        }
+        statusEl.textContent = "Live view of /docs/collaborators.md";
+      } catch (error) {
+        statusEl.textContent = "Unable to load /docs/collaborators.md (" + error.message + ")";
+      }
+    }
+
+    loadCollaboratorsDoc();
+    setInterval(loadCollaboratorsDoc, 1500);
+  </script>
 </body>
 </html>

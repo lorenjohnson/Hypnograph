@@ -1,8 +1,27 @@
 services:
+  docs-sync:
+    image: alpine:3.21
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        find /docs -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+        cp -a /source-docs/. /docs/
+    volumes:
+      - ../docs:/source-docs:ro
+      - ../files/docs:/docs
+    restart: "no"
+
   hypnograph-site:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: website/Dockerfile
+    depends_on:
+      docs-sync:
+        condition: service_completed_successfully
     ports:
       - "80"
+    volumes:
+      - ../files/docs:/hypnograph-docs:ro
     restart: unless-stopped

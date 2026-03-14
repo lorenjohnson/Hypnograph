@@ -3,8 +3,6 @@ created: 2026-03-14
 updated: 2026-03-14
 ---
 
-# Collaborators
-
 ## What Is Hypnograph
 
 Hypnograph is a macOS visual instrument for working with your own photo and video archive in real time. It can begin in a generative mode, where surprising combinations emerge quickly, and it can also be steered into deliberate composition through clip selection, timing, layering, blend modes, and effect chains. The point is not to generate new synthetic media. The point is to re-encounter material that already belongs to your life or project and shape it into something that feels newly alive.
