@@ -3,10 +3,9 @@ last_reviewed: 2026-02-27
 ---
 # Roadmap
 
-## v0.1 Release
+## Current
 - [ ] [main-architecture-refactor](active/main-architecture-refactor.md)
 - [ ] [sidebar-windowization](active/sidebar-windowization.md)
-- [ ] [timeline-transition-effect-isolation-refactor](active/timeline-transition-effect-isolation-refactor.md)
 - [ ] [grab-bag-bugs-and-ui-ux-conundrums](active/grab-bag-bugs-and-ui-ux-conundrums.md)
 - [ ] Setting global effect preset is a little weird unexpected... Single press clearing of current Effect Chain selection, selecting of another one... Right now feels like adding effects is like adding a chain but actually mutatin ga chain...
 - [ ] the "h" hypnograms window. what to do with it...
@@ -34,6 +33,7 @@ last_reviewed: 2026-02-27
 - [layer-editor](active/layer-editor.md)
 - [library-manager](backlog/library-manager.md)
 - [location-overlay-effect](backlog/location-overlay-effect.md)
+- [preview-frame-buffer-bleed-between-clips](backlog/preview-frame-buffer-bleed-between-clips.md)
 - [ ] Tweaks to the IFrame Compress effect, because I like it:
   -  Make the period between iframe freezes more jittery by default and maybe add a setitng after trying it out
   -  Same with the other params, more jitter by default but with anticipation of adding a param
