@@ -18,9 +18,12 @@
       color: #e6e8eb;
     }
     .page {
-      max-width: 960px;
+      max-width: 1200px;
       margin: 0 auto;
       padding: 24px 16px;
+    }
+    .layout {
+      display: block;
     }
     .status {
       margin: 0 0 12px;
@@ -100,131 +103,82 @@
       width: 1rem;
       height: 1rem;
     }
+    .docs-sidebar {
+      display: none;
+    }
+    body.homepage-route .page {
+      padding-right: 360px;
+    }
+    body.homepage-route .docs-sidebar {
+      display: block;
+      position: fixed;
+      top: 0;
+      right: max(16px, calc((100vw - 1200px) / 2 + 16px));
+      width: 320px;
+      height: 100vh;
+      overflow: auto;
+      border-left: 1px solid #232a39;
+      padding: 16px 0 24px 16px;
+      box-sizing: border-box;
+      background: #0f1115;
+      z-index: 10;
+    }
+    .docs-tree ul {
+      list-style: none;
+      margin: 0;
+      padding-left: 14px;
+    }
+    .docs-tree li {
+      margin: 0.15rem 0;
+    }
+    .docs-tree details > summary {
+      cursor: pointer;
+      color: #c3cad7;
+      user-select: none;
+    }
+    .docs-tree details > summary:hover {
+      color: #e7edf9;
+    }
+    .docs-tree a {
+      color: #aeb7c8;
+      text-decoration: none;
+    }
+    .docs-tree a:hover {
+      text-decoration: underline;
+      color: #e7edf9;
+    }
+    .docs-tree a.active {
+      color: #ffffff;
+      font-weight: 600;
+    }
+    .docs-tree-empty {
+      color: #8f98aa;
+      font-size: 0.9rem;
+      margin: 0;
+    }
+    @media (max-width: 960px) {
+      body.homepage-route .page {
+        padding-right: 16px;
+      }
+      body.homepage-route .docs-sidebar {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
   <main class="page">
     <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb"></nav>
-    <article class="document" id="document"></article>
+    <div class="layout">
+      <article class="document" id="document"></article>
+      <aside class="docs-sidebar" id="docs-sidebar" aria-label="Docs Sidebar">
+        <nav class="docs-tree" id="docs-tree" aria-label="Docs Tree"></nav>
+      </aside>
+    </div>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/markdown-it-task-lists@2.1.1/dist/markdown-it-task-lists.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-  <script>
-    const breadcrumbEl = document.getElementById("breadcrumb");
-    const documentEl = document.getElementById("document");
-    let lastText = "";
-    const resolvedDocPath = resolveDocPath(window.location.pathname);
-    const markdownUtils = window.markdownit().utils;
-    const markdown = window.markdownit({
-      html: true,
-      xhtmlOut: true,
-      breaks: true,
-      linkify: true,
-      typographer: true,
-      highlight(code, language) {
-        if (window.hljs && language && window.hljs.getLanguage(language)) {
-          try {
-            return "<pre class=\"hljs\"><code>" + window.hljs.highlight(code, { language, ignoreIllegals: true }).value + "</code></pre>";
-          } catch (_) {}
-        }
-        if (window.hljs) {
-          try {
-            return "<pre class=\"hljs\"><code>" + window.hljs.highlightAuto(code).value + "</code></pre>";
-          } catch (_) {}
-        }
-        return "<pre><code>" + markdownUtils.escapeHtml(code) + "</code></pre>";
-      }
-    });
-    markdown.use(window.markdownitTaskLists, {
-      enabled: false
-    });
-
-    function stripFrontMatter(text) {
-      const frontMatterPattern = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
-      return text.replace(frontMatterPattern, "");
-    }
-
-    function resolveDocPath(pathname) {
-      const normalizedPath = pathname.replace(/\/+$/, "");
-
-      if (normalizedPath === "" || normalizedPath === "/") {
-        return "/docs/collaborators.md";
-      }
-
-      if (normalizedPath.startsWith("/docs/")) {
-        return normalizedPath.endsWith(".md") ? normalizedPath : normalizedPath + ".md";
-      }
-
-      return "/docs" + (normalizedPath.endsWith(".md") ? normalizedPath : normalizedPath + ".md");
-    }
-
-    function titleCaseSegment(segment) {
-      return segment
-        .replace(/\.md$/i, "")
-        .replace(/[-_]+/g, " ")
-        .replace(/\b\w/g, (char) => char.toUpperCase());
-    }
-
-    function renderBreadcrumb(pathname) {
-      const normalizedPath = pathname.replace(/\/+$/, "");
-      const routePath = normalizedPath === "" ? "/" : normalizedPath;
-      const rawSegments = routePath === "/" ? [] : routePath.slice(1).split("/");
-      const segments = rawSegments.map((segment) => titleCaseSegment(decodeURIComponent(segment)));
-
-      breadcrumbEl.innerHTML = "";
-      if (rawSegments.length === 0) {
-        breadcrumbEl.style.display = "none";
-        return;
-      }
-      breadcrumbEl.style.display = "flex";
-
-      const homeLink = document.createElement("a");
-      homeLink.href = "/";
-      homeLink.textContent = "Home";
-      breadcrumbEl.appendChild(homeLink);
-
-      let cumulativePath = "";
-      for (let i = 0; i < rawSegments.length; i += 1) {
-        const separator = document.createElement("span");
-        separator.className = "breadcrumb-sep";
-        separator.textContent = "/";
-        breadcrumbEl.appendChild(separator);
-
-        cumulativePath += "/" + rawSegments[i];
-        const segmentLabel = segments[i];
-        if (i === rawSegments.length - 1) {
-          const current = document.createElement("span");
-          current.textContent = segmentLabel;
-          breadcrumbEl.appendChild(current);
-        } else {
-          const link = document.createElement("a");
-          link.href = cumulativePath;
-          link.textContent = segmentLabel;
-          breadcrumbEl.appendChild(link);
-        }
-      }
-    }
-
-    async function loadDoc() {
-      try {
-        const response = await fetch(resolvedDocPath + "?ts=" + Date.now(), { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error("HTTP " + response.status);
-        }
-        const text = await response.text();
-        if (text !== lastText) {
-          documentEl.innerHTML = markdown.render(stripFrontMatter(text));
-          lastText = text;
-        }
-      } catch (error) {
-        breadcrumbEl.innerHTML = "Unable to load " + resolvedDocPath + " (" + error.message + ")";
-      }
-    }
-
-    renderBreadcrumb(window.location.pathname);
-    loadDoc();
-    setInterval(loadDoc, 1500);
-  </script>
+  <script src="/app.js"></script>
 </body>
 </html>
