@@ -6,6 +6,7 @@
   <title>What Is Hypnograph</title>
   <meta name="description" content="Live view of /docs/collaborators.md">
   <meta name="theme-color" content="#0f1115">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css">
   <style>
     :root {
       color-scheme: light dark;
@@ -31,18 +32,75 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
+    .document h1,
+    .document h2,
+    .document h3,
+    .document h4,
+    .document h5,
+    .document h6 {
+      margin: 1.1em 0 0.5em;
+      line-height: 1.25;
+    }
+    .document p,
+    .document ul,
+    .document ol,
+    .document blockquote {
+      margin: 0.8em 0;
+    }
+    .document code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.95em;
+    }
+    .document pre code {
+      display: block;
+      overflow-x: auto;
+      padding: 0.9rem;
+      border-radius: 8px;
+      background: #0b1220;
+    }
+    .document a {
+      color: #86b7ff;
+    }
+    .document blockquote {
+      border-left: 3px solid #2b3342;
+      padding-left: 12px;
+      color: #c6ccd8;
+    }
   </style>
 </head>
 <body>
   <main class="page">
     <p class="status" id="status">Loading /docs/collaborators.md...</p>
-    <pre id="document"></pre>
+    <article class="document" id="document"></article>
   </main>
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
   <script>
     const statusEl = document.getElementById("status");
     const documentEl = document.getElementById("document");
     let lastText = "";
     const resolvedDocPath = resolveDocPath(window.location.pathname);
+    const markdownUtils = window.markdownit().utils;
+    const markdown = window.markdownit({
+      html: true,
+      xhtmlOut: true,
+      breaks: true,
+      linkify: true,
+      typographer: true,
+      highlight(code, language) {
+        if (window.hljs && language && window.hljs.getLanguage(language)) {
+          try {
+            return "<pre class=\"hljs\"><code>" + window.hljs.highlight(code, { language, ignoreIllegals: true }).value + "</code></pre>";
+          } catch (_) {}
+        }
+        if (window.hljs) {
+          try {
+            return "<pre class=\"hljs\"><code>" + window.hljs.highlightAuto(code).value + "</code></pre>";
+          } catch (_) {}
+        }
+        return "<pre><code>" + markdownUtils.escapeHtml(code) + "</code></pre>";
+      }
+    });
 
     function resolveDocPath(pathname) {
       const normalizedPath = pathname.replace(/\/+$/, "");
@@ -66,7 +124,7 @@
         }
         const text = await response.text();
         if (text !== lastText) {
-          documentEl.textContent = text;
+          documentEl.innerHTML = markdown.render(text);
           lastText = text;
         }
         statusEl.textContent = "Live view of " + resolvedDocPath;
