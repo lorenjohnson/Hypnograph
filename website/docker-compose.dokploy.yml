@@ -23,5 +23,5 @@ services:
     ports:
       - "80"
     volumes:
-      - ../files/docs:/hypnograph-docs:ro
+      - ../files/docs:/docs:ro
     restart: unless-stopped

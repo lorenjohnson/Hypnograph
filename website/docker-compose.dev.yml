@@ -22,6 +22,6 @@ services:
       - "8080:80"
     volumes:
       - ./:/usr/share/nginx/html:ro
-      - ./.local-files/docs:/hypnograph-docs:ro
+      - ./.local-files/docs:/docs:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     restart: unless-stopped
