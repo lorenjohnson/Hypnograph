@@ -27,6 +27,26 @@
       color: #a5acb8;
       font-size: 0.9rem;
     }
+    .breadcrumb {
+      margin: 0 0 12px;
+      color: #a5acb8;
+      font-size: 0.9rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      align-items: center;
+    }
+    .breadcrumb a {
+      color: #a5acb8;
+      text-decoration: none;
+    }
+    .breadcrumb a:hover {
+      color: #dbe2f0;
+      text-decoration: underline;
+    }
+    .breadcrumb-sep {
+      opacity: 0.65;
+    }
     pre {
       margin: 0;
       white-space: pre-wrap;
@@ -84,14 +104,14 @@
 </head>
 <body>
   <main class="page">
-    <p class="status" id="status">Loading /docs/collaborators.md...</p>
+    <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb"></nav>
     <article class="document" id="document"></article>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/markdown-it-task-lists@2.1.1/dist/markdown-it-task-lists.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
   <script>
-    const statusEl = document.getElementById("status");
+    const breadcrumbEl = document.getElementById("breadcrumb");
     const documentEl = document.getElementById("document");
     let lastText = "";
     const resolvedDocPath = resolveDocPath(window.location.pathname);
@@ -139,6 +159,53 @@
       return "/docs" + (normalizedPath.endsWith(".md") ? normalizedPath : normalizedPath + ".md");
     }
 
+    function titleCaseSegment(segment) {
+      return segment
+        .replace(/\.md$/i, "")
+        .replace(/[-_]+/g, " ")
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+    }
+
+    function renderBreadcrumb(pathname) {
+      const normalizedPath = pathname.replace(/\/+$/, "");
+      const routePath = normalizedPath === "" ? "/" : normalizedPath;
+      const rawSegments = routePath === "/" ? [] : routePath.slice(1).split("/");
+      const segments = rawSegments.map((segment) => titleCaseSegment(decodeURIComponent(segment)));
+
+      breadcrumbEl.innerHTML = "";
+      if (rawSegments.length === 0) {
+        breadcrumbEl.style.display = "none";
+        return;
+      }
+      breadcrumbEl.style.display = "flex";
+
+      const homeLink = document.createElement("a");
+      homeLink.href = "/";
+      homeLink.textContent = "Home";
+      breadcrumbEl.appendChild(homeLink);
+
+      let cumulativePath = "";
+      for (let i = 0; i < rawSegments.length; i += 1) {
+        const separator = document.createElement("span");
+        separator.className = "breadcrumb-sep";
+        separator.textContent = "/";
+        breadcrumbEl.appendChild(separator);
+
+        cumulativePath += "/" + rawSegments[i];
+        const segmentLabel = segments[i];
+        if (i === rawSegments.length - 1) {
+          const current = document.createElement("span");
+          current.textContent = segmentLabel;
+          breadcrumbEl.appendChild(current);
+        } else {
+          const link = document.createElement("a");
+          link.href = cumulativePath;
+          link.textContent = segmentLabel;
+          breadcrumbEl.appendChild(link);
+        }
+      }
+    }
+
     async function loadDoc() {
       try {
         const response = await fetch(resolvedDocPath + "?ts=" + Date.now(), { cache: "no-store" });
@@ -150,12 +217,12 @@
           documentEl.innerHTML = markdown.render(stripFrontMatter(text));
           lastText = text;
         }
-        statusEl.textContent = "Live view of " + resolvedDocPath;
       } catch (error) {
-        statusEl.textContent = "Unable to load " + resolvedDocPath + " (" + error.message + ")";
+        breadcrumbEl.innerHTML = "Unable to load " + resolvedDocPath + " (" + error.message + ")";
       }
     }
 
+    renderBreadcrumb(window.location.pathname);
     loadDoc();
     setInterval(loadDoc, 1500);
   </script>
