@@ -1,16 +1,17 @@
 # Hypnograph Website
 
-This directory contains the Hypnograph marketing/draft website.
+This directory contains the production website for `hypnogra.ph`.
 
-Live site: [hypnogra.ph](https://hypnogra.ph)
+Current site shape:
+- single static page (`index.html`)
+- single stylesheet (`styles.css`)
+- nginx static serving via Docker
 
 ## Tech Stack
 
-- Static HTML pages (`index.html`, `features.html`)
-- Vanilla CSS and JavaScript (`styles.css`, `app.js`)
-- Nginx for serving static assets
+- Static HTML + CSS
+- Nginx
 - Docker Compose for local dev and Dokploy deploy
-- Cloudflare Stream for hosted video playback
 
 ## Run Locally (Dev)
 
@@ -24,18 +25,13 @@ Stop local stack:
 
 ## Deploy (Dokploy)
 
-- Compose file: [docker-compose.dokploy.yml](docker-compose.dokploy.yml)
+- Compose file: `docker-compose.dokploy.yml`
 - Service: `hypnograph-site`
 - Internal port: `80`
-- Dokploy/Traefik should handle domain + TLS routing
 
-## Directory Notes
+## Key Files
 
-- Static site entry: [index.html](index.html)
-- Nginx config: [nginx.conf](nginx.conf)
-- Docker image definition: [Dockerfile](Dockerfile)
-- Assets: [assets](assets)
-
-## Website Docs Routing
-
-Website development docs live in [docs](docs). Start with [docs/README.md](docs/README.md).
+- Site entry: `index.html`
+- Styles: `styles.css`
+- Nginx config: `nginx.conf`
+- Docker image definition: `Dockerfile`
