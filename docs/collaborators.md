@@ -1,6 +1,6 @@
 ---
 created: 2026-03-14
-updated: 2026-03-14
+updated: 2026-03-17
 ---
 
 ## What Is Hypnograph
@@ -10,6 +10,12 @@ Hypnograph is a macOS visual instrument for working with your own photo and vide
 In practice, Hypnograph sits between reflective viewing and creative editing. It is useful when you want to move fast from raw footage to expressive output, but also when you want to dwell in discovery and notice what kinds of sequences, textures, and rhythms feel meaningful. A Hypnograph session is often both: improvisation and authorship at the same time.
 
 What Hypnograph should become from here depends on real use. This document is part of that process.
+
+## Download Hypnograph Beta
+
+- Download latest build: [Hypnograph Beta (macOS)](https://github.com/lorenjohnson/Hypnograph/releases/latest)
+- Install: open the DMG, drag `Hypnograph.app` to `Applications`, then first launch via right-click `Open`
+- If macOS shows a verification warning, this is expected for unsigned beta distribution
 
 Hypnograph is at a turning point where I need to sharpen what the app actually is by grounding it in real use, not only in internal iteration. The immediate need is to involve a small set of collaborators who can work with what already exists, use it seriously, and reflect back what feels meaningful, confusing, exciting, or missing in expected behavior.
 

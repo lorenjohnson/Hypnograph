@@ -55,6 +55,31 @@ Website draft/dev preview:
 2. `docker compose -f docker-compose.dev.yml up -d`
 3. Open `http://localhost:8080`
 
+## Unsigned macOS Release (No Apple Developer Program)
+
+If Apple Developer Program enrollment is blocked, you can still ship a direct download
+that users can install manually.
+
+Build release artifacts:
+1. Open this project in Xcode and verify `Hypnograph` builds in `Release`.
+2. From repo root, run: `./scripts/release-macos-unsigned.sh`
+3. Upload files in `dist/` to your download page or GitHub Release.
+
+Generated artifacts:
+- `Hypnograph-<version>-<build>-macOS-unsigned.dmg`
+- `Hypnograph-<version>-<build>-macOS-unsigned.zip`
+- `Hypnograph-<version>-<build>-macOS-unsigned.sha256`
+
+Installer guidance for users:
+1. Download and open the `.dmg`.
+2. Drag `Hypnograph.app` to `Applications`.
+3. First launch: right-click the app and choose `Open`, then confirm in the warning dialog.
+
+Notes:
+- This path does not use TestFlight or notarization.
+- Gatekeeper will show a warning because the app is unsigned/not notarized.
+- This is acceptable for friend beta distribution with clear install instructions.
+
 ## Repository Layout
 
 - App source: [Hypnograph](Hypnograph)

@@ -19,6 +19,7 @@ last_reviewed: 2026-02-27
 - [ ] Review Effect Chains library window to make i maybe more intuitive (recent is a little confusing and probably can/should go below the library/s)
 - [ ] [in-app-feedback](active/in-app-feedback.md)
 - [ ] [beta-release-testflight](active/beta-release-testflight.md)
+- [ ] [direct-download-unsigned-macos-release](active/direct-download-unsigned-macos-release.md)
 - [ ] [volume-leveling](backlog/volume-leveling.md)
 
 ## Backlog
