@@ -13,7 +13,7 @@ What Hypnograph should become from here depends on real use. This document is pa
 
 ## Download Hypnograph Beta
 
-- Download latest build: [Hypnograph Beta (macOS)](https://github.com/lorenjohnson/Hypnograph/releases/latest)
+- Download latest build: [Hypnograph Beta (macOS)](https://github.com/lorenjohnson/Hypnograph/releases)
 - Install: open the DMG, drag `Hypnograph.app` to `Applications`, then first launch via right-click `Open`
 - If macOS shows a verification warning, this is expected for unsigned beta distribution
 
