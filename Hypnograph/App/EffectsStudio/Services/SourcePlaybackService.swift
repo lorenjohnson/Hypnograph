@@ -93,14 +93,8 @@ final class SourcePlaybackService {
     }
 
     func loadPhotosSource(identifier: String) async -> Result<LoadedSource, SourcePlaybackLoadError> {
-        let auth: ApplePhotos.AuthorizationStatus
-        if ApplePhotos.shared.status.canRead {
-            auth = ApplePhotos.shared.status
-        } else {
-            auth = await ApplePhotos.shared.requestAuthorization()
-        }
-
-        guard auth.canRead else {
+        ApplePhotos.shared.refreshStatus()
+        guard ApplePhotos.shared.status.canRead else {
             return .failure(.photosAccessDenied)
         }
 

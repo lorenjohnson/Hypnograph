@@ -411,9 +411,11 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
             return nil
         }
 
-        // Request Photos library authorization and refresh hidden assets cache
+        // Refresh Photos status and warm hidden assets cache when already authorized.
+        // Do not trigger a permission prompt on launch.
         Task {
-            let status = await ApplePhotos.shared.requestAuthorization()
+            ApplePhotos.shared.refreshStatus()
+            let status = ApplePhotos.shared.status
             if status.canRead {
                 let count = ApplePhotos.shared.refreshHiddenIdentifiersCache()
                 if count > 0 {
