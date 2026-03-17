@@ -17,13 +17,34 @@ The point is not to generate synthetic media. The point is to re-encounter mater
 
 What Hypnograph should become from here depends on real use. This document is part of that process.
 
-<div class="beta-inset">
-  <h3>Download the Beta Now</h3>
-  <ul>
-    <li><a href="https://github.com/lorenjohnson/Hypnograph/releases">Get the latest download</a></li>
-    <li>Install: open the DMG, drag <code>Hypnograph.app</code> to <code>Applications</code>, then first launch via right-click <code>Open</code></li>
-    <li>Unsigned beta note: if Apple Photos sources do not appear after first permission approval, quit and relaunch once</li>
-  </ul>
+<div id="homepage-screencast-lightbox" class="video-lightbox" aria-hidden="true">
+  <div class="video-lightbox-panel" role="dialog" aria-modal="true" aria-label="Hypnograph screencast player">
+    <button type="button" class="video-lightbox-close" data-video-lightbox-close aria-label="Close video">&times;</button>
+    <iframe
+      title="Hypnograph Screencast"
+      class="video-lightbox-frame"
+      data-video-embed-src="https://iframe.videodelivery.net/741c294e44de4589ea5e1761601db44a?autoplay=true&controls=true"
+      allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+      allowfullscreen
+      loading="lazy"></iframe>
+  </div>
+</div>
+
+<div class="beta-grid">
+  <div class="beta-inset beta-demo">
+    <h3>Watch a Demo Session</h3>
+    <button type="button" class="video-thumbnail-button" data-video-lightbox-open="homepage-screencast-lightbox" aria-label="Play Hypnograph demo session">
+      <img src="https://customer-ol1nnrpowobo4pog.cloudflarestream.com/741c294e44de4589ea5e1761601db44a/thumbnails/thumbnail.jpg" alt="Hypnograph screencast preview frame" class="video-thumbnail-image" />
+      <span class="video-thumbnail-play" aria-hidden="true"></span>
+    </button>
+  </div>
+
+  <div class="beta-inset beta-download">
+    <h3>Download the Beta</h3>
+    <p><a href="https://github.com/lorenjohnson/Hypnograph/releases/download/v0.2.2-beta1/Hypnograph-0.2-2-macOS-unsigned.dmg">Download current DMG (v0.2 build 2)</a></p>
+    <p>Apple Silicon only (M-series).</p>
+    <p>Install: open the DMG, drag <code>Hypnograph.app</code> to <code>Applications</code>, then first launch via right-click <code>Open</code>.</p>
+  </div>
 </div>
 
 Hypnograph is at a turning point where I need to sharpen what the app actually is by grounding it in real use, not only in internal iteration. The immediate need is to involve a small set of collaborators who can work with what already exists, use it seriously, and reflect back what feels meaningful, confusing, exciting, or missing in expected behavior.

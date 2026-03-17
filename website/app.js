@@ -295,6 +295,72 @@
     return list;
   }
 
+  function setupVideoLightboxes() {
+    const openButtons = documentEl.querySelectorAll("[data-video-lightbox-open]");
+    const closeButtons = documentEl.querySelectorAll("[data-video-lightbox-close]");
+
+    for (const button of openButtons) {
+      if (button.dataset.boundOpen === "true") {
+        continue;
+      }
+      button.dataset.boundOpen = "true";
+      button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-video-lightbox-open");
+        if (!targetId) {
+          return;
+        }
+        const lightbox = documentEl.querySelector("#" + CSS.escape(targetId));
+        if (!lightbox) {
+          return;
+        }
+        const frame = lightbox.querySelector("iframe[data-video-embed-src]");
+        if (frame && !frame.getAttribute("src")) {
+          frame.setAttribute("src", frame.getAttribute("data-video-embed-src") || "");
+        }
+        lightbox.classList.add("is-open");
+        lightbox.setAttribute("aria-hidden", "false");
+      });
+    }
+
+    for (const button of closeButtons) {
+      if (button.dataset.boundClose === "true") {
+        continue;
+      }
+      button.dataset.boundClose = "true";
+      button.addEventListener("click", () => {
+        const lightbox = button.closest(".video-lightbox");
+        if (!lightbox) {
+          return;
+        }
+        lightbox.classList.remove("is-open");
+        lightbox.setAttribute("aria-hidden", "true");
+        const frame = lightbox.querySelector("iframe[data-video-embed-src]");
+        if (frame) {
+          frame.removeAttribute("src");
+        }
+      });
+    }
+
+    const lightboxes = documentEl.querySelectorAll(".video-lightbox");
+    for (const lightbox of lightboxes) {
+      if (lightbox.dataset.boundBackdrop === "true") {
+        continue;
+      }
+      lightbox.dataset.boundBackdrop = "true";
+      lightbox.addEventListener("click", (event) => {
+        if (event.target !== lightbox) {
+          return;
+        }
+        lightbox.classList.remove("is-open");
+        lightbox.setAttribute("aria-hidden", "true");
+        const frame = lightbox.querySelector("iframe[data-video-embed-src]");
+        if (frame) {
+          frame.removeAttribute("src");
+        }
+      });
+    }
+  }
+
   async function loadDocsTree() {
     if (!isHomepage) {
       docsSidebarEl.style.display = "none";
@@ -326,6 +392,7 @@
       const text = await response.text();
       if (text !== lastText) {
         documentEl.innerHTML = markdown.render(stripFrontMatter(text));
+        setupVideoLightboxes();
         lastText = text;
       }
     } catch (error) {
