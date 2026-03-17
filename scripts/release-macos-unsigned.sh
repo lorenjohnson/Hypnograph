@@ -15,7 +15,7 @@ DERIVED_DATA_PATH="$BUILD_ROOT/DerivedData"
 ARCHIVE_PATH="$BUILD_ROOT/Hypnograph-unsigned.xcarchive"
 DIST_DIR="${DIST_DIR:-$REPO_ROOT/dist}"
 
-for required_command in xcodebuild ditto hdiutil shasum; do
+for required_command in xcodebuild ditto hdiutil shasum codesign; do
   if ! command -v "$required_command" >/dev/null 2>&1; then
     echo "error: Required command not found: $required_command" >&2
     exit 1
@@ -44,6 +44,10 @@ if [[ ! -d "$APP_PATH" ]]; then
   echo "error: Expected app not found at $APP_PATH" >&2
   exit 1
 fi
+
+echo "Applying ad-hoc code signature for stable local identity..."
+codesign --force --deep --sign - --timestamp=none "$APP_PATH"
+codesign --verify --deep --strict --verbose=2 "$APP_PATH"
 
 INFO_PLIST_PATH="$APP_PATH/Contents/Info.plist"
 VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$INFO_PLIST_PATH" 2>/dev/null || true)"
