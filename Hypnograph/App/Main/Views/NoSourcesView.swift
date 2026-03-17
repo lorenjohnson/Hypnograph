@@ -76,8 +76,7 @@ struct NoSourcesView: View {
             isRequestingPhotos = false
 
             if status.canRead {
-                await state.activatePhotosAllIfAvailable()
-                await state.refreshAvailableLibraries()
+                await state.refreshPhotosLibrariesAfterAuthorization()
             }
         }
     }

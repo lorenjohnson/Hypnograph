@@ -71,8 +71,7 @@ struct HypnographApp: App {
 
                 appDelegate.onPhotosAuthorization = { [weak state] in
                     Task { @MainActor in
-                        await state?.activatePhotosAllIfAvailable()
-                        await state?.refreshAvailableLibraries()
+                        await state?.refreshPhotosLibrariesAfterAuthorization()
                     }
                 }
 

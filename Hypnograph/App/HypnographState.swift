@@ -233,6 +233,26 @@ final class HypnographState: ObservableObject {
         )
     }
 
+    /// After a fresh Photos authorization grant, PhotoKit can briefly return empty results
+    /// before the library menu becomes queryable. Retry a few short passes so first-run
+    /// users do not have to relaunch to see Apple Photos sources.
+    func refreshPhotosLibrariesAfterAuthorization() async {
+        guard ApplePhotos.shared.status.canRead else { return }
+
+        for _ in 0..<6 {
+            await activatePhotosAllIfAvailable()
+            await refreshAvailableLibraries()
+
+            if availableLibraries.contains(where: { $0.type == .applePhotos }) {
+                return
+            }
+
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            ApplePhotos.shared.refreshStatus()
+            guard ApplePhotos.shared.status.canRead else { return }
+        }
+    }
+
     // MARK: - Custom Photo Selection
 
     /// Flag to trigger PhotosPicker presentation
