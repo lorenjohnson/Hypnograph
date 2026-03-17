@@ -421,9 +421,17 @@ struct MainSettings: Codable, MediaLibrarySettings {
     }
 
     var sourceLibraries: [String: [String]] {
-        sources.libraries.mapValues { folders in
-            folders.map { ($0 as NSString).expandingTildeInPath }
+        var filtered: [String: [String]] = [:]
+        for (key, folders) in sources.libraries {
+            let expanded = folders
+                .map { ($0 as NSString).expandingTildeInPath }
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+
+            guard !expanded.isEmpty else { continue }
+            filtered[key] = expanded
         }
+        return filtered
     }
 
     var sourceLibraryOrder: [String] {
