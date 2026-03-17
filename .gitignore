@@ -37,6 +37,25 @@ Podfile.lock
 *.tmp
 *.log
 
+# Local env / secrets
+.env
+.env.*
+*.env
+
+# Keys / certificates / provisioning
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+*.mobileprovision
+*.p8
+id_rsa
+id_ed25519
+
 # macOS
 .AppleDouble
 .LSOverride
