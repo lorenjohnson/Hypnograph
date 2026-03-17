@@ -43,15 +43,15 @@ If this is not explicitly designed, we risk shipping a half-editor with ambiguou
 - Valuable insight: "record performance" mental model is strong, but not equivalent to full timeline editing.
 
 ### 4) Layer editor direction (draft)
-- [layer-editor](../active/layer-editor.md)
+- [layer-editor](../backlog/layer-editor.md)
 - Strong per-clip/layer interaction foundation, explicitly not yet a full NLE timeline.
 
-### 5) Sets direction (active)
-- [sets-model-direction](../active/sets-model-direction.md)
+### 5) Sets direction (backlog)
+- [sets-model-direction](../backlog/sets-model-direction.md)
 - Important warning: avoid set membership tied to history IDs.
 
-### 6) Export as timeline expression (active planning)
-- [export-clip-history-fcpxml](../active/export-clip-history-fcpxml.md)
+### 6) Export as timeline expression (backlog planning)
+- [export-clip-history-fcpxml](../backlog/export-clip-history-fcpxml.md)
 - Already treats clip history as linear timeline segments with layered sources.
 
 ## The Core Design Tension

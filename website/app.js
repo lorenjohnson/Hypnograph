@@ -3,21 +3,54 @@
   const documentEl = document.getElementById("document");
   const docsSidebarEl = document.getElementById("docs-sidebar");
   const docsTreeEl = document.getElementById("docs-tree");
+  const docsSidebarToggleEl = document.getElementById("docs-sidebar-toggle");
 
-  if (!breadcrumbEl || !documentEl || !docsSidebarEl || !docsTreeEl) {
+  if (!breadcrumbEl || !documentEl || !docsSidebarEl || !docsTreeEl || !docsSidebarToggleEl) {
     return;
   }
 
   const TREE_OPEN_STATE_KEY = "hypnograph.docsTree.open.v1";
+  const SIDEBAR_OPEN_STATE_KEY = "hypnograph.docsSidebar.open.v1";
   const resolvedDocPath = resolveDocPath(window.location.pathname);
   const currentRelativeDocPath = resolvedDocPath.replace(/^\/docs\//, "");
-  const isHomepage = window.location.pathname.replace(/\/+$/, "") === "";
+  const isHomepage = resolvedDocPath === "/docs/collaborators.md";
   const markdownUtils = window.markdownit().utils;
   const openTreePaths = loadOpenTreePaths();
+  let isSidebarOpen = loadSidebarOpenState(!isHomepage);
 
-  if (isHomepage) {
-    document.body.classList.add("homepage-route");
+  document.body.classList.toggle("homepage-route", isHomepage);
+
+  function loadSidebarOpenState(defaultValue) {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_OPEN_STATE_KEY);
+      if (saved === null) {
+        return defaultValue;
+      }
+      return saved === "1";
+    } catch (_) {
+      return defaultValue;
+    }
   }
+
+  function saveSidebarOpenState(open) {
+    try {
+      localStorage.setItem(SIDEBAR_OPEN_STATE_KEY, open ? "1" : "0");
+    } catch (_) {}
+  }
+
+  function applySidebarOpenState() {
+    const shouldOpen = !isHomepage && isSidebarOpen;
+    document.body.classList.toggle("docs-sidebar-open", shouldOpen);
+    docsSidebarToggleEl.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+  }
+
+  docsSidebarToggleEl.addEventListener("click", () => {
+    isSidebarOpen = !isSidebarOpen;
+    saveSidebarOpenState(isSidebarOpen);
+    applySidebarOpenState();
+  });
+
+  applySidebarOpenState();
 
   let lastText = "";
 
@@ -362,11 +395,6 @@
   }
 
   async function loadDocsTree() {
-    if (!isHomepage) {
-      docsSidebarEl.style.display = "none";
-      return;
-    }
-
     try {
       const paths = await collectMarkdownPaths("docs");
       paths.sort((a, b) => a.localeCompare(b));

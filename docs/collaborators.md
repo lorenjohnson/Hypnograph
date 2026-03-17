@@ -11,11 +11,19 @@ updated: 2026-03-17
   </div>
 </div>
 
+<aside class="beta-inset beta-download download-cta">
+  <p><a class="download-button" href="https://github.com/lorenjohnson/Hypnograph/releases/download/v0.2.2-beta1/Hypnograph-0.2-2-macOS-unsigned.dmg">Download</a></p>
+  <p class="download-subtext"><span class="download-chip">Beta</span> <span class="download-chip">v0.2 (build 2)</span> <span class="download-chip">Apple Silicon</span></p>
+  <p class="download-subtext">Install: open the DMG, drag <code>Hypnograph.app</code> into <code>Applications</code>, then first launch via right-click <code>Open</code>.</p>
+</aside>
+
 Instead of browsing your archive like a filing cabinet, Hypnograph replays your photos and videos as evolving, remixable sequences. It can begin in a generative mode where surprising combinations emerge quickly, and it can also be steered into deliberate composition through clip selection, timing, layering, blend modes, and effect chains.
 
 The point is not to generate synthetic media. The point is to re-encounter material that already belongs to your life or project and shape it into something that feels newly alive, exploratory, and creatively useful.
 
 What Hypnograph should become from here depends on real use. This document is part of that process.
+
+If you want to follow the active development process directly, open the <a href="/README">Active Development Documents</a>. That space tracks what is in progress, what is planned, and how decisions are being shaped in collaboration with real usage feedback.
 
 <div id="homepage-screencast-lightbox" class="video-lightbox" aria-hidden="true">
   <div class="video-lightbox-panel" role="dialog" aria-modal="true" aria-label="Hypnograph screencast player">
@@ -32,18 +40,11 @@ What Hypnograph should become from here depends on real use. This document is pa
 
 <div class="beta-grid">
   <div class="beta-inset beta-demo">
-    <h3>Watch a Demo Session</h3>
+    <h3>See Demo</h3>
     <button type="button" class="video-thumbnail-button" data-video-lightbox-open="homepage-screencast-lightbox" aria-label="Play Hypnograph demo session">
       <img src="https://customer-ol1nnrpowobo4pog.cloudflarestream.com/741c294e44de4589ea5e1761601db44a/thumbnails/thumbnail.jpg" alt="Hypnograph screencast preview frame" class="video-thumbnail-image" />
       <span class="video-thumbnail-play" aria-hidden="true"></span>
     </button>
-  </div>
-
-  <div class="beta-inset beta-download">
-    <h3>Download the Beta</h3>
-    <p><a href="https://github.com/lorenjohnson/Hypnograph/releases/download/v0.2.2-beta1/Hypnograph-0.2-2-macOS-unsigned.dmg">Download current DMG (v0.2 build 2)</a></p>
-    <p>Apple Silicon only (M-series).</p>
-    <p>Install: open the DMG, drag <code>Hypnograph.app</code> to <code>Applications</code>, then first launch via right-click <code>Open</code>.</p>
   </div>
 </div>
 

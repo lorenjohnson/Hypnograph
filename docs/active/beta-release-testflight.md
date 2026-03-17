@@ -7,6 +7,12 @@
 
 Prepare Hypnograph for first external beta via TestFlight: Developer Program enrollment, App Store Connect setup, app identity, and tester recruitment.
 
+## Current Enrollment Blocker (2026-03-17)
+
+- Apple Developer Program enrollment is currently blocked by Apple fraud-control checks on the current account application.
+- TestFlight path is therefore blocked until enrollment is resolved.
+- Next attempted step: open a new Apple Developer account application using a different email address.
+
 ## Open Questions
 
 - [live-mode-feature-flag](live-mode-feature-flag.md) — Should Live Mode be gated before beta?
