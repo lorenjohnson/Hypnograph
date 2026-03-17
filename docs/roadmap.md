@@ -20,6 +20,7 @@ last_reviewed: 2026-02-27
 - [ ] [in-app-feedback](active/in-app-feedback.md)
 - [ ] [beta-release-testflight](active/beta-release-testflight.md)
 - [ ] [direct-download-unsigned-macos-release](active/direct-download-unsigned-macos-release.md)
+- [ ] [collaborators-homepage-capture-plan](active/collaborators-homepage-capture-plan.md)
 - [ ] [volume-leveling](backlog/volume-leveling.md)
 
 ## Backlog
