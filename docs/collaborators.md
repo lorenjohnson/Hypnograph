@@ -17,11 +17,8 @@ The point is not to generate synthetic media. The point is to re-encounter mater
 
 What Hypnograph should become from here depends on real use. This document is part of that process.
 
-## Download Hypnograph Beta
-
 <div class="beta-inset">
   <h3>Download the Beta Now</h3>
-  <p>Join the beta and try the latest macOS build.</p>
   <ul>
     <li><a href="https://github.com/lorenjohnson/Hypnograph/releases">Get the latest download</a></li>
     <li>Install: open the DMG, drag <code>Hypnograph.app</code> to <code>Applications</code>, then first launch via right-click <code>Open</code></li>
@@ -40,18 +37,19 @@ The use cases below are the working foundation for that process, and will likely
   <h3>Scenario</h3>
   <p>Use Hypnograph with your own photo and video history as a creative-reflective practice: move through personal archives, surface forgotten or overlooked material, and re-encounter your own past as something present and alive.</p>
   <p>In this mode, playback can feel like watching your own life as a nonlinear "channel" in a default-mode-network kind of space: less task-driven searching, more open attention and pattern recognition.</p>
-  <h3>Why This Matters</h3>
+  <h3>What Already Works Well</h3>
   <ul>
-    <li>It turns static archives into living sequences with rhythm, contrast, and emotional texture.</li>
-    <li>It supports rediscovery, not just retrieval: less catalog browsing, more felt meaning.</li>
-    <li>It creates a path from reflection into authorship, where personal memory can be shaped into new visual forms.</li>
-  </ul>
-  <h3>Media Management During Playback</h3>
-  <ul>
+    <li>Randomized playback turns static archives into living sequences with rhythm and emotional texture.</li>
+    <li>The "channel" feel supports rediscovery, not just retrieval: less folder browsing, more felt meaning.</li>
     <li><code>Mark for deletion</code>: a single key can flag current media to a staged deletion flow (kept in the <code>Deleted</code> album under the <code>Hypnograph</code> folder in Apple Photos for later review).</li>
     <li><code>Exclude</code>: permanently removes a clip from randomized playback without deleting it.</li>
     <li><code>Favorite</code>: saves standout clips into the <code>Favorites</code> album under the <code>Hypnograph</code> folder in Apple Photos.</li>
-    <li>This gives collaborators a practical way to curate while they watch, not only afterward.</li>
+  </ul>
+  <h3>Gaps</h3>
+  <ul>
+    <li>First-run Photos authorization still needs to feel smoother and more predictable in beta builds.</li>
+    <li>Library/source state should become more transparent during initial setup so users know what is happening.</li>
+    <li>Onboarding guidance for first-mile curation (favorite/exclude/delete) needs to be clearer in-app.</li>
   </ul>
 </div>
 
@@ -82,6 +80,16 @@ The use cases below are the working foundation for that process, and will likely
   <h2>Use Case 3: Create Shorts for Social Media</h2>
   <h3>Scenario</h3>
   <p>Start from a recently shot clip available locally or in Apple Photos, process it in Hypnograph, and export a short expressive piece for Instagram Story/Reel style posting.</p>
-  <h3>Status</h3>
-  <p>This is one of the better-provisioned workflows in the current beta, but it is intentionally a lower priority than personal archive exploration and post-shoot discovery.</p>
+  <h3>What Already Works Well</h3>
+  <ul>
+    <li>This is one of the better-provisioned workflows in the current beta.</li>
+    <li>Clip selection, layering, and effects can produce expressive short-form output quickly.</li>
+    <li>The flow from source clip to stylized export is already viable for collaborator testing.</li>
+  </ul>
+  <h3>Gaps</h3>
+  <ul>
+    <li>The workflow needs clearer presets/templates for common social formats and aspect ratios.</li>
+    <li>Export intent could be made more obvious with simpler "ready to post" defaults.</li>
+    <li>This area is intentionally lower priority than personal archive and post-shoot discovery use cases.</li>
+  </ul>
 </div>

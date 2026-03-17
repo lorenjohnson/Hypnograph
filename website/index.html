@@ -9,13 +9,19 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css">
   <style>
     :root {
-      color-scheme: light dark;
+      color-scheme: dark;
+      --bg: #10141b;
+      --bg-elev: #151b24;
+      --text: #edf2fa;
+      --muted: #c7d0de;
+      --line: #2f3a4c;
+      --link: #9dc0ff;
     }
     body {
       margin: 0;
-      font: 16px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      background: #0f1115;
-      color: #e6e8eb;
+      font: 17px/1.65 "Avenir Next", Avenir, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: radial-gradient(circle at 12% 0%, #1b2433 0%, var(--bg) 42%), var(--bg);
+      color: var(--text);
     }
     .page {
       max-width: 1200px;
@@ -28,12 +34,12 @@
     }
     .status {
       margin: 0 0 12px;
-      color: #a5acb8;
+      color: var(--muted);
       font-size: 0.9rem;
     }
     .breadcrumb {
       margin: 0 0 12px;
-      color: #a5acb8;
+      color: var(--muted);
       font-size: 0.9rem;
       display: flex;
       flex-wrap: wrap;
@@ -41,11 +47,11 @@
       align-items: center;
     }
     .breadcrumb a {
-      color: #a5acb8;
+      color: var(--muted);
       text-decoration: none;
     }
     .breadcrumb a:hover {
-      color: #dbe2f0;
+      color: var(--text);
       text-decoration: underline;
     }
     .breadcrumb-sep {
@@ -80,15 +86,15 @@
       overflow-x: auto;
       padding: 0.9rem;
       border-radius: 8px;
-      background: #0b1220;
+      background: #111827;
     }
     .document a {
-      color: #86b7ff;
+      color: var(--link);
     }
     .document blockquote {
-      border-left: 3px solid #2b3342;
+      border-left: 3px solid var(--line);
       padding-left: 12px;
-      color: #c6ccd8;
+      color: var(--muted);
     }
     .document .contains-task-list {
       list-style: none;
@@ -114,8 +120,8 @@
       width: 72px;
       height: 72px;
       border-radius: 16px;
-      border: 1px solid #2f3a4e;
-      background: #0f1520;
+      border: 1px solid var(--line);
+      background: var(--bg-elev);
       object-fit: cover;
       flex: 0 0 auto;
     }
@@ -124,22 +130,22 @@
     }
     .document .collab-hero-title {
       margin: 0;
-      color: #f3f7ff;
+      color: var(--text);
       font-size: clamp(2rem, 4vw, 2.7rem);
       line-height: 1.05;
       letter-spacing: 0.01em;
     }
     .document .collab-hero-kicker {
       margin: 0.25rem 0 0;
-      color: #dbe5f6;
+      color: var(--muted);
       font-size: 1.02rem;
       letter-spacing: 0.01em;
     }
     .document .beta-inset,
     .document .use-case-card {
-      border: 1px solid #2a3448;
+      border: 1px solid var(--line);
       border-radius: 12px;
-      background: linear-gradient(180deg, #121925 0%, #101621 100%);
+      background: linear-gradient(180deg, #1a2230 0%, #151c28 100%);
       padding: 1.25rem 1.35rem;
       margin: 0.9rem 0 1rem;
     }
@@ -165,10 +171,10 @@
       width: 320px;
       height: 100vh;
       overflow: auto;
-      border-left: 1px solid #232a39;
+      border-left: 1px solid var(--line);
       padding: 16px 0 24px 16px;
       box-sizing: border-box;
-      background: #0f1115;
+      background: color-mix(in oklab, var(--bg), #000 8%);
       z-index: 10;
     }
     .docs-tree ul {
@@ -181,19 +187,19 @@
     }
     .docs-tree details > summary {
       cursor: pointer;
-      color: #c3cad7;
+      color: var(--muted);
       user-select: none;
     }
     .docs-tree details > summary:hover {
-      color: #e7edf9;
+      color: var(--text);
     }
     .docs-tree a {
-      color: #aeb7c8;
+      color: var(--muted);
       text-decoration: none;
     }
     .docs-tree a:hover {
       text-decoration: underline;
-      color: #e7edf9;
+      color: var(--text);
     }
     .docs-tree a.active {
       color: #ffffff;

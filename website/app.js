@@ -209,6 +209,9 @@
       }
 
       if (isDirectory) {
+        if (cleanName === "assets") {
+          continue;
+        }
         const nestedDirectory = joinUrlPath(directoryPath, cleanName);
         const nestedPrefix = prefix ? prefix + "/" + cleanName : cleanName;
         const nestedFiles = await collectMarkdownPaths(nestedDirectory, nestedPrefix);
