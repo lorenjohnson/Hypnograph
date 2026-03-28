@@ -1,5 +1,5 @@
 ---
-doc-status: in-progress
+doc-status: done
 ---
 
 # Hypnogram Model Alignment
@@ -97,20 +97,20 @@ So this history system does not create a contradiction in the rename. It is actu
 4. Preserve backward decode support for older saved files by continuing to accept legacy keys during decoding.
 5. In a second pass, decide which canonical encoded keys should change after the type rename has already landed cleanly.
 
-## Current Status
+## Completion Notes
 
-The first implementation pass is now underway and is already proving out the model.
+This pass is complete enough to stop here.
 
 - HypnoPackages has landed the core type rename:
   - `HypnographSession` -> `Hypnogram`
   - playable-unit `Hypnogram` -> `Composition`
   - `HypnogramLayer` -> `Layer`
 - Hypnograph now builds successfully against those renamed package types.
-- the app-side first pass has already renamed several aligned areas:
+- the app-side rename work now aligns the main conceptual surfaces and supporting terminology:
   - `ClipHistoryFile` / `ClipHistoryStore` -> `HistoryFile` / `HistoryStore`
   - `SessionStore` / `SessionFileActions` -> `HypnogramFileStore` / `HypnogramFileActions`
   - player-owned top-level model references from generic `session` language toward `hypnogram`
-  - user-facing `Global` -> `Composition` and mistaken `Source` -> `Layer` cases already corrected earlier in this branch
+  - user-facing `Global` -> `Composition` and mistaken `Source` -> `Layer` cases
 - the app-side persistence pass is now also in place:
   - `HistoryFile` now writes `compositions` and `currentCompositionIndex` while still decoding the older history keys
   - Studio settings now write composition-level keys and enum values while still decoding the older clip-named settings
@@ -119,7 +119,7 @@ The first implementation pass is now underway and is already proving out the mod
   - top-level Hypnogram JSON now encodes `compositions` as the canonical on-disk key
   - backward decode support is still preserved for legacy `hypnograms`, `clips`, and top-level `sources`
 
-This means the rename is no longer speculative. The branch already demonstrates that the intended model can be carried through both the shared package layer and the app without breaking the build.
+This means the model rename is no longer speculative. It now carries through both the shared package layer and the app, including persistence, while still opening older saved files.
 
 ### Immediate Acceptance Check
 
@@ -127,7 +127,8 @@ This means the rename is no longer speculative. The branch already demonstrates 
 - we can explain how older saved files will still open
 - we have separated the true model rename from larger Sequences behavior questions
 
-## Open Questions
+## Review Notes
 
-- whether `Layer` as a bare type name introduces any real ambiguity in shared code, or whether it is as safe in practice as it currently appears
-- when to collapse the temporary backward-decode compatibility paths after older files have had time to normalize forward
+- New files are intentionally one-way compatible: current Hypnograph can open older files, but older app versions will likely not open newly saved files.
+- Backward decode compatibility remains in place for older saved hypnograms and older settings/history payloads.
+- If a later iteration wants to rename the top-level saved file/container from `Hypnogram` to `Hypnograph`, that should now be a much smaller, more deliberate follow-up rather than part of this foundational cleanup.
