@@ -85,7 +85,7 @@ for required_command in gh git xcodebuild; do
   fi
 done
 
-if ! gh auth status >/dev/null 2>&1; then
+if ! gh auth status --active >/dev/null 2>&1; then
   echo "error: gh is not authenticated. Run 'gh auth login' first." >&2
   exit 1
 fi
