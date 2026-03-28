@@ -6,12 +6,12 @@
 import Foundation
 
 struct MainDependencies {
-    var makePanelHostService: @MainActor () -> MainPanelHostService
-    var photosIntegrationService: MainPhotosIntegrationService
+    var makePanelHostService: @MainActor () -> FilePanelService
+    var photosIntegrationService: PhotosIntegrationService
     var clipHistoryPersistenceService: ClipHistoryPersistenceService
 
     static let live = MainDependencies(
-        makePanelHostService: { MainPanelHostService() },
+        makePanelHostService: { FilePanelService() },
         photosIntegrationService: .live,
         clipHistoryPersistenceService: .live
     )

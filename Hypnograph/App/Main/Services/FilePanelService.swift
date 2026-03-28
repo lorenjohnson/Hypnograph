@@ -1,5 +1,5 @@
 //
-//  MainPanelHostService.swift
+//  FilePanelService.swift
 //  Hypnograph
 //
 
@@ -8,7 +8,7 @@ import Foundation
 import UniformTypeIdentifiers
 
 @MainActor
-final class MainPanelHostService {
+final class FilePanelService {
     func chooseSingleMediaFile() -> URL? {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true

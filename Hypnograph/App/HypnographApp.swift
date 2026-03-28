@@ -10,7 +10,7 @@ struct HypnographApp: App {
     @NSApplicationDelegateAdaptor(HypnographAppDelegate.self)
     private var appDelegate
 
-    private let settingsStore: MainSettingsStore
+    private let settingsStore: WorkspaceSettingsStore
     private let appSettingsStore: AppSettingsStore
     private let effectsStudioSettingsStore: EffectsStudioSettingsStore
     @StateObject private var state: HypnographState
@@ -23,7 +23,7 @@ struct HypnographApp: App {
 
         Environment.ensureDefaultSettingsFilesExist()
 
-        let settingsStore = MainSettingsStore()
+        let settingsStore = WorkspaceSettingsStore()
         let appSettingsStore = AppSettingsStore()
         let effectsStudioSettingsStore = EffectsStudioSettingsStore()
         self.settingsStore = settingsStore

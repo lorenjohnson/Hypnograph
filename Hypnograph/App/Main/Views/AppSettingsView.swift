@@ -5,7 +5,7 @@ import HypnoCore
 struct AppSettingsView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Main
-    @ObservedObject private var settingsStore: MainSettingsStore
+    @ObservedObject private var settingsStore: WorkspaceSettingsStore
     @ObservedObject private var appSettingsStore: AppSettingsStore
     @StateObject private var audioManager = AudioDeviceManager.shared
     @State private var selectedTab: SettingsTab = .general
@@ -271,7 +271,7 @@ struct AppSettingsView: View {
                 Text(description)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(MainPathFormatting.displayPath(path))
+                Text(PathFormatting.displayPath(path))
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
                     .lineLimit(2)

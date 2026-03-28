@@ -1,5 +1,5 @@
 //
-//  MainEffectsActions.swift
+//  EffectsActions.swift
 //  Hypnograph
 //
 

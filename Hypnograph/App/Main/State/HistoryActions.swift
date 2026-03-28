@@ -1,5 +1,5 @@
 //
-//  MainHistoryActions.swift
+//  HistoryActions.swift
 //  Hypnograph
 //
 

@@ -1,5 +1,5 @@
 //
-//  MainSettingsStore.swift
+//  WorkspaceSettingsStore.swift
 //  Hypnograph
 //
 //  PersistentStore subclass for app settings.
@@ -9,22 +9,22 @@
 import Foundation
 import HypnoCore
 
-/// MainSettings store backed by PersistentStore for automatic persistence.
+/// WorkspaceSettings store backed by PersistentStore for automatic persistence.
 @MainActor
-final class MainSettingsStore: PersistentStore<MainSettings> {
+final class WorkspaceSettingsStore: PersistentStore<WorkspaceSettings> {
 
     /// Create a settings store with the default settings file location
     convenience init() {
-        self.init(fileURL: Environment.defaultMainSettingsURL)
+        self.init(fileURL: Environment.defaultWorkspaceSettingsURL)
     }
 
     /// Create a settings store backed by a specific file URL
-    override init(fileURL: URL, default defaultValue: MainSettings) {
+    override init(fileURL: URL, default defaultValue: WorkspaceSettings) {
         super.init(fileURL: fileURL, default: defaultValue)
     }
 
     /// Convenience init that loads from URL or uses defaults
     convenience init(fileURL: URL) {
-        self.init(fileURL: fileURL, default: MainSettings.defaultValue)
+        self.init(fileURL: fileURL, default: WorkspaceSettings.defaultValue)
     }
 }

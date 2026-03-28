@@ -23,13 +23,13 @@ final class HypnographState: ObservableObject {
     // MARK: - Core configuration
 
     /// App settings backed by PersistentStore for automatic persistence
-    let settingsStore: MainSettingsStore
+    let settingsStore: WorkspaceSettingsStore
 
     /// App-global settings backed by PersistentStore.
     let appSettingsStore: AppSettingsStore
 
     /// Convenience accessor for current settings value
-    var settings: MainSettings { settingsStore.value }
+    var settings: WorkspaceSettings { settingsStore.value }
     var appSettings: AppSettings { appSettingsStore.value }
 
     let exclusionStore: ExclusionStore
@@ -58,7 +58,7 @@ final class HypnographState: ObservableObject {
 
     // MARK: - Init
 
-    init(settingsStore: MainSettingsStore, appSettingsStore: AppSettingsStore, coreConfig: HypnoCoreConfig) {
+    init(settingsStore: WorkspaceSettingsStore, appSettingsStore: AppSettingsStore, coreConfig: HypnoCoreConfig) {
         let exclusionStore = ExclusionStore(url: coreConfig.exclusionsURL)
         let sourceFavoritesStore = SourceFavoritesStore(url: coreConfig.sourceFavoritesURL)
 

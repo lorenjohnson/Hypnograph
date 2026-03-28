@@ -31,7 +31,7 @@ final class AudioController: ObservableObject {
     // MARK: - Dependencies
 
     private let audioManager = AudioDeviceManager.shared
-    private weak var settingsStore: MainSettingsStore?
+    private weak var settingsStore: WorkspaceSettingsStore?
     private weak var livePlayer: LivePlayer?
     private var subscriptions: Set<AnyCancellable> = []
 
@@ -49,7 +49,7 @@ final class AudioController: ObservableObject {
 
     // MARK: - Init
 
-    init(settingsStore: MainSettingsStore, livePlayer: LivePlayer) {
+    init(settingsStore: WorkspaceSettingsStore, livePlayer: LivePlayer) {
         self.settingsStore = settingsStore
         self.livePlayer = livePlayer
 
@@ -111,10 +111,10 @@ final class AudioController: ObservableObject {
             .store(in: &subscriptions)
     }
 
-    // MARK: - MainSettings Persistence
+    // MARK: - WorkspaceSettings Persistence
 
-    /// Load audio device and volume settings from MainSettings
-    private func loadAudioSettings(from settings: MainSettings) {
+    /// Load audio device and volume settings from WorkspaceSettings
+    private func loadAudioSettings(from settings: WorkspaceSettings) {
         // Load volumes
         volume = settings.volume
         liveVolume = settings.liveVolume
@@ -131,7 +131,7 @@ final class AudioController: ObservableObject {
         print("🔊 AudioController: Loaded audio settings - in-app: \(audioDevice?.name ?? "System Default") @ \(volume), live: \(liveAudioDevice?.name ?? "System Default") @ \(liveVolume)")
     }
 
-    /// Save audio device and volume settings to MainSettings
+    /// Save audio device and volume settings to WorkspaceSettings
     private func saveAudioSettings() {
         settingsStore?.update { settings in
             settings.audioDeviceUID = audioDevice?.uid

@@ -50,9 +50,9 @@ Current checkpoint:
 - `Main` now has `Models/`, `Services/`, `State/`, and `Support/` in use.
 - `MainDependencies.swift` exists and `Main.swift` now owns explicit panel, Photos, and clip-history persistence seams.
 - Direct panel and Photos entry points have been removed from `RightSidebarView`, `AppSettingsView`, and `NoSourcesView`.
-- `MainPanelAndPhotosActions.swift` is still an intentional temporary root-level orchestration file.
+- The temporary root-level `MainPanelAndPhotosActions.swift` file is gone.
 - The broad root action files are gone.
-- `State/MainPlaybackActions.swift`, `State/MainSourceLayerActions.swift`, `State/MainHistoryActions.swift`, `State/MainGenerationActions.swift`, `State/MainExportActions.swift`, `State/MainSessionActions.swift`, and `State/MainEffectsActions.swift` now hold the Main-side orchestration in narrower responsibility slices.
+- `State/PlaybackActions.swift`, `State/SourceLayerActions.swift`, `State/HistoryActions.swift`, `State/GenerationActions.swift`, `State/ExportActions.swift`, `State/SessionActions.swift`, `State/EffectsActions.swift`, `State/PhotosActions.swift`, `State/LibraryActions.swift`, and `State/SettingsPathActions.swift` now hold the Main-side orchestration in narrower responsibility slices.
 
 ## Rules
 
@@ -73,13 +73,16 @@ Current checkpoint:
 2. Add a real `Main/MainDependencies.swift` and treat `Main.swift` as the composition root. Model this after `EffectsStudio/Dependencies.swift`, but keep it pragmatic. The first version only needs to wire the obvious side-effect seams: session file open/save, effect-chain library file operations, clip-history persistence, render/export, Photos import/write, and file-panel helpers. The goal is not to solve every dependency in one pass. The goal is to stop `Main` and its views from reaching directly into concrete integrations from everywhere.
 
 3. Replace the broad Main action files with narrower state-oriented files under `State/`. The goal is a small set of clearer files, even if they still extend `Main` for now:
-- `State/MainPlaybackActions.swift` for play/pause, live send, loop mode, and simple player commands
-- `State/MainSourceLayerActions.swift` for add/remove/duplicate/reorder/select/trim layer operations
-- `State/MainHistoryActions.swift` for history persistence, history navigation, indicator flashing, and history-limit enforcement
-- `State/MainGenerationActions.swift` for random clip generation, append/replace, and clip-end auto-advance behavior
-- `State/MainExportActions.swift` for snapshot, save, and render/export flows
-- `State/MainSessionActions.swift` for recipe/session loading and append behavior
-- `State/MainEffectsActions.swift` for broad effect-reset commands that still belong to Main orchestration
+- `State/PlaybackActions.swift` for play/pause, live send, loop mode, and simple player commands
+- `State/SourceLayerActions.swift` for add/remove/duplicate/reorder/select/trim layer operations
+- `State/HistoryActions.swift` for history persistence, history navigation, indicator flashing, and history-limit enforcement
+- `State/GenerationActions.swift` for random clip generation, append/replace, and clip-end auto-advance behavior
+- `State/ExportActions.swift` for snapshot, save, and render/export flows
+- `State/SessionActions.swift` for recipe/session loading and append behavior
+- `State/EffectsActions.swift` for broad effect-reset commands that still belong to Main orchestration
+- `State/PhotosActions.swift` for Photos authorization/status flow
+- `State/LibraryActions.swift` for source-library folder intake
+- `State/SettingsPathActions.swift` for settings-backed output and snapshot path selection
 
 4. Pull the concrete side effects behind explicit services. This is the core of the refactor. The first extractions should be a `ClipHistoryPersistenceService`, a `RenderExportService`, a `PhotosIntegrationService`, and a `PanelHostService` or similarly named file-panel service. These do not need to be elaborate. They just need to own the integrations that are currently leaking across views and broad action files so that Main state/orchestration becomes easier to understand and safer to change.
 
@@ -88,7 +91,6 @@ Current checkpoint:
 6. Keep the scope disciplined while we do it. We are not prioritizing a deep `PlayerView` refactor unless one of the service seams requires it. We are not splitting `EffectsEditorView` further just because it is large. We are not doing stylistic renaming that has no architectural payoff. We are not reopening `HypnoPackages` refactor work unless a concrete Main boundary problem forces it.
 
 Next phase:
-- Review whether `MainPanelAndPhotosActions.swift` should stay at the `Main` root, move into `State/`, or dissolve into clearer action files now that the broader split is complete.
 - Decide whether any of the new state files should be grouped differently after real use, especially around source curation and session import.
 - Keep the next pass focused on naming and remaining orchestration boundaries, not more structural churn for its own sake.
 

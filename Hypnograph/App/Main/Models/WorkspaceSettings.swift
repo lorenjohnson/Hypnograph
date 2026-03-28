@@ -1,5 +1,5 @@
 //
-//  MainSettings.swift
+//  WorkspaceSettings.swift
 //  Hypnograph
 //
 
@@ -46,9 +46,9 @@ enum RenderVideoSaveDestination: String, Codable, CaseIterable {
     case diskOnly
 }
 
-// MARK: - MainSettings
+// MARK: - WorkspaceSettings
 
-struct MainSettings: Codable, MediaLibrarySettings {
+struct WorkspaceSettings: Codable, MediaLibrarySettings {
     // Required in JSON
     var outputFolder: String
     var sources: MediaSourcesParam
@@ -92,7 +92,7 @@ struct MainSettings: Codable, MediaLibrarySettings {
     /// Feature flag for live display workflows (live panel, external monitor, live mode)
     var liveModeEnabled: Bool
 
-    // MARK: - Transition MainSettings
+    // MARK: - Transition WorkspaceSettings
 
     /// Transition style for playback (shared by in-app and Live)
     var transitionStyle: TransitionRenderer.TransitionType
@@ -107,7 +107,7 @@ struct MainSettings: Codable, MediaLibrarySettings {
     /// Clip-internal playback rate remains controlled by each hypnogram's `playRate`.
     var timelinePlaybackRate: Double
 
-    // MARK: - Randomization MainSettings (Generation Rules)
+    // MARK: - Randomization WorkspaceSettings (Generation Rules)
 
     /// When true, randomly applies a global effect chain when generating new clips
     var randomGlobalEffect: Bool
@@ -121,7 +121,7 @@ struct MainSettings: Codable, MediaLibrarySettings {
     /// Chance (0.0 - 1.0) of randomizing layer effects on generation
     var randomLayerEffectFrequency: Double
 
-    // MARK: - Audio MainSettings
+    // MARK: - Audio WorkspaceSettings
 
     /// Primary in-app audio device UID (nil = None/muted)
     var audioDeviceUID: String?
@@ -176,8 +176,8 @@ struct MainSettings: Codable, MediaLibrarySettings {
     }
 
     /// Single source of truth for defaults (kept in sync with `Defaults`).
-    static var defaultValue: MainSettings {
-        MainSettings(
+    static var defaultValue: WorkspaceSettings {
+        WorkspaceSettings(
             outputFolder: Defaults.outputFolder,
             sources: Defaults.sources,
             playbackEndBehavior: Defaults.playbackEndBehavior,
@@ -457,8 +457,8 @@ struct MainSettings: Codable, MediaLibrarySettings {
 // MARK: - Loader
 
 enum SettingsLoader {
-    static func load(from url: URL) throws -> MainSettings {
+    static func load(from url: URL) throws -> WorkspaceSettings {
         let data = try Data(contentsOf: url)
-        return try JSONDecoder().decode(MainSettings.self, from: data)
+        return try JSONDecoder().decode(WorkspaceSettings.self, from: data)
     }
 }

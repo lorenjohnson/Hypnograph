@@ -1,5 +1,5 @@
 //
-//  MainMenus.swift
+//  Menus.swift
 //  Hypnograph
 //
 //  Menu builders and HUD items for Main.

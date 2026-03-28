@@ -1,5 +1,5 @@
 //
-//  MainSessionActions.swift
+//  SessionActions.swift
 //  Hypnograph
 //
 

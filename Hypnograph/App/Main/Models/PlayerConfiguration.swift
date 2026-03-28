@@ -17,7 +17,7 @@ import HypnoCore
 /// Note: `targetDuration` and `playRate` live on the recipe, not here.
 struct PlayerConfiguration: Codable {
 
-    // MARK: - Display MainSettings
+    // MARK: - Display WorkspaceSettings
 
     /// Aspect ratio for rendering
     var aspectRatio: AspectRatio
@@ -25,15 +25,15 @@ struct PlayerConfiguration: Codable {
     /// Output resolution
     var playerResolution: OutputResolution
 
-    // MARK: - Generation MainSettings
+    // MARK: - Generation WorkspaceSettings
 
     /// Max layers when generating new random clips (each layer is one simultaneously-playing source)
     var maxLayers: Int
 
     // MARK: - Initialization
 
-    /// Initialize with global defaults from MainSettings
-    init(from settings: MainSettings) {
+    /// Initialize with global defaults from WorkspaceSettings
+    init(from settings: WorkspaceSettings) {
         self = settings.playerConfig
     }
 

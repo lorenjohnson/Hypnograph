@@ -1,5 +1,5 @@
 //
-//  MainPlaybackActions.swift
+//  PlaybackActions.swift
 //  Hypnograph
 //
 

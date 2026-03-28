@@ -1,12 +1,12 @@
 //
-//  MainPhotosIntegrationService.swift
+//  PhotosIntegrationService.swift
 //  Hypnograph
 //
 
 import Foundation
 import HypnoCore
 
-struct MainPhotosIntegrationService {
+struct PhotosIntegrationService {
     var authorizationStatus: ApplePhotos.AuthorizationStatus {
         ApplePhotos.shared.status
     }
@@ -31,5 +31,5 @@ struct MainPhotosIntegrationService {
         await ApplePhotos.shared.saveVideo(at: url)
     }
 
-    static let live = MainPhotosIntegrationService()
+    static let live = PhotosIntegrationService()
 }

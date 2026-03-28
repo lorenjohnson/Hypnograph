@@ -5,7 +5,7 @@ struct NoSourcesView: View {
     @ObservedObject var main: Main
 
     @State private var isRequestingPhotos = false
-    @State private var lastPhotosStatus: ApplePhotos.AuthorizationStatus = MainPhotosIntegrationService.live.authorizationStatus
+    @State private var lastPhotosStatus: ApplePhotos.AuthorizationStatus = PhotosIntegrationService.live.authorizationStatus
 
     private var canReadPhotos: Bool { main.photosAuthorizationStatus.canRead }
 

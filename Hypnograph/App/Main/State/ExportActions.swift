@@ -1,5 +1,5 @@
 //
-//  MainExportActions.swift
+//  ExportActions.swift
 //  Hypnograph
 //
 

@@ -1,11 +1,11 @@
 //
-//  MainPathFormatting.swift
+//  PathFormatting.swift
 //  Hypnograph
 //
 
 import Foundation
 
-enum MainPathFormatting {
+enum PathFormatting {
     static func displayPath(_ path: String) -> String {
         ((path as NSString).expandingTildeInPath as NSString).abbreviatingWithTildeInPath
     }

@@ -21,8 +21,8 @@ final class Main: ObservableObject {
     let state: HypnographState
     let renderQueue: RenderEngine.ExportQueue
     let dependencies: MainDependencies
-    let panelHostService: MainPanelHostService
-    let photosIntegrationService: MainPhotosIntegrationService
+    let panelHostService: FilePanelService
+    let photosIntegrationService: PhotosIntegrationService
     let clipHistoryPersistenceService: ClipHistoryPersistenceService
 
     /// Global templates store (shared across preview + live)

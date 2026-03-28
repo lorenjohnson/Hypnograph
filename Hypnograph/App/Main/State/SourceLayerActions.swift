@@ -1,5 +1,5 @@
 //
-//  MainSourceLayerActions.swift
+//  SourceLayerActions.swift
 //  Hypnograph
 //
 
@@ -13,6 +13,11 @@ import HypnoUI
 extension Main {
     func addSource() {
         addSourceToPlayer(activePlayer)
+    }
+
+    func addSourceFromFilesPanel() {
+        guard let selectedURL = panelHostService.chooseSingleMediaFile() else { return }
+        _ = addSource(fromFileURL: selectedURL)
     }
 
     /// Create a new clip and add each incoming file as a layer.

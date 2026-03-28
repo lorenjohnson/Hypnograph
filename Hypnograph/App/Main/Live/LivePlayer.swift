@@ -115,7 +115,7 @@ final class LivePlayer: ObservableObject {
 
     // MARK: - Init
 
-    init(settings: MainSettings, effectsSession: EffectsSession) {
+    init(settings: WorkspaceSettings, effectsSession: EffectsSession) {
         self.config = PlayerConfiguration(from: settings)
         self.sourceFraming = settings.sourceFraming
         self.crossfadeDuration = settings.transitionDuration

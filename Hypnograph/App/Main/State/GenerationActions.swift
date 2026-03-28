@@ -1,5 +1,5 @@
 //
-//  MainGenerationActions.swift
+//  GenerationActions.swift
 //  Hypnograph
 //
 
