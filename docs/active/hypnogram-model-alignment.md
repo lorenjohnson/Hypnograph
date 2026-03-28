@@ -42,7 +42,7 @@ This project now has a clearer intended direction. The remaining work is to carr
 | `HypnogramLayer` | `Layer` | one layer inside a composition | likely rename directly to `Layer` |
 | `effectChain` on current `Hypnogram` | composition-level effect chain | composition-wide effects | keep behavior, update surrounding naming |
 | `HypnogramStore` / `HypnogramEntry` | likely keep | store of saved top-level files | already aligned closely enough with intended `Hypnogram` meaning |
-| `ClipHistoryFile` / `ClipHistoryStore` | review later | history of compositions within the current hypnogram | defer until core rename lands |
+| `ClipHistoryFile` / `ClipHistoryStore` | `CompositionHistoryFile` / `CompositionHistoryStore` | history of previously generated or visited Compositions in Studio | rename in this project as part of the same model cleanup |
 
 ### Rename Surface
 
@@ -67,6 +67,18 @@ The rename surface appears to break down into three categories:
 - any Quick Look or file-open paths that assume the old schema names
 - save/load logic that must continue opening older saved files
 
+### Adjacent Systems That Actually Align Cleanly
+
+Some nearby naming that looked ambiguous turns out to map cleanly once the core rename is accepted.
+
+- `ClipHistoryFile` is not really about top-level Hypnograms. It stores the history of the playable units inside Studio.
+- under the target model, that means it is really `CompositionHistoryFile`
+- `ClipHistoryStore` should likewise become `CompositionHistoryStore`
+- `hypnograms` inside that history payload should become `compositions`
+- `currentHypnogramIndex` inside that history payload should become `currentCompositionIndex`
+
+So this history system does not create a contradiction in the rename. It is actually one of the clearer downstream confirmations that the target model is coherent.
+
 ### Intended Rules For This Rename
 
 - `HypnographSession` should become `Hypnogram`.
@@ -83,7 +95,7 @@ The rename surface appears to break down into three categories:
 2. Rename the app-level and package-level model types.
 3. Rename the obvious app state and UI references that currently mirror the old model names.
 4. Preserve backward decode support for older saved files by continuing to accept legacy keys during decoding.
-5. Decide separately whether the canonical encoded keys should change immediately in this same pass or in one short follow-up pass.
+5. In a second pass, decide which canonical encoded keys should change after the type rename has already landed cleanly.
 
 ### Immediate Acceptance Check
 
@@ -93,6 +105,4 @@ The rename surface appears to break down into three categories:
 
 ## Open Questions
 
-- whether canonical encoded keys should change in the same pass as the type rename, or whether we should first rename the types while continuing to encode the current schema keys
-- whether `Layer` as a bare type name introduces any real ambiguity in shared code, or whether it is the cleanest choice
-- how much related `Clip` terminology should be pulled along in adjacent systems like clip history during this pass versus left for a follow-up
+- whether `Layer` as a bare type name introduces any real ambiguity in shared code, or whether it is as safe in practice as it currently appears
