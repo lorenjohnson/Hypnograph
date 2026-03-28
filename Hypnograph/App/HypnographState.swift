@@ -9,10 +9,8 @@
 //
 
 import Foundation
-import Combine
 import CoreMedia
 import CoreGraphics
-import AppKit
 import HypnoCore
 import HypnoUI
 
@@ -39,22 +37,6 @@ final class HypnographState: ObservableObject {
     @Published private(set) var activeLibraryKeys: Set<String>
 
     private(set) var library: MediaLibrary
-
-    // MARK: - Global UI State
-
-    /// Monitors text field editing - used to disable single-key shortcuts while typing
-    private let textFieldFocusMonitor = TextFieldFocusMonitor()
-
-    /// Whether a text field is currently being edited (convenience for disabling shortcuts)
-    @Published private(set) var isTyping: Bool = false
-
-    /// Persisted fullscreen preference for the main app window.
-    @Published var mainWindowFullScreen: Bool = true
-
-    /// Unified window visibility state with clean screen support
-    @Published var windowState = WindowState()
-
-    private var cancellables: Set<AnyCancellable> = []
 
     // MARK: - Init
 
@@ -100,17 +82,6 @@ final class HypnographState: ObservableObject {
             customPhotosAssetIds: loadedCustomIds,
             exclusionStore: exclusionStore
         )
-
-        self.isTyping = textFieldFocusMonitor.isEditing
-        textFieldFocusMonitor.$isEditing
-            .removeDuplicates()
-            .sink { [weak self] isEditing in
-                self?.isTyping = isEditing
-            }
-            .store(in: &cancellables)
-
-        // Load window state from disk
-        loadWindowStateFromDisk()
     }
 
     // MARK: - UI Toggles
@@ -321,66 +292,6 @@ final class HypnographState: ObservableObject {
     /// Save settings to disk (public - call after modifying state.settings via settingsStore.update)
     func saveSettings() {
         settingsStore.save()
-    }
-
-    // MARK: - Window State Persistence
-
-    private struct PersistedWindowState: Codable {
-        let windowState: WindowState
-        let mainWindowFullScreen: Bool
-    }
-
-    /// File URL for window state storage
-    private var windowStateFileURL: URL {
-        Environment.appSupportDirectory
-            .appendingPathComponent("window-state.json")
-    }
-
-    /// Load window state from disk
-    private func loadWindowStateFromDisk() {
-        guard FileManager.default.fileExists(atPath: windowStateFileURL.path) else { return }
-
-        do {
-            let data = try Data(contentsOf: windowStateFileURL)
-            let decoder = JSONDecoder()
-
-            if let persisted = try? decoder.decode(PersistedWindowState.self, from: data) {
-                windowState = persisted.windowState
-                mainWindowFullScreen = persisted.mainWindowFullScreen
-                print("HypnographState: Loaded window state from disk")
-                return
-            }
-
-            // Legacy support: previous format encoded WindowState directly.
-            windowState = try decoder.decode(WindowState.self, from: data)
-            mainWindowFullScreen = true
-            print("HypnographState: Loaded legacy window state from disk")
-        } catch {
-            print("HypnographState: Failed to load window state: \(error)")
-        }
-    }
-
-    /// Save window state to disk
-    func saveWindowStateToDisk() {
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let persisted = PersistedWindowState(
-                windowState: windowState,
-                mainWindowFullScreen: mainWindowFullScreen
-            )
-            let data = try encoder.encode(persisted)
-            try data.write(to: windowStateFileURL)
-            print("HypnographState: Saved window state to disk")
-        } catch {
-            print("HypnographState: Failed to save window state: \(error)")
-        }
-    }
-
-    func setMainWindowFullScreen(_ isFullScreen: Bool) {
-        guard mainWindowFullScreen != isFullScreen else { return }
-        mainWindowFullScreen = isFullScreen
-        saveWindowStateToDisk()
     }
 
     var isKeyboardTextInputActive: Bool {

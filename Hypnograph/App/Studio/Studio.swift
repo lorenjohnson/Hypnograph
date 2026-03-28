@@ -19,6 +19,7 @@ import HypnoUI
 @MainActor
 final class Studio: ObservableObject {
     let state: HypnographState
+    let windows: WindowStateController
     let renderQueue: RenderEngine.ExportQueue
     let dependencies: StudioDependencies
     let panelHostService: FilePanelService
@@ -130,6 +131,7 @@ final class Studio: ObservableObject {
         dependencies: StudioDependencies = .live
     ) {
         self.state = state
+        self.windows = WindowStateController()
         self.renderQueue = renderQueue
         self.dependencies = dependencies
         self.panelHostService = dependencies.makePanelHostService()
@@ -175,7 +177,7 @@ final class Studio: ObservableObject {
                 if self.liveMode == .live {
                     self.liveMode = .edit
                 }
-                self.state.windowState.set("livePreview", visible: false)
+                self.windows.setWindowVisible("livePreview", visible: false)
                 if self.livePlayer.isVisible {
                     self.livePlayer.hide()
                 }

@@ -12,7 +12,7 @@ import SwiftUI
 struct WindowRegistrationModifier: ViewModifier {
     let windowID: String
     let defaultVisible: Bool
-    @ObservedObject var state: HypnographState
+    @ObservedObject var controller: WindowStateController
 
     @State private var hasRegistered = false
 
@@ -21,7 +21,7 @@ struct WindowRegistrationModifier: ViewModifier {
             .onAppear {
                 // Register once on first appearance
                 if !hasRegistered {
-                    state.windowState.register(windowID, defaultVisible: defaultVisible)
+                    controller.registerWindow(windowID, defaultVisible: defaultVisible)
                     hasRegistered = true
                 }
             }
@@ -35,16 +35,16 @@ extension View {
     /// - Parameters:
     ///   - windowID: Unique string identifier for this window (e.g., "hud", "effectsEditor")
     ///   - defaultVisible: Whether the window should be visible by default on first registration
-    ///   - state: The HypnographState instance to register with
+    ///   - controller: The WindowStateController instance to register with
     ///
     /// - Returns: A view that automatically registers itself as a window
     ///
     /// Example usage:
     /// ```swift
     /// HUDView(...)
-    ///     .registerWindow("hud", defaultVisible: false, state: state)
+    ///     .registerWindow("hud", defaultVisible: false, controller: studio.windows)
     /// ```
-    func registerWindow(_ windowID: String, defaultVisible: Bool = false, state: HypnographState) -> some View {
-        modifier(WindowRegistrationModifier(windowID: windowID, defaultVisible: defaultVisible, state: state))
+    func registerWindow(_ windowID: String, defaultVisible: Bool = false, controller: WindowStateController) -> some View {
+        modifier(WindowRegistrationModifier(windowID: windowID, defaultVisible: defaultVisible, controller: controller))
     }
 }

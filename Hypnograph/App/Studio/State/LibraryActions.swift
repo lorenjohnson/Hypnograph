@@ -9,11 +9,15 @@ import HypnoCore
 @MainActor
 extension Studio {
     func addFolderSourcesFromPanel() {
-        addFolderLibrariesFromPanel()
+        addSourceLibrariesFromPanel()
     }
 
     func addFolderLibrariesFromPanel() {
-        let selectedPaths = PathFormatting.storagePaths(from: panelHostService.chooseSourceFolders())
+        addSourceLibrariesFromPanel()
+    }
+
+    func addSourceLibrariesFromPanel() {
+        let selectedPaths = PathFormatting.storagePaths(from: panelHostService.chooseSourceFilesAndFolders())
         guard !selectedPaths.isEmpty else { return }
 
         state.settingsStore.update { settings in
@@ -25,17 +29,22 @@ extension Studio {
                     .map { ($0 as NSString).expandingTildeInPath }
             )
             var existingKeys = Set(libraries.keys)
-
-            for path in selectedPaths {
+            let newPaths = selectedPaths.filter { path in
                 let expandedPath = (path as NSString).expandingTildeInPath
-                guard !existingPaths.contains(expandedPath) else { continue }
-
-                let key = uniqueFolderLibraryKey(for: expandedPath, existingKeys: existingKeys)
-                libraries[key] = [path]
-                existingPaths.insert(expandedPath)
-                existingKeys.insert(key)
-                activeLibraries.insert(key)
+                return !existingPaths.contains(expandedPath)
             }
+
+            guard !newPaths.isEmpty else { return }
+
+            let expandedNewPaths = newPaths.map { ($0 as NSString).expandingTildeInPath }
+            let key = uniqueSourceLibraryKey(forExpandedPaths: expandedNewPaths, existingKeys: existingKeys)
+            libraries[key] = newPaths
+
+            for expandedPath in expandedNewPaths {
+                existingPaths.insert(expandedPath)
+            }
+            existingKeys.insert(key)
+            activeLibraries.insert(key)
 
             settings.sources = .dictionary(libraries)
             settings.activeLibraries = Array(activeLibraries)
@@ -70,12 +79,22 @@ extension Studio {
         }
     }
 
-    private func uniqueFolderLibraryKey(for expandedPath: String, existingKeys: Set<String>) -> String {
-        let url = URL(fileURLWithPath: expandedPath)
-        let baseName = url.deletingPathExtension().lastPathComponent.isEmpty
-            ? url.lastPathComponent
-            : url.deletingPathExtension().lastPathComponent
-        let preferred = baseName.isEmpty ? "Source Folder" : baseName
+    private func uniqueSourceLibraryKey(forExpandedPaths expandedPaths: [String], existingKeys: Set<String>) -> String {
+        let preferred: String
+        if expandedPaths.count == 1 {
+            let url = URL(fileURLWithPath: expandedPaths[0])
+            let baseName = url.deletingPathExtension().lastPathComponent.isEmpty
+                ? url.lastPathComponent
+                : url.deletingPathExtension().lastPathComponent
+            preferred = baseName.isEmpty ? "Sources" : baseName
+        } else {
+            let firstURL = URL(fileURLWithPath: expandedPaths[0])
+            let firstName = firstURL.deletingPathExtension().lastPathComponent.isEmpty
+                ? firstURL.lastPathComponent
+                : firstURL.deletingPathExtension().lastPathComponent
+            let seed = firstName.isEmpty ? "Selection" : firstName
+            preferred = "\(seed) + \(expandedPaths.count - 1)"
+        }
 
         guard !existingKeys.contains(preferred) else {
             var suffix = 2

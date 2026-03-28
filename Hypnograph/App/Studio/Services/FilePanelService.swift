@@ -21,12 +21,17 @@ final class FilePanelService {
     }
 
     func chooseSourceFolders() -> [URL] {
+        chooseSourceFilesAndFolders()
+    }
+
+    func chooseSourceFilesAndFolders() -> [URL] {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
-        panel.canChooseFiles = false
+        panel.canChooseFiles = true
         panel.allowsMultipleSelection = true
         panel.prompt = "Add"
-        panel.message = "Choose folder(s) to add as Hypnograph sources."
+        panel.allowedContentTypes = [.folder, .image, .movie]
+        panel.message = "Choose file(s) and folder(s) to add as Hypnograph sources."
 
         guard panel.runModal() == .OK else { return [] }
         return panel.urls

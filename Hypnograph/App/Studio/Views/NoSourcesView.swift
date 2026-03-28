@@ -23,7 +23,7 @@ struct NoSourcesView: View {
 
             HStack(spacing: 12) {
                 Button("Open Sources Window") {
-                    main.state.windowState.set("sourcesWindow", visible: true)
+                    main.windows.setWindowVisible("sourcesWindow", visible: true)
                 }
 
                 Button("Add Folder Source…") {

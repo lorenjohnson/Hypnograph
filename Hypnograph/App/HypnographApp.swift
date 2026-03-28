@@ -93,14 +93,8 @@ struct HypnographApp: App {
                 appDelegate.saveSnapshotImage = { [weak studio] in
                     studio?.saveSnapshotImage()
                 }
-                appDelegate.toggleCleanScreen = { [weak state] in
-                    state?.windowState.toggleCleanScreen()
-                }
-                appDelegate.toggleNewClipsWindow = { [weak state] in
-                    _ = state?.windowState.toggle("newClipsWindow")
-                }
-                appDelegate.toggleEffectsWindow = { [weak state] in
-                    _ = state?.windowState.toggle("effectsWindow")
+                appDelegate.toggleCleanScreen = { [weak studio] in
+                    studio?.windows.toggleCleanScreen()
                 }
                 appDelegate.isTypingActive = { [weak state] in
                     state?.isKeyboardTextInputActive ?? false
@@ -110,14 +104,14 @@ struct HypnographApp: App {
                 }
 
                 // Wire up window state persistence
-                appDelegate.saveWindowState = { [weak state] in
-                    state?.saveWindowStateToDisk()
+                appDelegate.saveWindowState = { [weak studio] in
+                    studio?.windows.saveToDisk()
                 }
-                appDelegate.setMainWindowFullScreenState = { [weak state] isFullScreen in
-                    state?.setMainWindowFullScreen(isFullScreen)
+                appDelegate.setMainWindowFullScreenState = { [weak studio] isFullScreen in
+                    studio?.windows.setMainWindowFullScreen(isFullScreen)
                 }
-                appDelegate.shouldRestoreMainWindowFullScreenState = { [weak state] in
-                    state?.mainWindowFullScreen ?? true
+                appDelegate.shouldRestoreMainWindowFullScreenState = { [weak studio] in
+                    studio?.windows.mainWindowFullScreen ?? true
                 }
                 appDelegate.applyStoredMainWindowFullscreenPreferenceIfNeeded()
 

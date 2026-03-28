@@ -50,7 +50,7 @@ struct SourcesWindowView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            LazyVStack(alignment: .leading, spacing: 16) {
                 sectionTitle("Sources")
 
                 Text("Manage the media pool used for random clip generation, and keep source setup out of the menu bar.")
@@ -58,7 +58,6 @@ struct SourcesWindowView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                quickActionsSection
                 mediaTypesSection
                 folderLibrariesSection
                 photosSection
@@ -73,27 +72,6 @@ struct SourcesWindowView: View {
         .onAppear {
             Task {
                 await state.refreshAvailableLibraries()
-            }
-        }
-    }
-
-    private var quickActionsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionTitle("Quick Actions")
-
-            HStack(spacing: 10) {
-                Button("Add Folder Library…") {
-                    main.addFolderLibrariesFromPanel()
-                }
-
-                Button("Add File to Composition…") {
-                    main.addSourceFromFilesPanel()
-                }
-
-                Button("Pick Custom Photos…") {
-                    state.showPhotosPicker = true
-                }
-                .disabled(!canReadPhotos)
             }
         }
     }
@@ -124,10 +102,22 @@ struct SourcesWindowView: View {
     private var folderLibrariesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionDivider()
-            sectionTitle("Folder Libraries")
+            HStack(alignment: .center, spacing: 8) {
+                sectionTitle("File & Folder Sources")
+                Spacer(minLength: 8)
+
+                Button {
+                    main.addSourceLibrariesFromPanel()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.borderless)
+                .help("Add Files or Folders")
+            }
 
             if folderLibraryRows.isEmpty {
-                emptyState("No folder libraries configured yet.")
+                emptyState("No file or folder sources configured yet.")
             } else {
                 ForEach(folderLibraryRows) { row in
                     folderLibraryRow(row)
@@ -139,13 +129,26 @@ struct SourcesWindowView: View {
     private var photosSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionDivider()
-            sectionTitle("Apple Photos")
+            HStack(alignment: .center, spacing: 8) {
+                sectionTitle("Apple Photos")
+                Spacer(minLength: 8)
+
+                Button {
+                    state.showPhotosPicker = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.borderless)
+                .disabled(!canReadPhotos)
+                .help("Pick Custom Photos")
+            }
 
             if canReadPhotos {
                 if let allItems = photosLibraries.first(where: { $0.id == ApplePhotosLibraryKeys.photosAll }) {
                     sourceToggleRow(
                         title: allItems.name,
-                        subtitle: "\(allItems.assetCount) item\(allItems.assetCount == 1 ? "" : "s")",
+                        trailingText: "\(allItems.assetCount)",
                         isOn: Binding(
                             get: { state.isLibraryActive(key: allItems.id) },
                             set: { _ in state.toggleLibrary(key: allItems.id) }
@@ -158,7 +161,7 @@ struct SourcesWindowView: View {
                 ForEach(photosLibraries.filter { $0.id != ApplePhotosLibraryKeys.photosAll && $0.id != ApplePhotosLibraryKeys.photosCustom }) { library in
                     sourceToggleRow(
                         title: library.name,
-                        subtitle: "\(library.assetCount) item\(library.assetCount == 1 ? "" : "s")",
+                        trailingText: "\(library.assetCount)",
                         isOn: Binding(
                             get: { state.isLibraryActive(key: library.id) },
                             set: { _ in state.toggleLibrary(key: library.id) }
@@ -225,7 +228,7 @@ struct SourcesWindowView: View {
     private var customPhotosRow: some View {
         let count = state.customPhotosAssetIds.count
         let isActive = state.isLibraryActive(key: ApplePhotosLibraryKeys.photosCustom)
-        let subtitle = count > 0 ? "\(count) selected item\(count == 1 ? "" : "s")" : "No custom selection yet"
+        let trailingText = count > 0 ? "\(count)" : "Edit"
 
         return HStack(alignment: .top, spacing: 10) {
             Toggle("", isOn: Binding(
@@ -243,14 +246,11 @@ struct SourcesWindowView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Custom Selection")
                     .font(.body.weight(.medium))
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             Spacer(minLength: 8)
 
-            Button("Edit…") {
+            Button(trailingText) {
                 state.showPhotosPicker = true
             }
             .buttonStyle(.borderless)
@@ -262,20 +262,21 @@ struct SourcesWindowView: View {
         )
     }
 
-    private func sourceToggleRow(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
+    private func sourceToggleRow(title: String, trailingText: String, isOn: Binding<Bool>) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Toggle("", isOn: isOn)
                 .labelsHidden()
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.body.weight(.medium))
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            Text(title)
+                .font(.body.weight(.medium))
+                .lineLimit(1)
 
             Spacer(minLength: 8)
+
+            Text(trailingText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
         }
         .padding(10)
         .background(
