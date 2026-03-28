@@ -20,6 +20,7 @@ struct AppCommands: Commands {
     @SwiftUI.Environment(\.openWindow) private var openWindow
     @ObservedObject private var state: HypnographState
     @ObservedObject private var studio: Studio
+    @ObservedObject private var windows: WindowStateController
 
     /// Whether a text field is currently being edited
     private var isTyping: Bool { state.isKeyboardTextInputActive }
@@ -33,6 +34,7 @@ struct AppCommands: Commands {
     ) {
         _state = ObservedObject(initialValue: state)
         _studio = ObservedObject(initialValue: studio)
+        _windows = ObservedObject(initialValue: studio.windows)
     }
 
     var body: some Commands {
@@ -92,8 +94,8 @@ struct AppCommands: Commands {
             Divider()
 
             Toggle("Hypnogram List", isOn: Binding(
-                get: { state.windowState.isVisible("hypnogramList") },
-                set: { _ in state.windowState.toggle("hypnogramList") }
+                get: { windows.isWindowVisible("hypnogramList") },
+                set: { _ in windows.toggleWindow("hypnogramList") }
             ))
             .keyboardShortcut("h", modifiers: [])
             .disabled(isTyping || !isStudioWindowShortcutContext)
@@ -102,29 +104,27 @@ struct AppCommands: Commands {
         CommandGroup(replacing: .sidebar) {
             Section("Studio Windows") {
                 Toggle("New Clips", isOn: Binding(
-                    get: { state.windowState.isVisible("newClipsWindow") },
-                    set: { _ in state.windowState.toggle("newClipsWindow") }
+                    get: { windows.isWindowVisible("newClipsWindow") },
+                    set: { _ in windows.toggleWindow("newClipsWindow") }
                 ))
-                .keyboardShortcut("[", modifiers: [])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("Output Settings", isOn: Binding(
-                    get: { state.windowState.isVisible("outputSettingsWindow") },
-                    set: { _ in state.windowState.toggle("outputSettingsWindow") }
+                    get: { windows.isWindowVisible("outputSettingsWindow") },
+                    set: { _ in windows.toggleWindow("outputSettingsWindow") }
                 ))
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("Composition", isOn: Binding(
-                    get: { state.windowState.isVisible("compositionWindow") },
-                    set: { _ in state.windowState.toggle("compositionWindow") }
+                    get: { windows.isWindowVisible("compositionWindow") },
+                    set: { _ in windows.toggleWindow("compositionWindow") }
                 ))
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("Effects", isOn: Binding(
-                    get: { state.windowState.isVisible("effectsWindow") },
-                    set: { _ in state.windowState.toggle("effectsWindow") }
+                    get: { windows.isWindowVisible("effectsWindow") },
+                    set: { _ in windows.toggleWindow("effectsWindow") }
                 ))
-                .keyboardShortcut("]", modifiers: [])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 // Clean Screen: Tab key handled via NSEvent monitor in app delegate
@@ -150,8 +150,8 @@ struct AppCommands: Commands {
 
                 Section("Live Display") {
                     Toggle("Live Preview", isOn: Binding(
-                        get: { state.windowState.isVisible("livePreview") },
-                        set: { _ in state.windowState.toggle("livePreview") }
+                        get: { windows.isWindowVisible("livePreview") },
+                        set: { _ in windows.toggleWindow("livePreview") }
                     ))
                     .keyboardShortcut("w", modifiers: [])
                     .disabled(isTyping || !isStudioWindowShortcutContext)
@@ -236,7 +236,7 @@ struct AppCommands: Commands {
         if activeWindowContext == .effectsComposer {
             NotificationCenter.default.post(name: .effectsComposerToggleCleanScreen, object: nil)
         } else {
-            state.windowState.toggleCleanScreen()
+            windows.toggleCleanScreen()
         }
     }
 

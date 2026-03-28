@@ -1,25 +1,26 @@
 //
-//  StudioPanelWindows.swift
+//  WindowHostBridge.swift
 //  Hypnograph
 //
 
 import SwiftUI
 
-struct StudioPanelHostBridge: NSViewRepresentable {
-    @ObservedObject var hostService: StudioWindowHostService
+struct WindowHostBridge: NSViewRepresentable {
+    @ObservedObject var hostService: WindowHostService
     let showNewClips: Bool
     let showOutputSettings: Bool
     let showComposition: Bool
     let showEffects: Bool
+    let onPanelVisibilityChanged: (String, Bool) -> Void
     let newClipsContent: AnyView
     let outputSettingsContent: AnyView
     let compositionContent: AnyView
     let effectsContent: AnyView
 
     final class Coordinator {
-        var hostService: StudioWindowHostService
+        var hostService: WindowHostService
 
-        init(hostService: StudioWindowHostService) {
+        init(hostService: WindowHostService) {
             self.hostService = hostService
         }
     }
@@ -40,6 +41,7 @@ struct StudioPanelHostBridge: NSViewRepresentable {
             showOutputSettings: showOutputSettings,
             showComposition: showComposition,
             showEffects: showEffects,
+            onPanelVisibilityChanged: onPanelVisibilityChanged,
             newClipsContent: newClipsContent,
             outputSettingsContent: outputSettingsContent,
             compositionContent: compositionContent,

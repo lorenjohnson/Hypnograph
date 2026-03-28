@@ -3,8 +3,6 @@ import SwiftUI
 struct KeyboardHintBar: View {
     var body: some View {
         HStack(spacing: 18) {
-            KeyboardHint(key: "[", action: "Toggle Left")
-            KeyboardHint(key: "]", action: "Toggle Right")
             KeyboardHint(key: "Tab", action: "Clean Screen")
         }
         .padding(.horizontal, 12)
@@ -38,4 +36,3 @@ private struct KeyboardHint: View {
         }
     }
 }
-

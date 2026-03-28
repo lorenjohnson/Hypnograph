@@ -1,12 +1,12 @@
 //
-//  StudioWindowHostService.swift
+//  WindowHostService.swift
 //  Hypnograph
 //
 
 import SwiftUI
 import AppKit
 
-private enum StudioPanelKind: String {
+private enum WindowKind: String {
     case newClips
     case outputSettings
     case composition
@@ -21,6 +21,10 @@ private enum StudioPanelKind: String {
         }
     }
 
+    var windowStateID: String {
+        "\(rawValue)Window"
+    }
+
     var defaultSize: CGSize {
         switch self {
         case .newClips: return CGSize(width: 360, height: 560)
@@ -30,13 +34,25 @@ private enum StudioPanelKind: String {
         }
     }
 
+    var maxWidth: CGFloat {
+        defaultSize.width * 1.5
+    }
+
     var minSize: CGSize {
         switch self {
-        case .newClips: return CGSize(width: 300, height: 360)
-        case .outputSettings: return CGSize(width: 300, height: 260)
-        case .composition: return CGSize(width: 340, height: 420)
-        case .effects: return CGSize(width: 340, height: 420)
+        case .newClips: return CGSize(width: defaultSize.width, height: 360)
+        case .outputSettings: return CGSize(width: defaultSize.width, height: 260)
+        case .composition: return CGSize(width: defaultSize.width, height: 420)
+        case .effects: return CGSize(width: defaultSize.width, height: 420)
         }
+    }
+
+    var shouldFitHeightToContent: Bool {
+        self != .effects
+    }
+
+    var fixedHeightPadding: CGFloat {
+        16
     }
 
     var defaultOrigin: (NSRect, CGSize) -> CGPoint {
@@ -65,8 +81,9 @@ private enum StudioPanelKind: String {
     }
 }
 
-private final class StudioChildPanel: NSPanel {
+private final class ChildWindowPanel: NSPanel {
     var onUserInteraction: (() -> Void)?
+    var onCloseRequest: (() -> Void)?
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
@@ -85,18 +102,27 @@ private final class StudioChildPanel: NSPanel {
         }
         super.sendEvent(event)
     }
+
+    override func performClose(_ sender: Any?) {
+        if let onCloseRequest {
+            onCloseRequest()
+            return
+        }
+        super.performClose(sender)
+    }
 }
 
 @MainActor
-final class StudioWindowHostService: ObservableObject {
+final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     private struct ManagedPanel {
-        let panel: StudioChildPanel
+        let panel: ChildWindowPanel
         let host: NSHostingController<AnyView>
     }
 
     private weak var parentWindow: NSWindow?
-    private var panels: [StudioPanelKind: ManagedPanel] = [:]
+    private var panels: [WindowKind: ManagedPanel] = [:]
     private var parentCloseObserver: NSObjectProtocol?
+    private var onPanelVisibilityChanged: ((String, Bool) -> Void)?
 
     func sync(
         parentWindow: NSWindow?,
@@ -104,11 +130,14 @@ final class StudioWindowHostService: ObservableObject {
         showOutputSettings: Bool,
         showComposition: Bool,
         showEffects: Bool,
+        onPanelVisibilityChanged: @escaping (String, Bool) -> Void,
         newClipsContent: AnyView,
         outputSettingsContent: AnyView,
         compositionContent: AnyView,
         effectsContent: AnyView
     ) {
+        self.onPanelVisibilityChanged = onPanelVisibilityChanged
+
         guard let parentWindow else {
             hideAllPanels()
             return
@@ -144,7 +173,7 @@ final class StudioWindowHostService: ObservableObject {
     }
 
     private func syncPanel(
-        kind: StudioPanelKind,
+        kind: WindowKind,
         visible: Bool,
         content: AnyView,
         parentWindow: NSWindow
@@ -152,6 +181,7 @@ final class StudioWindowHostService: ObservableObject {
         if visible {
             let managed = ensurePanel(kind: kind, parentWindow: parentWindow)
             managed.host.rootView = content
+            applySizing(for: kind, managed: managed)
 
             if managed.panel.parent == nil {
                 parentWindow.addChildWindow(managed.panel, ordered: .above)
@@ -160,25 +190,28 @@ final class StudioWindowHostService: ObservableObject {
                 managed.panel.orderFront(nil)
             }
         } else if let managed = panels[kind] {
+            if managed.panel.parent === parentWindow {
+                parentWindow.removeChildWindow(managed.panel)
+            }
             managed.panel.orderOut(nil)
         }
     }
 
-    private func ensurePanel(kind: StudioPanelKind, parentWindow: NSWindow) -> ManagedPanel {
+    private func ensurePanel(kind: WindowKind, parentWindow: NSWindow) -> ManagedPanel {
         if let existing = panels[kind] {
             return existing
         }
 
         let frame = defaultFrame(kind: kind, parentWindow: parentWindow)
-        let panel = StudioChildPanel(
+        let panel = ChildWindowPanel(
             contentRect: frame,
-            styleMask: [.titled, .resizable, .fullSizeContentView],
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView, .utilityWindow],
             backing: .buffered,
             defer: false
         )
         panel.title = kind.title
-        panel.titleVisibility = .visible
-        panel.titlebarAppearsTransparent = false
+        panel.titleVisibility = .hidden
+        panel.titlebarAppearsTransparent = true
         panel.isMovableByWindowBackground = true
         panel.isReleasedWhenClosed = false
         panel.isFloatingPanel = false
@@ -188,14 +221,21 @@ final class StudioWindowHostService: ObservableObject {
         panel.isOpaque = false
         panel.hasShadow = true
         panel.hidesOnDeactivate = false
+        panel.delegate = self
         panel.minSize = kind.minSize
+        panel.maxSize = CGSize(width: kind.maxWidth, height: .greatestFiniteMagnitude)
         panel.setFrameAutosaveName(kind.autosaveName)
         _ = panel.setFrameUsingName(kind.autosaveName, force: false)
         panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
         panel.standardWindowButton(.zoomButton)?.isHidden = true
+        installTitleAccessory(for: panel, title: kind.title)
         panel.onUserInteraction = { [weak self, weak panel] in
             guard let self, let panel else { return }
             bringToFront(panel)
+        }
+        panel.onCloseRequest = { [weak self, weak panel] in
+            guard let self else { return }
+            self.handleCloseRequest(for: kind, panel: panel)
         }
 
         let host = NSHostingController(rootView: AnyView(EmptyView()))
@@ -207,6 +247,71 @@ final class StudioWindowHostService: ObservableObject {
         return managed
     }
 
+    private func installTitleAccessory(for panel: NSPanel, title: String) {
+        let label = NSTextField(labelWithString: title)
+        label.font = .systemFont(ofSize: 11, weight: .medium)
+        label.textColor = .secondaryLabelColor
+        label.lineBreakMode = .byTruncatingTail
+
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 180, height: 22))
+        container.translatesAutoresizingMaskIntoConstraints = false
+        label.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(label)
+
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            label.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            label.centerYAnchor.constraint(equalTo: container.centerYAnchor)
+        ])
+
+        let accessory = NSTitlebarAccessoryViewController()
+        accessory.view = container
+        accessory.layoutAttribute = .left
+        panel.addTitlebarAccessoryViewController(accessory)
+    }
+
+    private func applySizing(for kind: WindowKind, managed: ManagedPanel) {
+        let panel = managed.panel
+        let clampedWidth = min(max(panel.frame.width, kind.minSize.width), kind.maxWidth)
+
+        panel.contentView?.frame = NSRect(origin: .zero, size: CGSize(width: clampedWidth, height: panel.frame.height))
+        managed.host.view.frame = NSRect(origin: .zero, size: CGSize(width: clampedWidth, height: panel.frame.height))
+        managed.host.view.layoutSubtreeIfNeeded()
+
+        if kind.shouldFitHeightToContent {
+            let measuredHeight = max(
+                kind.minSize.height,
+                managed.host.view.fittingSize.height + kind.fixedHeightPadding
+            )
+
+            panel.minSize = CGSize(width: kind.minSize.width, height: measuredHeight)
+            panel.maxSize = CGSize(width: kind.maxWidth, height: measuredHeight)
+
+            let targetFrame = NSRect(
+                x: panel.frame.origin.x,
+                y: panel.frame.origin.y,
+                width: clampedWidth,
+                height: measuredHeight
+            )
+            if panel.frame.size != targetFrame.size {
+                panel.setFrame(targetFrame, display: true)
+            }
+        } else {
+            panel.minSize = kind.minSize
+            panel.maxSize = CGSize(width: kind.maxWidth, height: .greatestFiniteMagnitude)
+
+            if panel.frame.width != clampedWidth {
+                let targetFrame = NSRect(
+                    x: panel.frame.origin.x,
+                    y: panel.frame.origin.y,
+                    width: clampedWidth,
+                    height: panel.frame.height
+                )
+                panel.setFrame(targetFrame, display: true)
+            }
+        }
+    }
+
     private func configureParentWindowForFullScreen(_ window: NSWindow) {
         var behavior = window.collectionBehavior
         if !behavior.contains(.fullScreenPrimary) {
@@ -215,7 +320,7 @@ final class StudioWindowHostService: ObservableObject {
         }
     }
 
-    private func defaultFrame(kind: StudioPanelKind, parentWindow: NSWindow) -> NSRect {
+    private func defaultFrame(kind: WindowKind, parentWindow: NSWindow) -> NSRect {
         let parentFrame = parentWindow.frame
         let size = kind.defaultSize
         let origin = kind.defaultOrigin(parentFrame, size)
@@ -223,7 +328,20 @@ final class StudioWindowHostService: ObservableObject {
     }
 
     private func hideAllPanels() {
-        panels.values.forEach { $0.panel.orderOut(nil) }
+        panels.values.forEach { managed in
+            if let parent = managed.panel.parent {
+                parent.removeChildWindow(managed.panel)
+            }
+            managed.panel.orderOut(nil)
+        }
+    }
+
+    private func handleCloseRequest(for kind: WindowKind, panel: NSPanel?) {
+        if let panel, let parent = panel.parent {
+            parent.removeChildWindow(panel)
+        }
+        panel?.orderOut(nil)
+        onPanelVisibilityChanged?(kind.windowStateID, false)
     }
 
     private func bringToFront(_ panel: NSPanel) {
@@ -232,6 +350,10 @@ final class StudioWindowHostService: ObservableObject {
             parentWindow.addChildWindow(panel, ordered: .above)
         }
         panel.makeKeyAndOrderFront(nil)
+    }
+
+    private func kind(for panel: NSWindow) -> WindowKind? {
+        panels.first { $0.value.panel === panel }?.key
     }
 
     private func detachFromCurrentParent() {
@@ -266,5 +388,11 @@ final class StudioWindowHostService: ObservableObject {
         hideAllPanels()
         detachFromCurrentParent()
         parentWindow = nil
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        guard let kind = kind(for: sender) else { return true }
+        handleCloseRequest(for: kind, panel: sender as? NSPanel)
+        return false
     }
 }

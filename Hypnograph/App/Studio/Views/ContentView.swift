@@ -9,9 +9,16 @@ import HypnoUI
 struct ContentView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
+    @ObservedObject private var windows: WindowStateController
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
-    @StateObject private var panelHostService = StudioWindowHostService()
+    @StateObject private var windowHostService = WindowHostService()
     @State private var isPlayerControlsVisible: Bool = true
+
+    init(state: HypnographState, main: Studio) {
+        self.state = state
+        self.main = main
+        _windows = ObservedObject(initialValue: main.windows)
+    }
 
     private var clipTrimContexts: [ClipTrimContext] {
         let layers = main.activePlayer.layers
@@ -178,7 +185,7 @@ struct ContentView: View {
             MouseIdleVisibilityView(
                 isEnabled: true,
                 idleSeconds: 3.0,
-                startHiddenOnEnable: state.windowState.isCleanScreen,
+                startHiddenOnEnable: windows.isCleanScreen,
                 activityIgnoreLeftInset: 0,
                 activityIgnoreRightInset: 0,
                 isVisible: $isPlayerControlsVisible
@@ -187,7 +194,7 @@ struct ContentView: View {
 
             // HUD and Hypnogram List - top left (below LIVE if visible)
             VStack(alignment: .leading, spacing: 8) {
-                if state.windowState.isVisible("hypnogramList") {
+                if windows.isWindowVisible("hypnogramList") {
                     HypnogramListView(
                         store: HypnogramStore.shared,
                         onLoad: { entry in
@@ -204,11 +211,11 @@ struct ContentView: View {
             }
             .padding(.top, main.isLiveMode ? 56 : 12)
             .padding(.leading, 12)
-            .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("hypnogramList"))
+            .animation(.easeInOut(duration: 0.2), value: windows.isWindowVisible("hypnogramList"))
         }
         .overlay(alignment: .top) {
             VStack(spacing: 8) {
-                if !state.windowState.isCleanScreen && main.isLiveModeAvailable {
+                if !windows.isCleanScreen && main.isLiveModeAvailable {
                     Picker("", selection: Binding(
                         get: { main.isLiveMode ? 1 : 0 },
                         set: { newValue in
@@ -224,7 +231,7 @@ struct ContentView: View {
                     .frame(width: 170)
                 }
 
-                if !state.windowState.isCleanScreen && state.windowState.isVisible("keyboardHints") {
+                if !windows.isCleanScreen && windows.isWindowVisible("keyboardHints") {
                     KeyboardHintBar()
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
@@ -236,7 +243,7 @@ struct ContentView: View {
             }
             .padding(.top, 12)
             .animation(.easeInOut(duration: 0.2), value: externalLoadHarness.status)
-            .animation(.easeInOut(duration: 0.25), value: state.windowState.isVisible("keyboardHints"))
+            .animation(.easeInOut(duration: 0.25), value: windows.isWindowVisible("keyboardHints"))
         }
         .overlay(alignment: .bottom) {
             playerControlsOverlay
@@ -251,11 +258,11 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
 
-                if main.isLiveModeAvailable && state.windowState.isVisible("livePreview") {
+                if main.isLiveModeAvailable && windows.isWindowVisible("livePreview") {
                     LivePreviewPanel(
                         livePlayer: main.livePlayer,
                         onClose: {
-                            state.windowState.set("livePreview", visible: false)
+                            windows.setWindowVisible("livePreview", visible: false)
                         }
                     )
                     .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -264,15 +271,18 @@ struct ContentView: View {
             .padding(.top, 12)
             .padding(.trailing, 12)
             .padding(.bottom, 12)
-            .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("livePreview"))
+            .animation(.easeInOut(duration: 0.2), value: windows.isWindowVisible("livePreview"))
         }
         .background(
-            StudioPanelHostBridge(
-                hostService: panelHostService,
-                showNewClips: state.windowState.isVisible("newClipsWindow"),
-                showOutputSettings: state.windowState.isVisible("outputSettingsWindow"),
-                showComposition: state.windowState.isVisible("compositionWindow"),
-                showEffects: state.windowState.isVisible("effectsWindow"),
+            WindowHostBridge(
+                hostService: windowHostService,
+                showNewClips: windows.isWindowVisible("newClipsWindow"),
+                showOutputSettings: windows.isWindowVisible("outputSettingsWindow"),
+                showComposition: windows.isWindowVisible("compositionWindow"),
+                showEffects: windows.isWindowVisible("effectsWindow"),
+                onPanelVisibilityChanged: { windowID, isVisible in
+                    windows.setWindowVisible(windowID, visible: isVisible)
+                },
                 newClipsContent: AnyView(
                     NewClipsWindowView(state: state, main: main, player: main.activePlayer)
                 ),
@@ -291,13 +301,13 @@ struct ContentView: View {
         .appNotifications()
         .background(Color.black)
         .onAppear {
-            state.windowState.register("newClipsWindow", defaultVisible: true)
-            state.windowState.register("outputSettingsWindow", defaultVisible: true)
-            state.windowState.register("compositionWindow", defaultVisible: true)
-            state.windowState.register("effectsWindow", defaultVisible: true)
-            state.windowState.register("keyboardHints", defaultVisible: true)
+            windows.registerWindow("newClipsWindow", defaultVisible: true)
+            windows.registerWindow("outputSettingsWindow", defaultVisible: true)
+            windows.registerWindow("compositionWindow", defaultVisible: true)
+            windows.registerWindow("effectsWindow", defaultVisible: true)
+            windows.registerWindow("keyboardHints", defaultVisible: true)
         }
-        .onChange(of: state.windowState.isCleanScreen) { _, isCleanScreen in
+        .onChange(of: windows.isCleanScreen) { _, isCleanScreen in
             isPlayerControlsVisible = !isCleanScreen
         }
         .sheet(isPresented: $state.showPhotosPicker) {
