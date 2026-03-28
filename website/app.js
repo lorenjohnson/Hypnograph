@@ -12,8 +12,8 @@
   const TREE_OPEN_STATE_KEY = "hypnograph.docsTree.open.v1";
   const SIDEBAR_OPEN_STATE_KEY = "hypnograph.docsSidebar.open.v1";
   const resolvedDocPath = resolveDocPath(window.location.pathname);
-  const currentRelativeDocPath = resolvedDocPath.replace(/^\/docs\//, "");
-  const isHomepage = resolvedDocPath === "/docs/collaborators.md";
+  const currentRelativeDocPath = toRelativeDocPath(resolvedDocPath);
+  const isHomepage = resolvedDocPath === "/index.md";
   const markdownUtils = window.markdownit().utils;
   const openTreePaths = loadOpenTreePaths();
   let isSidebarOpen = loadSidebarOpenState(!isHomepage);
@@ -118,11 +118,31 @@
     return text.replace(frontMatterPattern, "");
   }
 
+  function toRelativeDocPath(path) {
+    if (path.startsWith("/docs/")) {
+      return path.slice("/docs/".length);
+    }
+    return path.replace(/^\/+/, "");
+  }
+
   function resolveDocPath(pathname) {
     const normalizedPath = pathname.replace(/\/+$/, "");
 
     if (normalizedPath === "" || normalizedPath === "/") {
-      return "/docs/collaborators.md";
+      return "/index.md";
+    }
+
+    if (normalizedPath === "/index" || normalizedPath === "/index.md") {
+      return "/index.md";
+    }
+
+    if (normalizedPath === "/collaborators" || normalizedPath === "/collaborators.md"
+      || normalizedPath === "/docs/collaborators" || normalizedPath === "/docs/collaborators.md") {
+      return "/index.md";
+    }
+
+    if (normalizedPath === "/docs") {
+      return "/docs/index.md";
     }
 
     if (normalizedPath.startsWith("/docs/")) {
@@ -182,6 +202,10 @@
   function routePathForDoc(relativePath) {
     if (relativePath === "collaborators.md") {
       return "/";
+    }
+
+    if (relativePath === "index.md") {
+      return "/docs";
     }
 
     let routeValue = relativePath;
@@ -313,7 +337,11 @@
       const item = document.createElement("li");
       const link = document.createElement("a");
       const routePath = routePathForDoc(file.path);
-      const label = file.path === "collaborators.md" ? "Home" : titleCaseSegment(file.name);
+      const label = file.path === "collaborators.md"
+        ? "Home"
+        : file.path === "index.md"
+          ? "Docs Home"
+          : titleCaseSegment(file.name);
 
       link.href = routePath;
       link.textContent = label;

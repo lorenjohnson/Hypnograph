@@ -54,7 +54,6 @@ This document describes current settings storage, defaults, and related persiste
 ## Source Configuration Note
 - Source paths/globs are read from `MainSettings.sources` in `main-settings.json`.
 - `hypnograph-settings.json` does not contain source libraries.
-- Source pattern semantics (literal path vs glob recursion behavior) are documented in `docs/architecture/media-library-integration.md`.
 
 ## Related Persistent State
 

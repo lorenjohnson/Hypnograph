@@ -1,8 +1,8 @@
-# Hypnogram Transitions (Preview + Live)
+---
+doc-status: done
+---
 
-**Created**: 2026-01-16
-**Status**: Implemented (superseded by Metal playback pipeline)
-**Depends on**: [Unified Player Architecture](20260116-unified-player-architecture.md)
+# Hypnogram Transitions (Preview + Live)
 
 ## Overview
 

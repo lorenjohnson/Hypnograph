@@ -1,7 +1,8 @@
-# Unify Montage/Sequence
+---
+doc-status: done
+---
 
-**Created**: 2026-01-15
-**Status**: Completed
+# Unify Montage/Sequence
 
 This project unified the user model and code paths by:
 - Removing "Sequence mode" as a concept and implementation path.

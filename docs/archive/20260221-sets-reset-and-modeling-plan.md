@@ -1,8 +1,5 @@
 ---
-created: 2026-02-17
-updated: 2026-02-21
-status: completed
-completed: 2026-02-21
+doc-status: done
 ---
 
 # Hypnograph Reset Plan: Sequence/Range Rollback
@@ -25,7 +22,7 @@ The result is useful UX progress, but the core model now mixes concepts and crea
 - The exact executable rollback plan
 - Reset guardrails and validation
 
-Forward-looking Sets design is tracked separately in `sets-model-direction.md`.
+Forward-looking Sets design continues in current queue-backed planning docs.
 
 ## What Changed Recently (Concrete)
 
@@ -215,4 +212,4 @@ Use this to resume in a fresh context window:
   - render current
   - load session
 - Step 3: Confirm reset checkpoint commit before any new model work.
-- Step 4: Continue Sets planning in `sets-model-direction.md`.
+- Step 4: Continue Sets planning in the current queue-backed planning docs.

@@ -1,6 +1,8 @@
-# More Clear Naming
+---
+doc-status: done
+---
 
-**Status:** Complete (2026-01-22)
+# More Clear Naming
 
 This project captures a naming cleanup aimed at making the core "hypnograph/hypnogram/layer/media" model easier to reason about.
 

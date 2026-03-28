@@ -1,3 +1,7 @@
+---
+doc-status: done
+---
+
 # Dream Player State Refactor
 
 ## Goal

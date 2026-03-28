@@ -1,7 +1,10 @@
+---
+doc-status: done
+---
+
 # Custom Metal-Based Blend Modes
 
 **Date:** 2025-12-25
-**Status:** Parked - implementation started but reverted for cleaner approach later
 
 ## Overview
 

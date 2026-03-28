@@ -1,9 +1,8 @@
-# Metal Playback Pipeline
+---
+doc-status: done
+---
 
-**Created**: 2026-01-17
-**Updated**: 2026-01-21
-**Status**: Complete (Direction A)
-**Notes**: Direction B remains a future option; the current codebase uses Direction A.
+# Metal Playback Pipeline
 
 ## Overview
 

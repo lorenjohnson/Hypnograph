@@ -1,3 +1,7 @@
+---
+doc-status: done
+---
+
 # Keyboard Handling Architecture for Text Fields vs Single-Key Shortcuts
 
 ## The Problem (Recurring)

@@ -1,7 +1,8 @@
-# Effects System Refactor
+---
+doc-status: done
+---
 
-**Created**: 2025-01-11
-**Status**: Complete (MVR implemented 2026-01-14)
+# Effects System Refactor
 
 ## Naming Conventions
 

@@ -1,7 +1,8 @@
-# Add Global Source Framing Setting
+---
+doc-status: done
+---
 
-**Created**: 2025-01-16
-**Status**: Complete
+# Add Global Source Framing Setting
 
 ## Overview
 

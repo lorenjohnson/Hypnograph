@@ -3,8 +3,10 @@
 This directory contains the production website for `hypnogra.ph`.
 
 Current site shape:
-- single static page (`index.html`)
-- single stylesheet (`styles.css`)
+- static shell (`index.html` + `app.js`)
+- homepage markdown (`index.md`)
+- docs markdown served from `/docs`
+- stylesheet (`styles.css`)
 - nginx static serving via Docker
 
 ## Tech Stack
@@ -31,7 +33,8 @@ Stop local stack:
 
 ## Key Files
 
-- Site entry: `index.html`
+- Site shell: `index.html`
+- Homepage content: `index.md`
 - Styles: `styles.css`
 - Nginx config: `nginx.conf`
 - Docker image definition: `Dockerfile`

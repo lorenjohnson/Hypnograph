@@ -5,40 +5,44 @@
 
 Hypnograph is a memory-forward visual instrument for macOS.
 
-Instead of browsing your archive like a filing cabinet, Hypnograph replays your photos and videos as evolving, remixable sequences. The product goal is to make revisiting your captured life feel exploratory, reflective, and creatively useful.
-
-[Live website: hypnogra.ph](https://hypnogra.ph)
-
-[![Watch Hypnograph teaser](https://customer-ol1nnrpowobo4pog.cloudflarestream.com/6948b43abd96d022bccc2228064ceecd/thumbnails/thumbnail.jpg)](https://customer-ol1nnrpowobo4pog.cloudflarestream.com/6948b43abd96d022bccc2228064ceecd/watch)
-
-[View additional preview screenshots](website/hero-preview.png)
-
-If you're joining as a developer collaborator: this is an app for generative playback, effect-driven transformation, live visual experimentation, and export of resulting "hypnograms."
+Instead of browsing your archive like a filing cabinet, Hypnograph turns your own photos and videos into an evolving stream of sequences you can watch, steer, compose, and perform. It begins in generative playback, but it is meant to become an instrument for rediscovery, authorship, and live visual use.
 
 The app currently centers on:
 - Generative playback and sequencing of local media
-- Effect-chain based visual processing (Core Image + Metal)
-- Playback, live preview, and export workflows
+- Hypnogram composition through clip selection, timing, layering, blend modes, and effect chains
+- Saving hypnograms to reopen, refine, and revisit later
+- Rendering hypnograms out to video for playback and sharing
+- Live preview and external-display performance workflows
+- Optional Effects Studio for authoring and testing effects
 
-## Tech Snapshot
+If you want to try the current beta build, start at [hypnogra.ph](https://hypnogra.ph), which is the current public-facing entrypoint for the project.
 
-- Platform: macOS 14+
-- Language/UI: Swift 5.9+, SwiftUI + AppKit
-- Core frameworks: AVFoundation, CoreImage, Metal, Photos
-- Build tool: Xcode project (`Hypnograph.xcodeproj`)
+## Development
 
-## Quick Start (Dev)
+Hypnograph is a macOS app built in Swift with SwiftUI and AppKit, using AVFoundation, Core Image, Metal, and Photos.
 
-Prerequisite layout (important):
+### Setup
+
+Development prerequisites:
 - This project uses a local Swift Package reference to `../HypnoPackages`.
-- The easiest setup is to clone both repos as siblings:
+- This project's product/documentation workflow also expects the sibling repo `../product-context-manager`.
+- Product Context Manager: `https://github.com/lorenjohnson/product-context-manager.git`
+- The intended setup is for all three repos to live as siblings:
   - `/path/to/dev/Hypnograph`
   - `/path/to/dev/HypnoPackages`
+  - `/path/to/dev/product-context-manager`
 
-Bootstrap:
-1. `cd /path/to/dev`
-2. `git clone https://github.com/lorenjohnson/Hypnograph.git`
+Setup:
+1. Clone this repository into your preferred development directory.
+2. Change up one directory so you are in the parent folder that contains `Hypnograph`.
+3. Clone `HypnoPackages` into that same parent folder.
+4. Clone `product-context-manager` into that same parent folder.
+
+Example:
+1. `git clone https://github.com/lorenjohnson/Hypnograph.git`
+2. `cd ..`
 3. `git clone https://github.com/lorenjohnson/HypnoPackages.git`
+4. `git clone https://github.com/lorenjohnson/product-context-manager.git`
 
 Run:
 1. Open [Hypnograph.xcodeproj](Hypnograph.xcodeproj) in Xcode 15+.
@@ -55,50 +59,24 @@ Website draft/dev preview:
 2. `docker compose -f docker-compose.dev.yml up -d`
 3. Open `http://localhost:8080`
 
-## Unsigned macOS Release (No Apple Developer Program)
-
-If Apple Developer Program enrollment is blocked, you can still ship a direct download
-that users can install manually.
-
-Build release artifacts:
-1. Open this project in Xcode and verify `Hypnograph` builds in `Release`.
-2. From repo root, run: `./scripts/release-macos-unsigned.sh`
-3. Upload files in `dist/` to your download page or GitHub Release.
-
-Generated artifacts:
-- `Hypnograph-<version>-<build>-macOS-unsigned.dmg`
-- `Hypnograph-<version>-<build>-macOS-unsigned.zip`
-- `Hypnograph-<version>-<build>-macOS-unsigned.sha256`
-
-Installer guidance for users:
-1. Download and open the `.dmg`.
-2. Drag `Hypnograph.app` to `Applications`.
-3. First launch: right-click the app and choose `Open`, then confirm in the warning dialog.
-
-Notes:
-- This path does not use TestFlight or notarization.
-- Gatekeeper will show a warning because the app is unsigned/not notarized.
-- This is acceptable for friend beta distribution with clear install instructions.
-
-## Repository Layout
+### Repository Layout
 
 - App source: [Hypnograph](Hypnograph)
 - App tests: [HypnographTests](HypnographTests), [HypnographUITests](HypnographUITests)
-- Website draft: [website](website)
-- App/project documentation: [docs](docs)
-- Website development documentation: [website/docs](website/docs)
+- Project documentation: [docs](docs)
+- Website: [website](website)
 
-## Documentation Routing (Important)
+### Documentation
 
-For app/product work, docs live in [docs](docs), and documentation work should follow [docs/README.md](docs/README.md).
+For app and product work, [docs](docs) is the main documentation workspace.
 
-Use this routing:
-- Current work tracking: [docs/roadmap.md](docs/roadmap.md)
+Useful entrypoints:
+- Current work tracking: [docs/queue.md](docs/queue.md)
 - Planned, not started: [docs/backlog](docs/backlog)
 - Active project docs: [docs/active](docs/active)
-- Completed project docs: [docs/archive](docs/archive) (filename format: `YYYYMMDD-project-name.md`)
-- Completed roadmap items without dedicated project docs: [docs/archive/done.md](docs/archive/done.md)
+- Completed project docs: [docs/archive](docs/archive)
+- Reference docs: [docs/reference](docs/reference)
 
-For website-specific dev work, use [website/docs](website/docs) and start with [website/docs/README.md](website/docs/README.md), which follows the same roadmap/backlog/active/archive lifecycle.
+For website-specific dev work, start with [website/README.md](website/README.md).
 
-If you're a collaborator or an LLM agent, start with the relevant docs README before creating or moving documentation.
+If you're collaborating on the app, start in [docs](docs). Agent-specific routing and load-order rules live in `AGENTS.md`.

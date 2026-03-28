@@ -1,6 +1,8 @@
-# Window State Architecture - Generic Key-Based System
+---
+doc-status: done
+---
 
-**Status:** Complete
+# Window State Architecture - Generic Key-Based System
 
 ## Overview
 

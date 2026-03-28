@@ -1,8 +1,8 @@
-# Drag & Drop Reordering (Layers + Effect Chains)
+---
+doc-status: done
+---
 
-**Created**: 2026-01-27  
-**Completed**: 2026-02-15  
-**Status**: Archived
+# Drag & Drop Reordering (Layers + Effect Chains)
 
 > Implemented:
 > - Drag/drop reordering for layer rows in the right sidebar composition tab (implicit row-body drag, no drag handle).

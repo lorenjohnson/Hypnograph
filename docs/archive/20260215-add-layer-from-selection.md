@@ -1,8 +1,8 @@
-# Add Layer From Selection (File / Photos Asset)
+---
+doc-status: done
+---
 
-**Created**: 2026-01-27  
-**Completed**: 2026-02-15  
-**Status**: Archived
+# Add Layer From Selection (File / Photos Asset)
 
 > Implemented: Layers `+` menu now supports `Select Source...` with both `From Files...` (NSOpenPanel) and `From Photos...` (single-select PhotoKit picker).
 

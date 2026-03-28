@@ -1,8 +1,5 @@
 ---
-status: completed
-created: 2026-02-24
-completed: 2026-02-24
-owner: codex
+doc-status: done
 ---
 
 # Timeline Transition Effect Isolation Refactor

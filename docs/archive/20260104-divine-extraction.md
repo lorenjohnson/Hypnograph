@@ -1,5 +1,5 @@
 ---
-last_reviewed: 2026-01-04T21:50:51Z
+doc-status: done
 ---
 
 # Divine Product Extraction Spec

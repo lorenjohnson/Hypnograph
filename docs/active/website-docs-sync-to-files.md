@@ -1,9 +1,6 @@
 ---
-created: 2026-03-14
-updated: 2026-03-14
-status: active
+doc-status: in-progress
 ---
-
 # Website Docs Sync To Files
 
 1. Update `website/docker-compose.dokploy.yml` to add a one-shot `docs-sync` service with:

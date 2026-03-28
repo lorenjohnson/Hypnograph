@@ -1,7 +1,5 @@
 ---
-created: 2026-01-20
-updated: 2026-01-21
-status: Implemented (hook-based; tuning TBD)
+doc-status: done
 ---
 
 # Smart Framing (Human Centering)

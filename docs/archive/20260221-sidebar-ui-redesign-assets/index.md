@@ -1,8 +1,5 @@
 ---
-created: 2026-01-25
-updated: 2026-02-21
-status: completed
-completed: 2026-02-21
+doc-status: done
 ---
 
 # Sidebar UI Redesign

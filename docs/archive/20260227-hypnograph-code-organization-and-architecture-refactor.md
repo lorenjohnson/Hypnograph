@@ -1,7 +1,10 @@
+---
+doc-status: done
+---
+
 # Hypnograph Code Organization and Architecture Refactor
 
 **Date:** 2026-02-27  
-**Status:** Completed (archived 2026-02-27)
 
 ## Goal
 
@@ -184,7 +187,6 @@ Practical approach:
 ## Recommended Next Step
 
 Proceed with Phase 3: targeted audit/split of oversized files (starting with `EffectsStudioView` and optionally `HypnographAppDelegate`) plus cleanup of deferred naming/session terminology.
-
 
 ## Completion Summary
 

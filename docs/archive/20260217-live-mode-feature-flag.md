@@ -1,8 +1,5 @@
 ---
-created: 2026-01-21
-updated: 2026-02-17
-status: completed
-completed: 2026-02-17
+doc-status: done
 ---
 
 # Live Mode Feature Flag

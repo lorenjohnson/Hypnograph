@@ -1,12 +1,10 @@
 ---
-created: 2026-02-27
-updated: 2026-02-27
-status: active
+doc-status: in-progress
 ---
 
 # Main Architecture Refactor
 
-## Goal
+## Overview
 
 Apply the same architectural cleanup pattern used for Effects Studio to the Main feature domain, with explicit boundaries and lower coupling, while preserving behavior.
 
@@ -15,7 +13,7 @@ Primary objectives:
 - Reduce orchestration/side-effect mixing in Main action files.
 - Keep playback/render/export behavior stable while making future changes safer.
 
-## Why Now
+### Why Now
 
 The Main domain has accumulated substantial logic across coordinator/action files and large views. It works, but the mental model and extension surface are harder than necessary.
 
@@ -24,7 +22,7 @@ Current pressure points:
 - Side effects (render, file IO, Photos, persistence, notifications) intermixed with state mutation paths.
 - Implicit contracts between Main orchestration and view callbacks.
 
-## Current Snapshot (2026-02-27)
+### Current Snapshot (2026-02-27)
 
 `Hypnograph/App/Main` currently includes:
 - Core orchestration:
@@ -42,21 +40,18 @@ Current pressure points:
 
 Total swift lines under `App/Main` (including persistence + views): ~8204.
 
-## Scope
+## Rules
 
-### In Scope
-- Main feature architecture and boundary cleanup.
-- Service extraction for side-effect-heavy flows.
-- State-layer consolidation for session/history/source mutation.
-- Documentation updates and verification checklist.
+- MUST focus on Main feature architecture and boundary cleanup.
+- MUST preserve current playback/render/export behavior during refactor.
+- MUST keep `Main.swift` as composition root for Main-domain wiring.
+- MUST keep side effects behind service boundaries and keep state mutation centralized.
+- MUST NOT add new end-user features in this project.
+- MUST NOT redesign Effects runtime in `HypnoCore`.
+- MUST NOT introduce Studio architecture changes (handled in a separate project).
+- SHOULD keep `Views/` presentation-focused and avoid direct side-effect orchestration in view code.
 
-### Out of Scope
-- New end-user features.
-- Effects runtime redesign in `HypnoCore`.
-- Studio architecture changes (already completed in separate project).
-- Broad UX redesign beyond structural safety improvements.
-
-## Target Structure
+### Target Structure
 
 ```text
 Hypnograph/App/Main
@@ -77,7 +72,7 @@ Notes:
 - Prefer explicit feature types over broad action-file catch-alls.
 - Keep `Views/` focused on UI composition; move side effects behind services.
 
-## Architecture Invariants
+### Architecture Invariants
 
 These behaviors must remain correct during the refactor:
 - Edit/Live mode switching and live preview behavior.
@@ -86,7 +81,7 @@ These behaviors must remain correct during the refactor:
 - Render/export/snapshot behavior (including save destination policy).
 - Effect chain editing behavior in Main sidebars/editors.
 
-## Boundary Rules
+### Boundary Rules
 
 - `State/`: observable Main state + mutation/orchestration logic.
 - `Services/`: side-effect integrations (render/export, IO, Photos, timers, notifications, open/save panels).
@@ -95,13 +90,13 @@ These behaviors must remain correct during the refactor:
 - `Persistence/`: stores and file codable contracts only.
 - `Support/`: local utilities/constants that are not domain state.
 
-## Dependency Strategy
+### Dependency Strategy
 
 - Add `Main/Dependencies.swift` with narrow protocols and live implementations for side effects.
 - Inject dependencies into Main orchestration/state, instead of reaching directly into concrete integrations from multiple files.
 - Keep service APIs small and responsibility-specific.
 
-## Migration Plan
+## Plan
 
 ### Phase 1: Composition Root + Dependency Container
 
@@ -148,7 +143,7 @@ Phase gate:
 Phase gate:
 - [ ] Regression checklist passes.
 
-## Verification Checklist
+### Verification Checklist
 
 - [ ] `xcodebuild -project Hypnograph.xcodeproj -scheme Hypnograph -destination 'platform=macOS' build` passes.
 - [ ] Clip history navigation and persistence behavior remain correct.
@@ -157,7 +152,7 @@ Phase gate:
 - [ ] Render/snapshot/save workflows remain correct.
 - [ ] No functional regressions in right-sidebar effects editing.
 
-## Risks and Mitigations
+### Risks and Mitigations
 
 - Risk: behavior drift while extracting services/state.
   - Mitigation: phase gates + manual verification after each phase.
@@ -166,7 +161,7 @@ Phase gate:
 - Risk: persistence/side-effect race conditions.
   - Mitigation: isolate timers/tasks in service boundaries and keep state writes centralized.
 
-## Deliverables
+### Deliverables
 
 - Main feature refactor with explicit `State`/`Services`/`Models` boundaries.
 - Reduced mixed-concern orchestration in Main domain files.

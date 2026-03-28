@@ -4,7 +4,7 @@ updated: 2026-03-17
 ---
 
 <div class="collab-hero">
-  <img src="/docs/assets/hypnograph-icon.png" alt="Hypnograph icon" class="collab-hero-icon" />
+  <img src="/assets/hypnograph-icon.png" alt="Hypnograph icon" class="collab-hero-icon" />
   <div class="collab-hero-text">
     <h1 class="collab-hero-title">Hypnograph</h1>
     <p class="collab-hero-kicker">Memory-forward visual instrument for macOS</p>
@@ -12,8 +12,8 @@ updated: 2026-03-17
 </div>
 
 <aside class="beta-inset beta-download download-cta">
-  <p><a class="download-button" href="https://github.com/lorenjohnson/Hypnograph/releases/download/v0.2.2-beta1/Hypnograph-0.2-2-macOS-unsigned.dmg">Download</a></p>
-  <p class="download-subtext"><span class="download-chip">Beta</span> <span class="download-chip">v0.2 (build 2)</span> <span class="download-chip">Apple Silicon</span></p>
+  <p><a class="download-button" href="https://github.com/lorenjohnson/Hypnograph/releases">Download Beta</a></p>
+  <p class="download-subtext"><span class="download-chip">Beta</span> <span class="download-chip">GitHub Releases</span> <span class="download-chip">Apple Silicon</span></p>
   <p class="download-subtext">Open the downloaded file and drag <code>Hypnograph.app</code> into <code>Applications</code>. On first launch, you will need to override Security settings.</p>
 </aside>
 
@@ -23,7 +23,7 @@ The point is not to generate synthetic media. The point is to re-encounter mater
 
 What Hypnograph should become from here depends on real use. This document is part of that process.
 
-If you want to follow the active development process directly, open the <a href="/README">Active Development Documents</a>. That space tracks what is in progress, what is planned, and how decisions are being shaped in collaboration with real usage feedback.
+If you want to follow the active development process directly, open the <a href="/docs">Active Development Documents</a>. That space tracks what is in progress, what is planned, and how decisions are being shaped in collaboration with real usage feedback.
 
 The core media/rendering package is also being opened as its own project: <a href="https://github.com/lorenjohnson/HypnoPackages" target="_blank" rel="noopener noreferrer">HypnoPackages on GitHub</a>.
 

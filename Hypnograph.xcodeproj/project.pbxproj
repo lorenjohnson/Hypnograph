@@ -133,7 +133,6 @@
 		045DA3C82F4D5DCE00D41089 /* library-manager.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "library-manager.md"; sourceTree = "<group>"; };
 		045DA3C92F4D5DCE00D41089 /* location-overlay-effect.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "location-overlay-effect.md"; sourceTree = "<group>"; };
 		045DA3CA2F4D5DCE00D41089 /* volume-leveling.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "volume-leveling.md"; sourceTree = "<group>"; };
-		045DA3CC2F4D5DCE00D41089 /* coding-best-practices.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "coding-best-practices.md"; sourceTree = "<group>"; };
 		045DA3CD2F4D5DCE00D41089 /* mission.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = mission.md; sourceTree = "<group>"; };
 		045DA3CE2F4D5DCE00D41089 /* tech-stack.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "tech-stack.md"; sourceTree = "<group>"; };
 		045DA3D02F4D5DCE00D41089 /* controls.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = controls.md; sourceTree = "<group>"; };
@@ -367,7 +366,6 @@
 		045DA3CF2F4D5DCE00D41089 /* product */ = {
 			isa = PBXGroup;
 			children = (
-				045DA3CC2F4D5DCE00D41089 /* coding-best-practices.md */,
 				045DA3CD2F4D5DCE00D41089 /* mission.md */,
 				045DA3CE2F4D5DCE00D41089 /* tech-stack.md */,
 			);
@@ -833,7 +831,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.2;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.Hypnograph;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -863,7 +861,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.2;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.Hypnograph;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -880,7 +878,7 @@
 				DEVELOPMENT_TEAM = 6A74MR47VX;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 0.2;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.HypnographTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -898,7 +896,7 @@
 				DEVELOPMENT_TEAM = 6A74MR47VX;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 0.2;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.HypnographTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -927,7 +925,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.7;
-				MARKETING_VERSION = 0.2;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.Hypnograph.HypnogramQuickLook;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -959,7 +957,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.7;
-				MARKETING_VERSION = 0.2;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.Hypnograph.HypnogramQuickLook;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1045,7 +1043,7 @@
 				DEVELOPMENT_TEAM = 6A74MR47VX;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 0.2;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.HypnogramQuickLookTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -1061,7 +1059,7 @@
 				DEVELOPMENT_TEAM = 6A74MR47VX;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 0.2;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = lorenjohnson.HypnogramQuickLookTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;

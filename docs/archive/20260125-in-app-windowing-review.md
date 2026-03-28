@@ -1,6 +1,9 @@
+---
+doc-status: done
+---
+
 # In-App Windowing Review
 
-**Status:** Planning
 **Created:** 2026-01-24
 
 ## Overview

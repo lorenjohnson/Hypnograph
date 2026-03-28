@@ -1,8 +1,8 @@
-# Unified Player Architecture
+---
+doc-status: done
+---
 
-**Created**: 2026-01-16
-**Updated**: 2026-01-21
-**Status**: Completed (Superseded by Metal Playback Pipeline)
+# Unified Player Architecture
 
 ## Status Note
 

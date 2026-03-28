@@ -1,7 +1,5 @@
 ---
-created: 2026-02-27
-updated: 2026-02-27
-status: completed
+doc-status: done
 ---
 
 # FX Studio Architecture Refactor

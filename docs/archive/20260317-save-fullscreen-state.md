@@ -1,6 +1,9 @@
+---
+doc-status: done
+---
+
 # Save Fullscreen State
 
-**Status:** Completed
 **Created:** 2026-01-24
 **Updated:** 2026-02-27
 

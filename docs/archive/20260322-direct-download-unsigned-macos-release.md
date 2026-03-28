@@ -1,7 +1,11 @@
+---
+doc-status: done
+---
+
 # Direct Download Unsigned macOS Release
 
-**Status:** Active
 **Created:** 2026-03-17
+**Updated:** 2026-03-22
 
 ## Why this exists
 
@@ -23,7 +27,7 @@ friend testers on macOS.
 
 ## Implemented automation
 
-- Script: `scripts/release-macos-unsigned.sh`
+- Script: `scripts/build-unsigned.sh`
 - Behavior:
   - archives the `Hypnograph` scheme in `Release`
   - disables code signing during archive
@@ -33,7 +37,7 @@ friend testers on macOS.
 
 ## Release operator checklist
 
-1. From repo root, run `./scripts/release-macos-unsigned.sh`.
+1. From repo root, run `./scripts/build-unsigned.sh`.
 2. Verify artifacts exist in `dist/`.
 3. Upload `.dmg`, `.zip`, `.sha256` to website or GitHub Release.
 4. Include first-launch instructions in release notes:

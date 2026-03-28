@@ -1,7 +1,10 @@
+---
+doc-status: done
+---
+
 # Hypnograph Code Audit and Convergence
 
 **Date:** 2026-02-27  
-**Status:** Completed (Archived)
 
 ## Goal
 

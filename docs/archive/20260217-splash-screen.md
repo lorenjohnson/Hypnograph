@@ -1,8 +1,5 @@
 ---
-created: 2026-01-24
-updated: 2026-02-17
-status: canceled
-canceled: 2026-02-17
+doc-status: wont-do
 ---
 
 # Splash Screen
