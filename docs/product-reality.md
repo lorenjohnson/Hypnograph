@@ -20,16 +20,16 @@ Generated implementation snapshot for product alignment checks.
 
 | Feature Area | Signal | Evidence Count | Representative Evidence |
 |---|---|---:|---|
-| Live Playback | strong | 28 | Hypnograph/App/AppCommands.swift; Hypnograph/App/EffectsStudio/State/SourcePlaybackState.swift; Hypnograph/App/Main/ClipHistoryAndLayerActions.swift |
-| Effects Engine | strong | 20 | Hypnograph/App/Common/Support/Environment.swift; Hypnograph/App/AppCommands.swift; Hypnograph/App/EffectsStudio/Services/RuntimeEffectsService.swift |
-| Session Persistence | strong | 35 | Hypnograph/App/Common/Support/LegacySessionMigration.swift; Hypnograph/App/Main/EffectChainLibraryActions.swift; Hypnograph/App/Main/Live/LivePlayer.swift |
-| Recording / Export | strong | 22 | HypnogramQuickLookTests/QuickLookParsingTests.swift; Hypnograph/App/Main/EffectChainLibraryActions.swift; Hypnograph/App/Main/ClipHistoryAndLayerActions.swift |
-| Source / Media Input | strong | 43 | Hypnograph/App/Main/Persistence/MainSettings.swift; Hypnograph/App/Common/Support/LegacySessionMigration.swift; Hypnograph/App/Common/Support/Environment.swift |
-| Settings / Commands | strong | 37 | Hypnograph/App/AppSettingsStore.swift; Hypnograph/App/Common/Support/Environment.swift; Hypnograph/App/EffectsStudio/Persistence/EffectsStudioSettings.swift |
+| Live Playback | strong | 28 | Hypnograph/App/AppCommands.swift; Hypnograph/App/EffectsComposer/State/SourcePlaybackState.swift; Hypnograph/App/Studio/State/PlaybackActions.swift |
+| Effects Engine | strong | 20 | Hypnograph/App/Common/Support/Environment.swift; Hypnograph/App/AppCommands.swift; Hypnograph/App/EffectsComposer/Services/RuntimeEffectsService.swift |
+| Session Persistence | strong | 35 | Hypnograph/App/Common/Support/LegacySessionMigration.swift; Hypnograph/App/Studio/Persistence/SessionStore.swift; Hypnograph/App/Studio/Live/LivePlayer.swift |
+| Recording / Export | strong | 22 | HypnogramQuickLookTests/QuickLookParsingTests.swift; Hypnograph/App/Studio/RecordingRenderPipeline.swift; Hypnograph/App/Studio/State/ExportActions.swift |
+| Source / Media Input | strong | 43 | Hypnograph/App/Studio/Models/StudioSettings.swift; Hypnograph/App/Common/Support/LegacySessionMigration.swift; Hypnograph/App/Common/Support/Environment.swift |
+| Settings / Commands | strong | 37 | Hypnograph/App/AppSettingsStore.swift; Hypnograph/App/Common/Support/Environment.swift; Hypnograph/App/EffectsComposer/Persistence/EffectsComposerSettings.swift |
 | Windowing / UI Surfaces | strong | 78 | Hypnograph/App/Common/Support/TooltipManager.swift; Hypnograph/App/Common/Support/KeyboardTextInputContext.swift; Hypnograph/App/Common/Support/Environment.swift |
 | Automation / Background | none | 0 | n/a |
 | Collaboration / Cloud | light | 2 | website/app.js; Hypnograph/Debug/ExternalMediaLoadHarness.swift |
-| AI / Generative Decision | moderate | 3 | Hypnograph/App/Main/Views/AppSettingsView.swift; Hypnograph/App/Main/Views/NoSourcesView.swift; Hypnograph/App/HypnographAppDelegate.swift |
+| AI / Generative Decision | moderate | 3 | Hypnograph/App/Studio/Views/AppSettingsView.swift; Hypnograph/App/Studio/Views/NoSourcesView.swift; Hypnograph/App/HypnographAppDelegate.swift |
 
 ## Implementation Keyword Index
 

@@ -15,7 +15,7 @@ This follows completion of the app-structure/settings split refactor and focuses
 ## Scope
 
 ### In Scope
-- Main-app and Effects Studio code quality audit.
+- Main-app and Effects Composer code quality audit.
 - Dead-code and compatibility-shim cleanup where safe.
 - Naming convergence from legacy `dream` terminology toward `main` terminology at safe boundaries.
 - Small structural decompositions where files are still oversized and mixed-concern.
@@ -29,10 +29,10 @@ This follows completion of the app-structure/settings split refactor and focuses
 
 ## Current Baseline
 
-- Effects Studio split completed into dedicated files (`view`, `view model`, `types`, `panel windows`, `parameter row`, code editor bridge).
+- Effects Composer split completed into dedicated files (`view`, `view model`, `types`, `panel windows`, `parameter row`, code editor bridge).
 - App delegate extracted to dedicated lifecycle file.
-- Settings split completed (`AppSettings`, `MainSettings`, `EffectsStudioSettings`).
-- Live feature UI components moved under `App/Main/Live/Views/Components`.
+- Settings split completed (`AppSettings`, `MainSettings`, `EffectsComposerSettings`).
+- Live feature UI components moved under `App/Studio/Live/Views/Components`.
 - Unused `ModalPanel` path removed after call-site verification.
 - Builds passing locally.
 
@@ -40,11 +40,11 @@ This follows completion of the app-structure/settings split refactor and focuses
 
 ## Priority 1 — Correctness and Compatibility
 - Verify session file enumeration supports all declared session extensions (`.hypno`, `.hypnogram`) in list/read paths.
-- Verify command/context routing is deterministic when Main and Effects Studio windows are both open.
+- Verify command/context routing is deterministic when Main and Effects Composer windows are both open.
 - Verify clean-screen toggles are correctly scoped to active window context.
 
 ## Priority 2 — Dead Code and Redundant Paths
-- Remove inactive in-view floating panel state/logic in Effects Studio now superseded by AppKit panel hosts.
+- Remove inactive in-view floating panel state/logic in Effects Composer now superseded by AppKit panel hosts.
 - Remove obsolete aliases and comments that imply active migration state when migration is already complete.
 - Keep only compatibility code that still protects real persisted data in current local usage.
 
@@ -55,9 +55,9 @@ This follows completion of the app-structure/settings split refactor and focuses
 
 ## Priority 4 — Hotspot Decomposition
 - Continue splitting oversized mixed-concern files:
-  - `App/Main/Main.swift`
-  - `App/Main/Views/EffectsEditorView.swift`
-  - `App/EffectsStudio/Views/EffectsStudioViewModel.swift`
+  - `App/Studio/Main.swift`
+  - `App/Studio/Views/EffectsEditorView.swift`
+  - `App/EffectsComposer/Views/EffectsComposerViewModel.swift`
 - Extract seams by concern (state orchestration, IO, rendering helpers, UI adapters).
 
 ## Work Plan
@@ -72,10 +72,10 @@ This follows completion of the app-structure/settings split refactor and focuses
 ## Verification Checklist
 
 - `xcodebuild -project Hypnograph.xcodeproj -scheme Hypnograph -configuration Debug -destination 'platform=macOS' build` passes.
-- Main window and Effects Studio both open/close cleanly.
+- Main window and Effects Composer both open/close cleanly.
 - Clean-screen command behavior is context-correct for active window.
 - Session open/list behavior includes both `.hypno` and `.hypnogram` where intended.
-- Effects Studio compile/preview/parameter editing behavior unchanged.
+- Effects Composer compile/preview/parameter editing behavior unchanged.
 
 ## Deliverables
 
@@ -98,27 +98,27 @@ This project is complete when:
 - Completed: HypnoCore docs/ontology references updated to match `RendererView`.
 - Treat the HypnoCore rename as a breaking API change for external consumers; use a conventional-commits style message and bump package version before merge.
 - Main app cleanup to evaluate now:
-  - Completed: moved `PlayerView` and `PlayerContentView` under `App/Main/Views`.
-  - Completed: moved `LivePlayer` and `LiveWindow` into `App/Main/Live`.
-  - Completed: moved `LivePreviewPanel` and `LivePlayerScreen` into `App/Main/Live/Views/Components`.
+  - Completed: moved `PlayerView` and `PlayerContentView` under `App/Studio/Views`.
+  - Completed: moved `LivePlayer` and `LiveWindow` into `App/Studio/Live`.
+  - Completed: moved `LivePreviewPanel` and `LivePlayerScreen` into `App/Studio/Live/Views/Components`.
   - Completed: removed unused `ModalPanel` / `ModalPanelStyle.livePreview`.
   - Completed: renamed primary audio symbols from `preview*` to neutral names (`audioDevice`, `volume`) across Main/UI/controller/settings.
   - Completed: added temporary backward-compatible decode for legacy settings keys (`previewAudioDeviceUID`, `previewVolume`) while writing new keys (`audioDeviceUID`, `volume`).
   - Completed: command routing for clean-screen now resolves deterministic active window context (key window first, then main window).
   - Verified: session extension handling is consistent for `.hypno` + `.hypnogram` in list/filter/open paths (`SessionStore.fileExtensions`, `isSupportedExtension`, `listSavedRecipes`, and open/save panel type filters).
-  - Verified: clean-screen keyboard scopes remain context-correct (`HypnographAppDelegate` handles Main-only tab override; Effects Studio has its own local tab monitor).
-  - P2 cleanup note: no remaining in-view floating panel drag/resize state from pre-AppKit host architecture was found; panel behavior is owned by `EffectsStudioPanelWindows` + NSPanel autosave.
+  - Verified: clean-screen keyboard scopes remain context-correct (`HypnographAppDelegate` handles Main-only tab override; Effects Composer has its own local tab monitor).
+  - P2 cleanup note: no remaining in-view floating panel drag/resize state from pre-AppKit host architecture was found; panel behavior is owned by `EffectsComposerPanelWindows` + NSPanel autosave.
   - Completed: removed stale compatibility-only dead methods from `EffectsEditorViewModel` (`syncFromConfig`, legacy no-layer selection overloads) after call-site verification.
   - Completed: removed stale migration/phase wording in compatibility code comments while retaining only active persisted-data protections (`PlayerConfiguration` fallback key, `HypnogramStore.recipeURL`, `LegacySessionMigration` rewrite path); removed obsolete `preview*` audio decode fallbacks from `MainSettings`.
   - Verified: no remaining app-boundary `dream` naming in source code (`App/**`); no additional P3 rename required in this pass.
-  - Follow-on architecture: move toward per-window key routers (`MainKeyRouter`, `EffectsStudioKeyRouter`) and reduce `HypnographAppDelegate` to lifecycle/event wiring only.
+  - Follow-on architecture: move toward per-window key routers (`MainKeyRouter`, `EffectsComposerKeyRouter`) and reduce `HypnographAppDelegate` to lifecycle/event wiring only.
   - P4 status: `EffectsEditorView` decomposition pass is complete and build-verified (`EffectsEditorViewModel`, `EffectsEditorField`, `EditableEffectNameHeader`, and `EffectDropDelegate` extracted to dedicated files).
-  - P4 completed: `EffectsStudioViewModel.swift` decomposition is now build-verified across focused files:
-    - `EffectsStudioViewModel.swift` (core state/init shell)
-    - `EffectsStudioViewModel+RuntimeEffects.swift`
-    - `EffectsStudioViewModel+ManifestParameters.swift`
-    - `EffectsStudioViewModel+MetalRender.swift`
-    - `EffectsStudioViewModel+SourcePlayback.swift`
+  - P4 completed: `EffectsComposerViewModel.swift` decomposition is now build-verified across focused files:
+    - `EffectsComposerViewModel.swift` (core state/init shell)
+    - `EffectsComposerViewModel+RuntimeEffects.swift`
+    - `EffectsComposerViewModel+ManifestParameters.swift`
+    - `EffectsComposerViewModel+MetalRender.swift`
+    - `EffectsComposerViewModel+SourcePlayback.swift`
   - P4 completed: `Main.swift` decomposition is now build-verified by concern seams:
     - `Main.swift` (core state/init/display shell)
     - `ClipHistoryAndLayerActions.swift`

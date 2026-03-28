@@ -12,27 +12,27 @@ import HypnoUI
 
 struct AppCommands: Commands {
     private enum ActiveWindowContext {
-        case main
         case studio
+        case effectsComposer
         case unknown
     }
 
     @SwiftUI.Environment(\.openWindow) private var openWindow
     @ObservedObject private var state: HypnographState
-    @ObservedObject private var main: Main
+    @ObservedObject private var studio: Studio
 
     /// Whether a text field is currently being edited
     private var isTyping: Bool { state.isKeyboardTextInputActive }
-    private var isMainWindowShortcutContext: Bool {
-        activeWindowContext == .main
+    private var isStudioWindowShortcutContext: Bool {
+        activeWindowContext == .studio
     }
 
     init(
         state: HypnographState,
-        main: Main
+        studio: Studio
     ) {
         _state = ObservedObject(initialValue: state)
-        _main = ObservedObject(initialValue: main)
+        _studio = ObservedObject(initialValue: studio)
     }
 
     var body: some Commands {
@@ -44,9 +44,9 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(after: .appInfo) {
-            if state.appSettings.effectsStudioEnabled {
-                Button("Open Effects Studio") {
-                    openWindow(id: "effectsStudio")
+            if state.appSettings.effectsComposerEnabled {
+                Button("Open Effects Composer") {
+                    openWindow(id: "effectsComposer")
                 }
                 .keyboardShortcut("k", modifiers: [.command, .option])
             }
@@ -56,36 +56,36 @@ struct AppCommands: Commands {
 
         CommandGroup(after: .newItem) {
             Button("New") {
-                main.new()
+                studio.new()
             }
             .keyboardShortcut("n", modifiers: [.command])
         }
 
         CommandGroup(replacing: .saveItem) {
             Button("Open Hypnogram…") {
-                main.openRecipe()
+                studio.openRecipe()
             }
             .keyboardShortcut("o", modifiers: [.command])
 
             Divider()
 
             Button("Save Current") {
-                main.save()
+                studio.save()
             }
             .keyboardShortcut("s", modifiers: [.command])
 
             Button("Save Current As…") {
-                main.saveAs()
+                studio.saveAs()
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
 
             Button("Save & Render Current") {
-                main.renderAndSaveVideo()
+                studio.renderAndSaveVideo()
             }
             .keyboardShortcut("s", modifiers: [.option, .command])
 
             Button("Favorite Current Hypnogram") {
-                main.favoriteCurrentHypnogram()
+                studio.favoriteCurrentHypnogram()
             }
             .keyboardShortcut("f", modifiers: [.command])
 
@@ -96,7 +96,7 @@ struct AppCommands: Commands {
                 set: { _ in state.windowState.toggle("hypnogramList") }
             ))
             .keyboardShortcut("h", modifiers: [])
-            .disabled(isTyping || !isMainWindowShortcutContext)
+            .disabled(isTyping || !isStudioWindowShortcutContext)
         }
 
         CommandGroup(replacing: .sidebar) {
@@ -106,14 +106,14 @@ struct AppCommands: Commands {
                     set: { _ in state.windowState.toggle("leftSidebar") }
                 ))
                 .keyboardShortcut("[", modifiers: [])
-                .disabled(isTyping || !isMainWindowShortcutContext)
+                .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("Right Sidebar", isOn: Binding(
                     get: { state.windowState.isVisible("rightSidebar") },
                     set: { _ in state.windowState.toggle("rightSidebar") }
                 ))
                 .keyboardShortcut("]", modifiers: [])
-                .disabled(isTyping || !isMainWindowShortcutContext)
+                .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 // Clean Screen: Tab key handled via NSEvent monitor in app delegate
                 // (workaround for SwiftUI menu shortcut not registering until menu opened)
@@ -130,10 +130,10 @@ struct AppCommands: Commands {
                     set: { state.setLoopCurrentClipMode($0) }
                 ))
                 .keyboardShortcut("l", modifiers: [])
-                .disabled(isTyping || !isMainWindowShortcutContext)
+                .disabled(isTyping || !isStudioWindowShortcutContext)
             }
 
-            if main.isLiveModeAvailable {
+            if studio.isLiveModeAvailable {
                 Divider()
 
                 Section("Live Display") {
@@ -142,30 +142,30 @@ struct AppCommands: Commands {
                         set: { _ in state.windowState.toggle("livePreview") }
                     ))
                     .keyboardShortcut("w", modifiers: [])
-                    .disabled(isTyping || !isMainWindowShortcutContext)
+                    .disabled(isTyping || !isStudioWindowShortcutContext)
 
                     Toggle("Live Mode", isOn: Binding(
-                        get: { main.isLiveMode },
-                        set: { _ in main.toggleLiveMode() }
+                        get: { studio.isLiveMode },
+                        set: { _ in studio.toggleLiveMode() }
                     ))
                     .keyboardShortcut("l", modifiers: [.command])
 
                     Toggle("External Monitor", isOn: Binding(
-                        get: { main.livePlayer.isVisible },
-                        set: { _ in main.livePlayer.toggle() }
+                        get: { studio.livePlayer.isVisible },
+                        set: { _ in studio.livePlayer.toggle() }
                     ))
                     .keyboardShortcut("l", modifiers: [.command, .shift])
 
                     Button("Send to Live Display") {
-                        main.sendToLivePlayer()
+                        studio.sendToLivePlayer()
                     }
                     .keyboardShortcut(.return, modifiers: [.command])
 
                     Button("Reset Live Display") {
-                        main.livePlayer.reset()
+                        studio.livePlayer.reset()
                     }
                     .keyboardShortcut("r", modifiers: [.command, .shift])
-                    .disabled(!main.livePlayer.isVisible)
+                    .disabled(!studio.livePlayer.isVisible)
                 }
             }
 
@@ -176,29 +176,18 @@ struct AppCommands: Commands {
         }
 
         CommandMenu("Composition") {
-            main.compositionMenu()
+            studio.compositionMenu()
         }
 
         CommandMenu("Layer") {
-            main.sourceMenu()
+            studio.sourceMenu()
         }
 
-    }
-
-    private func windowBelongsToMain(_ window: NSWindow?) -> Bool {
-        guard let window else { return false }
-        if window.title == "Hypnograph" {
-            return true
-        }
-        if let parent = window.parent {
-            return windowBelongsToMain(parent)
-        }
-        return false
     }
 
     private func windowBelongsToStudio(_ window: NSWindow?) -> Bool {
         guard let window else { return false }
-        if window.title == "Effect Studio" {
+        if window.title == "Hypnograph" {
             return true
         }
         if let parent = window.parent {
@@ -207,22 +196,33 @@ struct AppCommands: Commands {
         return false
     }
 
+    private func windowBelongsToEffectsComposer(_ window: NSWindow?) -> Bool {
+        guard let window else { return false }
+        if window.title == "Effects Composer" {
+            return true
+        }
+        if let parent = window.parent {
+            return windowBelongsToEffectsComposer(parent)
+        }
+        return false
+    }
+
     private var activeWindowContext: ActiveWindowContext {
         let candidates: [NSWindow?] = [NSApp.keyWindow, NSApp.mainWindow]
         for candidate in candidates {
+            if windowBelongsToEffectsComposer(candidate) {
+                return .effectsComposer
+            }
             if windowBelongsToStudio(candidate) {
                 return .studio
-            }
-            if windowBelongsToMain(candidate) {
-                return .main
             }
         }
         return .unknown
     }
 
     private func toggleCleanScreenForActiveWindow() {
-        if activeWindowContext == .studio {
-            NotificationCenter.default.post(name: .effectsStudioToggleCleanScreen, object: nil)
+        if activeWindowContext == .effectsComposer {
+            NotificationCenter.default.post(name: .effectsComposerToggleCleanScreen, object: nil)
         } else {
             state.windowState.toggleCleanScreen()
         }

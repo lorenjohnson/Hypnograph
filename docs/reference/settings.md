@@ -10,20 +10,20 @@ This document describes current settings storage, defaults, and related persiste
 ## Sources
 - `Hypnograph/App/Common/Support/Environment.swift`
 - `Hypnograph/App/HypnographState.swift`
-- `Hypnograph/App/Main/Persistence/MainSettings.swift`
-- `Hypnograph/App/Main/Persistence/MainSettingsStore.swift`
+- `Hypnograph/App/Studio/Models/StudioSettings.swift`
+- `Hypnograph/App/Studio/Persistence/StudioSettingsStore.swift`
 - `Hypnograph/App/AppSettings.swift`
 - `Hypnograph/App/AppSettingsStore.swift`
-- `Hypnograph/App/EffectsStudio/Persistence/EffectsStudioSettings.swift`
-- `Hypnograph/App/EffectsStudio/Persistence/EffectsStudioSettingsStore.swift`
+- `Hypnograph/App/EffectsComposer/Persistence/EffectsComposerSettings.swift`
+- `Hypnograph/App/EffectsComposer/Persistence/EffectsComposerSettingsStore.swift`
 - `HypnoCore/Cache/PersistentStore.swift`
 - `HypnoCore/HypnoCoreConfig.swift`
 
 ## Settings Files
 
-### Main Settings
+### Workspace Settings
 - Path: `~/Library/Application Support/Hypnograph/main-settings.json`
-- Store: `MainSettingsStore`
+- Store: `StudioSettingsStore`
 - Contains primary playback/composition settings, including:
   - source libraries (`sources`, `activeLibraries`, `sourceMediaTypes`)
   - output/snapshot folders
@@ -34,12 +34,12 @@ This document describes current settings storage, defaults, and related persiste
 - Store: `AppSettingsStore`
 - Contains app-global UI policy flags, currently:
   - `keyboardAccessibilityOverridesEnabled`
-  - `effectsStudioEnabled`
+  - `effectsComposerEnabled`
 
-### Effects Studio Settings
+### Effects Composer Settings
 - Path: `~/Library/Application Support/Hypnograph/effects-studio-settings.json`
-- Store: `EffectsStudioSettingsStore`
-- Contains Effects Studio panel/UI state.
+- Store: `EffectsComposerSettingsStore`
+- Contains Effects Composer panel/UI state.
 
 ## Initialization and Lifecycle
 - On app startup, `HypnographApp` calls `Environment.ensureDefaultSettingsFilesExist()`.
@@ -48,11 +48,11 @@ This document describes current settings storage, defaults, and related persiste
   - exposes reactive `value`
   - persists updates with debounced saves
 - App runtime reads/writes through stores:
-  - `HypnographState.settingsStore` for main runtime settings
+  - `HypnographState.settingsStore` for workspace runtime settings
   - `HypnographState.appSettingsStore` for app-global settings
 
 ## Source Configuration Note
-- Source paths/globs are read from `MainSettings.sources` in `main-settings.json`.
+- Source paths/globs are read from `StudioSettings.sources` in `main-settings.json`.
 - `hypnograph-settings.json` does not contain source libraries.
 
 ## Related Persistent State

@@ -3,19 +3,19 @@ import AppKit
 import HypnoCore
 import HypnoUI
 
-// MARK: - Main App
+// MARK: - App Shell
 
 @main
 struct HypnographApp: App {
     @NSApplicationDelegateAdaptor(HypnographAppDelegate.self)
     private var appDelegate
 
-    private let settingsStore: WorkspaceSettingsStore
+    private let settingsStore: StudioSettingsStore
     private let appSettingsStore: AppSettingsStore
-    private let effectsStudioSettingsStore: EffectsStudioSettingsStore
+    private let effectsComposerSettingsStore: EffectsComposerSettingsStore
     @StateObject private var state: HypnographState
     private let renderQueue: RenderEngine.ExportQueue  // Not @StateObject - we don't want to trigger view updates
-    @StateObject private var main: Main
+    @StateObject private var studio: Studio
 
     init() {
         // Disable macOS window tabbing (must be set before any windows are created)
@@ -23,12 +23,12 @@ struct HypnographApp: App {
 
         Environment.ensureDefaultSettingsFilesExist()
 
-        let settingsStore = WorkspaceSettingsStore()
+        let settingsStore = StudioSettingsStore()
         let appSettingsStore = AppSettingsStore()
-        let effectsStudioSettingsStore = EffectsStudioSettingsStore()
+        let effectsComposerSettingsStore = EffectsComposerSettingsStore()
         self.settingsStore = settingsStore
         self.appSettingsStore = appSettingsStore
-        self.effectsStudioSettingsStore = effectsStudioSettingsStore
+        self.effectsComposerSettingsStore = effectsComposerSettingsStore
         let coreConfig = HypnoCoreConfig(appSupportDirectory: Environment.appSupportDirectory)
         HypnoCoreConfig.shared = coreConfig
         ApplePhotosHooks.install()
@@ -47,14 +47,14 @@ struct HypnographApp: App {
         self.renderQueue = renderQueue
 
         _state = StateObject(wrappedValue: state)
-        _main = StateObject(wrappedValue: Main(state: state, renderQueue: renderQueue))
+        _studio = StateObject(wrappedValue: Studio(state: state, renderQueue: renderQueue))
     }
 
     var body: some Scene {
         WindowGroup("Hypnograph", id: "main") {
             ContentView(
                 state: state,
-                main: main
+                main: studio
             )
             .tint(.blue)
             .preferredColorScheme(.dark)
@@ -76,22 +76,22 @@ struct HypnographApp: App {
                 }
 
                 // Wire up session-based unsaved changes check
-                appDelegate.hasUnsavedEffectChanges = { [weak main] in
-                    guard let main = main else { return false }
-                    return main.effectsSession.hasUnsavedChanges
+                appDelegate.hasUnsavedEffectChanges = { [weak studio] in
+                    guard let studio else { return false }
+                    return studio.effectsSession.hasUnsavedChanges
                 }
 
                 // Wire up session-based save
-                appDelegate.saveEffectSessions = { [weak main] in
-                    main?.effectsSession.save()
+                appDelegate.saveEffectSessions = { [weak studio] in
+                    studio?.effectsSession.save()
                 }
 
                 // Wire up transport and clean screen callbacks
-                appDelegate.togglePlayPause = { [weak main] in
-                    main?.activePlayer.isPaused.toggle()
+                appDelegate.togglePlayPause = { [weak studio] in
+                    studio?.activePlayer.isPaused.toggle()
                 }
-                appDelegate.saveSnapshotImage = { [weak main] in
-                    main?.saveSnapshotImage()
+                appDelegate.saveSnapshotImage = { [weak studio] in
+                    studio?.saveSnapshotImage()
                 }
                 appDelegate.toggleCleanScreen = { [weak state] in
                     state?.windowState.toggleCleanScreen()
@@ -122,32 +122,32 @@ struct HypnographApp: App {
                 appDelegate.applyStoredMainWindowFullscreenPreferenceIfNeeded()
 
                 // Wire up global effect suspend (` key hold)
-                appDelegate.setGlobalEffectSuspended = { [weak main] suspended in
-                    guard let main = main, !main.isLiveMode else { return }
-                    main.player.isGlobalEffectSuspended = suspended
-                    main.player.effectManager.isGlobalEffectSuspended = suspended
+                appDelegate.setGlobalEffectSuspended = { [weak studio] suspended in
+                    guard let studio, !studio.isLiveMode else { return }
+                    studio.player.isGlobalEffectSuspended = suspended
+                    studio.player.effectManager.isGlobalEffectSuspended = suspended
                 }
 
                 // Wire up flash solo (1-9 key hold)
-                appDelegate.setFlashSolo = { [weak main] sourceIndex in
-                    guard let main = main, !main.isLiveMode else { return false }
+                appDelegate.setFlashSolo = { [weak studio] sourceIndex in
+                    guard let studio, !studio.isLiveMode else { return false }
                     // Only set flash solo if the source exists, otherwise ignore
                     if let index = sourceIndex {
-                        guard index < main.player.layers.count else { return false }
+                        guard index < studio.player.layers.count else { return false }
                     }
-                    main.player.effectManager.setFlashSolo(sourceIndex)
+                    studio.player.effectManager.setFlashSolo(sourceIndex)
                     return true
                 }
 
                 // Wire up 1-9 source selection (used by the flash-solo key monitor)
-                appDelegate.selectSourceIndex = { [weak main] index in
-                    guard let main = main, !main.isLiveMode else { return }
-                    guard index >= 0, index < main.player.layers.count else { return }
-                    main.player.selectSource(index)
+                appDelegate.selectSourceIndex = { [weak studio] index in
+                    guard let studio, !studio.isLiveMode else { return }
+                    guard index >= 0, index < studio.player.layers.count else { return }
+                    studio.player.selectSource(index)
                 }
 
                 // Wire up external file opening (session documents + media sources)
-                appDelegate.openIncomingFiles = { [weak main] urls in
+                appDelegate.openIncomingFiles = { [weak studio] urls in
 
                     let sessionURLs = urls.filter { SessionStore.isSupportedExtension($0.pathExtension) }
                     if let url = sessionURLs.first {
@@ -155,13 +155,13 @@ struct HypnographApp: App {
                             AppNotifications.show("Failed to load session", flash: true)
                             return
                         }
-                        main?.appendSessionToHistory(session)
+                        studio?.appendSessionToHistory(session)
                         AppNotifications.show("Loaded \(url.lastPathComponent)", flash: true)
                     }
 
                     let mediaURLs = urls.filter { !SessionStore.isSupportedExtension($0.pathExtension) }
                     guard !mediaURLs.isEmpty else { return }
-                    _ = main?.addSourcesAsNewClip(fromFileURLs: mediaURLs)
+                    _ = studio?.addSourcesAsNewClip(fromFileURLs: mediaURLs)
                 }
 
                 // Refresh available libraries (includes asset counts for menu)
@@ -185,12 +185,12 @@ struct HypnographApp: App {
         .commands {
             AppCommands(
                 state: state,
-                main: main
+                studio: studio
             )
         }
 
         SwiftUI.Settings {
-            AppSettingsView(state: state, main: main)
+            AppSettingsView(state: state, main: studio)
                 .frame(minWidth: 420, idealWidth: 480, maxWidth: 560, minHeight: 380)
         }
         .windowStyle(.hiddenTitleBar)
@@ -201,8 +201,8 @@ struct HypnographApp: App {
         .defaultSize(width: 720, height: 245)
         .windowResizability(.contentSize)
 
-        Window("Effect Studio", id: "effectsStudio") {
-            EffectsStudio(state: state, settingsStore: effectsStudioSettingsStore)
+        Window("Effects Composer", id: "effectsComposer") {
+            EffectsComposer(state: state, settingsStore: effectsComposerSettingsStore)
         }
         .defaultSize(width: 1320, height: 860)
     }

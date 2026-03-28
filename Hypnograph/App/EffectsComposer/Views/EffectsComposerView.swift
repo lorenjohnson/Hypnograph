@@ -1,0 +1,753 @@
+//
+//  EffectsComposerView.swift
+//  Hypnograph
+//
+//  Runtime effect authoring studio (v1).
+//  Authoring format: effect.json + shader.metal
+//
+
+import SwiftUI
+import AppKit
+
+struct EffectsComposerView: View {
+    private struct EffectsComposerCleanScreenSnapshot {
+        let showCodePanel: Bool
+        let showInspectorPanel: Bool
+        let showManifestPanel: Bool
+        let showLiveControlsPanel: Bool
+        let showLogOverlay: Bool
+        let showChrome: Bool
+    }
+
+    private struct EffectsComposerUIPanelState: Equatable {
+        let panelOpacity: Double
+        let showCodePanel: Bool
+        let showInspectorPanel: Bool
+        let showManifestPanel: Bool
+        let showLiveControlsPanel: Bool
+        let showLogOverlay: Bool
+    }
+
+    @ObservedObject var state: HypnographState
+    @ObservedObject var settingsStore: EffectsComposerSettingsStore
+    @StateObject private var model: EffectsComposerViewModel
+    @StateObject private var panelHostService: EffectsComposerPanelHostService
+    @StateObject private var tabMonitor: EffectsComposerTabKeyMonitorService
+
+    @State private var showPhotosPicker = false
+    @State private var selectedPhotosIdentifier: String?
+
+    @State private var autoCompile = true
+    @State private var compileGeneration = 0
+    @State private var didInitialLoad = false
+    @State private var didLoadEffectsComposerUIState = false
+    @State private var isApplyingStoredEffectsComposerUIState = false
+
+    @State private var panelOpacity: Double = EffectsComposerSettings.defaultValue.panelOpacity
+    @State private var showCodePanel = EffectsComposerSettings.defaultValue.showCodePanel
+    @State private var showInspectorPanel = EffectsComposerSettings.defaultValue.showInspectorPanel
+    @State private var showManifestPanel = EffectsComposerSettings.defaultValue.showManifestPanel
+    @State private var showLiveControlsPanel = EffectsComposerSettings.defaultValue.showLiveControlsPanel
+    @State private var showLogOverlay = EffectsComposerSettings.defaultValue.showLogOverlay
+
+    @State private var showEffectsComposerChrome = true
+    @State private var cleanScreenSnapshot: EffectsComposerCleanScreenSnapshot?
+    @State private var pendingParameterScrollTarget: UUID?
+
+    init(
+        state: HypnographState,
+        settingsStore: EffectsComposerSettingsStore,
+        dependencies: EffectsComposerDependencies = .live
+    ) {
+        self.state = state
+        self.settingsStore = settingsStore
+        _model = StateObject(wrappedValue: dependencies.makeViewModel(settingsStore))
+        _panelHostService = StateObject(wrappedValue: dependencies.makePanelHostService())
+        _tabMonitor = StateObject(wrappedValue: dependencies.makeTabKeyMonitorService())
+    }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            if showEffectsComposerChrome {
+                topBar
+                    .padding(.horizontal, 12)
+                    .padding(.top, 12)
+                    .zIndex(10)
+            }
+
+            GeometryReader { proxy in
+                ZStack(alignment: .topLeading) {
+                    previewBackdrop
+                    Color.black.opacity(0.20)
+
+                    if showLogOverlay {
+                        logOverlay(
+                            maxWidth: max(260, proxy.size.width * 0.46),
+                            maxHeight: max(120, proxy.size.height - 20)
+                        )
+                        .padding(14)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                        .allowsHitTesting(false)
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                )
+            }
+            .zIndex(1)
+
+            if showEffectsComposerChrome {
+                bottomTransportBar
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
+                    .zIndex(10)
+            }
+        }
+        .frame(minWidth: 1240, minHeight: 820)
+        .background(Color.black.ignoresSafeArea())
+        .onAppear {
+            if !didLoadEffectsComposerUIState {
+                applyEffectsComposerUIState(settingsStore.value)
+                didLoadEffectsComposerUIState = true
+            }
+            tabMonitor.start(
+                shouldHandleEvent: shouldHandleEffectsComposerTab(event:),
+                onTabPressed: toggleEffectsComposerCleanScreen
+            )
+            guard !didInitialLoad else { return }
+            didInitialLoad = true
+            model.refreshRuntimeEffectList()
+            if !model.selectedRuntimeType.isEmpty {
+                model.loadRuntimeEffectAsset()
+            }
+            model.restoreInitialSource(
+                from: state.library,
+                preferredLength: max(2.0, state.settings.clipLengthMaxSeconds)
+            )
+        }
+        .onChange(of: model.selectedRuntimeType) { _, newType in
+            guard didInitialLoad, !newType.isEmpty else { return }
+            model.loadRuntimeEffectAsset()
+        }
+        .onChange(of: model.sourceCode) { _, _ in queueAutoCompile() }
+        .onChange(of: model.parameters) { _, _ in queueAutoCompile() }
+        .onChange(of: uiPanelState) { _, _ in
+            persistEffectsComposerUIState()
+        }
+        .task(id: compileGeneration) {
+            guard autoCompile else { return }
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled else { return }
+            _ = model.compileCode()
+        }
+        .background(
+            EffectsComposerPanelHostBridge(
+                hostService: panelHostService,
+                showCodePanel: showCodePanel,
+                showInspectorPanel: showInspectorPanel,
+                showManifestPanel: showManifestPanel,
+                showLiveControlsPanel: showLiveControlsPanel,
+                panelOpacity: panelOpacity,
+                codeContent: AnyView(panelWindowSurface { codePanelContent }),
+                inspectorContent: AnyView(panelWindowSurface { inspectorPanelContent }),
+                manifestContent: AnyView(panelWindowSurface { manifestPanelContent }),
+                liveControlsContent: AnyView(panelWindowSurface { liveControlsPanelContent })
+            )
+            .frame(width: 0, height: 0)
+        )
+        .onDisappear {
+            cleanScreenSnapshot = nil
+            persistEffectsComposerUIState()
+            tabMonitor.stop()
+            panelHostService.teardown()
+        }
+        .sheet(isPresented: $showPhotosPicker) {
+            PhotosPickerSheet(
+                isPresented: $showPhotosPicker,
+                preselectedIdentifiers: selectedPhotosIdentifier.map { [$0] } ?? [],
+                selectionLimit: 1
+            ) { identifiers in
+                guard let id = identifiers.first else { return }
+                selectedPhotosIdentifier = id
+                model.loadPhotosSource(identifier: id)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .effectsComposerToggleCleanScreen)) { _ in
+            toggleEffectsComposerCleanScreen()
+        }
+    }
+
+    private var uiPanelState: EffectsComposerUIPanelState {
+        EffectsComposerUIPanelState(
+            panelOpacity: panelOpacity,
+            showCodePanel: showCodePanel,
+            showInspectorPanel: showInspectorPanel,
+            showManifestPanel: showManifestPanel,
+            showLiveControlsPanel: showLiveControlsPanel,
+            showLogOverlay: showLogOverlay
+        )
+    }
+
+    private func panelWindowSurface<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(10)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.white.opacity(0.14), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var previewBackdrop: some View {
+        GeometryReader { proxy in
+            if let image = model.previewImage {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .clipped()
+            } else {
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.08, green: 0.10, blue: 0.16),
+                        Color(red: 0.03, green: 0.04, blue: 0.08)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+        }
+    }
+
+    private var topBar: some View {
+        panelCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    runtimeEffectPicker
+
+                    Rectangle()
+                        .fill(Color.white.opacity(0.18))
+                        .frame(width: 1, height: 18)
+                        .padding(.horizontal, 2)
+
+                    Text("Name")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    TextField("Effect Name", text: $model.runtimeEffectName)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(minWidth: 170, idealWidth: 250, maxWidth: 300)
+
+                    Text("Version")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    TextField("1.0.0", text: $model.runtimeEffectVersion)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 96)
+
+                    Button("Save") { model.saveRuntimeEffectAsset() }
+                        .buttonStyle(.borderedProminent)
+                    Button(role: .destructive) { model.deleteRuntimeEffectAsset() } label: {
+                        Text("Delete")
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.red)
+                    Button("New") { model.resetToTemplate() }
+                        .buttonStyle(.bordered)
+
+                    Spacer(minLength: 0)
+                }
+
+                HStack(spacing: 8) {
+                    panelToggleButton("Code", isOn: $showCodePanel)
+                    panelToggleButton("Parameters", isOn: $showInspectorPanel)
+                    panelToggleButton("Live Controls", isOn: $showLiveControlsPanel)
+                    panelToggleButton("Log", isOn: $showLogOverlay)
+                    panelToggleButton("Manifest", isOn: $showManifestPanel)
+
+                    Text("Panels")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Slider(value: $panelOpacity, in: 0.22...0.92)
+                        .frame(width: 110)
+                        .help("Adjust overlay window transparency.")
+
+                    Spacer(minLength: 0)
+
+                    Toggle("Live", isOn: $autoCompile)
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .help("Automatically compile after code or parameter edits.")
+
+                    Button("Compile") { _ = model.compileCode() }
+                        .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func panelToggleButton(_ title: String, isOn: Binding<Bool>) -> some View {
+        if isOn.wrappedValue {
+            Button(title) {
+                isOn.wrappedValue.toggle()
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+        } else {
+            Button(title) {
+                isOn.wrappedValue.toggle()
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+    }
+
+    @ViewBuilder
+    private var runtimeEffectPicker: some View {
+        Menu {
+            if model.runtimeEffects.isEmpty {
+                Text("No runtime effects")
+            } else {
+                Button("Draft (unsaved)") {
+                    model.selectedRuntimeType = ""
+                }
+                Divider()
+                ForEach(model.runtimeEffects) { effect in
+                    Button(effect.displayName) {
+                        model.selectedRuntimeType = effect.type
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(currentRuntimeSelectionLabel)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 6)
+                Image(systemName: "chevron.down")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: 260, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(Color.black.opacity(0.22))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(model.runtimeEffects.isEmpty)
+    }
+
+    private var currentRuntimeSelectionLabel: String {
+        if model.runtimeEffects.isEmpty {
+            return "No runtime effects"
+        }
+        if model.selectedRuntimeType.isEmpty {
+            return "Draft (unsaved)"
+        }
+        return model.runtimeEffects.first(where: { $0.type == model.selectedRuntimeType })?.displayName
+            ?? model.selectedRuntimeType
+    }
+
+    private func bindingForParameter(id: UUID) -> Binding<EffectsComposerParameterDraft>? {
+        guard let index = model.parameters.firstIndex(where: { $0.id == id }) else { return nil }
+        return $model.parameters[index]
+    }
+
+    private func formatTime(_ seconds: Double) -> String {
+        guard seconds.isFinite else { return "0:00" }
+        let whole = max(0, Int(seconds.rounded(.down)))
+        let mins = whole / 60
+        let secs = whole % 60
+        return String(format: "%d:%02d", mins, secs)
+    }
+
+    private func logOverlay(maxWidth: CGFloat, maxHeight: CGFloat) -> some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    LazyVStack(alignment: .trailing, spacing: 3) {
+                        ForEach(Array(model.logEntries.enumerated()), id: \.offset) { index, line in
+                            Text(line)
+                                .font(.system(size: 11, weight: .regular, design: .monospaced))
+                                .foregroundStyle(.white)
+                                .multilineTextAlignment(.trailing)
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                                .id(index)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: maxHeight, alignment: .bottomTrailing)
+                .padding(.bottom, 1)
+            }
+            .scrollIndicators(.hidden)
+            .frame(width: min(maxWidth, 560))
+            .frame(height: maxHeight, alignment: .bottomTrailing)
+            .onAppear {
+                guard let last = model.logEntries.indices.last else { return }
+                proxy.scrollTo(last, anchor: .bottom)
+            }
+            .onChange(of: model.logEntries.count) { _, newCount in
+                guard newCount > 0 else { return }
+                withAnimation(.easeOut(duration: 0.12)) {
+                    proxy.scrollTo(newCount - 1, anchor: .bottom)
+                }
+            }
+        }
+    }
+
+    private func applyEffectsComposerUIState(_ state: EffectsComposerSettings) {
+        isApplyingStoredEffectsComposerUIState = true
+        panelOpacity = state.panelOpacity
+        showCodePanel = state.showCodePanel
+        showInspectorPanel = state.showInspectorPanel
+        showManifestPanel = state.showManifestPanel
+        showLiveControlsPanel = state.showLiveControlsPanel
+        showLogOverlay = state.showLogOverlay
+        isApplyingStoredEffectsComposerUIState = false
+    }
+
+    private func persistEffectsComposerUIState() {
+        guard didLoadEffectsComposerUIState, !isApplyingStoredEffectsComposerUIState else { return }
+        settingsStore.update { value in
+            value.panelOpacity = panelOpacity
+            value.showCodePanel = showCodePanel
+            value.showInspectorPanel = showInspectorPanel
+            value.showManifestPanel = showManifestPanel
+            value.showLiveControlsPanel = showLiveControlsPanel
+            value.showLogOverlay = showLogOverlay
+        }
+    }
+
+    private var codePanelContent: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text("Live Metal Code")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                Text("\(model.sourceCode.count) chars")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            MetalCodeEditorView(text: $model.sourceCode, insertionRequest: $model.pendingCodeInsertion)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.black.opacity(0.16))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                )
+        }
+    }
+
+    private var inspectorPanelContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            parameterDefinitionSection
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private var manifestPanelContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            manifestInspectorSection
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private var liveControlsPanelContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            liveControlsSection
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private var bottomTransportBar: some View {
+        panelCard {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Menu {
+                        Button {
+                            model.loadRandomSource(from: state.library, preferredLength: max(2.0, state.settings.clipLengthMaxSeconds))
+                        } label: {
+                            Label("Random Source", systemImage: "shuffle")
+                        }
+
+                        Divider()
+
+                        Button {
+                            model.chooseFileSource()
+                        } label: {
+                            Label("From Files...", systemImage: "doc")
+                        }
+
+                        Button {
+                            showPhotosPicker = true
+                        } label: {
+                            Label("From Photos...", systemImage: "photo")
+                        }
+
+                        Divider()
+
+                        Button {
+                            model.useGeneratedSample()
+                        } label: {
+                            Label("Use Sample", systemImage: "sparkles")
+                        }
+                    } label: {
+                        Label("Select Source...", systemImage: "photo.on.rectangle")
+                    }
+                    .buttonStyle(.bordered)
+
+                    Spacer(minLength: 0)
+
+                    Text("Source: \(model.inputSourceLabel)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 10) {
+                    let duration = max(0.1, model.timelineDuration)
+                    Text(formatTime(model.time))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+
+                    Slider(value: $model.time, in: 0...duration)
+
+                    Button {
+                        model.isPlaying.toggle()
+                    } label: {
+                        Image(systemName: model.isPlaying ? "pause.fill" : "play.fill")
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Text(formatTime(duration))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private func panelCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            content()
+        }
+        .padding(10)
+        .background(.ultraThinMaterial)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white.opacity(0.14), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.22), radius: 16, x: 0, y: 8)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var parameterDefinitionSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Parameter Definitions")
+                    .font(.headline)
+
+                Spacer(minLength: 0)
+
+                Button {
+                    model.addParameter()
+                    pendingParameterScrollTarget = model.editableParameterDefinitions.last?.id
+                } label: {
+                    Label("Add", systemImage: "plus")
+                }
+                .buttonStyle(.bordered)
+            }
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(model.editableParameterDefinitions) { parameter in
+                            if let parameterBinding = bindingForParameter(id: parameter.id) {
+                                EffectsComposerParameterDefinitionRow(
+                                    parameter: parameterBinding,
+                                    onChanged: { model.parameterDefinitionDidChange() },
+                                    onInsert: { name in model.insertParameterUsage(name: name) },
+                                    onRemove: { model.removeParameter(id: parameter.id) }
+                                )
+                                .id(parameter.id)
+                            }
+                        }
+                    }
+                    .padding(.bottom, 2)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.black.opacity(0.07))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .onChange(of: model.editableParameterDefinitions.count) { _, _ in
+                    guard let targetID = pendingParameterScrollTarget else { return }
+                    guard model.editableParameterDefinitions.contains(where: { $0.id == targetID }) else {
+                        pendingParameterScrollTarget = nil
+                        return
+                    }
+                    withAnimation(.easeOut(duration: 0.14)) {
+                        proxy.scrollTo(targetID, anchor: .bottom)
+                    }
+                    pendingParameterScrollTarget = nil
+                }
+            }
+        }
+    }
+
+    private var manifestInspectorSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Manifest (read-only)")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+
+            ScrollView {
+                Text(model.manifestPreviewJSON)
+                    .font(.system(size: 11, weight: .regular, design: .monospaced))
+                    .foregroundStyle(.white)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.black.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var liveControlsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Live Controls")
+                .font(.headline)
+
+            if !model.autoBoundParameterSummaries.isEmpty {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Auto-bound (host-driven):")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ForEach(model.autoBoundParameterSummaries, id: \.self) { summary in
+                        Text(summary)
+                            .font(.system(size: 11, weight: .regular, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            if model.editableParameterNames.isEmpty {
+                Text("No editable parameters (all parameters are auto-bound or unnamed).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 6) {
+                        ForEach(model.editableParameterNames, id: \.self) { name in
+                            if let value = model.parameterValue(named: name),
+                               let spec = model.parameterSpec(named: name) {
+                                EffectParameterRowView(
+                                    name: name,
+                                    value: value,
+                                    spec: spec
+                                ) { newValue in
+                                    model.updateControlParameter(name: name, value: newValue)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.bottom, 2)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.black.opacity(0.07))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+    }
+
+    private func shouldHandleEffectsComposerTab(event: NSEvent) -> Bool {
+        guard state.appSettings.keyboardAccessibilityOverridesEnabled else { return false }
+
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let isPlainTab = modifiers.isEmpty
+        let isShiftTab = modifiers == .shift
+        guard event.keyCode == 48, (isPlainTab || isShiftTab) else { return false }
+
+        guard isEffectsComposerWindow(NSApp.keyWindow) else { return false }
+        if let eventWindow = event.window, !isEffectsComposerWindow(eventWindow) {
+            return false
+        }
+        return true
+    }
+
+    private func isEffectsComposerWindow(_ window: NSWindow?) -> Bool {
+        guard let window else { return false }
+        if window.title == "Effects Composer" {
+            return true
+        }
+        if let parent = window.parent {
+            return isEffectsComposerWindow(parent)
+        }
+        return false
+    }
+
+    private func toggleEffectsComposerCleanScreen() {
+        if let snapshot = cleanScreenSnapshot {
+            // Always restore exactly what was visible when entering clean screen.
+            showCodePanel = snapshot.showCodePanel
+            showInspectorPanel = snapshot.showInspectorPanel
+            showManifestPanel = snapshot.showManifestPanel
+            showLiveControlsPanel = snapshot.showLiveControlsPanel
+            showLogOverlay = snapshot.showLogOverlay
+            showEffectsComposerChrome = snapshot.showChrome
+
+            cleanScreenSnapshot = nil
+            focusEffectsComposerHostWindow()
+            return
+        }
+
+        let hasAnyVisibleOverlay =
+            showCodePanel ||
+            showInspectorPanel ||
+            showManifestPanel ||
+            showLiveControlsPanel ||
+            showLogOverlay
+
+        // If there is literally nothing visible, clean-screen toggle is a no-op.
+        guard hasAnyVisibleOverlay || showEffectsComposerChrome else { return }
+
+        cleanScreenSnapshot = EffectsComposerCleanScreenSnapshot(
+            showCodePanel: showCodePanel,
+            showInspectorPanel: showInspectorPanel,
+            showManifestPanel: showManifestPanel,
+            showLiveControlsPanel: showLiveControlsPanel,
+            showLogOverlay: showLogOverlay,
+            showChrome: showEffectsComposerChrome
+        )
+
+        showCodePanel = false
+        showInspectorPanel = false
+        showManifestPanel = false
+        showLiveControlsPanel = false
+        showLogOverlay = false
+        showEffectsComposerChrome = false
+        focusEffectsComposerHostWindow()
+    }
+
+    private func focusEffectsComposerHostWindow() {
+        guard let studioWindow = NSApp.windows.first(where: { $0.title == "Effects Composer" }) else { return }
+        studioWindow.makeKeyAndOrderFront(nil)
+    }
+
+    private func queueAutoCompile() {
+        guard autoCompile else { return }
+        compileGeneration &+= 1
+    }
+}

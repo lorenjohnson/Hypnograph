@@ -7,24 +7,24 @@ import Foundation
 
 struct AppSettings: Codable {
     var keyboardAccessibilityOverridesEnabled: Bool
-    var effectsStudioEnabled: Bool
+    var effectsComposerEnabled: Bool
 
     static let defaultValue = AppSettings(
         keyboardAccessibilityOverridesEnabled: true,
-        effectsStudioEnabled: true
+        effectsComposerEnabled: true
     )
 
     private enum CodingKeys: String, CodingKey {
         case keyboardAccessibilityOverridesEnabled
-        case effectsStudioEnabled
+        case effectsComposerEnabled
     }
 
     init(
         keyboardAccessibilityOverridesEnabled: Bool = Self.defaultValue.keyboardAccessibilityOverridesEnabled,
-        effectsStudioEnabled: Bool = Self.defaultValue.effectsStudioEnabled
+        effectsComposerEnabled: Bool = Self.defaultValue.effectsComposerEnabled
     ) {
         self.keyboardAccessibilityOverridesEnabled = keyboardAccessibilityOverridesEnabled
-        self.effectsStudioEnabled = effectsStudioEnabled
+        self.effectsComposerEnabled = effectsComposerEnabled
     }
 
     init(from decoder: Decoder) throws {
@@ -32,8 +32,8 @@ struct AppSettings: Codable {
         keyboardAccessibilityOverridesEnabled =
             try container.decodeIfPresent(Bool.self, forKey: .keyboardAccessibilityOverridesEnabled)
             ?? Self.defaultValue.keyboardAccessibilityOverridesEnabled
-        effectsStudioEnabled =
-            try container.decodeIfPresent(Bool.self, forKey: .effectsStudioEnabled)
-            ?? Self.defaultValue.effectsStudioEnabled
+        effectsComposerEnabled =
+            try container.decodeIfPresent(Bool.self, forKey: .effectsComposerEnabled)
+            ?? Self.defaultValue.effectsComposerEnabled
     }
 }

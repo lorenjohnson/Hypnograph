@@ -6,7 +6,7 @@ doc-status: done
 
 ## Goal
 
-Refactor Effects Studio into a clear, durable feature architecture that is easier to evolve without regressions.
+Refactor Effects Composer into a clear, durable feature architecture that is easier to evolve without regressions.
 
 Primary objectives:
 - Reduce hidden coupling and implicit internal APIs.
@@ -24,11 +24,11 @@ Known pressure points:
 
 ## Current Snapshot (2026-02-27)
 
-Current file layout under `Hypnograph/App/EffectsStudio`:
+Current file layout under `Hypnograph/App/EffectsComposer`:
 
 ```text
 Models/
-  EffectsStudioParameterModeling.swift
+  EffectsComposerParameterModeling.swift
 
 Services/
   MetalRenderService.swift
@@ -37,29 +37,29 @@ Services/
   SourcePlaybackService.swift
 
 Persistence/
-  EffectsStudioSettings.swift
-  EffectsStudioSettingsStore.swift
+  EffectsComposerSettings.swift
+  EffectsComposerSettingsStore.swift
 
 State/
-  EffectsStudioViewModel.swift
+  EffectsComposerViewModel.swift
   ManifestParameterState.swift
   MetalRenderState.swift
   RuntimeEffectsState.swift
   SourcePlaybackState.swift
 
 Views/
-  EffectsStudioMetalCodeEditorView.swift
-  EffectsStudioPanelWindows.swift
-  EffectsStudioParameterDefinitionRow.swift
-  EffectsStudioTypes.swift
-  EffectsStudioView.swift
+  EffectsComposerMetalCodeEditorView.swift
+  EffectsComposerPanelWindows.swift
+  EffectsComposerParameterDefinitionRow.swift
+  EffectsComposerTypes.swift
+  EffectsComposerView.swift
 
 Support/
-  EffectsStudioParameterBufferLayout.swift
+  EffectsComposerParameterBufferLayout.swift
 ```
 
 Current concentration of logic (line count):
-- `State/EffectsStudioViewModel.swift` + state slices: ~1185 lines total.
+- `State/EffectsComposerViewModel.swift` + state slices: ~1185 lines total.
 - Runtime effects orchestration: `State/RuntimeEffectsState.swift`.
 - Compile/render orchestration: `State/MetalRenderState.swift`.
 - Source orchestration/playback loop: `State/SourcePlaybackState.swift`.
@@ -68,7 +68,7 @@ Current concentration of logic (line count):
 ## Scope
 
 ### In Scope
-- Effects Studio code organization and boundaries.
+- Effects Composer code organization and boundaries.
 - Dependency boundary design and implementation for Studio collaborators.
 - Studio-only naming/structure cleanup aligned with the new architecture.
 - Build verification after each phase.
@@ -82,8 +82,8 @@ Current concentration of logic (line count):
 ## Target Structure
 
 ```text
-Hypnograph/App/EffectsStudio
-  EffectsStudio.swift
+Hypnograph/App/EffectsComposer
+  EffectsComposer.swift
   Dependencies.swift
 
   Views/
@@ -95,9 +95,9 @@ Hypnograph/App/EffectsStudio
 ```
 
 Notes:
-- Keep names concise inside this feature folder (no redundant `EffectsStudio*` prefix unless needed to avoid collisions).
+- Keep names concise inside this feature folder (no redundant `EffectsComposer*` prefix unless needed to avoid collisions).
 - Favor explicit feature types over large extension-file slices.
-- `EffectsStudio.swift` is the composition root; it wires dependencies and initializes state/view model.
+- `EffectsComposer.swift` is the composition root; it wires dependencies and initializes state/view model.
 
 ## Architecture Invariants
 
@@ -123,7 +123,7 @@ Service scope rule:
 
 Studio gets collaborators through a local dependency container:
 - `Dependencies.swift` defines required collaborator protocols and `live` implementations.
-- `EffectsStudio.swift` creates and injects dependencies into state/view model.
+- `EffectsComposer.swift` creates and injects dependencies into state/view model.
 
 Purpose:
 - Make boundaries explicit.
@@ -140,7 +140,7 @@ Purpose:
 
 ### Phase 1: Structure + Composition Root
 
-- [x] Add `EffectsStudio.swift` composition root.
+- [x] Add `EffectsComposer.swift` composition root.
 - [x] Add `Dependencies.swift` and `live` wiring.
 - [x] Create `State/`, `Models/`, `Services/`, `Support/` folders.
 - [x] Keep behavior unchanged in this phase.
@@ -151,7 +151,7 @@ Phase gate:
 ### Phase 2: Model + Support Extraction
 
 - [x] Move pure parameter/manifest mapping and sanitization logic into `Models/`.
-- [x] Move buffer layout/support structs (`EffectsStudioParamBufferLayout`, etc.) into `Support/` or `Models/` as appropriate.
+- [x] Move buffer layout/support structs (`EffectsComposerParamBufferLayout`, etc.) into `Support/` or `Models/` as appropriate.
 - [x] Keep state mutation in state layer, keep conversion rules pure.
 
 Phase gate:
@@ -169,7 +169,7 @@ Phase gate:
 
 ### Phase 4: State Consolidation
 
-- [x] Reduce `EffectsStudioViewModel` to orchestration and published state.
+- [x] Reduce `EffectsComposerViewModel` to orchestration and published state.
 - [x] Replace extension-heavy surface with explicit state/coordinator types in `State/`.
 - [x] Remove dead code paths left from transition.
 
@@ -189,12 +189,12 @@ Phase gate:
 
 This map is the starting point and can be adjusted during extraction:
 
-- `Views/EffectsStudioViewModel+ManifestParameters.swift` -> split across `Models/` (pure manifest/parameter mapping) and `State/` (mutation hooks).
-- `Views/EffectsStudioViewModel+MetalRender.swift` -> `Services/MetalRenderService.swift` + state orchestration calls in `State/`.
-- `Views/EffectsStudioViewModel+RuntimeEffects.swift` -> `Services/RuntimeEffectsService.swift` + state orchestration in `State/`.
-- `Views/EffectsStudioViewModel+SourcePlayback.swift` -> `Services/SourcePlaybackService.swift` + state orchestration in `State/`.
-- `Views/EffectsStudioPanelWindows.swift` -> `Services/PanelHostService.swift` (or keep thin UI glue in `Views/` and move host side effects to service).
-- `Views/EffectsStudioTypes.swift` -> split into `Models/` and `Support/` based on concern.
+- `Views/EffectsComposerViewModel+ManifestParameters.swift` -> split across `Models/` (pure manifest/parameter mapping) and `State/` (mutation hooks).
+- `Views/EffectsComposerViewModel+MetalRender.swift` -> `Services/MetalRenderService.swift` + state orchestration calls in `State/`.
+- `Views/EffectsComposerViewModel+RuntimeEffects.swift` -> `Services/RuntimeEffectsService.swift` + state orchestration in `State/`.
+- `Views/EffectsComposerViewModel+SourcePlayback.swift` -> `Services/SourcePlaybackService.swift` + state orchestration in `State/`.
+- `Views/EffectsComposerPanelWindows.swift` -> `Services/PanelHostService.swift` (or keep thin UI glue in `Views/` and move host side effects to service).
+- `Views/EffectsComposerTypes.swift` -> split into `Models/` and `Support/` based on concern.
 
 ## Verification Checklist
 
@@ -223,7 +223,7 @@ Verification notes (2026-02-27):
 
 ## Deliverables
 
-- Refactored Effects Studio architecture with explicit boundaries.
+- Refactored Effects Composer architecture with explicit boundaries.
 - Updated docs for resulting architecture decisions.
 - Follow-up handoff doc for analogous Main app architecture refactor.
 

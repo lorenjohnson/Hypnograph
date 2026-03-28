@@ -24,7 +24,7 @@ Number keys select the corresponding layer in the current hypnogram (`1` selects
 
 ## Settings Dialog
 
-Hypnograph includes a dedicated settings dialog (instead of direct file editing) with `General` and `Advanced` tabs. General includes audio output device selection, settings-folder quick access, history controls (clear history and max length, default ~200), render/snapshot destination settings, and render destination mode (`disk + Apple Photos`, `Apple Photos only`, or `disk only`). General also contains the install action for CLI/Finder integration (the operational behavior belongs to the separate CLI/Finder feature below). Advanced currently contains feature flags for Live Mode and Effects Studio, plus keyboard-override behavior for space/tab accessibility handling.
+Hypnograph includes a dedicated settings dialog (instead of direct file editing) with `General` and `Advanced` tabs. General includes audio output device selection, settings-folder quick access, history controls (clear history and max length, default ~200), render/snapshot destination settings, and render destination mode (`disk + Apple Photos`, `Apple Photos only`, or `disk only`). General also contains the install action for CLI/Finder integration (the operational behavior belongs to the separate CLI/Finder feature below). Advanced currently contains feature flags for Live Mode and Effects Composer, plus keyboard-override behavior for space/tab accessibility handling.
 
 ## CLI and Finder Action
 
@@ -54,6 +54,6 @@ Hypnograph supports a family of quick content actions (hotkeys + command menu): 
 
 Live mode allows sending the current running hypnogram to an external display for slideshow/performance use. A local in-window preview of the live output can be toggled on/off. Live output loops the currently sent hypnogram until another one is sent; when replaced, it transitions using the configured transition style. Live mode has its own audio routing controls (audio device and volume), intentionally architected to stay decoupled from core playback paths.
 
-## Effects Studio (Feature-Flagged)
+## Effects Composer (Feature-Flagged)
 
-A dedicated Effects Studio supports authoring Metal-based effects with live code editing, parameter mapping, and preview against selected/random sources. It is available but not mainline for all users and may later split into a separate app.
+A dedicated Effects Composer supports authoring Metal-based effects with live code editing, parameter mapping, and preview against selected/random sources. It is available but not mainline for all users and may later split into a separate app.

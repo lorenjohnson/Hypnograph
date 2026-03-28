@@ -52,7 +52,7 @@ enum Environment {
     }
 
     /// ~/Library/Application Support/Hypnograph/main-settings.json
-    static var defaultWorkspaceSettingsURL: URL {
+    static var defaultStudioSettingsURL: URL {
         appSupportDirectory.appendingPathComponent("main-settings.json")
     }
 
@@ -62,7 +62,7 @@ enum Environment {
     }
 
     /// ~/Library/Application Support/Hypnograph/effects-studio-settings.json
-    static var defaultEffectsStudioSettingsURL: URL {
+    static var defaultEffectsComposerSettingsURL: URL {
         appSupportDirectory.appendingPathComponent("effects-studio-settings.json")
     }
 
@@ -86,16 +86,16 @@ enum Environment {
         return url
     }
 
-    /// If no main settings exists in Application Support, copy the bundled default JSON there.
-    static func ensureDefaultWorkspaceSettingsFileExists() {
+    /// If no studio settings exists in Application Support, copy the bundled default JSON there.
+    static func ensureDefaultStudioSettingsFileExists() {
         let bundledURL = Bundle.main.url(
             forResource: "default-settings",
             withExtension: "json"
         )
         ensureSettingsFileExists(
-            at: defaultWorkspaceSettingsURL,
+            at: defaultStudioSettingsURL,
             bundledURL: bundledURL,
-            defaultSettings: WorkspaceSettings.defaultValue
+            defaultSettings: StudioSettings.defaultValue
         )
     }
 
@@ -104,7 +104,7 @@ enum Environment {
         let url = defaultAppSettingsURL
         guard !fm.fileExists(atPath: url.path) else { return }
 
-        let migratedKeyboardOverride = keyboardAccessibilityOverrideFromWorkspaceSettings()
+        let migratedKeyboardOverride = keyboardAccessibilityOverrideFromStudioSettings()
             ?? AppSettings.defaultValue.keyboardAccessibilityOverridesEnabled
         let appSettings = AppSettings(
             keyboardAccessibilityOverridesEnabled: migratedKeyboardOverride
@@ -113,17 +113,17 @@ enum Environment {
         writeCodableSettings(appSettings, to: url, label: "app settings")
     }
 
-    static func ensureDefaultEffectsStudioSettingsFileExists() {
+    static func ensureDefaultEffectsComposerSettingsFileExists() {
         let fm = FileManager.default
-        let url = defaultEffectsStudioSettingsURL
+        let url = defaultEffectsComposerSettingsURL
         guard !fm.fileExists(atPath: url.path) else { return }
-        writeCodableSettings(EffectsStudioSettings.defaultValue, to: url, label: "effects studio settings")
+        writeCodableSettings(EffectsComposerSettings.defaultValue, to: url, label: "effects composer settings")
     }
 
     static func ensureDefaultSettingsFilesExist() {
-        ensureDefaultWorkspaceSettingsFileExists()
+        ensureDefaultStudioSettingsFileExists()
         ensureDefaultAppSettingsFileExists()
-        ensureDefaultEffectsStudioSettingsFileExists()
+        ensureDefaultEffectsComposerSettingsFileExists()
     }
 
     /// Ensures a valid, decodable settings file exists at the provided URL.
@@ -132,7 +132,7 @@ enum Environment {
     static func ensureSettingsFileExists(
         at url: URL,
         bundledURL: URL?,
-        defaultSettings: WorkspaceSettings
+        defaultSettings: StudioSettings
     ) {
         let fm = FileManager.default
 
@@ -162,7 +162,7 @@ enum Environment {
         // Validate + normalize
         do {
             let data = try Data(contentsOf: url)
-            _ = try JSONDecoder().decode(WorkspaceSettings.self, from: data)
+            _ = try JSONDecoder().decode(StudioSettings.self, from: data)
             return
         } catch {
             // Try repairing common issues (notably mixed-type `sources` dictionaries).
@@ -182,7 +182,7 @@ enum Environment {
         }
     }
 
-    private static func writeSettings(_ settings: WorkspaceSettings, to url: URL) {
+    private static func writeSettings(_ settings: StudioSettings, to url: URL) {
         do {
             let data = try stableJSONEncoder().encode(settings)
             try data.write(to: url, options: .atomic)
@@ -208,8 +208,8 @@ enum Environment {
         }
     }
 
-    private static func keyboardAccessibilityOverrideFromWorkspaceSettings() -> Bool? {
-        guard let data = try? Data(contentsOf: defaultWorkspaceSettingsURL),
+    private static func keyboardAccessibilityOverrideFromStudioSettings() -> Bool? {
+        guard let data = try? Data(contentsOf: defaultStudioSettingsURL),
               let json = try? JSONSerialization.jsonObject(with: data, options: []),
               let dict = json as? [String: Any],
               let value = dict["keyboardAccessibilityOverridesEnabled"] as? Bool else {
@@ -225,12 +225,12 @@ enum Environment {
     }
 
     /// Attempts to repair a settings file that can't decode under the current schema.
-    /// Returns a decoded `WorkspaceSettings` if repair succeeds; otherwise nil.
-    private static func repairSettingsFile(at url: URL) -> WorkspaceSettings? {
+    /// Returns a decoded `StudioSettings` if repair succeeds; otherwise nil.
+    private static func repairSettingsFile(at url: URL) -> StudioSettings? {
         guard let data = try? Data(contentsOf: url) else { return nil }
 
         // If it decodes, no repair needed.
-        if let decoded = try? JSONDecoder().decode(WorkspaceSettings.self, from: data) {
+        if let decoded = try? JSONDecoder().decode(StudioSettings.self, from: data) {
             return decoded
         }
 
@@ -261,7 +261,7 @@ enum Environment {
         }
 
         guard let normalizedData = try? JSONSerialization.data(withJSONObject: dict, options: []),
-              let repaired = try? JSONDecoder().decode(WorkspaceSettings.self, from: normalizedData) else {
+              let repaired = try? JSONDecoder().decode(StudioSettings.self, from: normalizedData) else {
             return nil
         }
 

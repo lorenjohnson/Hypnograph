@@ -13,7 +13,7 @@ The app currently centers on:
 - Saving hypnograms to reopen, refine, and revisit later
 - Rendering hypnograms out to video for playback and sharing
 - Live preview and external-display performance workflows
-- Optional Effects Studio for authoring and testing effects
+- Optional Effects Composer for authoring and testing effects
 
 If you want to try the current beta build, start at [hypnogra.ph](https://hypnogra.ph), which is the current public-facing entrypoint for the project.
 

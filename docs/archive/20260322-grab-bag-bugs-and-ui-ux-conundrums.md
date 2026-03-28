@@ -18,17 +18,17 @@ On 2026-03-22, unfinished items were split into dedicated active project docs.
 
 - `#3` chain context menu: removed no-op `Load from Library...` action.
 - `#15` clip trim strips: tightened handle-grab behavior so short windows can be moved without accidentally grabbing trim handles.
-- `#18` Effects Studio param definitions: removed technical preamble from the top of the panel.
-- `#19` Effects Studio param definitions: adding a param now auto-scrolls to the new row.
-- `#21` Effects Studio header: removed `Refresh` button; no file watching was added.
+- `#18` Effects Composer param definitions: removed technical preamble from the top of the panel.
+- `#19` Effects Composer param definitions: adding a param now auto-scrolls to the new row.
+- `#21` Effects Composer header: removed `Refresh` button; no file watching was added.
 
 ### 2026-02-27 Batch: Next Small High-Value Fixes
 
 - `#3` composition/global chain UX: `Add Effect` now includes `Effect Chains` + `FX` sections, so existing chains can be applied directly without tab switching.
 - `#7` player controls bar: now uses inactivity auto-hide outside clean-screen mode too.
-- `#12` Effects Studio access: removed top-level `Studio` menu, moved open action into app-menu area, and added `Enable Effects Studio` feature flag in Settings.
+- `#12` Effects Composer access: removed top-level `Studio` menu, moved open action into app-menu area, and added `Enable Effects Composer` feature flag in Settings.
 - `#14` chain context menu: `Save as New Template...` now generates unique macOS-style names (`Name`, `Name (1)`, ...).
-- `#20` Effects Studio header: replaced runtime-effect picker presentation with a flush-left anchored menu control.
+- `#20` Effects Composer header: replaced runtime-effect picker presentation with a flush-left anchored menu control.
 
 ### 2026-02-27 Batch: Next Five (Buttons + Parameter Controls)
 
@@ -42,4 +42,4 @@ On 2026-03-22, unfinished items were split into dedicated active project docs.
 
 - `#4` keyboard override stability: fixed shortcut handling after Effects Chain tab roundtrip by switching shortcut gating to active text-responder detection.
 - `#13` layer audio controls: added per-layer `M` mute toggle beside `S` in composition rows, including red active state.
-- Main + Effects Studio parameter UI: both now use the same shared `EffectParameterRowView` control path to avoid behavior drift.
+- Main + Effects Composer parameter UI: both now use the same shared `EffectParameterRowView` control path to avoid behavior drift.

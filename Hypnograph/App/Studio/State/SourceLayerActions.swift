@@ -1,0 +1,471 @@
+//
+//  SourceLayerActions.swift
+//  Hypnograph
+//
+
+import Foundation
+import CoreMedia
+import AVFoundation
+import HypnoCore
+import HypnoUI
+
+@MainActor
+extension Studio {
+    func addSource() {
+        addSourceToPlayer(activePlayer)
+    }
+
+    func addSourceFromFilesPanel() {
+        guard let selectedURL = panelHostService.chooseSingleMediaFile() else { return }
+        _ = addSource(fromFileURL: selectedURL)
+    }
+
+    /// Create a new clip and add each incoming file as a layer.
+    /// Files that cannot be decoded as image/video are skipped.
+    @discardableResult
+    func addSourcesAsNewClip(fromFileURLs urls: [URL]) -> Bool {
+        let fileURLs = urls.filter(\.isFileURL)
+        guard !fileURLs.isEmpty else { return false }
+
+        let preferredLength = activePlayer.targetDuration.seconds
+        var layers: [HypnogramLayer] = []
+        var failedCount = 0
+
+        for url in fileURLs {
+            guard let mediaClip = makeClip(forFileURL: url, preferredLength: preferredLength) else {
+                failedCount += 1
+                continue
+            }
+
+            let blendMode = layers.isEmpty ? BlendMode.sourceOver : BlendMode.defaultMontage
+            layers.append(HypnogramLayer(mediaClip: mediaClip, blendMode: blendMode))
+        }
+
+        guard !layers.isEmpty else {
+            AppNotifications.show("Couldn't import selected files", flash: true, duration: 1.5)
+            return false
+        }
+
+        let globalEffect = activePlayer.session.hypnograms.isEmpty
+            ? EffectChain()
+            : activePlayer.currentHypnogram.effectChain.clone()
+
+        let importedClip = Hypnogram(
+            layers: layers,
+            targetDuration: activePlayer.targetDuration,
+            playRate: activePlayer.playRate,
+            effectChain: globalEffect,
+            createdAt: Date()
+        )
+
+        activePlayer.session.hypnograms.append(importedClip)
+        activePlayer.currentHypnogramIndex = activePlayer.session.hypnograms.count - 1
+        activePlayer.currentSourceIndex = layers.count - 1
+        activePlayer.notifySessionMutated()
+        enforceHistoryLimit()
+        applyClipSelectionChanged(manual: true)
+
+        let importedCount = layers.count
+        if failedCount == 0 {
+            AppNotifications.show("Imported \(importedCount) layer\(importedCount == 1 ? "" : "s")", flash: true, duration: 1.5)
+        } else {
+            AppNotifications.show(
+                "Imported \(importedCount), skipped \(failedCount)",
+                flash: true,
+                duration: 1.75
+            )
+        }
+
+        return true
+    }
+
+    /// Add a source layer from an explicit local file.
+    @discardableResult
+    func addSource(fromFileURL url: URL) -> Bool {
+        guard let mediaClip = makeClip(forFileURL: url, preferredLength: activePlayer.targetDuration.seconds) else {
+            AppNotifications.show("Couldn't add source from file", flash: true, duration: 1.5)
+            return false
+        }
+        addSourceToPlayer(activePlayer, mediaClip: mediaClip)
+        return true
+    }
+
+    /// Add a source layer from an explicit Photos asset identifier.
+    @discardableResult
+    func addSource(fromPhotosAssetIdentifier identifier: String) -> Bool {
+        guard let mediaClip = makeClip(forPhotosAssetIdentifier: identifier, preferredLength: activePlayer.targetDuration.seconds) else {
+            AppNotifications.show("Couldn't add source from Photos", flash: true, duration: 1.5)
+            return false
+        }
+        addSourceToPlayer(activePlayer, mediaClip: mediaClip)
+        return true
+    }
+
+    func newRandomClip() {
+        replaceClipForCurrentSource()
+    }
+
+    func removeCurrentLayer() {
+        let idx: Int
+        if activePlayer.currentSourceIndex == -1 {
+            if activePlayer.layers.count == 1 {
+                idx = 0
+            } else {
+                if activePlayer.layers.isEmpty {
+                    AppNotifications.show("No layers selected", flash: true, duration: 1.25)
+                } else {
+                    AppNotifications.show("Select a layer (1-9)", flash: true, duration: 1.25)
+                }
+                return
+            }
+        } else {
+            idx = activePlayer.currentSourceIndex
+        }
+
+        guard idx >= 0, idx < activePlayer.layers.count else { return }
+
+        if activePlayer.layers.count == 1 {
+            replaceClip(forSourceIndex: idx)
+            return
+        }
+
+        activePlayer.layers.remove(at: idx)
+
+        if idx >= activePlayer.layers.count {
+            activePlayer.currentSourceIndex = activePlayer.layers.count - 1
+        }
+    }
+
+    func duplicateCurrentLayer() {
+        let idx: Int
+        if activePlayer.currentSourceIndex == -1 {
+            if activePlayer.layers.count == 1 {
+                idx = 0
+            } else {
+                if activePlayer.layers.isEmpty {
+                    AppNotifications.show("No layers to duplicate", flash: true, duration: 1.25)
+                } else {
+                    AppNotifications.show("Select a layer (1-9)", flash: true, duration: 1.25)
+                }
+                return
+            }
+        } else {
+            idx = activePlayer.currentSourceIndex
+        }
+
+        guard idx >= 0, idx < activePlayer.layers.count else { return }
+
+        let duplicatedLayer = duplicatedLayerWithNewFileID(from: activePlayer.layers[idx])
+        let insertIndex = idx + 1
+        activePlayer.layers.insert(duplicatedLayer, at: insertIndex)
+        activePlayer.currentSourceIndex = insertIndex
+    }
+
+    private func duplicatedLayerWithNewFileID(from layer: HypnogramLayer) -> HypnogramLayer {
+        let sourceFile = layer.mediaClip.file
+        let duplicatedFile = MediaFile(
+            source: sourceFile.source,
+            mediaKind: sourceFile.mediaKind,
+            duration: sourceFile.duration
+        )
+        let duplicatedClip = MediaClip(
+            file: duplicatedFile,
+            startTime: layer.mediaClip.startTime,
+            duration: layer.mediaClip.duration
+        )
+
+        var duplicatedLayer = layer
+        duplicatedLayer.mediaClip = duplicatedClip
+        return duplicatedLayer
+    }
+
+    private func replaceClipForCurrentSource() {
+        let idx = activePlayer.currentSourceIndex
+        replaceClip(forSourceIndex: idx)
+    }
+
+    func replaceClip(forSourceIndex idx: Int) {
+        guard idx >= 0, idx < activePlayer.layers.count else { return }
+        guard let mediaClip = state.library.randomClip(clipLength: activePlayer.targetDuration.seconds) else { return }
+        activePlayer.layers[idx].mediaClip = mediaClip
+    }
+
+    /// Add a source to the given player
+    func addSourceToPlayer(_ player: PlayerState, length: Double? = nil) {
+        let clipLength = length ?? player.targetDuration.seconds
+        guard let mediaClip = state.library.randomClip(clipLength: clipLength) else { return }
+        addSourceToPlayer(player, mediaClip: mediaClip)
+    }
+
+    /// Add a specific clip as a new source layer.
+    func addSourceToPlayer(_ player: PlayerState, mediaClip: MediaClip) {
+        let blendMode = player.layers.isEmpty ? BlendMode.sourceOver : BlendMode.defaultMontage
+        let layer = HypnogramLayer(mediaClip: mediaClip, blendMode: blendMode)
+        player.layers.append(layer)
+        player.currentSourceIndex = player.layers.count - 1
+    }
+
+    /// Build a clip from a local file URL (image or video).
+    func makeClip(forFileURL url: URL, preferredLength: Double) -> MediaClip? {
+        let targetLength = max(0.1, preferredLength)
+
+        let videoAsset = AVURLAsset(url: url)
+        let totalVideoSeconds = videoAsset.duration.seconds
+        let hasVideoTrack = videoAsset.tracks(withMediaType: .video).first != nil
+        if hasVideoTrack, totalVideoSeconds.isFinite, totalVideoSeconds > 0, videoAsset.isPlayable {
+            let clipLength = min(targetLength, totalVideoSeconds)
+            let source = MediaSource.url(url)
+            let file = MediaFile(
+                source: source,
+                mediaKind: .video,
+                duration: CMTime(seconds: totalVideoSeconds, preferredTimescale: 600)
+            )
+            return MediaClip(
+                file: file,
+                startTime: .zero,
+                duration: CMTime(seconds: clipLength, preferredTimescale: 600)
+            )
+        }
+
+        guard let image = StillImageCache.ciImage(for: url), !image.extent.isEmpty else {
+            return nil
+        }
+
+        let source = MediaSource.url(url)
+        let imageDuration = CMTime(seconds: targetLength, preferredTimescale: 600)
+        let file = MediaFile(source: source, mediaKind: .image, duration: imageDuration)
+        return MediaClip(file: file, startTime: .zero, duration: imageDuration)
+    }
+
+    /// Build a clip from a Photos asset identifier (image or video).
+    func makeClip(forPhotosAssetIdentifier identifier: String, preferredLength: Double) -> MediaClip? {
+        guard ApplePhotos.shared.status.canRead else { return nil }
+        guard let asset = ApplePhotos.shared.fetchAsset(localIdentifier: identifier) else { return nil }
+
+        let targetLength = max(0.1, preferredLength)
+        let source = MediaSource.external(identifier: identifier)
+
+        switch asset.mediaType {
+        case .video:
+            let totalVideoSeconds = asset.duration
+            guard totalVideoSeconds.isFinite, totalVideoSeconds > 0 else { return nil }
+            let clipLength = min(targetLength, totalVideoSeconds)
+            let file = MediaFile(
+                source: source,
+                mediaKind: .video,
+                duration: CMTime(seconds: totalVideoSeconds, preferredTimescale: 600)
+            )
+            return MediaClip(
+                file: file,
+                startTime: .zero,
+                duration: CMTime(seconds: clipLength, preferredTimescale: 600)
+            )
+
+        case .image:
+            let imageDuration = CMTime(seconds: targetLength, preferredTimescale: 600)
+            let file = MediaFile(source: source, mediaKind: .image, duration: imageDuration)
+            return MediaClip(file: file, startTime: .zero, duration: imageDuration)
+
+        default:
+            return nil
+        }
+    }
+
+    func setLayerClipRange(
+        sourceIndex: Int,
+        startSeconds: Double,
+        endSeconds: Double,
+        maxDurationSeconds: Double? = nil
+    ) {
+        guard sourceIndex >= 0, sourceIndex < activePlayer.layers.count else { return }
+
+        var layers = activePlayer.layers
+        var layer = layers[sourceIndex]
+        guard layer.mediaClip.file.mediaKind == .video else { return }
+
+        let totalSeconds = max(0.1, layer.mediaClip.file.duration.seconds)
+        let minimumDuration = min(0.1, totalSeconds)
+        let maxWindow = max(
+            minimumDuration,
+            min(totalSeconds, maxDurationSeconds ?? totalSeconds)
+        )
+
+        var clampedStart = max(0, min(startSeconds, totalSeconds - minimumDuration))
+        var clampedEnd = max(clampedStart + minimumDuration, min(endSeconds, totalSeconds))
+
+        if (clampedEnd - clampedStart) > maxWindow {
+            clampedEnd = clampedStart + maxWindow
+            if clampedEnd > totalSeconds {
+                clampedEnd = totalSeconds
+                clampedStart = max(0, clampedEnd - maxWindow)
+            }
+        }
+
+        let newDuration = min(maxWindow, max(minimumDuration, clampedEnd - clampedStart))
+
+        layer.mediaClip = MediaClip(
+            file: layer.mediaClip.file,
+            startTime: CMTime(seconds: clampedStart, preferredTimescale: 600),
+            duration: CMTime(seconds: newDuration, preferredTimescale: 600)
+        )
+
+        layers[sourceIndex] = layer
+        activePlayer.layers = layers
+        activePlayer.currentClipTimeOffset = nil
+    }
+
+    func setCurrentLayerClipRange(
+        startSeconds: Double,
+        endSeconds: Double,
+        maxDurationSeconds: Double? = nil
+    ) {
+        setLayerClipRange(
+            sourceIndex: activePlayer.currentSourceIndex,
+            startSeconds: startSeconds,
+            endSeconds: endSeconds,
+            maxDurationSeconds: maxDurationSeconds
+        )
+    }
+
+    func cycleEffect(direction: Int = 1) {
+        activeEffectManager.cycleEffect(for: activePlayer.currentSourceIndex, direction: direction)
+
+        let effectName = activeEffectManager.effectName(for: activePlayer.currentSourceIndex)
+        let layerLabel = activePlayer.currentSourceIndex == -1 ? "Global" : "Source \(activePlayer.currentSourceIndex + 1)"
+        AppNotifications.show("\(layerLabel): \(effectName)", flash: true, duration: 1.5)
+    }
+
+    func clearCurrentLayerEffect() {
+        activeEffectManager.clearEffect(for: activePlayer.currentSourceIndex)
+
+        let layerLabel = activePlayer.currentSourceIndex == -1 ? "Global" : "Source \(activePlayer.currentSourceIndex + 1)"
+        AppNotifications.show("\(layerLabel): None", flash: true, duration: 1.5)
+    }
+
+    private func blendModeForSourceIndex(_ idx: Int) -> String {
+        guard idx >= 0, idx < activePlayer.layers.count else { return BlendMode.sourceOver }
+        return activePlayer.layers[idx].blendMode ?? (idx == 0 ? BlendMode.sourceOver : BlendMode.defaultMontage)
+    }
+
+    func currentBlendModeDisplayName() -> String {
+        blendModeForSourceIndex(activePlayer.currentSourceIndex)
+            .replacingOccurrences(of: "CI", with: "")
+            .replacingOccurrences(of: "BlendMode", with: "")
+    }
+
+    func cycleBlendMode(at index: Int? = nil) {
+        let idx = index ?? activePlayer.currentSourceIndex
+        guard idx > 0, idx < activePlayer.layers.count else { return }
+        activePlayer.effectManager.cycleBlendMode(for: idx)
+    }
+
+    func setAspectRatio(_ ratio: AspectRatio) {
+        activePlayer.config.aspectRatio = ratio
+        objectWillChange.send()
+    }
+
+    func setOutputResolution(_ resolution: OutputResolution) {
+        activePlayer.config.playerResolution = resolution
+        state.settingsStore.update { $0.outputResolution = resolution }
+        objectWillChange.send()
+    }
+
+    /// Exclude current source from library
+    func excludeCurrentSource() {
+        curateCurrentSource(.excluded)
+    }
+
+    func favoriteCurrentSource() {
+        curateCurrentSource(.favorited)
+    }
+
+    private enum SourceCurationAction {
+        case excluded
+        case favorited
+
+        var notification: String {
+            switch self {
+            case .excluded: return "Source excluded"
+            case .favorited: return "Favorite added"
+            }
+        }
+
+        var failureNotification: String {
+            switch self {
+            case .excluded: return "Failed to exclude source"
+            case .favorited: return "Failed to add favorite"
+            }
+        }
+    }
+
+    private func resolveSelectedSourceIndexForCuration() -> Int? {
+        if activePlayer.currentSourceIndex == -1 {
+            if activePlayer.layers.count == 1 {
+                return 0
+            }
+            return nil
+        }
+        return activePlayer.currentSourceIndex
+    }
+
+    private func curateCurrentSource(_ action: SourceCurationAction) {
+        guard let idx = resolveSelectedSourceIndexForCuration() else {
+            if activePlayer.layers.isEmpty {
+                AppNotifications.show("No layers selected", flash: true, duration: 1.25)
+            } else {
+                AppNotifications.show("Select a layer (1-9)", flash: true, duration: 1.25)
+            }
+            return
+        }
+
+        guard idx >= 0, idx < activePlayer.layers.count else {
+            AppNotifications.show("No layer selected", flash: true, duration: 1.25)
+            return
+        }
+
+        let file = activePlayer.layers[idx].mediaClip.file
+
+        switch file.source {
+        case .url:
+            switch action {
+            case .excluded:
+                state.library.exclude(file: file)
+                replaceClip(forSourceIndex: idx)
+            case .favorited:
+                state.sourceFavoritesStore.add(file.source)
+            }
+
+            AppNotifications.show(action.notification, flash: true)
+
+        case .external(let identifier):
+            ApplePhotos.shared.refreshStatus()
+            guard ApplePhotos.shared.status.canWrite else {
+                if action == .favorited {
+                    AppNotifications.show("Photos permission required", flash: true, duration: 1.25)
+                } else {
+                    replaceClip(forSourceIndex: idx)
+                    state.library.removeFromIndex(source: file.source)
+                    AppNotifications.show("Photos permission required", flash: true, duration: 1.25)
+                }
+                return
+            }
+
+            if action == .excluded {
+                replaceClip(forSourceIndex: idx)
+                state.library.removeFromIndex(source: file.source)
+            }
+
+            Task {
+                let success: Bool
+                switch action {
+                case .excluded:
+                    success = await ApplePhotos.shared.addAssetToExcludedAlbumInHypnographFolder(localIdentifier: identifier)
+                case .favorited:
+                    success = await ApplePhotos.shared.addAssetToFavoritesAlbumInHypnographFolder(localIdentifier: identifier)
+                }
+
+                AppNotifications.show(success ? action.notification : action.failureNotification, flash: true, duration: 1.25)
+            }
+        }
+    }
+}
