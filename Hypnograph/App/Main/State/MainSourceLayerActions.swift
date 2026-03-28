@@ -364,4 +364,103 @@ extension Main {
         state.settingsStore.update { $0.outputResolution = resolution }
         objectWillChange.send()
     }
+
+    /// Exclude current source from library
+    func excludeCurrentSource() {
+        curateCurrentSource(.excluded)
+    }
+
+    func favoriteCurrentSource() {
+        curateCurrentSource(.favorited)
+    }
+
+    private enum SourceCurationAction {
+        case excluded
+        case favorited
+
+        var notification: String {
+            switch self {
+            case .excluded: return "Source excluded"
+            case .favorited: return "Favorite added"
+            }
+        }
+
+        var failureNotification: String {
+            switch self {
+            case .excluded: return "Failed to exclude source"
+            case .favorited: return "Failed to add favorite"
+            }
+        }
+    }
+
+    private func resolveSelectedSourceIndexForCuration() -> Int? {
+        if activePlayer.currentSourceIndex == -1 {
+            if activePlayer.layers.count == 1 {
+                return 0
+            }
+            return nil
+        }
+        return activePlayer.currentSourceIndex
+    }
+
+    private func curateCurrentSource(_ action: SourceCurationAction) {
+        guard let idx = resolveSelectedSourceIndexForCuration() else {
+            if activePlayer.layers.isEmpty {
+                AppNotifications.show("No layers selected", flash: true, duration: 1.25)
+            } else {
+                AppNotifications.show("Select a layer (1-9)", flash: true, duration: 1.25)
+            }
+            return
+        }
+
+        guard idx >= 0, idx < activePlayer.layers.count else {
+            AppNotifications.show("No layer selected", flash: true, duration: 1.25)
+            return
+        }
+
+        let file = activePlayer.layers[idx].mediaClip.file
+
+        switch file.source {
+        case .url:
+            switch action {
+            case .excluded:
+                state.library.exclude(file: file)
+                replaceClip(forSourceIndex: idx)
+            case .favorited:
+                state.sourceFavoritesStore.add(file.source)
+            }
+
+            AppNotifications.show(action.notification, flash: true)
+
+        case .external(let identifier):
+            ApplePhotos.shared.refreshStatus()
+            guard ApplePhotos.shared.status.canWrite else {
+                if action == .favorited {
+                    AppNotifications.show("Photos permission required", flash: true, duration: 1.25)
+                } else {
+                    replaceClip(forSourceIndex: idx)
+                    state.library.removeFromIndex(source: file.source)
+                    AppNotifications.show("Photos permission required", flash: true, duration: 1.25)
+                }
+                return
+            }
+
+            if action == .excluded {
+                replaceClip(forSourceIndex: idx)
+                state.library.removeFromIndex(source: file.source)
+            }
+
+            Task {
+                let success: Bool
+                switch action {
+                case .excluded:
+                    success = await ApplePhotos.shared.addAssetToExcludedAlbumInHypnographFolder(localIdentifier: identifier)
+                case .favorited:
+                    success = await ApplePhotos.shared.addAssetToFavoritesAlbumInHypnographFolder(localIdentifier: identifier)
+                }
+
+                AppNotifications.show(success ? action.notification : action.failureNotification, flash: true, duration: 1.25)
+            }
+        }
+    }
 }
