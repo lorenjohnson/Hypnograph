@@ -7,7 +7,6 @@ last_reviewed: 2026-03-24
 ## Active Projects
 - [ ] [website-docs-sync-to-files](active/website-docs-sync-to-files.md)
 - [ ] [hypnogram-save-semantics](active/hypnogram-save-semantics.md)
-- [ ] [sources-window](active/sources-window.md)
 - [ ] [sequences](active/sequences/index.md)
 - [ ] Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause a crash?
 

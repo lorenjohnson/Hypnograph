@@ -7,6 +7,7 @@ import SwiftUI
 import AppKit
 
 private enum StudioPanelKind: String {
+    case sources
     case newClips
     case outputSettings
     case composition
@@ -14,6 +15,7 @@ private enum StudioPanelKind: String {
 
     var title: String {
         switch self {
+        case .sources: return "Sources"
         case .newClips: return "New Clips"
         case .outputSettings: return "Output Settings"
         case .composition: return "Composition"
@@ -23,6 +25,7 @@ private enum StudioPanelKind: String {
 
     var defaultSize: CGSize {
         switch self {
+        case .sources: return CGSize(width: 420, height: 620)
         case .newClips: return CGSize(width: 360, height: 560)
         case .outputSettings: return CGSize(width: 360, height: 360)
         case .composition: return CGSize(width: 420, height: 720)
@@ -32,6 +35,7 @@ private enum StudioPanelKind: String {
 
     var minSize: CGSize {
         switch self {
+        case .sources: return CGSize(width: 360, height: 420)
         case .newClips: return CGSize(width: 300, height: 360)
         case .outputSettings: return CGSize(width: 300, height: 260)
         case .composition: return CGSize(width: 340, height: 420)
@@ -41,6 +45,10 @@ private enum StudioPanelKind: String {
 
     var defaultOrigin: (NSRect, CGSize) -> CGPoint {
         switch self {
+        case .sources:
+            return { parentFrame, _ in
+                CGPoint(x: parentFrame.maxX + 16, y: parentFrame.maxY - 620)
+            }
         case .newClips:
             return { parentFrame, size in
                 CGPoint(x: parentFrame.minX - size.width - 16, y: parentFrame.maxY - size.height - 36)
@@ -100,10 +108,12 @@ final class StudioWindowHostService: ObservableObject {
 
     func sync(
         parentWindow: NSWindow?,
+        showSources: Bool,
         showNewClips: Bool,
         showOutputSettings: Bool,
         showComposition: Bool,
         showEffects: Bool,
+        sourcesContent: AnyView,
         newClipsContent: AnyView,
         outputSettingsContent: AnyView,
         compositionContent: AnyView,
@@ -128,6 +138,7 @@ final class StudioWindowHostService: ObservableObject {
 
         configureParentWindowForFullScreen(parentWindow)
 
+        syncPanel(kind: .sources, visible: showSources, content: sourcesContent, parentWindow: parentWindow)
         syncPanel(kind: .newClips, visible: showNewClips, content: newClipsContent, parentWindow: parentWindow)
         syncPanel(kind: .outputSettings, visible: showOutputSettings, content: outputSettingsContent, parentWindow: parentWindow)
         syncPanel(kind: .composition, visible: showComposition, content: compositionContent, parentWindow: parentWindow)

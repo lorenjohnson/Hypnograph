@@ -269,10 +269,14 @@ struct ContentView: View {
         .background(
             StudioPanelHostBridge(
                 hostService: panelHostService,
+                showSources: state.windowState.isVisible("sourcesWindow"),
                 showNewClips: state.windowState.isVisible("newClipsWindow"),
                 showOutputSettings: state.windowState.isVisible("outputSettingsWindow"),
                 showComposition: state.windowState.isVisible("compositionWindow"),
                 showEffects: state.windowState.isVisible("effectsWindow"),
+                sourcesContent: AnyView(
+                    SourcesWindowView(state: state, main: main)
+                ),
                 newClipsContent: AnyView(
                     NewClipsWindowView(state: state, main: main, player: main.activePlayer)
                 ),
@@ -291,6 +295,7 @@ struct ContentView: View {
         .appNotifications()
         .background(Color.black)
         .onAppear {
+            state.windowState.register("sourcesWindow", defaultVisible: false)
             state.windowState.register("newClipsWindow", defaultVisible: true)
             state.windowState.register("outputSettingsWindow", defaultVisible: true)
             state.windowState.register("compositionWindow", defaultVisible: true)

@@ -101,6 +101,12 @@ struct AppCommands: Commands {
 
         CommandGroup(replacing: .sidebar) {
             Section("Studio Windows") {
+                Toggle("Sources", isOn: Binding(
+                    get: { state.windowState.isVisible("sourcesWindow") },
+                    set: { _ in state.windowState.toggle("sourcesWindow") }
+                ))
+                .disabled(isTyping || !isStudioWindowShortcutContext)
+
                 Toggle("New Clips", isOn: Binding(
                     get: { state.windowState.isVisible("newClipsWindow") },
                     set: { _ in state.windowState.toggle("newClipsWindow") }
@@ -242,6 +248,12 @@ struct AppCommands: Commands {
 
     @ViewBuilder
     private func sourcesMenu() -> some View {
+        Button("Show Sources Window") {
+            state.windowState.set("sourcesWindow", visible: true)
+        }
+
+        Divider()
+
         Toggle("Images", isOn: Binding(
             get: { state.isMediaTypeActive(.images) },
             set: { _ in state.toggleMediaType(.images) }
