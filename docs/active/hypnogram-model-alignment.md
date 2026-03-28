@@ -31,16 +31,68 @@ This may touch code in Hypnograph and may also touch some shared types in HypnoP
 
 ## Plan
 
-First map the current code abstractions directly onto the glossary terms so the rename surface is explicit: which types, files, comments, menu labels, and persistence names currently correspond to Hypnogram, Composition, and Layer. Then separate that map into low-risk naming changes, higher-risk persistence/schema changes, and questions that depend on Sequences.
+This project now has a clearer intended direction. The remaining work is to carry that direction through the code carefully, without letting persistence compatibility or Sequences concerns create confusion.
 
-Smallest meaningful next slice:
-- produce a concrete rename/alignment map before changing any deeper model types
+### Current Mapping
 
-Immediate acceptance check:
-- we can point to each current core type and say whether it should stay as-is, be renamed now, or be deferred for compatibility reasons
+| Current name | Intended name | Meaning in current model | Direction |
+| --- | --- | --- | --- |
+| `HypnographSession` | `Hypnogram` | top-level saved container/document | rename |
+| `Hypnogram` | `Composition` | one playable unit inside the container | rename |
+| `HypnogramLayer` | `Layer` | one layer inside a composition | likely rename directly to `Layer` |
+| `effectChain` on current `Hypnogram` | composition-level effect chain | composition-wide effects | keep behavior, update surrounding naming |
+| `HypnogramStore` / `HypnogramEntry` | likely keep | store of saved top-level files | already aligned closely enough with intended `Hypnogram` meaning |
+| `ClipHistoryFile` / `ClipHistoryStore` | review later | history of compositions within the current hypnogram | defer until core rename lands |
+
+### Rename Surface
+
+The rename surface appears to break down into three categories:
+
+1. Low-risk app and UI naming
+- comments
+- menu labels
+- view model property names
+- local variables like `currentHypnogram`
+- file names that mirror the model terms
+
+2. Core model and shared package naming
+- `HypnographSession`
+- `Hypnogram`
+- `HypnogramLayer`
+- any public helpers, initializers, or convenience APIs built around those names
+- references in Hypnograph and in HypnoPackages
+
+3. Persistence and compatibility
+- serialized keys like `hypnograms`, legacy `clips`, legacy `sources`, and legacy `clip`
+- any Quick Look or file-open paths that assume the old schema names
+- save/load logic that must continue opening older saved files
+
+### Intended Rules For This Rename
+
+- `HypnographSession` should become `Hypnogram`.
+- current `Hypnogram` should become `Composition`.
+- `HypnogramLayer` should become `Layer` unless that proves concretely dangerous during implementation.
+- user-facing and developer-facing naming should move toward the same model, not drift further apart.
+- older saved files should continue to open.
+- when an older file is opened and later re-saved, it should normalize forward into the newer naming/schema rather than preserving old terminology forever.
+- legacy decode support is acceptable; long-term parallel naming throughout the code is not.
+
+### Recommended Execution Order
+
+1. Finish the mapping and freeze the intended names in this document and the glossary.
+2. Rename the app-level and package-level model types.
+3. Rename the obvious app state and UI references that currently mirror the old model names.
+4. Preserve backward decode support for older saved files by continuing to accept legacy keys during decoding.
+5. Decide separately whether the canonical encoded keys should change immediately in this same pass or in one short follow-up pass.
+
+### Immediate Acceptance Check
+
+- we can point to each current core type and say what it will be called after the rename
+- we can explain how older saved files will still open
+- we have separated the true model rename from larger Sequences behavior questions
 
 ## Open Questions
 
-- whether the current middle entity should be stabilized fully as `Composition` everywhere, or whether any user-facing `Clip` language still deserves to survive
-- whether `HypnographSession` should eventually be renamed directly to `Hypnogram`, or whether a staged compatibility layer is safer
-- whether any of this alignment should wait for Sequences, or whether doing it first is what will make Sequences finally easier to reason about
+- whether canonical encoded keys should change in the same pass as the type rename, or whether we should first rename the types while continuing to encode the current schema keys
+- whether `Layer` as a bare type name introduces any real ambiguity in shared code, or whether it is the cleanest choice
+- how much related `Clip` terminology should be pulled along in adjacent systems like clip history during this pass versus left for a follow-up

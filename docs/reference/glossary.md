@@ -6,8 +6,6 @@ last_reviewed: 2026-03-28
 
 This is a working glossary for Hypnograph's core model. It is intentionally high level and product-facing. The goal is to make the main UI and saved-file structure easier to talk about clearly, while still being useful to developers who need to relate that model back to the code.
 
-One important note: the current codebase does not yet line up cleanly with this glossary. In particular, the type currently named `HypnographSession` behaves most like what this glossary calls a Hypnogram, and the type currently named `Hypnogram` behaves most like what this glossary calls a Composition.
-
 **Hypnogram**  
 The top-level saved unit. A Hypnogram is the file or document you save, reopen, and organize. A Hypnogram contains one or more Compositions in sequence, along with file-level metadata such as a snapshot thumbnail and creation date.
 
