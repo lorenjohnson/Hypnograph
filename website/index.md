@@ -17,6 +17,8 @@ updated: 2026-03-17
   <p class="download-subtext">Open the downloaded file and drag <code>Hypnograph.app</code> into <code>Applications</code>. On first launch, you will need to override Security settings.</p>
 </aside>
 
+## Your Archive, Newly Alive
+
 Instead of browsing your archive like a filing cabinet, Hypnograph replays your photos and videos as evolving, remixable sequences. It can begin in a generative mode where surprising combinations emerge quickly, and it can also be steered into deliberate composition through clip selection, timing, layering, blend modes, and effect chains.
 
 The point is not synthetic generation. The point is to re-encounter material that already belongs to your life or project and shape it into something that feels newly alive, exploratory, and creatively useful. You can save hypnograms, reopen them later, and render them out when something worth keeping appears.
@@ -62,4 +64,4 @@ You can get started by looking at [Hypnograph](https://github.com/lorenjohnson/H
 
 Hi, I'm Loren. I'm the creator of and currently the solo steward of Hypnograph. What drives the development of this project is its actual value to other humans in their own processes of reflection, discovery, and creative living, and for that reason it genuinely benefits from thoughtful feedback, contribution, and collaboration. I use it often myself and intend to keep refining and supporting it regardless, but its best and most sustainable form will come through real participation from other people who find something meaningful in it. Learn more about me and contact me through one of the means below:
 
-[lorenjohnson@gmail.com](mailto:lorenjohnson@gmail.com) / [lorenjohnson.me](https://lorenjohnson.me) / [LinkedIn](https://linkedin.com/in/johnsonloren) / [Instagram](https://www.instagram.com/soulsweetdirtybeat)
+[lorenjohnson@gmail.com](mailto:lorenjohnson@gmail.com) / [lorenjohnson.me](https://lorenjohnson.me) / [lorenjohnson.dev](https://lorenjohnson.dev) / [@soulsweetdirtybeat](https://www.instagram.com/soulsweetdirtybeat)
