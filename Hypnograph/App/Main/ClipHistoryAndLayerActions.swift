@@ -6,7 +6,6 @@
 import Foundation
 import CoreMedia
 import Combine
-import AVFoundation
 import AppKit
 import HypnoCore
 import HypnoUI
@@ -96,23 +95,11 @@ extension Main {
         return outputSize
     }
 
-    // MARK: - Shared helpers
-
-    private var sourceCount: Int { activePlayer.activeLayerCount }
-
-    private var currentDisplayIndex: Int {
-        sourceCount > 0 ? activePlayer.currentSourceIndex + 1 : 0
-    }
-
     var currentClipIndicatorText: String {
         let clips = player.session.hypnograms
         guard !clips.isEmpty else { return "Clip --" }
         let displayIndex = max(0, min(player.currentHypnogramIndex, clips.count - 1)) + 1
         return "Clip \(displayIndex)"
-    }
-
-    var isLoopCurrentClipEnabled: Bool {
-        state.settings.playbackEndBehavior == .loopCurrentClip
     }
 
     var timelinePlaybackRate: Double {
@@ -367,198 +354,4 @@ extension Main {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: workItem)
     }
 
-    /// Add a source to the given player
-    func addSourceToPlayer(_ player: PlayerState, length: Double? = nil) {
-        // Use default clip length if not provided
-        let clipLength = length ?? player.targetDuration.seconds
-        guard let mediaClip = state.library.randomClip(clipLength: clipLength) else { return }
-        addSourceToPlayer(player, mediaClip: mediaClip)
-    }
-
-    /// Add a specific clip as a new source layer.
-    func addSourceToPlayer(_ player: PlayerState, mediaClip: MediaClip) {
-        let blendMode = player.layers.isEmpty ? BlendMode.sourceOver : BlendMode.defaultMontage
-        let layer = HypnogramLayer(mediaClip: mediaClip, blendMode: blendMode)
-        player.layers.append(layer)
-        player.currentSourceIndex = player.layers.count - 1
-    }
-
-    /// Build a clip from a local file URL (image or video).
-    func makeClip(forFileURL url: URL, preferredLength: Double) -> MediaClip? {
-        let targetLength = max(0.1, preferredLength)
-
-        let videoAsset = AVURLAsset(url: url)
-        let totalVideoSeconds = videoAsset.duration.seconds
-        let hasVideoTrack = videoAsset.tracks(withMediaType: .video).first != nil
-        if hasVideoTrack, totalVideoSeconds.isFinite, totalVideoSeconds > 0, videoAsset.isPlayable {
-            let clipLength = min(targetLength, totalVideoSeconds)
-            let source = MediaSource.url(url)
-            let file = MediaFile(
-                source: source,
-                mediaKind: .video,
-                duration: CMTime(seconds: totalVideoSeconds, preferredTimescale: 600)
-            )
-            return MediaClip(
-                file: file,
-                startTime: .zero,
-                duration: CMTime(seconds: clipLength, preferredTimescale: 600)
-            )
-        }
-
-        guard let image = StillImageCache.ciImage(for: url), !image.extent.isEmpty else {
-            return nil
-        }
-
-        let source = MediaSource.url(url)
-        let imageDuration = CMTime(seconds: targetLength, preferredTimescale: 600)
-        let file = MediaFile(source: source, mediaKind: .image, duration: imageDuration)
-        return MediaClip(file: file, startTime: .zero, duration: imageDuration)
-    }
-
-    /// Build a clip from a Photos asset identifier (image or video).
-    func makeClip(forPhotosAssetIdentifier identifier: String, preferredLength: Double) -> MediaClip? {
-        guard ApplePhotos.shared.status.canRead else { return nil }
-        guard let asset = ApplePhotos.shared.fetchAsset(localIdentifier: identifier) else { return nil }
-
-        let targetLength = max(0.1, preferredLength)
-        let source = MediaSource.external(identifier: identifier)
-
-        switch asset.mediaType {
-        case .video:
-            let totalVideoSeconds = asset.duration
-            guard totalVideoSeconds.isFinite, totalVideoSeconds > 0 else { return nil }
-            let clipLength = min(targetLength, totalVideoSeconds)
-            let file = MediaFile(
-                source: source,
-                mediaKind: .video,
-                duration: CMTime(seconds: totalVideoSeconds, preferredTimescale: 600)
-            )
-            return MediaClip(
-                file: file,
-                startTime: .zero,
-                duration: CMTime(seconds: clipLength, preferredTimescale: 600)
-            )
-
-        case .image:
-            let imageDuration = CMTime(seconds: targetLength, preferredTimescale: 600)
-            let file = MediaFile(source: source, mediaKind: .image, duration: imageDuration)
-            return MediaClip(file: file, startTime: .zero, duration: imageDuration)
-
-        default:
-            return nil
-        }
-    }
-
-    // MARK: - Layer Navigation
-    // Note: Flash solo is handled by NSEvent key hold detection in HypnographAppDelegate
-
-    func nextSource() {
-        activePlayer.nextSource()
-    }
-
-    func previousSource() {
-        activePlayer.previousSource()
-    }
-
-    func selectSource(index: Int) {
-        activePlayer.selectSource(index)
-    }
-
-    // MARK: - Layer Trim
-
-    /// Update a specific layer's clip range (video only).
-    /// `startSeconds...endSeconds` are absolute offsets within the source media file.
-    func setLayerClipRange(
-        sourceIndex: Int,
-        startSeconds: Double,
-        endSeconds: Double,
-        maxDurationSeconds: Double? = nil
-    ) {
-        guard sourceIndex >= 0, sourceIndex < activePlayer.layers.count else { return }
-
-        var layers = activePlayer.layers
-        var layer = layers[sourceIndex]
-        guard layer.mediaClip.file.mediaKind == .video else { return }
-
-        let totalSeconds = max(0.1, layer.mediaClip.file.duration.seconds)
-        let minimumDuration = min(0.1, totalSeconds)
-        let maxWindow = max(
-            minimumDuration,
-            min(totalSeconds, maxDurationSeconds ?? totalSeconds)
-        )
-
-        var clampedStart = max(0, min(startSeconds, totalSeconds - minimumDuration))
-        var clampedEnd = max(clampedStart + minimumDuration, min(endSeconds, totalSeconds))
-
-        if (clampedEnd - clampedStart) > maxWindow {
-            clampedEnd = clampedStart + maxWindow
-            if clampedEnd > totalSeconds {
-                clampedEnd = totalSeconds
-                clampedStart = max(0, clampedEnd - maxWindow)
-            }
-        }
-
-        let newDuration = min(maxWindow, max(minimumDuration, clampedEnd - clampedStart))
-
-        layer.mediaClip = MediaClip(
-            file: layer.mediaClip.file,
-            startTime: CMTime(seconds: clampedStart, preferredTimescale: 600),
-            duration: CMTime(seconds: newDuration, preferredTimescale: 600)
-        )
-
-        layers[sourceIndex] = layer
-        activePlayer.layers = layers
-        activePlayer.currentClipTimeOffset = nil
-    }
-
-    /// Update the currently selected layer's clip range (video only).
-    /// `startSeconds...endSeconds` are absolute offsets within the source media file.
-    func setCurrentLayerClipRange(
-        startSeconds: Double,
-        endSeconds: Double,
-        maxDurationSeconds: Double? = nil
-    ) {
-        setLayerClipRange(
-            sourceIndex: activePlayer.currentSourceIndex,
-            startSeconds: startSeconds,
-            endSeconds: endSeconds,
-            maxDurationSeconds: maxDurationSeconds
-        )
-    }
-
-    // MARK: - Effects
-
-    /// Cycle effect for current layer (global when -1, source when 0+)
-    func cycleEffect(direction: Int = 1) {
-        activeEffectManager.cycleEffect(for: activePlayer.currentSourceIndex, direction: direction)
-
-        let effectName = activeEffectManager.effectName(for: activePlayer.currentSourceIndex)
-        let layerLabel = activePlayer.currentSourceIndex == -1 ? "Global" : "Source \(activePlayer.currentSourceIndex + 1)"
-        AppNotifications.show("\(layerLabel): \(effectName)", flash: true, duration: 1.5)
-    }
-
-    /// Clear effect for current layer only
-    func clearCurrentLayerEffect() {
-        activeEffectManager.clearEffect(for: activePlayer.currentSourceIndex)
-
-        let layerLabel = activePlayer.currentSourceIndex == -1 ? "Global" : "Source \(activePlayer.currentSourceIndex + 1)"
-        AppNotifications.show("\(layerLabel): None", flash: true, duration: 1.5)
-    }
-
-    // MARK: - MainSettings helpers
-
-    func setAspectRatio(_ ratio: AspectRatio) {
-        activePlayer.config.aspectRatio = ratio
-        // Config changes are auto-saved via $config subscription
-        // Notify Main to update menus
-        objectWillChange.send()
-    }
-
-    func setOutputResolution(_ resolution: OutputResolution) {
-        activePlayer.config.playerResolution = resolution
-        // Also update in settings for persistence
-        state.settingsStore.update { $0.outputResolution = resolution }
-        // Notify Main to update menus
-        objectWillChange.send()
-    }
 }

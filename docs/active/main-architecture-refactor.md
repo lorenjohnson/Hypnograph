@@ -51,7 +51,8 @@ Current checkpoint:
 - `MainDependencies.swift` exists and `Main.swift` now owns explicit panel, Photos, and clip-history persistence seams.
 - Direct panel and Photos entry points have been removed from `RightSidebarView`, `AppSettingsView`, and `NoSourcesView`.
 - `MainPanelAndPhotosActions.swift` is an intentional temporary root-level orchestration file until the broader `SessionAndSourceActions` / `ClipHistoryAndLayerActions` split clarifies its permanent home.
-- The next phase is the real action-file split, not more structural moving.
+- The first action-file split is complete: `State/MainPlaybackActions.swift` and `State/MainSourceLayerActions.swift` now hold the playback and source/layer mutation paths that previously lived inside the broad root action files.
+- `SessionAndSourceActions.swift` and `ClipHistoryAndLayerActions.swift` are now narrower, but they still carry history/generation/export concerns that should be split further.
 
 ## Rules
 
@@ -85,8 +86,9 @@ Current checkpoint:
 6. Keep the scope disciplined while we do it. We are not prioritizing a deep `PlayerView` refactor unless one of the service seams requires it. We are not splitting `EffectsEditorView` further just because it is large. We are not doing stylistic renaming that has no architectural payoff. We are not reopening `HypnoPackages` refactor work unless a concrete Main boundary problem forces it.
 
 Next phase:
-- Split `SessionAndSourceActions.swift` and `ClipHistoryAndLayerActions.swift` into narrower files.
-- Let that split decide whether `MainPanelAndPhotosActions.swift` should stay at the `Main` root, move beside source/history actions, or dissolve into clearer action files.
+- Split the remaining history/generation/export logic out of `SessionAndSourceActions.swift` and `ClipHistoryAndLayerActions.swift`.
+- Create clearer state files for history navigation/persistence, clip generation, and export/save flows.
+- Let that broader split decide whether `MainPanelAndPhotosActions.swift` should stay at the `Main` root, move beside source/history actions, or dissolve into clearer action files.
 
 The project is done when all of these are true:
 - `Main` matches the intended top-level directory shape
