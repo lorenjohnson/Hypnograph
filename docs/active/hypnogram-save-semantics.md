@@ -1,5 +1,5 @@
 ---
-doc-status: ready
+doc-status: in-progress
 ---
 
 # Save Semantics for Hypnogram Files
@@ -22,3 +22,22 @@ There may already be enough internal identity in the model, such as UUID-based t
 ## Plan
 
 First define the user-visible save contract in plain language: what counts as the currently open working file, when that target changes, and how `Save` versus `Save As` behave after a file has already been written once. Then confirm whether the current internal identity model already supports that contract or whether file-target tracking needs to be made more explicit.
+
+## Current Checkpoint
+
+Current implementation work is living on branch:
+- `projects/hypnogram-save-semantics`
+
+That branch already implements the intended save-target behavior and is waiting on deeper runtime review before any merge decision.
+
+Implemented behavior on that branch:
+- `Save` overwrites the current file target when the selected hypnogram already has one.
+- `Save` falls back to `Save As` when the selected hypnogram does not yet have a file target.
+- `Save As` writes to a chosen path and then makes that path the active save target for the selected hypnogram.
+- repeated `Save` no longer creates duplicate files or duplicate hypnogram-store entries for the same file path.
+- loading a single-hypnogram file now carries its file target forward into Studio, so edits to that loaded hypnogram save back to the same path.
+
+## Open Questions
+
+- whether multi-hypnogram files should eventually gain their own distinct save contract instead of flowing through the single-hypnogram save path
+- whether the implemented branch behavior fully matches the intended user model once tested more deeply in runtime
