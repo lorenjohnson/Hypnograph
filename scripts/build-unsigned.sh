@@ -12,8 +12,8 @@ VOLUME_NAME="${VOLUME_NAME:-Hypnograph}"
 
 BUILD_ROOT="${BUILD_ROOT:-$REPO_ROOT/.build/release-unsigned}"
 DERIVED_DATA_PATH="$BUILD_ROOT/DerivedData"
-ARCHIVE_PATH="$BUILD_ROOT/Hypnograph-unsigned.xcarchive"
 DIST_DIR="${DIST_DIR:-$REPO_ROOT/dist}"
+DESTINATION="${DESTINATION:-platform=macOS}"
 
 for required_command in xcodebuild ditto hdiutil shasum codesign; do
   if ! command -v "$required_command" >/dev/null 2>&1; then
@@ -26,20 +26,20 @@ echo "Preparing build directories..."
 rm -rf "$BUILD_ROOT"
 mkdir -p "$BUILD_ROOT" "$DIST_DIR"
 
-echo "Archiving $SCHEME ($CONFIGURATION) without code signing..."
+echo "Building $SCHEME ($CONFIGURATION) without code signing..."
 xcodebuild \
   -project "$PROJECT_PATH" \
   -scheme "$SCHEME" \
   -configuration "$CONFIGURATION" \
+  -destination "$DESTINATION" \
   -derivedDataPath "$DERIVED_DATA_PATH" \
-  -archivePath "$ARCHIVE_PATH" \
-  clean archive \
+  clean build \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY="" \
   DEVELOPMENT_TEAM=""
 
-APP_PATH="$ARCHIVE_PATH/Products/Applications/$APP_NAME"
+APP_PATH="$DERIVED_DATA_PATH/Build/Products/$CONFIGURATION/$APP_NAME"
 if [[ ! -d "$APP_PATH" ]]; then
   echo "error: Expected app not found at $APP_PATH" >&2
   exit 1
