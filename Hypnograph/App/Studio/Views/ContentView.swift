@@ -276,6 +276,7 @@ struct ContentView: View {
         .background(
             WindowHostBridge(
                 hostService: windowHostService,
+                showSources: windows.isWindowVisible("sourcesWindow"),
                 showNewClips: windows.isWindowVisible("newClipsWindow"),
                 showOutputSettings: windows.isWindowVisible("outputSettingsWindow"),
                 showComposition: windows.isWindowVisible("compositionWindow"),
@@ -283,6 +284,9 @@ struct ContentView: View {
                 onPanelVisibilityChanged: { windowID, isVisible in
                     windows.setWindowVisible(windowID, visible: isVisible)
                 },
+                sourcesContent: AnyView(
+                    SourcesWindowView(state: state, main: main)
+                ),
                 newClipsContent: AnyView(
                     NewClipsWindowView(state: state, main: main, player: main.activePlayer)
                 ),
@@ -301,6 +305,7 @@ struct ContentView: View {
         .appNotifications()
         .background(Color.black)
         .onAppear {
+            windows.registerWindow("sourcesWindow", defaultVisible: false)
             windows.registerWindow("newClipsWindow", defaultVisible: true)
             windows.registerWindow("outputSettingsWindow", defaultVisible: true)
             windows.registerWindow("compositionWindow", defaultVisible: true)

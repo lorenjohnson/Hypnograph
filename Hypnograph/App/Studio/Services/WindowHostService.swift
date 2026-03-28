@@ -7,6 +7,7 @@ import SwiftUI
 import AppKit
 
 private enum WindowKind: String {
+    case sources
     case newClips
     case outputSettings
     case composition
@@ -14,6 +15,7 @@ private enum WindowKind: String {
 
     var title: String {
         switch self {
+        case .sources: return "Sources"
         case .newClips: return "New Clips"
         case .outputSettings: return "Output Settings"
         case .composition: return "Composition"
@@ -27,6 +29,7 @@ private enum WindowKind: String {
 
     var defaultSize: CGSize {
         switch self {
+        case .sources: return CGSize(width: 420, height: 620)
         case .newClips: return CGSize(width: 360, height: 560)
         case .outputSettings: return CGSize(width: 360, height: 360)
         case .composition: return CGSize(width: 420, height: 720)
@@ -40,6 +43,7 @@ private enum WindowKind: String {
 
     var minSize: CGSize {
         switch self {
+        case .sources: return CGSize(width: 360, height: 420)
         case .newClips: return CGSize(width: defaultSize.width, height: 360)
         case .outputSettings: return CGSize(width: defaultSize.width, height: 260)
         case .composition: return CGSize(width: defaultSize.width, height: 420)
@@ -57,6 +61,10 @@ private enum WindowKind: String {
 
     var defaultOrigin: (NSRect, CGSize) -> CGPoint {
         switch self {
+        case .sources:
+            return { parentFrame, _ in
+                CGPoint(x: parentFrame.maxX + 16, y: parentFrame.maxY - 620)
+            }
         case .newClips:
             return { parentFrame, size in
                 CGPoint(x: parentFrame.minX - size.width - 16, y: parentFrame.maxY - size.height - 36)
@@ -126,11 +134,13 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
 
     func sync(
         parentWindow: NSWindow?,
+        showSources: Bool,
         showNewClips: Bool,
         showOutputSettings: Bool,
         showComposition: Bool,
         showEffects: Bool,
         onPanelVisibilityChanged: @escaping (String, Bool) -> Void,
+        sourcesContent: AnyView,
         newClipsContent: AnyView,
         outputSettingsContent: AnyView,
         compositionContent: AnyView,
@@ -157,6 +167,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
 
         configureParentWindowForFullScreen(parentWindow)
 
+        syncPanel(kind: .sources, visible: showSources, content: sourcesContent, parentWindow: parentWindow)
         syncPanel(kind: .newClips, visible: showNewClips, content: newClipsContent, parentWindow: parentWindow)
         syncPanel(kind: .outputSettings, visible: showOutputSettings, content: outputSettingsContent, parentWindow: parentWindow)
         syncPanel(kind: .composition, visible: showComposition, content: compositionContent, parentWindow: parentWindow)
@@ -179,8 +190,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         parentWindow: NSWindow
     ) {
         if visible {
-            let managed = ensurePanel(kind: kind, parentWindow: parentWindow)
-            managed.host.rootView = content
+            let managed = ensurePanel(kind: kind, parentWindow: parentWindow, content: content)
             applySizing(for: kind, managed: managed)
 
             if managed.panel.parent == nil {
@@ -197,7 +207,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         }
     }
 
-    private func ensurePanel(kind: WindowKind, parentWindow: NSWindow) -> ManagedPanel {
+    private func ensurePanel(kind: WindowKind, parentWindow: NSWindow, content: AnyView) -> ManagedPanel {
         if let existing = panels[kind] {
             return existing
         }
@@ -238,7 +248,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
             self.handleCloseRequest(for: kind, panel: panel)
         }
 
-        let host = NSHostingController(rootView: AnyView(EmptyView()))
+        let host = NSHostingController(rootView: content)
         host.view.appearance = NSAppearance(named: .darkAqua)
         panel.contentViewController = host
 
@@ -273,15 +283,19 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     private func applySizing(for kind: WindowKind, managed: ManagedPanel) {
         let panel = managed.panel
         let clampedWidth = min(max(panel.frame.width, kind.minSize.width), kind.maxWidth)
+        let maxInitialHeight = maximumInitialHeight(for: panel)
 
         panel.contentView?.frame = NSRect(origin: .zero, size: CGSize(width: clampedWidth, height: panel.frame.height))
         managed.host.view.frame = NSRect(origin: .zero, size: CGSize(width: clampedWidth, height: panel.frame.height))
         managed.host.view.layoutSubtreeIfNeeded()
 
         if kind.shouldFitHeightToContent {
-            let measuredHeight = max(
-                kind.minSize.height,
-                managed.host.view.fittingSize.height + kind.fixedHeightPadding
+            let measuredHeight = min(
+                max(
+                    kind.minSize.height,
+                    managed.host.view.fittingSize.height + kind.fixedHeightPadding
+                ),
+                maxInitialHeight
             )
 
             panel.minSize = CGSize(width: kind.minSize.width, height: measuredHeight)
@@ -312,6 +326,14 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         }
     }
 
+    private func maximumInitialHeight(for panel: NSPanel) -> CGFloat {
+        let visibleHeight = panel.screen?.visibleFrame.height
+            ?? parentWindow?.screen?.visibleFrame.height
+            ?? NSScreen.main?.visibleFrame.height
+            ?? 900
+
+        return max(320, visibleHeight - 140)
+    }
     private func configureParentWindowForFullScreen(_ window: NSWindow) {
         var behavior = window.collectionBehavior
         if !behavior.contains(.fullScreenPrimary) {

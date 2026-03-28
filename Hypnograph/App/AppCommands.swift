@@ -103,6 +103,11 @@ struct AppCommands: Commands {
 
         CommandGroup(replacing: .sidebar) {
             Section("Studio Windows") {
+                Toggle("Sources", isOn: Binding(
+                    get: { windows.isWindowVisible("sourcesWindow") },
+                    set: { _ in windows.toggleWindow("sourcesWindow") }
+                ))
+                .disabled(isTyping || !isStudioWindowShortcutContext)
                 Toggle("New Clips", isOn: Binding(
                     get: { windows.isWindowVisible("newClipsWindow") },
                     set: { _ in windows.toggleWindow("newClipsWindow") }
@@ -132,17 +137,6 @@ struct AppCommands: Commands {
                 Button("Clean Screen (Tab)") {
                     toggleCleanScreenForActiveWindow()
                 }
-            }
-
-            Divider()
-
-            Section("Player") {
-                Toggle("Loop Current Clip", isOn: Binding(
-                    get: { state.settings.playbackEndBehavior == .loopCurrentClip },
-                    set: { state.setLoopCurrentClipMode($0) }
-                ))
-                .keyboardShortcut("l", modifiers: [])
-                .disabled(isTyping || !isStudioWindowShortcutContext)
             }
 
             if studio.isLiveModeAvailable {
@@ -183,8 +177,8 @@ struct AppCommands: Commands {
 
         }
 
-        CommandMenu("Sources") {
-            sourcesMenu()
+        CommandMenu("Playback") {
+            studio.playbackMenu()
         }
 
         CommandMenu("Composition") {
@@ -237,76 +231,6 @@ struct AppCommands: Commands {
             NotificationCenter.default.post(name: .effectsComposerToggleCleanScreen, object: nil)
         } else {
             windows.toggleCleanScreen()
-        }
-    }
-
-    @ViewBuilder
-    private func sourcesMenu() -> some View {
-        Toggle("Images", isOn: Binding(
-            get: { state.isMediaTypeActive(.images) },
-            set: { _ in state.toggleMediaType(.images) }
-        ))
-
-        Toggle("Videos", isOn: Binding(
-            get: { state.isMediaTypeActive(.videos) },
-            set: { _ in state.toggleMediaType(.videos) }
-        ))
-
-        Divider()
-
-        let photosLibraries = state.availableLibraries.filter { $0.type == .applePhotos }
-        let folderLibraries = state.availableLibraries.filter { $0.type == .folders }
-
-        if photosLibraries.isEmpty && folderLibraries.isEmpty {
-            Text("No libraries configured")
-                .disabled(true)
-        } else {
-            if !photosLibraries.isEmpty {
-                Section("Apple Photos") {
-                    let regularPhotosLibraries = photosLibraries.filter { $0.id != ApplePhotosLibraryKeys.photosCustom }
-
-                    if let allItems = regularPhotosLibraries.first(where: { $0.id == "photos:all" }) {
-                        Toggle(allItems.displayName, isOn: Binding(
-                            get: { state.isLibraryActive(key: allItems.id) },
-                            set: { _ in state.toggleLibrary(key: allItems.id) }
-                        ))
-                    }
-
-                    let customCount = state.customPhotosAssetIds.count
-                    let isCustomActive = state.isLibraryActive(key: ApplePhotosLibraryKeys.photosCustom)
-                    let customLabel = customCount > 0 ? "Custom Selection (\(customCount))" : "Custom Selection"
-
-                    Toggle(customLabel, isOn: Binding(
-                        get: { isCustomActive },
-                        set: { newValue in
-                            if newValue {
-                                state.showPhotosPicker = true
-                            } else {
-                                state.toggleLibrary(key: ApplePhotosLibraryKeys.photosCustom)
-                            }
-                        }
-                    ))
-                    .keyboardShortcut("o", modifiers: [.command, .shift])
-
-                    ForEach(regularPhotosLibraries.filter { $0.id != "photos:all" }) { lib in
-                        Toggle(lib.displayName, isOn: Binding(
-                            get: { state.isLibraryActive(key: lib.id) },
-                            set: { _ in state.toggleLibrary(key: lib.id) }
-                        ))
-                    }
-                }
-            }
-
-            if !folderLibraries.isEmpty {
-                Section("Folders") {
-                    ForEach(folderLibraries) { lib in
-                        Toggle(lib.displayName, isOn: Binding(
-                            get: { state.isLibraryActive(key: lib.id) },
-                            set: { _ in state.toggleLibrary(key: lib.id) }
-                        ))
-                    }
-                }
-            }
         }
     }
 }

@@ -34,33 +34,35 @@ extension Studio {
     }
 
     @ViewBuilder
-    func compositionMenu() -> some View {
-        Button("Add Layer") { [self] in
-            addSource()
-        }
-        .keyboardShortcut("n", modifiers: [.shift])
+    func playbackMenu() -> some View {
+        Toggle("Loop Current Clip", isOn: Binding(
+            get: { [self] in isLoopCurrentClipEnabled },
+            set: { [self] in
+                if $0 != isLoopCurrentClipEnabled {
+                    toggleLoopCurrentClipMode()
+                }
+            }
+        ))
+        .keyboardShortcut("l", modifiers: [])
         .disabled(disableMainWindowShortcuts)
 
-        Button("> Next Clip") { [self] in
+        Divider()
+
+        Button("> Next") { [self] in
             nextClip()
         }
         .keyboardShortcut(.rightArrow, modifiers: [])
         .disabled(disableMainWindowShortcuts)
 
-        Button("< Previous Clip") { [self] in
+        Button("< Previous") { [self] in
             previousClip()
         }
         .keyboardShortcut(.leftArrow, modifiers: [])
         .disabled(disableMainWindowShortcuts)
+    }
 
-        Divider()
-
-        Button("Clear Current Layer Effect") { [self] in
-            clearCurrentLayerEffect()
-        }
-        .keyboardShortcut("c", modifiers: [])
-        .disabled(disableMainWindowShortcuts)
-
+    @ViewBuilder
+    func compositionMenu() -> some View {
         Button("Clear All Effects") { [self] in
             clearAllEffects()
         }
@@ -78,12 +80,6 @@ extension Studio {
             cycleEffect(direction: -1)
         }
         .keyboardShortcut("e", modifiers: [.command, .shift])
-
-        Button("Delete Clip") { [self] in
-            deleteCurrentClip()
-        }
-        .keyboardShortcut(.delete, modifiers: [.command])
-        .disabled(disableMainWindowShortcuts)
 
         Divider()
 
@@ -109,66 +105,86 @@ extension Studio {
 
         Divider()
 
-        Button("> Next Layer") { [self] in
-            nextSource()
+        Button("Delete") { [self] in
+            deleteCurrentClip()
         }
-        .keyboardShortcut(.rightArrow, modifiers: [.option])
-        .disabled(disableMainWindowShortcuts)
-
-        Button("< Previous Layer") { [self] in
-            previousSource()
-        }
-        .keyboardShortcut(.leftArrow, modifiers: [.option])
-        .disabled(disableMainWindowShortcuts)
-
-        ForEach(0..<9, id: \.self) { [self] idx in
-            Button("Select Layer \(idx + 1)") { [self] in
-                self.selectSource(index: idx)
-            }
-            .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
-            .disabled(disableMainWindowShortcuts)
-        }
-
-        Button("Select Global Layer") { [self] in
-            activePlayer.selectGlobalLayer()
-        }
-        .keyboardShortcut("`", modifiers: [])
+        .keyboardShortcut(.delete, modifiers: [.command])
         .disabled(disableMainWindowShortcuts)
     }
 
     @ViewBuilder
     func sourceMenu() -> some View {
+        Button("> Next") { [self] in
+            nextSource()
+        }
+        .keyboardShortcut(.rightArrow, modifiers: [.option])
+        .disabled(disableMainWindowShortcuts)
+
+        Button("< Previous") { [self] in
+            previousSource()
+        }
+        .keyboardShortcut(.leftArrow, modifiers: [.option])
+        .disabled(disableMainWindowShortcuts)
+
+        Button("Add") { [self] in
+            addSource()
+        }
+        .keyboardShortcut("n", modifiers: [.shift])
+        .disabled(disableMainWindowShortcuts)
+
+        Button("Remove") { [self] in
+            removeCurrentLayer()
+        }
+        .keyboardShortcut(.delete, modifiers: [])
+        .disabled(disableMainWindowShortcuts)
+
+        Button("Random Source") { [self] in
+            newRandomClip()
+        }
+        .keyboardShortcut(".", modifiers: [])
+        .disabled(disableMainWindowShortcuts)
+
+        Button("Clear Effect") { [self] in
+            clearCurrentLayerEffect()
+        }
+        .keyboardShortcut("c", modifiers: [])
+        .disabled(disableMainWindowShortcuts)
+
         Button("Cycle Blend Mode") { [self] in
             cycleBlendMode()
         }
         .keyboardShortcut("m", modifiers: [])
         .disabled(disableMainWindowShortcuts)
 
-        Button("New Random Clip") { [self] in
-            newRandomClip()
-        }
-        .keyboardShortcut(".", modifiers: [])
-        .disabled(disableMainWindowShortcuts)
-
         Divider()
-
-        Button("Remove Layer") { [self] in
-            removeCurrentLayer()
-        }
-        .keyboardShortcut(.delete, modifiers: [])
-        .disabled(disableMainWindowShortcuts)
-
-        Button("Add to Exclude List") { [self] in
-            excludeCurrentSource()
-        }
-        .keyboardShortcut("x", modifiers: [.shift])
-        .disabled(disableMainWindowShortcuts)
 
         Button("Add to Favorites") { [self] in
             favoriteCurrentSource()
         }
         .keyboardShortcut("f", modifiers: [.shift])
         .disabled(disableMainWindowShortcuts)
+
+        Button("Add to Excluded") { [self] in
+            excludeCurrentSource()
+        }
+        .keyboardShortcut("x", modifiers: [.shift])
+        .disabled(disableMainWindowShortcuts)
+
+        Divider()
+
+        Button("Select Global") { [self] in
+            activePlayer.selectGlobalLayer()
+        }
+        .keyboardShortcut("`", modifiers: [])
+        .disabled(disableMainWindowShortcuts)
+
+        ForEach(0..<9, id: \.self) { [self] idx in
+            Button("Select \(idx + 1)") { [self] in
+                self.selectSource(index: idx)
+            }
+            .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
+            .disabled(disableMainWindowShortcuts)
+        }
     }
 
     private func windowBelongsToMain(_ window: NSWindow?) -> Bool {

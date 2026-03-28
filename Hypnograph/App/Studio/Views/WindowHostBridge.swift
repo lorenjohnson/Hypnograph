@@ -7,11 +7,13 @@ import SwiftUI
 
 struct WindowHostBridge: NSViewRepresentable {
     @ObservedObject var hostService: WindowHostService
+    let showSources: Bool
     let showNewClips: Bool
     let showOutputSettings: Bool
     let showComposition: Bool
     let showEffects: Bool
     let onPanelVisibilityChanged: (String, Bool) -> Void
+    let sourcesContent: AnyView
     let newClipsContent: AnyView
     let outputSettingsContent: AnyView
     let compositionContent: AnyView
@@ -37,11 +39,13 @@ struct WindowHostBridge: NSViewRepresentable {
         context.coordinator.hostService = hostService
         context.coordinator.hostService.sync(
             parentWindow: nsView.window,
+            showSources: showSources,
             showNewClips: showNewClips,
             showOutputSettings: showOutputSettings,
             showComposition: showComposition,
             showEffects: showEffects,
             onPanelVisibilityChanged: onPanelVisibilityChanged,
+            sourcesContent: sourcesContent,
             newClipsContent: newClipsContent,
             outputSettingsContent: outputSettingsContent,
             compositionContent: compositionContent,

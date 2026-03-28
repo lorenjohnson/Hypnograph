@@ -66,6 +66,7 @@ struct LayerRowView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
+        .contentShape(Rectangle())
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(isSelected ? Color.accentColor.opacity(0.14) : Color.white.opacity(0.05))
@@ -79,6 +80,30 @@ struct LayerRowView: View {
                 lastVisibleOpacity = layer.opacity
             }
             thumbnailStore.loadIfNeeded(for: layer, targetSize: CGSize(width: 56, height: 42))
+        }
+        .contextMenu {
+            Button {
+                revealSource()
+            } label: {
+                Label("Reveal in Finder", systemImage: "folder")
+            }
+            .disabled(!canRevealInFinder)
+
+            Divider()
+
+            Button {
+                onDuplicate()
+            } label: {
+                Label("Duplicate Layer", systemImage: "plus.square.on.square")
+            }
+
+            Divider()
+
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Delete Layer", systemImage: "trash")
+            }
         }
     }
 
@@ -149,30 +174,6 @@ struct LayerRowView: View {
             .buttonStyle(.plain)
         }
         .padding(10)
-        .contextMenu {
-            Button {
-                revealSource()
-            } label: {
-                Label("Reveal in Finder", systemImage: "folder")
-            }
-            .disabled(!canRevealInFinder)
-
-            Divider()
-
-            Button {
-                onDuplicate()
-            } label: {
-                Label("Duplicate Layer", systemImage: "plus.square.on.square")
-            }
-
-            Divider()
-
-            Button(role: .destructive) {
-                onDelete()
-            } label: {
-                Label("Delete Layer", systemImage: "trash")
-            }
-        }
     }
 
     private var thumbnailView: some View {

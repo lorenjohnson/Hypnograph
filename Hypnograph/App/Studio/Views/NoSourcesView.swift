@@ -22,6 +22,10 @@ struct NoSourcesView: View {
                 .frame(maxWidth: 520)
 
             HStack(spacing: 12) {
+                Button("Open Sources Window") {
+                    main.windows.setWindowVisible("sourcesWindow", visible: true)
+                }
+
                 Button("Add Folder Source…") {
                     main.addFolderSourcesFromPanel()
                 }
