@@ -30,6 +30,29 @@ Options:
 EOF
 }
 
+read_most_common_build_setting() {
+  local key="$1"
+  awk -F' = ' -v key="$key" '
+    $0 ~ key " = " {
+      value = $2
+      sub(/;.*/, "", value)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      counts[value]++
+    }
+    END {
+      max = 0
+      winner = ""
+      for (value in counts) {
+        if (counts[value] > max) {
+          max = counts[value]
+          winner = value
+        }
+      }
+      print winner
+    }
+  ' "$PBXPROJ_PATH"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --marketing-version)
@@ -77,12 +100,25 @@ if [[ ! -f "$PBXPROJ_PATH" ]]; then
   exit 1
 fi
 
-BUILD_SETTINGS="$(xcodebuild -project "$PROJECT_PATH" -target "$TARGET_NAME" -configuration "$CONFIGURATION" -showBuildSettings 2>/dev/null)"
+BUILD_SETTINGS="$(xcodebuild -project "$PROJECT_PATH" -target "$TARGET_NAME" -configuration "$CONFIGURATION" -showBuildSettings 2>/dev/null || true)"
 CURRENT_MARKETING_VERSION="$(awk -F' = ' '/MARKETING_VERSION = / { print $2; exit }' <<<"$BUILD_SETTINGS")"
 CURRENT_BUILD_NUMBER="$(awk -F' = ' '/CURRENT_PROJECT_VERSION = / { print $2; exit }' <<<"$BUILD_SETTINGS")"
 
+if [[ -n "$CURRENT_MARKETING_VERSION" ]]; then
+  CURRENT_MARKETING_VERSION="${CURRENT_MARKETING_VERSION%;}"
+fi
+
+if [[ -n "$CURRENT_BUILD_NUMBER" ]]; then
+  CURRENT_BUILD_NUMBER="${CURRENT_BUILD_NUMBER%;}"
+fi
+
 if [[ -z "$CURRENT_MARKETING_VERSION" || -z "$CURRENT_BUILD_NUMBER" ]]; then
-  echo "error: Could not determine current version/build from Xcode build settings." >&2
+  CURRENT_MARKETING_VERSION="$(read_most_common_build_setting "MARKETING_VERSION")"
+  CURRENT_BUILD_NUMBER="$(read_most_common_build_setting "CURRENT_PROJECT_VERSION")"
+fi
+
+if [[ -z "$CURRENT_MARKETING_VERSION" || -z "$CURRENT_BUILD_NUMBER" ]]; then
+  echo "error: Could not determine current version/build from Xcode build settings or project file." >&2
   exit 1
 fi
 
