@@ -1,5 +1,5 @@
 ---
-doc-status: ready
+doc-status: done
 ---
 
 # Sidebar Windowization Spike
@@ -21,3 +21,5 @@ The main remaining uncertainty is not the overall direction but some implementat
 - Treat snapping as a helpful behavior, not as a docking commitment.
 - Remove old sidebar-specific state and settings rather than preserving legacy placement or tab behavior.
 - Continue from here as an implementation-and-stabilization project rather than as an open-ended spike.
+
+This direction is now implemented. The remaining judgment calls are polish questions rather than open spike questions.

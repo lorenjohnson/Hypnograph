@@ -10,6 +10,7 @@ struct ContentView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
+    @StateObject private var panelHostService = StudioWindowHostService()
     @State private var isPlayerControlsVisible: Bool = true
 
     private var clipTrimContexts: [ClipTrimContext] {
@@ -178,8 +179,8 @@ struct ContentView: View {
                 isEnabled: true,
                 idleSeconds: 3.0,
                 startHiddenOnEnable: state.windowState.isCleanScreen,
-                activityIgnoreLeftInset: state.windowState.isVisible("leftSidebar") ? (SidebarMetrics.leftWidth + 12) : 0,
-                activityIgnoreRightInset: state.windowState.isVisible("rightSidebar") ? (SidebarMetrics.rightWidth + 12) : 0,
+                activityIgnoreLeftInset: 0,
+                activityIgnoreRightInset: 0,
                 isVisible: $isPlayerControlsVisible
             )
             .allowsHitTesting(false)
@@ -204,24 +205,6 @@ struct ContentView: View {
             .padding(.top, main.isLiveMode ? 56 : 12)
             .padding(.leading, 12)
             .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("hypnogramList"))
-        }
-        .overlay(alignment: .center) {
-            HStack(spacing: 0) {
-                if state.windowState.isVisible("leftSidebar") {
-                    LeftSidebarView(state: state, main: main, player: main.activePlayer)
-                        .transition(.move(edge: .leading).combined(with: .opacity))
-                }
-
-                Spacer(minLength: 0)
-
-                if state.windowState.isVisible("rightSidebar") {
-                    RightSidebarView(state: state, main: main, effectsSession: main.effectsLibrarySession)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
-                }
-            }
-            .padding(12)
-            .animation(.easeInOut(duration: 0.25), value: state.windowState.isVisible("leftSidebar"))
-            .animation(.easeInOut(duration: 0.25), value: state.windowState.isVisible("rightSidebar"))
         }
         .overlay(alignment: .top) {
             VStack(spacing: 8) {
@@ -283,11 +266,35 @@ struct ContentView: View {
             .padding(.bottom, 12)
             .animation(.easeInOut(duration: 0.2), value: state.windowState.isVisible("livePreview"))
         }
+        .background(
+            StudioPanelHostBridge(
+                hostService: panelHostService,
+                showNewClips: state.windowState.isVisible("newClipsWindow"),
+                showOutputSettings: state.windowState.isVisible("outputSettingsWindow"),
+                showComposition: state.windowState.isVisible("compositionWindow"),
+                showEffects: state.windowState.isVisible("effectsWindow"),
+                newClipsContent: AnyView(
+                    NewClipsWindowView(state: state, main: main, player: main.activePlayer)
+                ),
+                outputSettingsContent: AnyView(
+                    OutputSettingsWindowView(state: state, main: main, player: main.activePlayer)
+                ),
+                compositionContent: AnyView(
+                    CompositionWindowView(state: state, main: main)
+                ),
+                effectsContent: AnyView(
+                    EffectsWindowView(state: state, main: main, effectsSession: main.effectsLibrarySession)
+                )
+            )
+            .frame(width: 0, height: 0)
+        )
         .appNotifications()
         .background(Color.black)
         .onAppear {
-            state.windowState.register("leftSidebar", defaultVisible: true)
-            state.windowState.register("rightSidebar", defaultVisible: true)
+            state.windowState.register("newClipsWindow", defaultVisible: true)
+            state.windowState.register("outputSettingsWindow", defaultVisible: true)
+            state.windowState.register("compositionWindow", defaultVisible: true)
+            state.windowState.register("effectsWindow", defaultVisible: true)
             state.windowState.register("keyboardHints", defaultVisible: true)
         }
         .onChange(of: state.windowState.isCleanScreen) { _, isCleanScreen in

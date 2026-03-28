@@ -21,9 +21,9 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     var togglePlayPause: (() -> Void)?
     var saveSnapshotImage: (() -> Void)?
 
-    /// Callback to toggle sidebars (injected by app)
-    var toggleLeftSidebar: (() -> Void)?
-    var toggleRightSidebar: (() -> Void)?
+    /// Callback to toggle primary Studio windows (injected by app)
+    var toggleNewClipsWindow: (() -> Void)?
+    var toggleEffectsWindow: (() -> Void)?
 
     /// Callback to check if typing is active (injected by app)
     var isTypingActive: (() -> Bool)?
@@ -196,8 +196,8 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Event monitor for S key (save snapshot image)
     private var snapshotKeyMonitor: Any?
 
-    /// Event monitor for [ and ] keys (toggle sidebars)
-    private var sidebarKeyMonitor: Any?
+    /// Event monitor for [ and ] keys (toggle primary Studio windows)
+    private var studioWindowKeyMonitor: Any?
 
     /// Event monitor for ` key hold to suspend global effects
     private var globalKeyMonitor: Any?
@@ -303,8 +303,8 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
             return nil
         }
 
-        // Install [ and ] key monitor for toggling sidebars
-        sidebarKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        // Install [ and ] key monitor for toggling primary Studio windows
+        studioWindowKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
             guard event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty else { return event }
             guard self.shouldHandleKeyboardOverride(event) else { return event }
@@ -312,10 +312,10 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
 
             switch event.charactersIgnoringModifiers {
             case "[":
-                self.toggleLeftSidebar?()
+                self.toggleNewClipsWindow?()
                 return nil
             case "]":
-                self.toggleRightSidebar?()
+                self.toggleEffectsWindow?()
                 return nil
             default:
                 return event

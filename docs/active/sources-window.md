@@ -10,7 +10,7 @@ Create a dedicated `Sources Window` to replace the current command-menu-heavy so
 
 The goal is to make source configuration and session source management directly visible and usable, rather than buried in menu actions. The current menu-driven source workflow is not very workable for iterative composition, and source setup is important enough to deserve a first-class surface.
 
-This project should probably happen after [sidebar-windowization](../active/sidebar-windowization/index.md) is settled, since it likely wants to live in the same general AppKit-window world rather than inherit older UI assumptions.
+This project follows directly from [sidebar-windowization](../archive/20260328-sidebar-windowization/index.md), since it wants to live in the same general AppKit-window world rather than inherit older embedded-sidebar assumptions.
 
 ## Rules
 
@@ -18,7 +18,7 @@ This project should probably happen after [sidebar-windowization](../active/side
 - MUST support session source list/table operations (add/remove/enable/disable).
 - MUST support source-type filtering (photos/videos/both).
 - MUST support source origin controls (folders/files/Photos scopes).
-- SHOULD keep this project sequenced after [sidebar-windowization](../active/sidebar-windowization/index.md) stabilizes.
+- SHOULD build on the AppKit panel/window direction established in [sidebar-windowization](../archive/20260328-sidebar-windowization/index.md).
 
 ## Plan
 

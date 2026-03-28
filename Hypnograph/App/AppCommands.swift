@@ -100,17 +100,29 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(replacing: .sidebar) {
-            Section("Overlays") {
-                Toggle("Left Sidebar", isOn: Binding(
-                    get: { state.windowState.isVisible("leftSidebar") },
-                    set: { _ in state.windowState.toggle("leftSidebar") }
+            Section("Studio Windows") {
+                Toggle("New Clips", isOn: Binding(
+                    get: { state.windowState.isVisible("newClipsWindow") },
+                    set: { _ in state.windowState.toggle("newClipsWindow") }
                 ))
                 .keyboardShortcut("[", modifiers: [])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
-                Toggle("Right Sidebar", isOn: Binding(
-                    get: { state.windowState.isVisible("rightSidebar") },
-                    set: { _ in state.windowState.toggle("rightSidebar") }
+                Toggle("Output Settings", isOn: Binding(
+                    get: { state.windowState.isVisible("outputSettingsWindow") },
+                    set: { _ in state.windowState.toggle("outputSettingsWindow") }
+                ))
+                .disabled(isTyping || !isStudioWindowShortcutContext)
+
+                Toggle("Composition", isOn: Binding(
+                    get: { state.windowState.isVisible("compositionWindow") },
+                    set: { _ in state.windowState.toggle("compositionWindow") }
+                ))
+                .disabled(isTyping || !isStudioWindowShortcutContext)
+
+                Toggle("Effects", isOn: Binding(
+                    get: { state.windowState.isVisible("effectsWindow") },
+                    set: { _ in state.windowState.toggle("effectsWindow") }
                 ))
                 .keyboardShortcut("]", modifiers: [])
                 .disabled(isTyping || !isStudioWindowShortcutContext)

@@ -3,60 +3,16 @@ import CoreMedia
 import UniformTypeIdentifiers
 import HypnoCore
 
-enum RightSidebarTab: Int, Hashable {
-    case composition = 0
-    case effectChains = 1
-}
-
-struct RightSidebarView: View {
+struct CompositionWindowView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
-    @ObservedObject var effectsSession: EffectsSession
 
-    @State private var selectedTab: RightSidebarTab = .composition
     @State private var expandedLayerIDs: Set<UUID> = []
     @State private var showAddLayerPhotosPicker = false
     @State private var draggedLayerID: UUID?
-
     @StateObject private var thumbnailStore = LayerThumbnailStore()
 
     var body: some View {
-        VStack(spacing: 0) {
-            Picker("", selection: $selectedTab) {
-                Text("Composition").tag(RightSidebarTab.composition)
-                Text("Effect Chains").tag(RightSidebarTab.effectChains)
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 12)
-            .padding(.top, 12)
-            .padding(.bottom, 8)
-
-            GlassDivider()
-
-            switch selectedTab {
-            case .composition:
-                compositionTab()
-            case .effectChains:
-                effectChainsTab()
-            }
-        }
-        .frame(width: SidebarMetrics.rightWidth)
-        .glassPanel(cornerRadius: 16)
-        .sheet(isPresented: $showAddLayerPhotosPicker) {
-            PhotosPickerSheet(
-                isPresented: $showAddLayerPhotosPicker,
-                preselectedIdentifiers: [],
-                selectionLimit: 1,
-                onSelection: { identifiers in
-                    guard let selectedIdentifier = identifiers.first else { return }
-                    _ = main.addSource(fromPhotosAssetIdentifier: selectedIdentifier)
-                }
-            )
-        }
-    }
-
-    @ViewBuilder
-    private func compositionTab() -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 globalSection
@@ -142,7 +98,7 @@ struct RightSidebarView: View {
                             }
                             .onDrop(
                                 of: [UTType.text],
-                                delegate: LayerReorderDropDelegate(
+                                delegate: CompositionLayerReorderDropDelegate(
                                     targetID: id,
                                     draggedLayerID: $draggedLayerID,
                                     moveLayer: { sourceID, targetID in
@@ -155,17 +111,21 @@ struct RightSidebarView: View {
                     }
                 }
             }
-            .padding(12)
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-    }
-
-    @ViewBuilder
-    private func effectChainsTab() -> some View {
-        EffectChainLibraryView(
-            state: state,
-            main: main,
-            session: effectsSession
-        )
+        .background(Color.black.opacity(0.96).ignoresSafeArea())
+        .sheet(isPresented: $showAddLayerPhotosPicker) {
+            PhotosPickerSheet(
+                isPresented: $showAddLayerPhotosPicker,
+                preselectedIdentifiers: [],
+                selectionLimit: 1,
+                onSelection: { identifiers in
+                    guard let selectedIdentifier = identifiers.first else { return }
+                    _ = main.addSource(fromPhotosAssetIdentifier: selectedIdentifier)
+                }
+            )
+        }
     }
 
     private var globalSection: some View {
@@ -296,7 +256,7 @@ struct RightSidebarView: View {
     }
 }
 
-private struct LayerReorderDropDelegate: DropDelegate {
+private struct CompositionLayerReorderDropDelegate: DropDelegate {
     let targetID: UUID
     @Binding var draggedLayerID: UUID?
     let moveLayer: (UUID, UUID) -> Void
@@ -317,6 +277,5 @@ private struct LayerReorderDropDelegate: DropDelegate {
     }
 
     func dropExited(info: DropInfo) {
-        // Keep current drag state; it will clear on performDrop.
     }
 }

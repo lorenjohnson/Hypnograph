@@ -96,11 +96,11 @@ struct HypnographApp: App {
                 appDelegate.toggleCleanScreen = { [weak state] in
                     state?.windowState.toggleCleanScreen()
                 }
-                appDelegate.toggleLeftSidebar = { [weak state] in
-                    _ = state?.windowState.toggle("leftSidebar")
+                appDelegate.toggleNewClipsWindow = { [weak state] in
+                    _ = state?.windowState.toggle("newClipsWindow")
                 }
-                appDelegate.toggleRightSidebar = { [weak state] in
-                    _ = state?.windowState.toggle("rightSidebar")
+                appDelegate.toggleEffectsWindow = { [weak state] in
+                    _ = state?.windowState.toggle("effectsWindow")
                 }
                 appDelegate.isTypingActive = { [weak state] in
                     state?.isKeyboardTextInputActive ?? false
