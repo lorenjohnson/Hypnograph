@@ -1,5 +1,5 @@
 ---
-doc-status: in-progress
+doc-status: done
 ---
 
 # Studio Architecture Refactor
@@ -62,33 +62,22 @@ Current checkpoint:
 - SHOULD avoid generic abstraction layers when a simple file move or focused type split is enough.
 - SHOULD keep view files presentation-focused and remove direct panel/file/Photos orchestration where practical.
 
-## Plan
+## Completion Notes
 
-1. Keep the new folder shape stable. `StudioDependencies.swift`, `State/`, `Services/`, `Models/`, and `Support/` now exist and are doing real work. The point of the next pass is not more directory churn. The point is to keep this shape truthful as we touch code.
+This refactor pass is complete.
 
-2. Keep `Studio.swift` as the composition root and keep service boundaries explicit. File panels, Photos integration, clip-history persistence, and effect-library IO should stay behind dedicated services instead of drifting back into views or broad orchestration files.
+What landed:
+- `Main` was renamed to `Studio`, giving the primary Hypnograph surface a real domain name.
+- `EffectsStudio` was renamed to `EffectsComposer`, keeping the specialized effect-authoring surface distinct from the main Studio surface.
+- `Studio.swift` and `StudioDependencies.swift` now act as the clear composition root and dependency seam for the primary surface.
+- `Studio` now uses the intended directory shape in practice: `Models/`, `Persistence/`, `Services/`, `State/`, `Support/`, `Views/`, and `Live/`.
+- the broad root action files were replaced with narrower state files such as `PlaybackActions.swift`, `SourceLayerActions.swift`, `HistoryActions.swift`, `GenerationActions.swift`, `ExportActions.swift`, `SessionActions.swift`, `EffectsActions.swift`, `PhotosActions.swift`, `LibraryActions.swift`, and `SettingsPathActions.swift`.
+- file panels, Photos integration, clip-history persistence, and effect-library IO are now behind explicit services instead of leaking across views.
+- `WorkspaceSettings` and `WorkspaceSettingsStore` were settled as `StudioSettings` and `StudioSettingsStore`.
 
-3. Keep the narrower state-oriented files under `State/` as the place where Studio orchestration lives:
-- `State/PlaybackActions.swift` for play/pause, live send, loop mode, and simple player commands
-- `State/SourceLayerActions.swift` for add/remove/duplicate/reorder/select/trim layer operations
-- `State/HistoryActions.swift` for history persistence, history navigation, indicator flashing, and history-limit enforcement
-- `State/GenerationActions.swift` for random clip generation, append/replace, and clip-end auto-advance behavior
-- `State/ExportActions.swift` for snapshot, save, and render/export flows
-- `State/SessionActions.swift` for recipe/session loading and append behavior
-- `State/EffectsActions.swift` for broad effect-reset commands that still belong to Studio orchestration
-- `State/PhotosActions.swift` for Photos authorization/status flow
-- `State/LibraryActions.swift` for source-library folder intake
-- `State/SettingsPathActions.swift` for settings-backed output and snapshot path selection
-
-4. Keep the naming pass disciplined. `Studio` and `EffectsComposer` are now the intended domain names. Any remaining `Main` or `EffectsStudio` references in live code or live docs should be treated as cleanup bugs, not as acceptable drift.
-
-5. Remove any remaining direct side-effect orchestration from obvious views when encountered, but do not reopen broad UI decomposition work unless a concrete problem appears.
-
-6. Keep the scope disciplined while we do it. We are not prioritizing a deep `PlayerView` refactor unless one of the service seams requires it. We are not splitting `EffectsEditorView` further just because it is large. We are not reopening `HypnoPackages` refactor work unless a concrete Studio boundary problem forces it.
-
-Next phase:
-- Review the renamed domains in real implementation work and see whether any of the current state files want different grouping after actual use.
-- Keep an eye on any remaining semantic mismatches, but treat `StudioSettings` as the settled name unless a clearer product/domain distinction emerges.
+Verification:
+- build succeeds
+- runtime checks passed for playback, history navigation, source/layer operations, save/open/render/snapshot flows, live mode, and Effects Composer behavior
 
 The project is done when all of these are true:
 - `Studio` matches the intended top-level directory shape
