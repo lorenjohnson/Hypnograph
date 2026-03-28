@@ -31,7 +31,7 @@ struct NewClipsWindowView: View {
                 playRateRangeRow()
 
                 randomizationRow(
-                    title: "Randomize Global Effect",
+                    title: "Randomize Composition Effect",
                     isOn: Binding(
                         get: { state.settings.randomGlobalEffect },
                         set: { newValue in

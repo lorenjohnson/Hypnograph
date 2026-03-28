@@ -331,14 +331,14 @@ extension Studio {
         activeEffectManager.cycleEffect(for: activePlayer.currentSourceIndex, direction: direction)
 
         let effectName = activeEffectManager.effectName(for: activePlayer.currentSourceIndex)
-        let layerLabel = activePlayer.currentSourceIndex == -1 ? "Global" : "Source \(activePlayer.currentSourceIndex + 1)"
+        let layerLabel = activePlayer.currentSourceIndex == -1 ? "Composition" : "Layer \(activePlayer.currentSourceIndex + 1)"
         AppNotifications.show("\(layerLabel): \(effectName)", flash: true, duration: 1.5)
     }
 
     func clearCurrentLayerEffect() {
         activeEffectManager.clearEffect(for: activePlayer.currentSourceIndex)
 
-        let layerLabel = activePlayer.currentSourceIndex == -1 ? "Global" : "Source \(activePlayer.currentSourceIndex + 1)"
+        let layerLabel = activePlayer.currentSourceIndex == -1 ? "Composition" : "Layer \(activePlayer.currentSourceIndex + 1)"
         AppNotifications.show("\(layerLabel): None", flash: true, duration: 1.5)
     }
 

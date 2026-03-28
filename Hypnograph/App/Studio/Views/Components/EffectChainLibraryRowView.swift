@@ -47,7 +47,7 @@ struct EffectChainLibraryRowView: View {
             Button {
                 onApplyToGlobal()
             } label: {
-                Label("Apply to Global", systemImage: "globe")
+                Label("Apply to Composition", systemImage: "globe")
             }
 
             Button {
@@ -79,4 +79,3 @@ struct EffectChainLibraryRowView: View {
         }
     }
 }
-

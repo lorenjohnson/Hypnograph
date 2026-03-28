@@ -357,7 +357,7 @@ struct EffectsEditorView: View {
         EffectsEditorHoverRevealControlsRow(isSelected: isSelected) {
             HStack(spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(layer == -1 ? "Global" : "Source \(layer + 1)")
+                    Text(layer == -1 ? "Composition" : "Layer \(layer + 1)")
                         .font(.system(.body, design: .monospaced))
                     Text(chainDisplayName(chain))
                         .font(.caption)

@@ -130,11 +130,6 @@ struct CompositionWindowView: View {
 
     private var globalSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Global")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 4)
-
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text("Clip Length")

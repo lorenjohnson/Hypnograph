@@ -193,9 +193,9 @@ private struct EffectChainLibraryRow: View {
             .contextMenu {
                 Button {
                     main.activeEffectManager.applyTemplate(chain, to: -1)
-                    AppNotifications.show("Applied to Global", flash: true)
+                    AppNotifications.show("Applied to Composition", flash: true)
                 } label: {
-                    Label("Apply to Global", systemImage: "globe")
+                    Label("Apply to Composition", systemImage: "globe")
                 }
 
                 Button {

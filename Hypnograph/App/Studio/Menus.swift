@@ -172,7 +172,7 @@ extension Studio {
 
         Divider()
 
-        Button("Select Global") { [self] in
+        Button("Select Composition") { [self] in
             activePlayer.selectGlobalLayer()
         }
         .keyboardShortcut("`", modifiers: [])
