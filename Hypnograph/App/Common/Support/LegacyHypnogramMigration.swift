@@ -1,5 +1,5 @@
 //
-//  LegacySessionMigration.swift
+//  LegacyHypnogramMigration.swift
 //  Hypnograph
 //
 //  Compatibility helpers for on-disk .hypno/.hypnogram JSON written by older schemas.
@@ -8,10 +8,10 @@
 import Foundation
 import HypnoCore
 
-enum LegacySessionMigration {
+enum LegacyHypnogramMigration {
 
-    /// Detect older session schema variants and rewrite using the current schema after decode.
-    static func migrateSessionFileIfNeeded(originalData: Data, url: URL, decodedSession: HypnographSession) {
+    /// Detect older hypnogram schema variants and rewrite using the current schema after decode.
+    static func migrateSessionFileIfNeeded(originalData: Data, url: URL, decodedSession: Hypnogram) {
         guard shouldMigrateSessionJSON(data: originalData) else { return }
 
         // We decoded via backward-compatible Codable fallbacks.

@@ -9,11 +9,11 @@ final class LayerThumbnailStore: ObservableObject {
     private var cache: [UUID: NSImage] = [:]
     private var inFlight: Set<UUID> = []
 
-    func image(for layer: HypnogramLayer) -> NSImage? {
+    func image(for layer: Layer) -> NSImage? {
         cache[layer.mediaClip.file.id]
     }
 
-    func loadIfNeeded(for layer: HypnogramLayer, targetSize: CGSize) {
+    func loadIfNeeded(for layer: Layer, targetSize: CGSize) {
         let id = layer.mediaClip.file.id
         guard cache[id] == nil else { return }
         guard !inFlight.contains(id) else { return }

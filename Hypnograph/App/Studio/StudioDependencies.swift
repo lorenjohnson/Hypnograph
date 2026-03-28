@@ -8,11 +8,11 @@ import Foundation
 struct StudioDependencies {
     var makePanelHostService: @MainActor () -> FilePanelService
     var photosIntegrationService: PhotosIntegrationService
-    var clipHistoryPersistenceService: ClipHistoryPersistenceService
+    var compositionHistoryPersistenceService: CompositionHistoryPersistenceService
 
     static let live = StudioDependencies(
         makePanelHostService: { FilePanelService() },
         photosIntegrationService: .live,
-        clipHistoryPersistenceService: .live
+        compositionHistoryPersistenceService: .live
     )
 }

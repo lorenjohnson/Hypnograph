@@ -26,7 +26,7 @@ struct ContentView: View {
 
         let maxSelectionForClip = max(0.1, main.activePlayer.targetDuration.seconds)
 
-        func makeContext(layer: HypnogramLayer, index: Int) -> ClipTrimContext? {
+        func makeContext(layer: Layer, index: Int) -> ClipTrimContext? {
             guard layer.mediaClip.file.mediaKind == .video else { return nil }
 
             let total = max(0.1, layer.mediaClip.file.duration.seconds)
@@ -46,19 +46,19 @@ struct ContentView: View {
             )
         }
 
-        if main.activePlayer.currentSourceIndex == -1 {
+        if main.activePlayer.currentLayerIndex == -1 {
             return layers.enumerated().compactMap { index, layer in
                 makeContext(layer: layer, index: index)
             }
         }
 
-        let index = main.activePlayer.currentSourceIndex
+        let index = main.activePlayer.currentLayerIndex
         guard index >= 0, index < layers.count else { return [] }
         guard let context = makeContext(layer: layers[index], index: index) else { return [] }
         return [context]
     }
 
-    private func layerTitle(for layer: HypnogramLayer) -> String {
+    private func layerTitle(for layer: Layer) -> String {
         switch layer.mediaClip.file.source {
         case .url(let url):
             return url.lastPathComponent
@@ -83,7 +83,7 @@ struct ContentView: View {
             return ("LIVE", .red)
         }
 
-        if let clipText = main.clipHistoryIndicatorText {
+        if let clipText = main.compositionHistoryIndicatorText {
             return (clipText, .blue)
         }
 
@@ -91,7 +91,7 @@ struct ContentView: View {
         guard !main.activePlayer.layers.isEmpty else { return nil }
 
         if main.activePlayer.effectManager.flashSoloIndex != nil {
-            return ("\(main.activePlayer.currentSourceIndex + 1)/\(main.activePlayer.layers.count)", .red)
+            return ("\(main.activePlayer.currentLayerIndex + 1)/\(main.activePlayer.layers.count)", .red)
         }
 
         if main.activePlayer.isGlobalEffectSuspended {
@@ -107,7 +107,7 @@ struct ContentView: View {
             return player.rate != 0
         }
 
-        let clip = main.activePlayer.currentHypnogram
+        let clip = main.activePlayer.currentComposition
         let hasVideo = clip.layers.contains { $0.mediaClip.file.mediaKind == .video }
         return hasVideo && (main.activePlayer.isPaused == false)
     }
@@ -129,7 +129,7 @@ struct ContentView: View {
                 PlayerControlsBar(
                     isPaused: main.activePlayer.isPaused,
                     isLoopCurrentClipEnabled: main.isLoopCurrentClipEnabled,
-                    currentClipText: main.currentClipIndicatorText,
+                    currentClipText: main.currentCompositionIndicatorText,
                     clipLengthSeconds: main.activePlayer.targetDuration.seconds,
                     clipTrimContexts: clipTrimContexts,
                     volume: Binding(
@@ -198,11 +198,11 @@ struct ContentView: View {
                     HypnogramListView(
                         store: HypnogramStore.shared,
                         onLoad: { entry in
-                            guard let session = HypnogramStore.shared.loadSession(from: entry) else {
-                                AppNotifications.show("Failed to load recipe", flash: true)
+                            guard let hypnogram = HypnogramStore.shared.loadHypnogram(from: entry) else {
+                                AppNotifications.show("Failed to load hypnogram", flash: true)
                                 return
                             }
-                            main.appendSessionToHistory(session)
+                            main.appendHypnogramToHistory(hypnogram)
                             AppNotifications.show("Loaded: \(entry.name)", flash: true)
                         }
                     )

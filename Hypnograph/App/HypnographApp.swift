@@ -140,20 +140,20 @@ struct HypnographApp: App {
                     studio.player.selectSource(index)
                 }
 
-                // Wire up external file opening (session documents + media sources)
+                // Wire up external file opening (hypnogram documents + media sources)
                 appDelegate.openIncomingFiles = { [weak studio] urls in
 
-                    let sessionURLs = urls.filter { SessionStore.isSupportedExtension($0.pathExtension) }
-                    if let url = sessionURLs.first {
-                        guard let session = SessionStore.load(from: url) else {
-                            AppNotifications.show("Failed to load session", flash: true)
+                    let hypnogramURLs = urls.filter { HypnogramFileStore.isSupportedExtension($0.pathExtension) }
+                    if let url = hypnogramURLs.first {
+                        guard let hypnogram = HypnogramFileStore.load(from: url) else {
+                            AppNotifications.show("Failed to load hypnogram", flash: true)
                             return
                         }
-                        studio?.appendSessionToHistory(session)
+                        studio?.appendHypnogramToHistory(hypnogram)
                         AppNotifications.show("Loaded \(url.lastPathComponent)", flash: true)
                     }
 
-                    let mediaURLs = urls.filter { !SessionStore.isSupportedExtension($0.pathExtension) }
+                    let mediaURLs = urls.filter { !HypnogramFileStore.isSupportedExtension($0.pathExtension) }
                     guard !mediaURLs.isEmpty else { return }
                     _ = studio?.addSourcesAsNewClip(fromFileURLs: mediaURLs)
                 }

@@ -27,7 +27,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Callback for whether keyboard accessibility overrides are enabled (injected by app)
     var isKeyboardAccessibilityOverridesEnabled: (() -> Bool)?
 
-    /// Callback to open incoming files (session documents or media sources).
+    /// Callback to open incoming files (hypnogram documents or media sources).
     var openIncomingFiles: (([URL]) -> Void)? {
         didSet {
             // Process any pending files that arrived before callback was wired.

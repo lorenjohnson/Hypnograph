@@ -36,7 +36,7 @@ struct EffectsEditorView: View {
 
     /// Current layer being edited (-1 = global, 0+ = source)
     private var currentLayer: Int {
-        main.activePlayer.currentSourceIndex
+        main.activePlayer.currentLayerIndex
     }
 
     /// Target rows to show in CURRENT (Global + sources in the active recipe)
@@ -221,7 +221,7 @@ struct EffectsEditorView: View {
                 viewModel.activeSection = field
             }
         }
-        .onChange(of: main.activePlayer.currentSourceIndex) { _, newValue in
+        .onChange(of: main.activePlayer.currentLayerIndex) { _, newValue in
             // Keep CURRENT selection in sync when the active layer changes externally.
             guard case .some(.current(_)) = listSelection else { return }
             listSelection = .current(newValue)
@@ -258,7 +258,7 @@ struct EffectsEditorView: View {
         // Move CURRENT target selection up/down with wrap-around
         let targets = currentTargets
         guard !targets.isEmpty else { return }
-        let currentIndex = targets.firstIndex(of: main.activePlayer.currentSourceIndex) ?? 0
+        let currentIndex = targets.firstIndex(of: main.activePlayer.currentLayerIndex) ?? 0
         let nextIndex = (currentIndex + delta + targets.count) % targets.count
         let nextLayer = targets[nextIndex]
         main.activePlayer.selectSource(nextLayer)

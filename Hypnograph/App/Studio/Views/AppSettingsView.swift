@@ -156,7 +156,7 @@ struct AppSettingsView: View {
             buttonTitle: "Clear",
             isDestructive: true
         ) {
-            main.clearClipHistory()
+            main.clearCompositionHistory()
         }
         Divider()
 

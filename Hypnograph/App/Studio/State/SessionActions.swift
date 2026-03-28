@@ -9,38 +9,38 @@ import HypnoUI
 
 @MainActor
 extension Studio {
-    func openRecipe() {
-        SessionFileActions.openSession(
-            onLoaded: { [weak self] session in
-                self?.appendSessionToHistory(session)
-                AppNotifications.show("Recipe loaded", flash: true)
+    func openHypnogram() {
+        HypnogramFileActions.openHypnogram(
+            onLoaded: { [weak self] hypnogram in
+                self?.appendHypnogramToHistory(hypnogram)
+                AppNotifications.show("Hypnogram loaded", flash: true)
             },
             onFailure: {
-                AppNotifications.show("Failed to load recipe", flash: true)
+                AppNotifications.show("Failed to load hypnogram", flash: true)
             }
         )
     }
 
-    private func appendLoadedHypnograms(_ hypnograms: [Hypnogram]) {
-        let oldCount = activePlayer.session.hypnograms.count
-        activePlayer.session.hypnograms.append(contentsOf: hypnograms)
-        activePlayer.currentHypnogramIndex = oldCount
-        activePlayer.currentSourceIndex = -1
-        activePlayer.notifySessionMutated()
+    private func appendLoadedCompositions(_ compositions: [Composition]) {
+        let oldCount = activePlayer.hypnogram.compositions.count
+        activePlayer.hypnogram.compositions.append(contentsOf: compositions)
+        activePlayer.currentCompositionIndex = oldCount
+        activePlayer.currentLayerIndex = -1
+        activePlayer.notifyHypnogramMutated()
         enforceHistoryLimit()
         applyClipSelectionChanged(manual: true)
     }
 
-    func appendSessionToHistory(_ session: HypnographSession) {
-        var mutableSession = session
-        mutableSession.ensureEffectChainNames()
+    func appendHypnogramToHistory(_ hypnogram: Hypnogram) {
+        var mutableHypnogram = hypnogram
+        mutableHypnogram.ensureEffectChainNames()
 
         liveMode = .edit
 
-        let loadedHypnograms = mutableSession.hypnograms
-        guard !loadedHypnograms.isEmpty else { return }
+        let loadedCompositions = mutableHypnogram.compositions
+        guard !loadedCompositions.isEmpty else { return }
 
-        EffectChainLibraryActions.importChainsFromSession(mutableSession, into: effectsSession)
-        appendLoadedHypnograms(loadedHypnograms)
+        EffectChainLibraryActions.importChainsFromSession(mutableHypnogram, into: effectsSession)
+        appendLoadedCompositions(loadedCompositions)
     }
 }

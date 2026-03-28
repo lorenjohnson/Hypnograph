@@ -83,9 +83,9 @@ extension Studio {
 
         print("Studio: saving hypnogram...")
 
-        let session = makeDisplaySession().copyForExport()
+        let hypnogram = makeDisplayHypnogram().copyForExport()
 
-        if let entry = HypnogramStore.shared.add(session: session, snapshot: cgImage, isFavorite: false) {
+        if let entry = HypnogramStore.shared.add(hypnogram: hypnogram, snapshot: cgImage, isFavorite: false) {
             print("✅ Studio: Hypnogram saved to \(entry.sessionURL.path)")
             AppNotifications.show("Hypnogram saved", flash: true)
 
@@ -109,13 +109,13 @@ extension Studio {
             return
         }
 
-        let renderHypnogram = activePlayer.currentHypnogram.copyForExport()
+        let renderHypnogram = activePlayer.currentComposition.copyForExport()
         let outputSize = exportSettings()
 
         print("Studio: enqueueing clip with \(renderHypnogram.layers.count) layer(s), duration: \(renderHypnogram.targetDuration.seconds)s")
 
         renderQueue.enqueue(
-            clip: renderHypnogram,
+            composition: renderHypnogram,
             outputFolder: state.settings.outputURL,
             outputSize: outputSize,
             sourceFraming: state.settings.sourceFraming,
@@ -172,8 +172,8 @@ extension Studio {
             return
         }
 
-        let session = makeDisplaySession().copyForExport()
-        SessionFileActions.saveAs(session: session, snapshot: cgImage) {
+        let hypnogram = makeDisplayHypnogram().copyForExport()
+        HypnogramFileActions.saveAs(hypnogram: hypnogram, snapshot: cgImage) {
             AppNotifications.show("Hypnogram saved", flash: true)
         }
     }
@@ -198,7 +198,7 @@ extension Studio {
         }
 
         if let entry = HypnogramStore.shared.add(
-            session: makeDisplaySession(),
+            hypnogram: makeDisplayHypnogram(),
             snapshot: cgImage,
             isFavorite: true
         ) {

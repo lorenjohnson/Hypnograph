@@ -19,7 +19,7 @@ struct EffectChainLibraryView: View {
     @State private var draggedChainID: UUID?
 
     private var selectedLayerIndex: Int? {
-        let idx = main.activePlayer.currentSourceIndex
+        let idx = main.activePlayer.currentLayerIndex
         guard idx >= 0, idx < main.activePlayer.layers.count else { return nil }
         return idx
     }

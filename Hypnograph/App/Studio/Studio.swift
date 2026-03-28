@@ -24,7 +24,7 @@ final class Studio: ObservableObject {
     let dependencies: StudioDependencies
     let panelHostService: FilePanelService
     let photosIntegrationService: PhotosIntegrationService
-    let clipHistoryPersistenceService: ClipHistoryPersistenceService
+    let compositionHistoryPersistenceService: CompositionHistoryPersistenceService
 
     /// Global templates store (shared across preview + live)
     let effectsLibrarySession: EffectsSession
@@ -60,14 +60,14 @@ final class Studio: ObservableObject {
     // MARK: - Clip History HUD
 
     /// Flash-only clip position indicator (e.g. "3/57") shown when manually navigating history.
-    @Published var clipHistoryIndicatorText: String?
+    @Published var compositionHistoryIndicatorText: String?
 
-    var clipHistoryIndicatorClearWorkItem: DispatchWorkItem?
+    var compositionHistoryIndicatorClearWorkItem: DispatchWorkItem?
 
     // MARK: - Clip History Persistence
 
-    var clipHistorySaveTimer: Timer?
-    var clipHistorySaveCancellables: Set<AnyCancellable> = []
+    var compositionHistorySaveTimer: Timer?
+    var compositionHistorySaveCancellables: Set<AnyCancellable> = []
 
     // MARK: - Audio Output
 
@@ -136,7 +136,7 @@ final class Studio: ObservableObject {
         self.dependencies = dependencies
         self.panelHostService = dependencies.makePanelHostService()
         self.photosIntegrationService = dependencies.photosIntegrationService
-        self.clipHistoryPersistenceService = dependencies.clipHistoryPersistenceService
+        self.compositionHistoryPersistenceService = dependencies.compositionHistoryPersistenceService
 
         // One canonical effects library across modes.
         self.effectsLibrarySession = EffectsSession(filename: "effects-library.json")
@@ -218,11 +218,11 @@ final class Studio: ObservableObject {
             }
             .store(in: &playerSubscriptions)
 
-        // Restore clip history if available
-        restoreClipHistory()
+        // Restore composition history if available
+        restoreCompositionHistory()
 
-        // Save clip history when app terminates and on edits
-        setupClipHistoryPersistence()
+        // Save composition history when app terminates and on edits
+        setupCompositionHistoryPersistence()
     }
 
     // MARK: - Display
@@ -235,13 +235,13 @@ final class Studio: ObservableObject {
             )
         }
 
-        if activePlayer.session.hypnograms.isEmpty || activePlayer.layers.isEmpty {
+        if activePlayer.hypnogram.compositions.isEmpty || activePlayer.layers.isEmpty {
             // Avoid an infinite "generate new clip" loop when the media library is empty.
             if state.library.assetCount == 0 {
                 return AnyView(NoSourcesView(main: self))
             }
 
-            if activePlayer.session.hypnograms.isEmpty {
+            if activePlayer.hypnogram.compositions.isEmpty {
                 replaceHistoryWithNewClip()
             } else if activePlayer.layers.isEmpty {
                 // Defensive: keep history shape, just replace the current clip if it is empty.
@@ -252,7 +252,7 @@ final class Studio: ObservableObject {
         let player = activePlayer
 
         // Common view parameters
-        let clip = player.currentHypnogram
+        let composition = player.currentComposition
         let aspectRatio = player.config.aspectRatio
         let displayResolution = player.config.playerResolution
         let sourceFraming = state.settings.sourceFraming
@@ -261,9 +261,9 @@ final class Studio: ObservableObject {
             guard let self else { return false }
             return self.advanceOrGenerateOnClipEnded()
         }
-        let currentSourceIndexBinding = Binding(
-            get: { player.currentSourceIndex },
-            set: { player.currentSourceIndex = $0 }
+        let currentLayerIndexBinding = Binding(
+            get: { player.currentLayerIndex },
+            set: { player.currentLayerIndex = $0 }
         )
         let currentSourceTimeBinding = Binding(
             get: { player.currentClipTimeOffset },
@@ -273,17 +273,17 @@ final class Studio: ObservableObject {
 
         return AnyView(
             PlayerView(
-                clip: clip,
+                composition: composition,
                 aspectRatio: aspectRatio,
                 displayResolution: displayResolution,
                 sourceFraming: sourceFraming,
                 autoAdvanceOnClipEnd: shouldAdvanceOnClipEnd,
                 onClipEnded: onClipEnded,
-                currentSourceIndex: currentSourceIndexBinding,
+                currentLayerIndex: currentLayerIndexBinding,
                 currentSourceTime: currentSourceTimeBinding,
                 isPaused: player.isPaused,
                 effectsChangeCounter: player.effectsChangeCounter,
-                sessionRevision: player.sessionRevision,
+                hypnogramRevision: player.hypnogramRevision,
                 effectManager: player.effectManager,
                 volume: volume,
                 audioDeviceUID: audioDeviceUID,
@@ -295,18 +295,18 @@ final class Studio: ObservableObject {
         )
     }
 
-    /// The live session from the active player - use for direct access/mutation
-    var currentSession: HypnographSession {
-        get { activePlayer.session }
-        set { activePlayer.session = newValue }
+    /// The live hypnogram from the active player - use for direct access/mutation
+    var currentHypnogram: Hypnogram {
+        get { activePlayer.hypnogram }
+        set { activePlayer.hypnogram = newValue }
     }
 
-    /// Build a session snapshot for display/export (timestamp + effects library snapshot)
-    func makeDisplaySession() -> HypnographSession {
+    /// Build a hypnogram snapshot for display/export (timestamp + effects library snapshot)
+    func makeDisplayHypnogram() -> Hypnogram {
         let createdAt = Date()
-        var hypnogram = activePlayer.currentHypnogram
-        hypnogram.createdAt = createdAt
-        return HypnographSession(hypnograms: [hypnogram], createdAt: createdAt)
+        var composition = activePlayer.currentComposition
+        composition.createdAt = createdAt
+        return Hypnogram(compositions: [composition], createdAt: createdAt)
     }
 
 }

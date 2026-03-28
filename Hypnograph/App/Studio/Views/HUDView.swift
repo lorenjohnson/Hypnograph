@@ -91,10 +91,10 @@ struct HUDView: View {
                         HStack(spacing: 4) {
                             Text("\(index + 1):")
                                 .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(index == main.activePlayer.currentSourceIndex ? .cyan : .white.opacity(0.7))
+                                .foregroundColor(index == main.activePlayer.currentLayerIndex ? .cyan : .white.opacity(0.7))
                             Text(shortenedPath(layer))
                                 .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(index == main.activePlayer.currentSourceIndex ? .cyan : .white)
+                                .foregroundColor(index == main.activePlayer.currentLayerIndex ? .cyan : .white)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                         }
@@ -134,7 +134,7 @@ struct HUDView: View {
     }
 
     /// Shorten path by replacing home directory with ~/
-    private func shortenedPath(_ source: HypnogramLayer) -> String {
+    private func shortenedPath(_ source: Layer) -> String {
         switch source.mediaClip.file.source {
         case .url(let url):
             let path = url.path

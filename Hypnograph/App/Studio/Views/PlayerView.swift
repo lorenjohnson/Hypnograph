@@ -15,17 +15,17 @@ import HypnoCore
 /// Studio player view for layered playback.
 /// Uses PlayerContentView for GPU-accelerated frame display with shader transitions.
 struct PlayerView: NSViewRepresentable {
-    let clip: Hypnogram
+    let composition: Composition
     let aspectRatio: AspectRatio
     let displayResolution: OutputResolution
     let sourceFraming: SourceFraming
     let autoAdvanceOnClipEnd: Bool
     let onClipEnded: (() -> Bool)?
-    @Binding var currentSourceIndex: Int
+    @Binding var currentLayerIndex: Int
     @Binding var currentSourceTime: CMTime?
     let isPaused: Bool
     let effectsChangeCounter: Int
-    let sessionRevision: Int
+    let hypnogramRevision: Int
     let effectManager: EffectManager
     /// Volume level (0.0 to 1.0) - use 0 for muted
     let volume: Float
@@ -34,7 +34,7 @@ struct PlayerView: NSViewRepresentable {
     /// Signed history playback rate used for auto-advance timing and direction.
     /// Positive values move forward, negative values move backward.
     var historyPlaybackRate: Double = 1.0
-    /// Transition style for clip changes
+    /// Transition style for composition changes
     var transitionStyle: TransitionRenderer.TransitionType = .crossfade
     /// Transition duration in seconds
     var transitionDuration: Double = 1.5
@@ -43,28 +43,28 @@ struct PlayerView: NSViewRepresentable {
     //
     // Auto-advance state machine:
     // ─────────────────────────
-    // The coordinator manages automatic clip advancement where clips
-    // play through once and then advance to the next clip. The key challenge is
-    // coordinating the timing so transitions start before the current clip ends,
-    // while avoiding runaway advancement if the next clip isn't ready yet.
+    // The coordinator manages automatic composition advancement where clips
+    // play through once and then advance to the next composition. The key challenge is
+    // coordinating the timing so transitions start before the current composition ends,
+    // while avoiding runaway advancement if the next composition isn't ready yet.
     //
     // State flags:
-    // - `didRequestPreEndAdvance`: Set when we've requested the next clip via
-    //   `onClipEnded()`. Prevents duplicate requests during the same clip.
-    // - `isAutoAdvanceInFlight`: Set when a clip change is in progress (building
-    //   composition + transitioning). If the current clip ends again while this
-    //   is true, we loop the current clip instead of requesting another advance.
+    // - `didRequestPreEndAdvance`: Set when we've requested the next composition via
+    //   `onClipEnded()`. Prevents duplicate requests during the same composition.
+    // - `isAutoAdvanceInFlight`: Set when a composition change is in progress (building
+    //   composition + transitioning). If the current composition ends again while this
+    //   is true, we loop the current composition instead of requesting another advance.
     //
     // Flow:
     // 1. Time observer fires when remaining time <= transitionDuration + 0.25s
     // 2. If not already advancing, set both flags and call `onClipEnded()`
     // 3. Parent builds new composition and calls `loadAndTransition()`
     // 4. Transition completes → `isAutoAdvanceInFlight` cleared
-    // 5. New clip plays → `didRequestPreEndAdvance` reset when compositionID changes
+    // 5. New composition plays → `didRequestPreEndAdvance` reset when compositionID changes
     //
     // Edge cases:
-    // - If clip is very short, end notification may fire before transition completes
-    //   → we loop the outgoing clip to maintain smooth visuals
+    // - If composition is very short, end notification may fire before transition completes
+    //   → we loop the outgoing composition to maintain smooth visuals
     // - Pausing or disabling auto-advance resets both flags
 
     @MainActor
@@ -84,8 +84,8 @@ struct PlayerView: NSViewRepresentable {
         var autoAdvanceOnClipEnd: Bool = false
         var onClipEnded: (() -> Bool)?
         var isAllStillImages: Bool = false
-        var lastRenderedClip: Hypnogram?
-        /// Whether this is the first clip load (no transition needed)
+        var lastRenderedComposition: Composition?
+        /// Whether this is the first composition load (no transition needed)
         var isFirstLoad: Bool = true
         /// Use a sentinel to distinguish "never set" from "set to nil (system default)"
         private static let notSetSentinel = "___NOT_SET___"
@@ -94,11 +94,11 @@ struct PlayerView: NSViewRepresentable {
         var playbackEndObservers: [Any] = []
         /// Observers for per-player time updates (used for pre-end advancing)
         var playbackTimeObservers: [Any] = []
-        /// Guard so we request auto-advance at most once per active clip.
-        /// Reset when compositionID changes (new clip loaded).
+        /// Guard so we request auto-advance at most once per active composition.
+        /// Reset when compositionID changes (new composition loaded).
         var didRequestPreEndAdvance: Bool = false
-        /// Prevent runaway auto-advance while a new clip is being built/transitioned in.
-        /// If the current clip ends again before the next clip is ready, we loop the current clip
+        /// Prevent runaway auto-advance while a new composition is being built/transitioned in.
+        /// If the current composition ends again before the next composition is ready, we loop the current composition
         /// instead of requesting another advance. Cleared when transition completes.
         var isAutoAdvanceInFlight: Bool = false
 
@@ -148,18 +148,18 @@ struct PlayerView: NSViewRepresentable {
         let c = context.coordinator
 
         // Always update playRate so closures use current value
-        c.playRate = clip.playRate
+        c.playRate = composition.playRate
         c.historyPlaybackRate = Self.normalizedHistoryPlaybackRate(historyPlaybackRate)
         c.transitionDuration = transitionDuration
         c.autoAdvanceOnClipEnd = autoAdvanceOnClipEnd
         c.onClipEnded = onClipEnded
-        c.isAllStillImages = clip.layers.allSatisfy { $0.mediaClip.file.mediaKind == .image }
+        c.isAllStillImages = composition.layers.allSatisfy { $0.mediaClip.file.mediaKind == .image }
         if !autoAdvanceOnClipEnd || isPaused {
             c.isAutoAdvanceInFlight = false
             c.didRequestPreEndAdvance = false
         }
 
-        guard !clip.layers.isEmpty else {
+        guard !composition.layers.isEmpty else {
             // Just pause, don't tear down - sources might be added back immediately
             c.contentView?.activeAVPlayer?.pause()
             c.currentTask?.cancel()
@@ -172,14 +172,14 @@ struct PlayerView: NSViewRepresentable {
             c.stillClipTimer = nil
             c.isAutoAdvanceInFlight = false
             c.didRequestPreEndAdvance = false
-            c.lastRenderedClip = nil
+            c.lastRenderedComposition = nil
             return
         }
 
         // Use display resolution for in-app playback
         let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: displayResolution.maxDimension)
 
-        let newID = compositionIdentity(for: clip)
+        let newID = compositionIdentity(for: composition)
 
         if newID != c.compositionID {
             let previousID = c.compositionID
@@ -200,7 +200,7 @@ struct PlayerView: NSViewRepresentable {
                 )
 
                 let result = await engine.makePlayerItem(
-                    clip: clip,
+                    composition: composition,
                     config: config,
                     effectManager: effectManager
                 )
@@ -280,16 +280,16 @@ struct PlayerView: NSViewRepresentable {
 
                     c.lastPauseState = self.isPaused
                     c.lastEffectsCounter = effectsChangeCounter
-                    c.lastSessionRevision = sessionRevision
+                    c.lastSessionRevision = hypnogramRevision
                     c.lastAppliedPlayRate = playRate
-                    c.lastRenderedClip = clip
+                    c.lastRenderedComposition = composition
 
                     // For still images, schedule the timer for auto-advance
                     if c.isAllStillImages && !self.isPaused {
                         self.scheduleStillClipTimer(coordinator: c)
                     }
 
-                    // Setup looping or clip-ended callback
+                    // Setup looping or composition-ended callback
                     self.setupPlaybackEndHandling(content: content, coordinator: c)
 
                 case .failure(let error):
@@ -335,9 +335,9 @@ struct PlayerView: NSViewRepresentable {
                 c.lastEffectsCounter = effectsChangeCounter
             }
 
-            let didSessionMutate = c.lastSessionRevision != sessionRevision
+            let didSessionMutate = c.lastSessionRevision != hypnogramRevision
             if didSessionMutate {
-                c.lastSessionRevision = sessionRevision
+                c.lastSessionRevision = hypnogramRevision
             }
 
             if didEffectsChange || didSessionMutate {
@@ -354,9 +354,9 @@ struct PlayerView: NSViewRepresentable {
                 }
             }
 
-            // Keep a current snapshot of the active clip so outgoing transitions
+            // Keep a current snapshot of the active composition so outgoing transitions
             // freeze the latest edited state instead of stale composition-time state.
-            c.lastRenderedClip = clip
+            c.lastRenderedComposition = composition
         }
 
         // Apply volume
@@ -372,7 +372,7 @@ struct PlayerView: NSViewRepresentable {
         }
     }
 
-    /// Setup looping or clip-ended notification handling for all players
+    /// Setup looping or composition-ended notification handling for all players
     @MainActor
     private func setupPlaybackEndHandling(content: PlayerContentView, coordinator c: Coordinator) {
         // Remove any existing observers
@@ -402,7 +402,7 @@ struct PlayerView: NSViewRepresentable {
                     }
 
                     // If a transition is in progress, never loop the outgoing player.
-                    // Restarting the outgoing clip mid-transition is visually jarring.
+                    // Restarting the outgoing composition mid-transition is visually jarring.
                     if c.contentView?.playerView.activeTransition != nil,
                        player !== c.contentView?.activeAVPlayer {
                         return
@@ -430,8 +430,8 @@ struct PlayerView: NSViewRepresentable {
             c.playbackEndObservers.append(observer)
         }
 
-        // In auto-advance mode, request the next clip before the current one ends so the transition
-        // can complete before playback reaches the end of the outgoing clip (avoids a pause).
+        // In auto-advance mode, request the next composition before the current one ends so the transition
+        // can complete before playback reaches the end of the outgoing composition (avoids a pause).
         //
         // We base this on *real time* remaining (video seconds / playRate).
         for player in content.allPlayers {
@@ -461,7 +461,7 @@ struct PlayerView: NSViewRepresentable {
                     let rate = max(0.0001, Double(effectiveVideoPlaybackRate(for: c)))
                     let remainingRealSeconds = remainingVideoSeconds / rate
 
-                    // Trigger next clip build/transition slightly before the desired transition window.
+                    // Trigger next composition build/transition slightly before the desired transition window.
                     // Add a small lead-in to account for:
                     // - transition start deferral until incoming has a frame
                     // - AVPlayer end-of-item rounding (a few frames early)
@@ -484,8 +484,8 @@ struct PlayerView: NSViewRepresentable {
 
     // MARK: - Helpers
 
-    private func compositionIdentity(for clip: Hypnogram) -> String {
-        let pairs: [String] = clip.layers.enumerated().map { index, layer in
+    private func compositionIdentity(for composition: Composition) -> String {
+        let pairs: [String] = composition.layers.enumerated().map { index, layer in
             let name = layer.mediaClip.file.displayName
             let start = layer.mediaClip.startTime.seconds
             let dur = layer.mediaClip.duration.seconds
@@ -495,7 +495,7 @@ struct PlayerView: NSViewRepresentable {
             }.joined(separator: ";")
             return "\(name)|\(start)|\(dur)|\(muted)|\(transformsStr)"
         }
-        let durationPart = "dur=\(clip.targetDuration.seconds)"
+        let durationPart = "dur=\(composition.targetDuration.seconds)"
         let framingPart = "framing=\(sourceFraming.rawValue)"
         return pairs.joined(separator: ";;") + "||" + durationPart + "||" + framingPart
     }
@@ -505,12 +505,12 @@ struct PlayerView: NSViewRepresentable {
         guard previousID != nil,
               let content = c.contentView,
               !c.isFirstLoad,
-              let outgoingClip = c.lastRenderedClip else { return }
+              let outgoingComposition = c.lastRenderedComposition else { return }
 
-        // Freeze the currently visible clip's effect context before switching composition identity.
-        // This prevents outgoing frames from adopting incoming clip effects during transition/build delay.
+        // Freeze the currently visible composition's effect context before switching composition identity.
+        // This prevents outgoing frames from adopting incoming composition effects during transition/build delay.
         let frozenManager = effectManager.makeTransitionSnapshotManager(
-            frozenClip: outgoingClip,
+            frozenComposition: outgoingComposition,
             preserveTemporalState: true
         )
         content.freezeActiveSlotEffects(using: frozenManager)
@@ -524,7 +524,7 @@ struct PlayerView: NSViewRepresentable {
         guard c.autoAdvanceOnClipEnd, c.lastPauseState != true else { return }
 
         let speed = max(1.0, abs(c.historyPlaybackRate))
-        let seconds = max(0.05, clip.targetDuration.seconds / speed)
+        let seconds = max(0.05, composition.targetDuration.seconds / speed)
         c.stillClipTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { _ in
             Task { @MainActor in
                 triggerAutoAdvance(c)
@@ -570,6 +570,6 @@ struct PlayerView: NSViewRepresentable {
         c.contentView?.stop()
         c.contentView = nil
         c.compositionID = nil
-        c.lastRenderedClip = nil
+        c.lastRenderedComposition = nil
     }
 }

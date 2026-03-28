@@ -68,7 +68,7 @@ struct CompositionWindowView: View {
                                 thumbnailStore: thumbnailStore,
                                 index: currentIndex,
                                 layer: bindingForLayer(id: id, fallback: snapshotLayer),
-                                isSelected: main.activePlayer.currentSourceIndex == currentIndex,
+                                isSelected: main.activePlayer.currentLayerIndex == currentIndex,
                                 isExpanded: expandedLayerIDs.contains(id),
                                 onSelect: {
                                     if let idx = layerIndex(for: id) {
@@ -149,7 +149,7 @@ struct CompositionWindowView: View {
                         set: { newValue in
                             let seconds = max(1, min(newValue.rounded(), 60))
                             main.activePlayer.targetDuration = CMTime(seconds: seconds, preferredTimescale: 600)
-                            main.activePlayer.notifySessionMutated()
+                            main.activePlayer.notifyHypnogramMutated()
                         }
                     ),
                     in: 1...60,
@@ -194,7 +194,7 @@ struct CompositionWindowView: View {
         }
     }
 
-    private func bindingForLayer(id: UUID, fallback: HypnogramLayer) -> Binding<HypnogramLayer> {
+    private func bindingForLayer(id: UUID, fallback: Layer) -> Binding<Layer> {
         Binding(
             get: { main.activePlayer.layers.first(where: { $0.mediaClip.file.id == id }) ?? fallback },
             set: { updated in
@@ -202,7 +202,7 @@ struct CompositionWindowView: View {
                 guard let index = layers.firstIndex(where: { $0.mediaClip.file.id == id }) else { return }
                 layers[index] = updated
                 main.activePlayer.layers = layers
-                main.activePlayer.notifySessionMutated()
+                main.activePlayer.notifyHypnogramMutated()
             }
         )
     }
@@ -228,7 +228,7 @@ struct CompositionWindowView: View {
         guard fromIndex != toIndex else { return }
 
         let selectedID: UUID? = {
-            let selectedIndex = main.activePlayer.currentSourceIndex
+            let selectedIndex = main.activePlayer.currentLayerIndex
             guard selectedIndex >= 0, selectedIndex < layers.count else { return nil }
             return layers[selectedIndex].mediaClip.file.id
         }()
@@ -247,7 +247,7 @@ struct CompositionWindowView: View {
             main.activePlayer.selectSource(newIndex)
         }
 
-        main.activePlayer.notifySessionChanged()
+        main.activePlayer.notifyHypnogramChanged()
     }
 }
 

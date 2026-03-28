@@ -1,5 +1,5 @@
 ---
-doc-status: draft
+doc-status: in-progress
 ---
 
 # Hypnogram Model Alignment
@@ -97,6 +97,26 @@ So this history system does not create a contradiction in the rename. It is actu
 4. Preserve backward decode support for older saved files by continuing to accept legacy keys during decoding.
 5. In a second pass, decide which canonical encoded keys should change after the type rename has already landed cleanly.
 
+## Current Status
+
+The first implementation pass is now underway and is already proving out the model.
+
+- HypnoPackages has landed the core type rename:
+  - `HypnographSession` -> `Hypnogram`
+  - playable-unit `Hypnogram` -> `Composition`
+  - `HypnogramLayer` -> `Layer`
+- Hypnograph now builds successfully against those renamed package types.
+- the app-side first pass has already renamed several aligned areas:
+  - `ClipHistoryFile` / `ClipHistoryStore` -> `CompositionHistoryFile` / `CompositionHistoryStore`
+  - `SessionStore` / `SessionFileActions` -> `HypnogramFileStore` / `HypnogramFileActions`
+  - player-owned top-level model references from generic `session` language toward `hypnogram`
+  - user-facing `Global` -> `Composition` and mistaken `Source` -> `Layer` cases already corrected earlier in this branch
+- encoded keys and on-disk compatibility have intentionally not been “cleaned up” yet:
+  - legacy decode support remains in HypnoPackages
+  - first-pass file and history persistence still preserve older key names where needed
+
+This means the rename is no longer speculative. The branch already demonstrates that the intended model can be carried through both the shared package layer and the app without breaking the build.
+
 ### Immediate Acceptance Check
 
 - we can point to each current core type and say what it will be called after the rename
@@ -106,3 +126,7 @@ So this history system does not create a contradiction in the rename. It is actu
 ## Open Questions
 
 - whether `Layer` as a bare type name introduces any real ambiguity in shared code, or whether it is as safe in practice as it currently appears
+- how far the second pass should go on persistence naming:
+  - encoded keys
+  - on-disk history filenames
+  - legacy compatibility windows before we simplify them away

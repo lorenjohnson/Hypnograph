@@ -65,7 +65,7 @@ struct AppCommands: Commands {
 
         CommandGroup(replacing: .saveItem) {
             Button("Open Hypnogram…") {
-                studio.openRecipe()
+                studio.openHypnogram()
             }
             .keyboardShortcut("o", modifiers: [.command])
 

@@ -20,7 +20,7 @@ extension Studio {
         _ = addSource(fromFileURL: selectedURL)
     }
 
-    /// Create a new clip and add each incoming file as a layer.
+    /// Create a new composition and add each incoming file as a layer.
     /// Files that cannot be decoded as image/video are skipped.
     @discardableResult
     func addSourcesAsNewClip(fromFileURLs urls: [URL]) -> Bool {
@@ -28,7 +28,7 @@ extension Studio {
         guard !fileURLs.isEmpty else { return false }
 
         let preferredLength = activePlayer.targetDuration.seconds
-        var layers: [HypnogramLayer] = []
+        var layers: [Layer] = []
         var failedCount = 0
 
         for url in fileURLs {
@@ -38,7 +38,7 @@ extension Studio {
             }
 
             let blendMode = layers.isEmpty ? BlendMode.sourceOver : BlendMode.defaultMontage
-            layers.append(HypnogramLayer(mediaClip: mediaClip, blendMode: blendMode))
+            layers.append(Layer(mediaClip: mediaClip, blendMode: blendMode))
         }
 
         guard !layers.isEmpty else {
@@ -46,11 +46,11 @@ extension Studio {
             return false
         }
 
-        let globalEffect = activePlayer.session.hypnograms.isEmpty
+        let globalEffect = activePlayer.hypnogram.compositions.isEmpty
             ? EffectChain()
-            : activePlayer.currentHypnogram.effectChain.clone()
+            : activePlayer.currentComposition.effectChain.clone()
 
-        let importedClip = Hypnogram(
+        let importedComposition = Composition(
             layers: layers,
             targetDuration: activePlayer.targetDuration,
             playRate: activePlayer.playRate,
@@ -58,10 +58,10 @@ extension Studio {
             createdAt: Date()
         )
 
-        activePlayer.session.hypnograms.append(importedClip)
-        activePlayer.currentHypnogramIndex = activePlayer.session.hypnograms.count - 1
-        activePlayer.currentSourceIndex = layers.count - 1
-        activePlayer.notifySessionMutated()
+        activePlayer.hypnogram.compositions.append(importedComposition)
+        activePlayer.currentCompositionIndex = activePlayer.hypnogram.compositions.count - 1
+        activePlayer.currentLayerIndex = layers.count - 1
+        activePlayer.notifyHypnogramMutated()
         enforceHistoryLimit()
         applyClipSelectionChanged(manual: true)
 
@@ -102,12 +102,12 @@ extension Studio {
     }
 
     func newRandomClip() {
-        replaceClipForCurrentSource()
+        replaceClipForCurrentLayer()
     }
 
     func removeCurrentLayer() {
         let idx: Int
-        if activePlayer.currentSourceIndex == -1 {
+        if activePlayer.currentLayerIndex == -1 {
             if activePlayer.layers.count == 1 {
                 idx = 0
             } else {
@@ -119,7 +119,7 @@ extension Studio {
                 return
             }
         } else {
-            idx = activePlayer.currentSourceIndex
+            idx = activePlayer.currentLayerIndex
         }
 
         guard idx >= 0, idx < activePlayer.layers.count else { return }
@@ -132,13 +132,13 @@ extension Studio {
         activePlayer.layers.remove(at: idx)
 
         if idx >= activePlayer.layers.count {
-            activePlayer.currentSourceIndex = activePlayer.layers.count - 1
+            activePlayer.currentLayerIndex = activePlayer.layers.count - 1
         }
     }
 
     func duplicateCurrentLayer() {
         let idx: Int
-        if activePlayer.currentSourceIndex == -1 {
+        if activePlayer.currentLayerIndex == -1 {
             if activePlayer.layers.count == 1 {
                 idx = 0
             } else {
@@ -150,7 +150,7 @@ extension Studio {
                 return
             }
         } else {
-            idx = activePlayer.currentSourceIndex
+            idx = activePlayer.currentLayerIndex
         }
 
         guard idx >= 0, idx < activePlayer.layers.count else { return }
@@ -158,10 +158,10 @@ extension Studio {
         let duplicatedLayer = duplicatedLayerWithNewFileID(from: activePlayer.layers[idx])
         let insertIndex = idx + 1
         activePlayer.layers.insert(duplicatedLayer, at: insertIndex)
-        activePlayer.currentSourceIndex = insertIndex
+        activePlayer.currentLayerIndex = insertIndex
     }
 
-    private func duplicatedLayerWithNewFileID(from layer: HypnogramLayer) -> HypnogramLayer {
+    private func duplicatedLayerWithNewFileID(from layer: Layer) -> Layer {
         let sourceFile = layer.mediaClip.file
         let duplicatedFile = MediaFile(
             source: sourceFile.source,
@@ -179,8 +179,8 @@ extension Studio {
         return duplicatedLayer
     }
 
-    private func replaceClipForCurrentSource() {
-        let idx = activePlayer.currentSourceIndex
+    private func replaceClipForCurrentLayer() {
+        let idx = activePlayer.currentLayerIndex
         replaceClip(forSourceIndex: idx)
     }
 
@@ -200,9 +200,9 @@ extension Studio {
     /// Add a specific clip as a new source layer.
     func addSourceToPlayer(_ player: PlayerState, mediaClip: MediaClip) {
         let blendMode = player.layers.isEmpty ? BlendMode.sourceOver : BlendMode.defaultMontage
-        let layer = HypnogramLayer(mediaClip: mediaClip, blendMode: blendMode)
+        let layer = Layer(mediaClip: mediaClip, blendMode: blendMode)
         player.layers.append(layer)
-        player.currentSourceIndex = player.layers.count - 1
+        player.currentLayerIndex = player.layers.count - 1
     }
 
     /// Build a clip from a local file URL (image or video).
@@ -320,7 +320,7 @@ extension Studio {
         maxDurationSeconds: Double? = nil
     ) {
         setLayerClipRange(
-            sourceIndex: activePlayer.currentSourceIndex,
+            sourceIndex: activePlayer.currentLayerIndex,
             startSeconds: startSeconds,
             endSeconds: endSeconds,
             maxDurationSeconds: maxDurationSeconds
@@ -328,17 +328,17 @@ extension Studio {
     }
 
     func cycleEffect(direction: Int = 1) {
-        activeEffectManager.cycleEffect(for: activePlayer.currentSourceIndex, direction: direction)
+        activeEffectManager.cycleEffect(for: activePlayer.currentLayerIndex, direction: direction)
 
-        let effectName = activeEffectManager.effectName(for: activePlayer.currentSourceIndex)
-        let layerLabel = activePlayer.currentSourceIndex == -1 ? "Composition" : "Layer \(activePlayer.currentSourceIndex + 1)"
+        let effectName = activeEffectManager.effectName(for: activePlayer.currentLayerIndex)
+        let layerLabel = activePlayer.currentLayerIndex == -1 ? "Composition" : "Layer \(activePlayer.currentLayerIndex + 1)"
         AppNotifications.show("\(layerLabel): \(effectName)", flash: true, duration: 1.5)
     }
 
     func clearCurrentLayerEffect() {
-        activeEffectManager.clearEffect(for: activePlayer.currentSourceIndex)
+        activeEffectManager.clearEffect(for: activePlayer.currentLayerIndex)
 
-        let layerLabel = activePlayer.currentSourceIndex == -1 ? "Composition" : "Layer \(activePlayer.currentSourceIndex + 1)"
+        let layerLabel = activePlayer.currentLayerIndex == -1 ? "Composition" : "Layer \(activePlayer.currentLayerIndex + 1)"
         AppNotifications.show("\(layerLabel): None", flash: true, duration: 1.5)
     }
 
@@ -348,13 +348,13 @@ extension Studio {
     }
 
     func currentBlendModeDisplayName() -> String {
-        blendModeForSourceIndex(activePlayer.currentSourceIndex)
+        blendModeForSourceIndex(activePlayer.currentLayerIndex)
             .replacingOccurrences(of: "CI", with: "")
             .replacingOccurrences(of: "BlendMode", with: "")
     }
 
     func cycleBlendMode(at index: Int? = nil) {
-        let idx = index ?? activePlayer.currentSourceIndex
+        let idx = index ?? activePlayer.currentLayerIndex
         guard idx > 0, idx < activePlayer.layers.count else { return }
         activePlayer.effectManager.cycleBlendMode(for: idx)
     }
@@ -399,13 +399,13 @@ extension Studio {
     }
 
     private func resolveSelectedSourceIndexForCuration() -> Int? {
-        if activePlayer.currentSourceIndex == -1 {
+        if activePlayer.currentLayerIndex == -1 {
             if activePlayer.layers.count == 1 {
                 return 0
             }
             return nil
         }
-        return activePlayer.currentSourceIndex
+        return activePlayer.currentLayerIndex
     }
 
     private func curateCurrentSource(_ action: SourceCurationAction) {

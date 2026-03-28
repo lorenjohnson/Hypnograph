@@ -69,7 +69,7 @@ enum EffectChainLibraryActions {
 
         // Allow JSON and session files
         var allowedTypes: [UTType] = [UTType.json]
-        let sessionTypes = SessionStore.fileExtensions.compactMap { UTType(filenameExtension: $0) }
+        let sessionTypes = HypnogramFileStore.fileExtensions.compactMap { UTType(filenameExtension: $0) }
         allowedTypes.append(contentsOf: sessionTypes)
         panel.allowedContentTypes = allowedTypes
         panel.allowsMultipleSelection = false
@@ -91,7 +91,7 @@ enum EffectChainLibraryActions {
             Task { @MainActor in
                 let ext = url.pathExtension.lowercased()
 
-                if SessionStore.isSupportedExtension(ext) {
+                if HypnogramFileStore.isSupportedExtension(ext) {
                     // Load from recipe file
                     loadFromHypnogram(url: url, session: session, merge: shouldMerge)
                 } else {
@@ -124,7 +124,7 @@ enum EffectChainLibraryActions {
     /// Load effect chains from a hypnogram recipe file
     /// Extracts only the chains used in the recipe
     private static func loadFromHypnogram(url: URL, session: EffectsSession, merge: Bool) {
-        guard let sessionFile = SessionStore.load(from: url) else {
+        guard let sessionFile = HypnogramFileStore.load(from: url) else {
             AppNotifications.show("Failed to load hypnogram", flash: true)
             return
         }
@@ -150,7 +150,7 @@ enum EffectChainLibraryActions {
 
     /// Import effect chains from a session into the effects session (used when loading hypnograms)
     /// Merges chains into the library, avoiding duplicates by name
-    static func importChainsFromSession(_ hypnographSession: HypnographSession, into session: EffectsSession) {
+    static func importChainsFromSession(_ hypnographSession: Hypnogram, into session: EffectsSession) {
         let chains = extractEffectChains(from: hypnographSession)
         guard !chains.isEmpty else { return }
         session.merge(chains: chains)
@@ -159,10 +159,10 @@ enum EffectChainLibraryActions {
     // MARK: - Private Helpers
 
     /// Extract effect chains from a session (per-hypnogram global + per-hypnogram per-layer)
-    private static func extractEffectChains(from hypnographSession: HypnographSession) -> [EffectChain] {
+    private static func extractEffectChains(from hypnographSession: Hypnogram) -> [EffectChain] {
         var chains: [EffectChain] = []
 
-        for (hypnogramIndex, hypnogram) in hypnographSession.hypnograms.enumerated() {
+        for (hypnogramIndex, hypnogram) in hypnographSession.compositions.enumerated() {
             // Add per-hypnogram global effect chain if it has effects
             if !hypnogram.effectChain.effects.isEmpty {
                 let globalChain = hypnogram.effectChain.clone()

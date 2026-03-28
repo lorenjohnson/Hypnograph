@@ -108,10 +108,10 @@ final class LivePlayer: ObservableObject {
     /// This display's own effects session - for live mode effects
     let effectsSession: EffectsSession
 
-    /// The current clip being displayed (mutable for live effect changes)
-    private var currentClip: Hypnogram?
-    /// Snapshot of the currently rendered clip used to freeze outgoing transitions.
-    private var lastRenderedClip: Hypnogram?
+    /// The current composition being displayed (mutable for live effect changes)
+    private var currentComposition: Composition?
+    /// Snapshot of the currently rendered composition used to freeze outgoing transitions.
+    private var lastRenderedComposition: Composition?
 
     // MARK: - Init
 
@@ -129,7 +129,7 @@ final class LivePlayer: ObservableObject {
         guard sourceFraming != newValue else { return }
         sourceFraming = newValue
 
-        guard currentClip != nil, contentView != nil else { return }
+        guard currentComposition != nil, contentView != nil else { return }
 
         pendingBuildTask?.cancel()
         pendingBuildTask = Task {
@@ -141,35 +141,35 @@ final class LivePlayer: ObservableObject {
         // Wire up the effects session for chain lookups
         effectManager.session = effectsSession
 
-        // Wire up clip provider to return the mutable current clip
-        effectManager.clipProvider = { [weak self] in
-            self?.currentClip
+        // Wire up composition provider to return the mutable current composition
+        effectManager.compositionProvider = { [weak self] in
+            self?.currentComposition
         }
 
         // Wire up global effect chain setter
         effectManager.globalEffectChainSetter = { [weak self] chain in
-            guard let self = self, var clip = self.currentClip else { return }
+            guard let self = self, var composition = self.currentComposition else { return }
             print("🎬 LivePlayer: globalEffectChainSetter - setting chain: \(chain.name ?? "unnamed")")
-            clip.effectChain = chain
-            self.currentClip = clip
+            composition.effectChain = chain
+            self.currentComposition = composition
         }
 
         // Wire up source effect chain setter
         effectManager.sourceEffectChainSetter = { [weak self] (sourceIndex: Int, chain: EffectChain) in
             guard let self = self,
-                  var clip = self.currentClip,
-                  sourceIndex < clip.layers.count else { return }
+                  var composition = self.currentComposition,
+                  sourceIndex < composition.layers.count else { return }
             print("🎬 LivePlayer: sourceEffectChainSetter - setting source[\(sourceIndex)] chain: \(chain.name ?? "unnamed")")
-            clip.layers[sourceIndex].effectChain = chain
-            self.currentClip = clip
+            composition.layers[sourceIndex].effectChain = chain
+            self.currentComposition = composition
         }
 
         effectManager.blendModeSetter = { [weak self] sourceIndex, blendMode in
             guard let self = self,
-                  var clip = self.currentClip,
-                  sourceIndex < clip.layers.count else { return }
-            clip.layers[sourceIndex].blendMode = blendMode
-            self.currentClip = clip
+                  var composition = self.currentComposition,
+                  sourceIndex < composition.layers.count else { return }
+            composition.layers[sourceIndex].blendMode = blendMode
+            self.currentComposition = composition
         }
     }
 
@@ -342,8 +342,8 @@ final class LivePlayer: ObservableObject {
         isTransitioning = false
         currentRecipeDescription = ""
         activeLayerCount = 0
-        currentClip = nil
-        lastRenderedClip = nil
+        currentComposition = nil
+        lastRenderedComposition = nil
         hasContent = false
     }
 
@@ -376,9 +376,9 @@ final class LivePlayer: ObservableObject {
     /// Send a recipe to the live display
     /// Builds the composition asynchronously, then crossfades to it
     /// - Parameters:
-    ///   - clip: The hypnogram clip to display
+    ///   - composition: The composition to display
     ///   - config: Player configuration (aspect ratio, resolution, etc.)
-    func send(clip: Hypnogram, config: PlayerConfiguration) {
+    func send(composition: Composition, config: PlayerConfiguration) {
         // Ensure we have a content view for playback
         ensureContentView()
 
@@ -398,10 +398,10 @@ final class LivePlayer: ObservableObject {
         // Update config from the recipe being sent
         self.config = config
 
-        // Store the clip for live effect modifications
-        self.currentClip = clip
+        // Store the composition for live effect modifications
+        self.currentComposition = composition
 
-        let sourceCount = clip.layers.count
+        let sourceCount = composition.layers.count
         activeLayerCount = sourceCount
         currentRecipeDescription = "\(sourceCount) layer\(sourceCount == 1 ? "" : "s")"
 
@@ -416,12 +416,12 @@ final class LivePlayer: ObservableObject {
 
     /// Build and transition using Metal shader transitions
     private func buildAndTransitionMetal() async {
-        guard let clip = currentClip, let metalContent = contentView else { return }
+        guard let composition = currentComposition, let metalContent = contentView else { return }
         let outputSize = renderSize(aspectRatio: config.aspectRatio, maxDimension: config.playerResolution.maxDimension)
 
-        if hasContent, let outgoingClip = lastRenderedClip {
+        if hasContent, let outgoingComposition = lastRenderedComposition {
             let frozenManager = effectManager.makeTransitionSnapshotManager(
-                frozenClip: outgoingClip,
+                frozenComposition: outgoingComposition,
                 preserveTemporalState: true
             )
             metalContent.freezeActiveSlotEffects(using: frozenManager)
@@ -436,7 +436,7 @@ final class LivePlayer: ObservableObject {
         )
 
         let result = await renderEngine.makePlayerItem(
-            clip: clip,
+            composition: composition,
             config: config,
             effectManager: effectManager
         )
@@ -454,9 +454,9 @@ final class LivePlayer: ObservableObject {
             playerItem.audioTimePitchAlgorithm = .timeDomain
 
             // Setup looping for video content
-            let isAllStillImages = clip.layers.allSatisfy { $0.mediaClip.file.mediaKind == .image }
+            let isAllStillImages = composition.layers.allSatisfy { $0.mediaClip.file.mediaKind == .image }
             if !isAllStillImages {
-                setupLooping(for: playerItem, playRate: clip.playRate)
+                setupLooping(for: playerItem, playRate: composition.playRate)
             }
 
             // Apply audio settings
@@ -464,7 +464,7 @@ final class LivePlayer: ObservableObject {
             metalContent.setAudioOutputDevice(currentAudioDeviceUID)
 
             // Determine play rate (nil for still images = don't auto-start)
-            let playRate: Float? = isAllStillImages ? nil : clip.playRate
+            let playRate: Float? = isAllStillImages ? nil : composition.playRate
 
             // Start shader transition with playback
             metalContent.loadAndTransition(
@@ -480,7 +480,7 @@ final class LivePlayer: ObservableObject {
             }
 
             hasContent = true
-            lastRenderedClip = clip
+            lastRenderedComposition = composition
             print("🎬 LivePlayer: Starting Metal \(transitionType.rawValue) transition over \(crossfadeDuration)s")
 
         case .failure(let error):

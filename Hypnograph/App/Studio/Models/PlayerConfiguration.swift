@@ -5,7 +5,7 @@
 //  Per-player configuration (in-app + live).
 //  Groups related display and generation settings into a single, cohesive structure.
 //
-//  Note: targetDuration and playRate are stored on Hypnogram (within HypnographSession), not here.
+//  Note: targetDuration and playRate are stored on Hypnogram (within Hypnogram), not here.
 //
 
 import Foundation

@@ -45,13 +45,13 @@ enum RecordingRenderPipeline {
     }
 
     static func render(
-        clips: [Hypnogram],
+        compositions: [Composition],
         outputFolder: URL,
         outputSize: CGSize,
         frameRate: Int = 30,
         sourceFraming: SourceFraming
     ) async -> Result<URL, Error> {
-        guard !clips.isEmpty else { return .failure(PipelineError.emptySelection) }
+        guard !compositions.isEmpty else { return .failure(PipelineError.emptySelection) }
 
         let fileManager = FileManager.default
         let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
@@ -64,9 +64,9 @@ enum RecordingRenderPipeline {
             try fileManager.createDirectory(at: outputFolder, withIntermediateDirectories: true)
 
             var segmentURLs: [URL] = []
-            segmentURLs.reserveCapacity(clips.count)
+            segmentURLs.reserveCapacity(compositions.count)
 
-            for (index, clip) in clips.enumerated() {
+            for (index, composition) in compositions.enumerated() {
                 let segmentBaseURL = tempDirectory.appendingPathComponent(
                     String(format: "segment-%03d.mov", index),
                     isDirectory: false
@@ -81,7 +81,7 @@ enum RecordingRenderPipeline {
                 )
 
                 let renderedSegmentURL: URL
-                switch await engine.export(clip: clip, outputURL: segmentBaseURL, config: config) {
+                switch await engine.export(composition: composition, outputURL: segmentBaseURL, config: config) {
                 case .success(let url):
                     renderedSegmentURL = url
                 case .failure(let error):
@@ -90,7 +90,7 @@ enum RecordingRenderPipeline {
 
                 let ensuredVideoURL = try await ensureVideoSegment(
                     renderedURL: renderedSegmentURL,
-                    clip: clip,
+                    composition: composition,
                     outputSize: outputSize,
                     frameRate: frameRate,
                     tempDirectory: tempDirectory,
@@ -119,7 +119,7 @@ enum RecordingRenderPipeline {
 
     private static func ensureVideoSegment(
         renderedURL: URL,
-        clip: Hypnogram,
+        composition: Composition,
         outputSize: CGSize,
         frameRate: Int,
         tempDirectory: URL,
@@ -136,7 +136,7 @@ enum RecordingRenderPipeline {
         )
         return try await convertStillImageSegmentToVideo(
             imageURL: renderedURL,
-            duration: clip.targetDuration,
+            duration: composition.targetDuration,
             outputSize: outputSize,
             frameRate: frameRate,
             outputURL: convertedURL

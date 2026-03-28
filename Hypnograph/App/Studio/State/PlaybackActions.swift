@@ -28,7 +28,7 @@ extension Studio {
     /// Send current hypnogram to live display
     func sendToLivePlayer() {
         livePlayer.send(
-            clip: activePlayer.currentHypnogram.copyForExport(),
+            composition: activePlayer.currentComposition.copyForExport(),
             config: activePlayer.config
         )
     }

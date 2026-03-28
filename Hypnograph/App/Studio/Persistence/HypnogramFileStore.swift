@@ -1,8 +1,8 @@
 //
-//  SessionStore.swift
+//  HypnogramFileStore.swift
 //  Hypnograph
 //
-//  Handles saving and loading HypnographSession files (.hypno / .hypnogram)
+//  Handles saving and loading Hypnogram files (.hypno / .hypnogram)
 //  These files are JSON with an embedded base64 JPEG snapshot.
 //
 
@@ -10,10 +10,10 @@ import Foundation
 import AppKit
 import HypnoCore
 
-/// Handles saving and loading HypnographSession files (.hypno/.hypnogram = JSON with embedded snapshot)
-enum SessionStore {
+/// Handles saving and loading Hypnogram files (.hypno/.hypnogram = JSON with embedded snapshot)
+enum HypnogramFileStore {
 
-    /// Preferred file extension for new session files
+    /// Preferred file extension for new hypnogram files
     static let fileExtension = "hypno"
 
     /// All supported file extensions
@@ -27,7 +27,7 @@ enum SessionStore {
     static let snapshotJPEGQuality: CGFloat = 0.85
 
     /// Directory for saved hypnograms (kept as "recipes" on disk for backwards compatibility)
-    static var sessionsDirectory: URL {
+    static var hypnogramsDirectory: URL {
         let url = Environment.appSupportDirectory.appendingPathComponent("recipes", isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
@@ -35,53 +35,53 @@ enum SessionStore {
 
     // MARK: - Save
 
-    /// Save a hypnograph session with snapshot to default directory
+    /// Save a hypnogram with snapshot to default directory
     /// - Parameters:
-    ///   - session: The session to save
+    ///   - hypnogram: The hypnogram to save
     ///   - snapshotImage: The CGImage snapshot (will be resized to 1080p and encoded as JPEG)
     /// - Returns: URL of the saved .hypno file, or nil if save failed
     @discardableResult
-    static func save(_ session: HypnographSession, snapshot: CGImage) -> URL? {
+    static func save(_ hypnogram: Hypnogram, snapshot: CGImage) -> URL? {
         let filename = defaultFilename()
-        let url = sessionsDirectory.appendingPathComponent(filename)
+        let url = hypnogramsDirectory.appendingPathComponent(filename)
 
-        return save(session, snapshot: snapshot, to: url)
+        return save(hypnogram, snapshot: snapshot, to: url)
     }
 
-    /// Save a hypnograph session with snapshot to a specific URL
+    /// Save a hypnogram with snapshot to a specific URL
     /// - Parameters:
-    ///   - session: The session to save
+    ///   - hypnogram: The hypnogram to save
     ///   - snapshotImage: The CGImage snapshot (will be resized to 1080p and encoded as JPEG)
     ///   - url: The URL to save to
     /// - Returns: URL of the saved file, or nil if save failed
     @discardableResult
-    static func save(_ session: HypnographSession, snapshot: CGImage, to url: URL) -> URL? {
+    static func save(_ hypnogram: Hypnogram, snapshot: CGImage, to url: URL) -> URL? {
         // Encode the snapshot as base64 JPEG
         guard let snapshotBase64 = encodeSnapshot(snapshot) else {
-            print("❌ SessionStore: Failed to encode snapshot")
+            print("❌ HypnogramFileStore: Failed to encode snapshot")
             return nil
         }
 
-        // Create session with embedded snapshot
-        var sessionWithSnapshot = session
-        sessionWithSnapshot.snapshot = snapshotBase64
+        // Create a hypnogram payload with the embedded snapshot
+        var hypnogramWithSnapshot = hypnogram
+        hypnogramWithSnapshot.snapshot = snapshotBase64
 
         // Encode to JSON
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
 
         do {
-            let data = try encoder.encode(sessionWithSnapshot)
+            let data = try encoder.encode(hypnogramWithSnapshot)
             try data.write(to: url, options: .atomic)
-            print("✅ SessionStore: Saved hypnogram to \(url.lastPathComponent) (\(data.count / 1024) KB)")
+            print("✅ HypnogramFileStore: Saved hypnogram to \(url.lastPathComponent) (\(data.count / 1024) KB)")
             return url
         } catch {
-            print("❌ SessionStore: Failed to save session: \(error)")
+            print("❌ HypnogramFileStore: Failed to save hypnogram: \(error)")
             return nil
         }
     }
 
-    /// Default filename for a new session file.
+    /// Default filename for a new hypnogram file.
     static func defaultFilename(prefix: String = "hypno") -> String {
         let timestamp = ISO8601DateFormatter().string(from: Date())
             .replacingOccurrences(of: ":", with: "-")
@@ -94,10 +94,10 @@ enum SessionStore {
 
     // MARK: - Load
 
-    /// Load a session from a .hypno or .hypnogram file
+    /// Load a hypnogram from a .hypno or .hypnogram file
     /// - Parameter url: The URL to load from
-    /// - Returns: The loaded session, or nil if load failed
-    static func load(from url: URL) -> HypnographSession? {
+    /// - Returns: The loaded hypnogram, or nil if load failed
+    static func load(from url: URL) -> Hypnogram? {
         do {
             var data = try Data(contentsOf: url)
 
@@ -110,19 +110,19 @@ enum SessionStore {
                 }
             }
 
-            let session = try JSONDecoder().decode(HypnographSession.self, from: data)
+            let hypnogram = try JSONDecoder().decode(Hypnogram.self, from: data)
 
             // Rewrites legacy-compatible files in current schema after successful decode.
-            LegacySessionMigration.migrateSessionFileIfNeeded(
+            LegacyHypnogramMigration.migrateSessionFileIfNeeded(
                 originalData: data,
                 url: url,
-                decodedSession: session
+                decodedSession: hypnogram
             )
 
-            print("✅ SessionStore: Loaded session from \(url.lastPathComponent)")
-            return session
+            print("✅ HypnogramFileStore: Loaded hypnogram from \(url.lastPathComponent)")
+            return hypnogram
         } catch {
-            print("❌ SessionStore: Failed to load session: \(error)")
+            print("❌ HypnogramFileStore: Failed to load hypnogram: \(error)")
             return nil
         }
     }
@@ -131,8 +131,8 @@ enum SessionStore {
     /// - Parameter url: The URL to load from
     /// - Returns: The snapshot as NSImage, or nil if not available
     static func loadThumbnail(from url: URL) -> NSImage? {
-        guard let session = load(from: url),
-              let base64 = session.snapshot,
+        guard let hypnogram = load(from: url),
+              let base64 = hypnogram.snapshot,
               let data = Data(base64Encoded: base64),
               let image = NSImage(data: data) else {
             return nil
@@ -147,7 +147,7 @@ enum SessionStore {
     static func listSavedRecipes() -> [URL] {
         let fm = FileManager.default
         guard let urls = try? fm.contentsOfDirectory(
-            at: sessionsDirectory,
+            at: hypnogramsDirectory,
             includingPropertiesForKeys: [.creationDateKey],
             options: [.skipsHiddenFiles]
         ) else {
@@ -167,7 +167,7 @@ enum SessionStore {
     /// - Parameter url: URL of the hypnogram to delete
     static func delete(at url: URL) {
         try? FileManager.default.removeItem(at: url)
-        print("🗑️ SessionStore: Deleted \(url.lastPathComponent)")
+        print("🗑️ HypnogramFileStore: Deleted \(url.lastPathComponent)")
     }
 
     // MARK: - Snapshot Encoding
@@ -198,7 +198,7 @@ enum SessionStore {
                   space: colorSpace,
                   bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
               ) else {
-            print("⚠️ SessionStore: Failed to create graphics context for snapshot")
+            print("⚠️ HypnogramFileStore: Failed to create graphics context for snapshot")
             return nil
         }
 
@@ -206,7 +206,7 @@ enum SessionStore {
         context.draw(image, in: CGRect(x: 0, y: 0, width: targetWidth, height: targetHeight))
 
         guard let scaledImage = context.makeImage() else {
-            print("⚠️ SessionStore: Failed to create scaled image")
+            print("⚠️ HypnogramFileStore: Failed to create scaled image")
             return nil
         }
 
@@ -218,13 +218,13 @@ enum SessionStore {
                   using: .jpeg,
                   properties: [.compressionFactor: snapshotJPEGQuality]
               ) else {
-            print("⚠️ SessionStore: Failed to encode snapshot as JPEG")
+            print("⚠️ HypnogramFileStore: Failed to encode snapshot as JPEG")
             return nil
         }
 
-        print("📷 SessionStore: Encoded \(targetWidth)×\(targetHeight) snapshot (\(jpegData.count / 1024) KB)")
+        print("📷 HypnogramFileStore: Encoded \(targetWidth)×\(targetHeight) snapshot (\(jpegData.count / 1024) KB)")
         return jpegData.base64EncodedString()
     }
 
-    // Compatibility rewrite logic lives in `Hypnograph/LegacySessionMigration.swift`.
+    // Compatibility rewrite logic lives in `Hypnograph/LegacyHypnogramMigration.swift`.
 }

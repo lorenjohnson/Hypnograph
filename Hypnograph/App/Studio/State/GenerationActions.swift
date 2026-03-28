@@ -10,7 +10,7 @@ import HypnoUI
 
 @MainActor
 extension Studio {
-    private func makeRandomClip(preservingGlobalEffectFrom previous: Hypnogram?) -> Hypnogram {
+    private func makeRandomComposition(preservingGlobalEffectFrom previous: Composition?) -> Composition {
         let clipLengthMin = max(0.1, state.settings.clipLengthMinSeconds)
         let clipLengthMax = max(clipLengthMin, state.settings.clipLengthMaxSeconds)
         let clipLengthSeconds = Double.random(in: clipLengthMin...clipLengthMax)
@@ -51,7 +51,7 @@ extension Studio {
             globalEffectChain = randomTemplateChain() ?? globalEffectChain
         }
 
-        var layers: [HypnogramLayer] = []
+        var layers: [Layer] = []
         layers.reserveCapacity(layerCount)
 
         for i in 0..<layerCount {
@@ -68,7 +68,7 @@ extension Studio {
             }
 
             layers.append(
-                HypnogramLayer(
+                Layer(
                     mediaClip: mediaClip,
                     blendMode: blendMode,
                     effectChain: layerEffectChain
@@ -76,7 +76,7 @@ extension Studio {
             )
         }
 
-        return Hypnogram(
+        return Composition(
             layers: layers,
             targetDuration: targetDuration,
             playRate: selectedPlayRate,
@@ -86,27 +86,27 @@ extension Studio {
     }
 
     func replaceHistoryWithNewClip() {
-        let hypnogram = makeRandomClip(preservingGlobalEffectFrom: nil)
-        player.session = HypnographSession(hypnograms: [hypnogram])
-        player.currentHypnogramIndex = 0
-        player.currentSourceIndex = -1
-        player.notifySessionMutated()
+        let composition = makeRandomComposition(preservingGlobalEffectFrom: nil)
+        player.hypnogram = Hypnogram(compositions: [composition])
+        player.currentCompositionIndex = 0
+        player.currentLayerIndex = -1
+        player.notifyHypnogramMutated()
         applyClipSelectionChanged(manual: false)
     }
 
     func replaceCurrentClipWithNewClip(manual: Bool = false) {
-        let hypnogram = makeRandomClip(preservingGlobalEffectFrom: player.currentHypnogram)
-        player.currentHypnogram = hypnogram
-        player.currentSourceIndex = -1
+        let composition = makeRandomComposition(preservingGlobalEffectFrom: player.currentComposition)
+        player.currentComposition = composition
+        player.currentLayerIndex = -1
         applyClipSelectionChanged(manual: manual)
     }
 
     func appendNewClipAndSelect(manual: Bool) {
-        let hypnogram = makeRandomClip(preservingGlobalEffectFrom: player.currentHypnogram)
-        player.session.hypnograms.append(hypnogram)
-        player.currentHypnogramIndex = player.session.hypnograms.count - 1
-        player.currentSourceIndex = -1
-        player.notifySessionMutated()
+        let composition = makeRandomComposition(preservingGlobalEffectFrom: player.currentComposition)
+        player.hypnogram.compositions.append(composition)
+        player.currentCompositionIndex = player.hypnogram.compositions.count - 1
+        player.currentLayerIndex = -1
+        player.notifyHypnogramMutated()
         enforceHistoryLimit()
         applyClipSelectionChanged(manual: manual)
     }
@@ -116,16 +116,16 @@ extension Studio {
         guard state.settings.playbackEndBehavior == .autoAdvance else { return false }
 
         if timelinePlaybackDirection < 0 {
-            let previousIndex = player.currentHypnogramIndex - 1
+            let previousIndex = player.currentCompositionIndex - 1
             guard previousIndex >= 0 else { return false }
-            player.currentHypnogramIndex = previousIndex
+            player.currentCompositionIndex = previousIndex
             applyClipSelectionChanged(manual: false)
             return true
         }
 
-        let nextIndex = player.currentHypnogramIndex + 1
-        if nextIndex < player.session.hypnograms.count {
-            player.currentHypnogramIndex = nextIndex
+        let nextIndex = player.currentCompositionIndex + 1
+        if nextIndex < player.hypnogram.compositions.count {
+            player.currentCompositionIndex = nextIndex
             applyClipSelectionChanged(manual: false)
         } else {
             appendNewClipAndSelect(manual: false)

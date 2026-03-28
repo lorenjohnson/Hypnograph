@@ -115,15 +115,15 @@ final class HypnogramStore: ObservableObject {
 
     /// Add a new hypnogram entry
     /// - Parameters:
-    ///   - session: The session to save
+    ///   - hypnogram: The hypnogram to save
     ///   - snapshot: CGImage snapshot of the current frame (required for .hypno/.hypnogram format)
     ///   - name: Display name for the entry
     ///   - isFavorite: Whether to mark as favorite
     /// - Returns: The created entry, or nil if save failed
     @discardableResult
-    func add(session: HypnographSession, snapshot: CGImage, name: String? = nil, isFavorite: Bool = false) -> HypnogramEntry? {
-        // Save session + snapshot as .hypno file (JPEG with embedded session)
-        guard let sessionURL = SessionStore.save(session, snapshot: snapshot) else {
+    func add(hypnogram: Hypnogram, snapshot: CGImage, name: String? = nil, isFavorite: Bool = false) -> HypnogramEntry? {
+        // Save hypnogram + snapshot as .hypno file (JPEG with embedded snapshot)
+        guard let sessionURL = HypnogramFileStore.save(hypnogram, snapshot: snapshot) else {
             return nil
         }
 
@@ -164,7 +164,7 @@ final class HypnogramStore: ObservableObject {
     func remove(_ entry: HypnogramEntry) {
         entries.removeAll { $0.id == entry.id }
         // Optionally delete the recipe file
-        // SessionStore.delete(at: entry.sessionURL)
+        // HypnogramFileStore.delete(at: entry.sessionURL)
         save()
     }
 
@@ -176,9 +176,9 @@ final class HypnogramStore: ObservableObject {
         save()
     }
 
-    /// Load session from an entry
-    func loadSession(from entry: HypnogramEntry) -> HypnographSession? {
-        SessionStore.load(from: entry.sessionURL)
+    /// Load a hypnogram from an entry
+    func loadHypnogram(from entry: HypnogramEntry) -> Hypnogram? {
+        HypnogramFileStore.load(from: entry.sessionURL)
     }
 
     // MARK: - Persistence

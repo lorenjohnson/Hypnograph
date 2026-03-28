@@ -10,7 +10,7 @@ struct LayerRowView: View {
     @ObservedObject var thumbnailStore: LayerThumbnailStore
 
     let index: Int
-    @Binding var layer: HypnogramLayer
+    @Binding var layer: Layer
 
     let isSelected: Bool
     let isExpanded: Bool
@@ -128,7 +128,7 @@ struct LayerRowView: View {
 
             Button {
                 layer.isMuted.toggle()
-                main.activePlayer.notifySessionMutated()
+                main.activePlayer.notifyHypnogramMutated()
             } label: {
                 Text("M")
                     .font(.caption.weight(.bold))
@@ -216,7 +216,7 @@ struct LayerRowView: View {
                     set: { newValue in
                         guard index != 0 else { return }
                         layer.blendMode = newValue
-                        main.activePlayer.notifySessionMutated()
+                        main.activePlayer.notifyHypnogramMutated()
                     }
                 )) {
                     Text("Normal").tag(BlendMode.sourceOver)
@@ -251,7 +251,7 @@ struct LayerRowView: View {
                         if layer.opacity > 0.001 {
                             lastVisibleOpacity = layer.opacity
                         }
-                        main.activePlayer.notifySessionMutated()
+                        main.activePlayer.notifyHypnogramMutated()
                     }
                 ), in: 0...1)
             }
@@ -273,7 +273,7 @@ struct LayerRowView: View {
             lastVisibleOpacity = layer.opacity
             layer.opacity = 0
         }
-        main.activePlayer.notifySessionMutated()
+        main.activePlayer.notifyHypnogramMutated()
     }
 
     private func subtitleBase() -> String? {

@@ -1,8 +1,8 @@
 //
-//  SessionFileActions.swift
+//  HypnogramFileActions.swift
 //  Hypnograph
 //
-//  UI helpers for opening and saving session files.
+//  UI helpers for opening and saving hypnogram files.
 //
 
 import AppKit
@@ -11,46 +11,46 @@ import UniformTypeIdentifiers
 import HypnoCore
 
 @MainActor
-enum SessionFileActions {
+enum HypnogramFileActions {
     static func saveAs(
-        session: HypnographSession,
+        hypnogram: Hypnogram,
         snapshot: CGImage,
         onSaved: (() -> Void)? = nil
     ) {
         let panel = NSSavePanel()
         panel.allowedContentTypes = allowedContentTypes()
-        panel.nameFieldStringValue = SessionStore.defaultFilename()
-        panel.directoryURL = SessionStore.sessionsDirectory
+        panel.nameFieldStringValue = HypnogramFileStore.defaultFilename()
+        panel.directoryURL = HypnogramFileStore.hypnogramsDirectory
 
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
-            if SessionStore.save(session, snapshot: snapshot, to: url) != nil {
+            if HypnogramFileStore.save(hypnogram, snapshot: snapshot, to: url) != nil {
                 onSaved?()
             }
         }
     }
 
-    static func openSession(
-        onLoaded: @escaping (HypnographSession) -> Void,
+    static func openHypnogram(
+        onLoaded: @escaping (Hypnogram) -> Void,
         onFailure: (() -> Void)? = nil
     ) {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = allowedContentTypes()
-        panel.directoryURL = SessionStore.sessionsDirectory
+        panel.directoryURL = HypnogramFileStore.hypnogramsDirectory
         panel.allowsMultipleSelection = false
 
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
-            guard let session = SessionStore.load(from: url) else {
+            guard let hypnogram = HypnogramFileStore.load(from: url) else {
                 onFailure?()
                 return
             }
-            onLoaded(session)
+            onLoaded(hypnogram)
         }
     }
 
     private static func allowedContentTypes() -> [UTType] {
-        let types = SessionStore.fileExtensions.compactMap { UTType(filenameExtension: $0) }
+        let types = HypnogramFileStore.fileExtensions.compactMap { UTType(filenameExtension: $0) }
         return types.isEmpty ? [UTType.data] : types
     }
 }

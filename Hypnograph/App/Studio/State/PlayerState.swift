@@ -3,7 +3,7 @@
 //  Hypnograph
 //
 //  Independent player state for Studio module.
-//  Holds the current session, effects, and settings for the in-app deck.
+//  Holds the current hypnogram, effects, and settings for the in-app deck.
 //
 
 import Foundation
@@ -12,27 +12,27 @@ import Combine
 import HypnoCore
 
 /// Independent player state for the Studio in-app deck.
-/// Maintains its own session, playback state, and generation settings.
+/// Maintains its own hypnogram, playback state, and generation settings.
 @MainActor
 final class PlayerState: ObservableObject {
 
-    // MARK: - Session (the composition)
+    // MARK: - Hypnogram
 
-    /// The current hypnograph session - hypnograms, effects, duration
-    @Published var session: HypnographSession
+    /// The current hypnogram document - compositions, effects, duration
+    @Published var hypnogram: Hypnogram
 
-    /// The active hypnogram index in `session.hypnograms`
-    @Published var currentHypnogramIndex: Int = 0
+    /// The active composition index in `hypnogram.compositions`
+    @Published var currentCompositionIndex: Int = 0
 
-    /// Bumps when the session or any of its hypnograms are mutated.
+    /// Bumps when the hypnogram or any of its compositions are mutated.
     /// Use this for persistence triggers (mutating nested fields of a struct doesn't reliably publish).
-    @Published private(set) var sessionRevision: Int = 0
+    @Published private(set) var hypnogramRevision: Int = 0
 
     // MARK: - Playback State
 
-    /// Current source index for navigation (-1 = global layer, 0+ = source index)
-    /// Defaults to global layer so effects set via E key persist across new hypnograms
-    @Published var currentSourceIndex: Int = -1
+    /// Current layer index for navigation (-1 = composition effect chain, 0+ = layer index)
+    /// Defaults to composition scope so effects set via E key persist across new compositions.
+    @Published var currentLayerIndex: Int = -1
 
     /// Optional playhead offset for scrubbing
     @Published var currentClipTimeOffset: CMTime?
@@ -61,41 +61,41 @@ final class PlayerState: ObservableObject {
     /// This player's own effect manager - independent effects per deck
     let effectManager = EffectManager()
 
-    // MARK: - Session Properties (convenience accessors)
+    // MARK: - Hypnogram Properties
 
-    /// The currently selected hypnogram (materialized).
-    var currentHypnogram: Hypnogram {
+    /// The currently selected composition.
+    var currentComposition: Composition {
         get {
-            let index = max(0, min(currentHypnogramIndex, session.hypnograms.count - 1))
-            return session.hypnograms[index]
+            let index = max(0, min(currentCompositionIndex, hypnogram.compositions.count - 1))
+            return hypnogram.compositions[index]
         }
         set {
-            let index = max(0, min(currentHypnogramIndex, session.hypnograms.count - 1))
-            session.hypnograms[index] = newValue
-            sessionRevision &+= 1
+            let index = max(0, min(currentCompositionIndex, hypnogram.compositions.count - 1))
+            hypnogram.compositions[index] = newValue
+            hypnogramRevision &+= 1
             objectWillChange.send()
         }
     }
 
-    private func updateCurrentHypnogram(_ update: (inout Hypnogram) -> Void) {
-        var hypnogram = currentHypnogram
-        update(&hypnogram)
-        currentHypnogram = hypnogram
+    private func updateCurrentComposition(_ update: (inout Composition) -> Void) {
+        var composition = currentComposition
+        update(&composition)
+        currentComposition = composition
     }
 
-    /// Playback rate - reads/writes directly to the current hypnogram
+    /// Playback rate - reads/writes directly to the current composition
     var playRate: Float {
-        get { currentHypnogram.playRate }
+        get { currentComposition.playRate }
         set {
-            updateCurrentHypnogram { $0.playRate = newValue }
+            updateCurrentComposition { $0.playRate = newValue }
         }
     }
 
-    /// Target duration - reads/writes directly to the current hypnogram
+    /// Target duration - reads/writes directly to the current composition
     var targetDuration: CMTime {
-        get { currentHypnogram.targetDuration }
+        get { currentComposition.targetDuration }
         set {
-            updateCurrentHypnogram { $0.targetDuration = newValue }
+            updateCurrentComposition { $0.targetDuration = newValue }
         }
     }
 
@@ -103,11 +103,15 @@ final class PlayerState: ObservableObject {
 
     init(config: PlayerConfiguration, effectsSession: EffectsSession) {
         self.config = config
-        // Session starts with defaults; restored from clip history on app launch.
-        self.session = HypnographSession(
-            layers: [],
-            targetDuration: CMTime(seconds: 15, preferredTimescale: 600),
-            playRate: 1.0
+        // Hypnogram starts with defaults; restored from composition history on app launch.
+        self.hypnogram = Hypnogram(
+            compositions: [
+                Composition(
+                    layers: [],
+                    targetDuration: CMTime(seconds: 15, preferredTimescale: 600),
+                    playRate: 1.0
+                )
+            ]
         )
         self.effectsSession = effectsSession
 
@@ -125,30 +129,30 @@ final class PlayerState: ObservableObject {
         }
 
         // Recipe provider
-        effectManager.clipProvider = { [weak self] in
-            self?.currentHypnogram
+        effectManager.compositionProvider = { [weak self] in
+            self?.currentComposition
         }
 
         // Global effect chain setter
         effectManager.globalEffectChainSetter = { [weak self] chain in
-            self?.updateCurrentHypnogram { $0.effectChain = chain }
+            self?.updateCurrentComposition { $0.effectChain = chain }
         }
 
         // Source effect chain setter
         effectManager.sourceEffectChainSetter = { [weak self] sourceIndex, chain in
             guard let self else { return }
-            self.updateCurrentHypnogram { hypnogram in
-                guard sourceIndex < hypnogram.layers.count else { return }
-                hypnogram.layers[sourceIndex].effectChain = chain
+            self.updateCurrentComposition { composition in
+                guard sourceIndex < composition.layers.count else { return }
+                composition.layers[sourceIndex].effectChain = chain
             }
         }
 
         // Blend mode setter (getter is via recipeProvider reading source.blendMode)
         effectManager.blendModeSetter = { [weak self] sourceIndex, blendMode in
             guard let self else { return }
-            self.updateCurrentHypnogram { hypnogram in
-                guard sourceIndex < hypnogram.layers.count else { return }
-                hypnogram.layers[sourceIndex].blendMode = blendMode
+            self.updateCurrentComposition { composition in
+                guard sourceIndex < composition.layers.count else { return }
+                composition.layers[sourceIndex].blendMode = blendMode
             }
         }
     }
@@ -160,42 +164,42 @@ final class PlayerState: ObservableObject {
         effectsSession.onReloaded = nil
     }
 
-    // MARK: - Session Management
+    // MARK: - Hypnogram Management
 
-    /// Replace the entire session (used when loading from file)
-    func setSession(_ newSession: HypnographSession) {
-        session = newSession
-        currentHypnogramIndex = 0
-        sessionRevision &+= 1
+    /// Replace the entire hypnogram (used when loading from file)
+    func setHypnogram(_ newSession: Hypnogram) {
+        hypnogram = newSession
+        currentCompositionIndex = 0
+        hypnogramRevision &+= 1
     }
 
-    /// Notify that session has changed (triggers re-render)
-    func notifySessionChanged() {
+    /// Notify that the hypnogram has changed (triggers re-render)
+    func notifyHypnogramChanged() {
         effectsChangeCounter += 1
     }
 
-    /// Notify that session has changed (triggers persistence).
-    func notifySessionMutated() {
-        sessionRevision &+= 1
+    /// Notify that the hypnogram has changed (triggers persistence).
+    func notifyHypnogramMutated() {
+        hypnogramRevision &+= 1
     }
 
     // MARK: - Convenience Accessors
 
-    var layers: [HypnogramLayer] {
-        get { currentHypnogram.layers }
-        set { updateCurrentHypnogram { $0.layers = newValue } }
+    var layers: [Layer] {
+        get { currentComposition.layers }
+        set { updateCurrentComposition { $0.layers = newValue } }
     }
 
     var effectChain: EffectChain {
-        get { currentHypnogram.effectChain }
-        set { updateCurrentHypnogram { $0.effectChain = newValue } }
+        get { currentComposition.effectChain }
+        set { updateCurrentComposition { $0.effectChain = newValue } }
     }
     
     var activeLayerCount: Int { layers.count }
     
-    var currentLayer: HypnogramLayer? {
-        guard currentSourceIndex >= 0, currentSourceIndex < layers.count else { return nil }
-        return layers[currentSourceIndex]
+    var currentLayer: Layer? {
+        guard currentLayerIndex >= 0, currentLayerIndex < layers.count else { return nil }
+        return layers[currentLayerIndex]
     }
     
     var currentMediaClip: MediaClip? {
@@ -206,39 +210,39 @@ final class PlayerState: ObservableObject {
 
     func nextSource() {
         guard !layers.isEmpty else { return }
-        currentSourceIndex = (currentSourceIndex + 1) % layers.count
+        currentLayerIndex = (currentLayerIndex + 1) % layers.count
     }
 
     func previousSource() {
         guard !layers.isEmpty else { return }
-        currentSourceIndex = currentSourceIndex > 0 ? currentSourceIndex - 1 : layers.count - 1
+        currentLayerIndex = currentLayerIndex > 0 ? currentLayerIndex - 1 : layers.count - 1
     }
 
     func selectSource(_ index: Int) {
         guard index >= -1, index < layers.count else { return }
-        currentSourceIndex = index
+        currentLayerIndex = index
     }
 
     /// Whether we're on the global layer (-1) vs a specific source
     var isOnGlobalLayer: Bool {
-        currentSourceIndex == -1
+        currentLayerIndex == -1
     }
 
     /// Move to global layer
     func selectGlobalLayer() {
-        currentSourceIndex = -1
+        currentLayerIndex = -1
     }
 
-    /// Ensure `currentSourceIndex` is valid for the current clip.
+    /// Ensure `currentLayerIndex` is valid for the current clip.
     func clampCurrentSourceIndex() {
-        if currentSourceIndex == -1 { return }
+        if currentLayerIndex == -1 { return }
         let maxIndex = layers.count - 1
         if maxIndex < 0 {
-            currentSourceIndex = -1
+            currentLayerIndex = -1
             return
         }
-        if currentSourceIndex > maxIndex {
-            currentSourceIndex = maxIndex
+        if currentLayerIndex > maxIndex {
+            currentLayerIndex = maxIndex
         }
     }
 
@@ -250,32 +254,32 @@ final class PlayerState: ObservableObject {
 
     // MARK: - Recipe Management
 
-    /// Reset for next hypnogram, optionally preserving global effects
-    func resetForNextHypnogram(preserveGlobalEffect: Bool = true) {
+    /// Reset for the next composition, optionally preserving composition-level effects.
+    func resetForNextComposition(preserveGlobalEffect: Bool = true) {
         effectManager.clearFrameBuffer()
 
         // Save the effect chain (source of truth) before clearing
-        let savedEffectChain = preserveGlobalEffect ? currentHypnogram.effectChain.clone() : nil
+        let savedEffectChain = preserveGlobalEffect ? currentComposition.effectChain.clone() : nil
 
-        updateCurrentHypnogram { hypnogram in
-            hypnogram.layers.removeAll()
-            hypnogram.effectChain = EffectChain()
+        updateCurrentComposition { composition in
+            composition.layers.removeAll()
+            composition.effectChain = EffectChain()
         }
-        currentSourceIndex = -1  // Reset to global layer
+        currentLayerIndex = -1  // Reset to composition-level effect chain
         currentClipTimeOffset = nil
 
         // Restore effect chain (it will lazily re-instantiate effects when apply() is called)
         if preserveGlobalEffect, let chain = savedEffectChain {
-            updateCurrentHypnogram { $0.effectChain = chain }
+            updateCurrentComposition { $0.effectChain = chain }
         }
     }
 
     /// Display string for current editing layer
     var editingLayerDisplay: String {
         if isOnGlobalLayer {
-            return "Layer: Global"
+            return "Composition"
         } else {
-            return "Layer: Source \(currentSourceIndex + 1)/\(layers.count)"
+            return "Layer \(currentLayerIndex + 1)/\(layers.count)"
         }
     }
 }

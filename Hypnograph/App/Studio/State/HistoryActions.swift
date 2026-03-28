@@ -11,80 +11,80 @@ import HypnoUI
 
 @MainActor
 extension Studio {
-    func setupClipHistoryPersistence() {
+    func setupCompositionHistoryPersistence() {
         NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                self?.saveClipHistory(synchronous: true)
+                self?.saveCompositionHistory(synchronous: true)
                 self?.state.settingsStore.save(synchronous: true)
             }
         }
 
-        player.$sessionRevision
+        player.$hypnogramRevision
             .dropFirst()
             .sink { [weak self] _ in
-                self?.scheduleClipHistorySave()
+                self?.scheduleCompositionHistorySave()
             }
-            .store(in: &clipHistorySaveCancellables)
+            .store(in: &compositionHistorySaveCancellables)
 
-        player.$currentHypnogramIndex
+        player.$currentCompositionIndex
             .dropFirst()
             .sink { [weak self] _ in
-                self?.scheduleClipHistorySave()
+                self?.scheduleCompositionHistorySave()
             }
-            .store(in: &clipHistorySaveCancellables)
+            .store(in: &compositionHistorySaveCancellables)
     }
 
-    private func scheduleClipHistorySave() {
-        clipHistorySaveTimer?.invalidate()
-        clipHistorySaveTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { [weak self] _ in
+    private func scheduleCompositionHistorySave() {
+        compositionHistorySaveTimer?.invalidate()
+        compositionHistorySaveTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { [weak self] _ in
             Task { @MainActor in
-                self?.saveClipHistory(synchronous: false)
+                self?.saveCompositionHistory(synchronous: false)
             }
         }
     }
 
-    func saveClipHistory(synchronous: Bool) {
-        let history = ClipHistoryFile(
-            hypnograms: player.session.hypnograms,
-            currentHypnogramIndex: player.currentHypnogramIndex
+    func saveCompositionHistory(synchronous: Bool) {
+        let history = CompositionHistoryFile(
+            compositions: player.hypnogram.compositions,
+            currentCompositionIndex: player.currentCompositionIndex
         )
-        clipHistoryPersistenceService.save(
+        compositionHistoryPersistenceService.save(
             history,
-            url: Environment.clipHistoryURL,
+            url: Environment.compositionHistoryURL,
             historyLimit: state.settings.historyLimit,
             synchronous: synchronous
         )
     }
 
-    func restoreClipHistory() {
-        if let history = clipHistoryPersistenceService.load(
-            url: Environment.clipHistoryURL,
+    func restoreCompositionHistory() {
+        if let history = compositionHistoryPersistenceService.load(
+            url: Environment.compositionHistoryURL,
             historyLimit: state.settings.historyLimit
         ),
-           !history.hypnograms.isEmpty {
-            let session = HypnographSession(hypnograms: history.hypnograms)
-            player.session = session
-            player.currentHypnogramIndex = history.currentHypnogramIndex
-            player.notifySessionMutated()
-            player.currentSourceIndex = -1
+           !history.compositions.isEmpty {
+            let hypnogram = Hypnogram(compositions: history.compositions)
+            player.hypnogram = hypnogram
+            player.currentCompositionIndex = history.currentCompositionIndex
+            player.notifyHypnogramMutated()
+            player.currentLayerIndex = -1
             player.effectManager.clearFrameBuffer()
-            player.notifySessionChanged()
-            print("📼 Restored clip history (\(history.hypnograms.count) hypnograms)")
+            player.notifyHypnogramChanged()
+            print("📼 Restored composition history (\(history.compositions.count) compositions)")
             return
         }
 
         replaceHistoryWithNewClip()
     }
 
-    var currentClipIndicatorText: String {
-        let clips = player.session.hypnograms
-        guard !clips.isEmpty else { return "Clip --" }
-        let displayIndex = max(0, min(player.currentHypnogramIndex, clips.count - 1)) + 1
-        return "Clip \(displayIndex)"
+    var currentCompositionIndicatorText: String {
+        let compositions = player.hypnogram.compositions
+        guard !compositions.isEmpty else { return "Composition --" }
+        let displayIndex = max(0, min(player.currentCompositionIndex, compositions.count - 1)) + 1
+        return "Composition \(displayIndex)"
     }
 
     var timelinePlaybackRate: Double {
@@ -138,12 +138,12 @@ extension Studio {
 
     func enforceHistoryLimit() {
         let limit = max(1, state.settings.historyLimit)
-        let overflow = max(0, player.session.hypnograms.count - limit)
+        let overflow = max(0, player.hypnogram.compositions.count - limit)
         guard overflow > 0 else { return }
 
-        player.session.hypnograms.removeFirst(overflow)
-        player.currentHypnogramIndex = max(0, player.currentHypnogramIndex - overflow)
-        player.notifySessionMutated()
+        player.hypnogram.compositions.removeFirst(overflow)
+        player.currentCompositionIndex = max(0, player.currentCompositionIndex - overflow)
+        player.notifyHypnogramMutated()
     }
 
     func applyClipSelectionChanged(manual: Bool) {
@@ -151,23 +151,23 @@ extension Studio {
         player.currentClipTimeOffset = nil
         player.effectManager.clearFrameBuffer()
         player.effectManager.invalidateBlendAnalysis()
-        player.notifySessionChanged()
+        player.notifyHypnogramChanged()
 
         if manual {
-            flashClipHistoryIndicator()
+            flashCompositionHistoryIndicator()
         }
     }
 
     func previousClip() {
-        guard player.currentHypnogramIndex > 0 else { return }
-        player.currentHypnogramIndex -= 1
+        guard player.currentCompositionIndex > 0 else { return }
+        player.currentCompositionIndex -= 1
         applyClipSelectionChanged(manual: true)
     }
 
     func nextClip() {
-        let nextIndex = player.currentHypnogramIndex + 1
-        if nextIndex < player.session.hypnograms.count {
-            player.currentHypnogramIndex = nextIndex
+        let nextIndex = player.currentCompositionIndex + 1
+        if nextIndex < player.hypnogram.compositions.count {
+            player.currentCompositionIndex = nextIndex
             applyClipSelectionChanged(manual: true)
         } else {
             new()
@@ -175,40 +175,40 @@ extension Studio {
     }
 
     func deleteCurrentClip() {
-        guard !player.session.hypnograms.isEmpty else { return }
+        guard !player.hypnogram.compositions.isEmpty else { return }
 
-        if player.session.hypnograms.count == 1 {
+        if player.hypnogram.compositions.count == 1 {
             replaceHistoryWithNewClip()
             applyClipSelectionChanged(manual: true)
             return
         }
 
-        let index = player.currentHypnogramIndex
-        player.session.hypnograms.remove(at: index)
-        if player.currentHypnogramIndex >= player.session.hypnograms.count {
-            player.currentHypnogramIndex = max(0, player.session.hypnograms.count - 1)
+        let index = player.currentCompositionIndex
+        player.hypnogram.compositions.remove(at: index)
+        if player.currentCompositionIndex >= player.hypnogram.compositions.count {
+            player.currentCompositionIndex = max(0, player.hypnogram.compositions.count - 1)
         }
-        player.notifySessionMutated()
+        player.notifyHypnogramMutated()
         applyClipSelectionChanged(manual: true)
     }
 
-    func clearClipHistory() {
-        let hypnogram = player.currentHypnogram
-        player.session = HypnographSession(hypnograms: [hypnogram])
-        player.currentHypnogramIndex = 0
-        player.notifySessionMutated()
+    func clearCompositionHistory() {
+        let composition = player.currentComposition
+        player.hypnogram = Hypnogram(compositions: [composition])
+        player.currentCompositionIndex = 0
+        player.notifyHypnogramMutated()
         applyClipSelectionChanged(manual: true)
     }
 
-    private func flashClipHistoryIndicator() {
-        guard !player.session.hypnograms.isEmpty else { return }
-        clipHistoryIndicatorText = "\(player.currentHypnogramIndex + 1)/\(player.session.hypnograms.count)"
+    private func flashCompositionHistoryIndicator() {
+        guard !player.hypnogram.compositions.isEmpty else { return }
+        compositionHistoryIndicatorText = "\(player.currentCompositionIndex + 1)/\(player.hypnogram.compositions.count)"
 
-        clipHistoryIndicatorClearWorkItem?.cancel()
+        compositionHistoryIndicatorClearWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in
-            self?.clipHistoryIndicatorText = nil
+            self?.compositionHistoryIndicatorText = nil
         }
-        clipHistoryIndicatorClearWorkItem = workItem
+        compositionHistoryIndicatorClearWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: workItem)
     }
 }
