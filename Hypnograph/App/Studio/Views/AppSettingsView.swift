@@ -151,18 +151,18 @@ struct AppSettingsView: View {
         Divider()
 
         settingsActionRow(
-            title: "Clear Clip History",
-            description: "Removes all previous clips from history and keeps your current clip selected.",
+            title: "Clear History",
+            description: "Removes all previous compositions from history and keeps your current composition selected.",
             buttonTitle: "Clear",
             isDestructive: true
         ) {
-            main.clearCompositionHistory()
+            main.clearHistory()
         }
         Divider()
 
         settingsStepperRow(
             title: "History Limit",
-            description: "Max clips in history.",
+            description: "Max compositions in history.",
             value: Binding(
                 get: { max(1, settingsStore.value.historyLimit) },
                 set: { newValue in

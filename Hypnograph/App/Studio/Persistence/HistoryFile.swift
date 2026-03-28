@@ -1,5 +1,5 @@
 //
-//  CompositionHistoryFile.swift
+//  HistoryFile.swift
 //  Hypnograph
 //
 //  Persistence for the materialized composition history + selection index.
@@ -8,13 +8,15 @@
 import Foundation
 import HypnoCore
 
-struct CompositionHistoryFile: Codable {
+struct HistoryFile: Codable {
     var compositions: [Composition]
     var currentCompositionIndex: Int
 
     private enum CodingKeys: String, CodingKey {
-        case compositions = "hypnograms"
-        case currentCompositionIndex = "currentHypnogramIndex"
+        case compositions
+        case currentCompositionIndex
+        case legacyHypnograms = "hypnograms"
+        case legacyCurrentHypnogramIndex = "currentHypnogramIndex"
     }
 
     init(
@@ -27,8 +29,12 @@ struct CompositionHistoryFile: Codable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        compositions = try container.decode([Composition].self, forKey: .compositions)
-        currentCompositionIndex = try container.decode(Int.self, forKey: .currentCompositionIndex)
+        compositions =
+            try container.decodeIfPresent([Composition].self, forKey: .compositions)
+            ?? container.decode([Composition].self, forKey: .legacyHypnograms)
+        currentCompositionIndex =
+            try container.decodeIfPresent(Int.self, forKey: .currentCompositionIndex)
+            ?? container.decode(Int.self, forKey: .legacyCurrentHypnogramIndex)
     }
 
     func encode(to encoder: Encoder) throws {

@@ -11,14 +11,14 @@ import HypnoUI
 
 @MainActor
 extension Studio {
-    func setupCompositionHistoryPersistence() {
+    func setupHistoryPersistence() {
         NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                self?.saveCompositionHistory(synchronous: true)
+                self?.saveHistory(synchronous: true)
                 self?.state.settingsStore.save(synchronous: true)
             }
         }
@@ -26,43 +26,43 @@ extension Studio {
         player.$hypnogramRevision
             .dropFirst()
             .sink { [weak self] _ in
-                self?.scheduleCompositionHistorySave()
+                self?.scheduleHistorySave()
             }
-            .store(in: &compositionHistorySaveCancellables)
+            .store(in: &historySaveCancellables)
 
         player.$currentCompositionIndex
             .dropFirst()
             .sink { [weak self] _ in
-                self?.scheduleCompositionHistorySave()
+                self?.scheduleHistorySave()
             }
-            .store(in: &compositionHistorySaveCancellables)
+            .store(in: &historySaveCancellables)
     }
 
-    private func scheduleCompositionHistorySave() {
-        compositionHistorySaveTimer?.invalidate()
-        compositionHistorySaveTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { [weak self] _ in
+    private func scheduleHistorySave() {
+        historySaveTimer?.invalidate()
+        historySaveTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { [weak self] _ in
             Task { @MainActor in
-                self?.saveCompositionHistory(synchronous: false)
+                self?.saveHistory(synchronous: false)
             }
         }
     }
 
-    func saveCompositionHistory(synchronous: Bool) {
-        let history = CompositionHistoryFile(
+    func saveHistory(synchronous: Bool) {
+        let history = HistoryFile(
             compositions: player.hypnogram.compositions,
             currentCompositionIndex: player.currentCompositionIndex
         )
-        compositionHistoryPersistenceService.save(
+        historyPersistenceService.save(
             history,
-            url: Environment.compositionHistoryURL,
+            url: Environment.historyURL,
             historyLimit: state.settings.historyLimit,
             synchronous: synchronous
         )
     }
 
-    func restoreCompositionHistory() {
-        if let history = compositionHistoryPersistenceService.load(
-            url: Environment.compositionHistoryURL,
+    func restoreHistory() {
+        if let history = historyPersistenceService.load(
+            url: Environment.historyURL,
             historyLimit: state.settings.historyLimit
         ),
            !history.compositions.isEmpty {
@@ -77,7 +77,7 @@ extension Studio {
             return
         }
 
-        replaceHistoryWithNewClip()
+        replaceHistoryWithNewComposition()
     }
 
     var currentCompositionIndicatorText: String {
@@ -146,7 +146,7 @@ extension Studio {
         player.notifyHypnogramMutated()
     }
 
-    func applyClipSelectionChanged(manual: Bool) {
+    func applyCompositionSelectionChanged(manual: Bool) {
         player.clampCurrentSourceIndex()
         player.currentClipTimeOffset = nil
         player.effectManager.clearFrameBuffer()
@@ -154,32 +154,32 @@ extension Studio {
         player.notifyHypnogramChanged()
 
         if manual {
-            flashCompositionHistoryIndicator()
+            flashHistoryIndicator()
         }
     }
 
-    func previousClip() {
+    func previousComposition() {
         guard player.currentCompositionIndex > 0 else { return }
         player.currentCompositionIndex -= 1
-        applyClipSelectionChanged(manual: true)
+        applyCompositionSelectionChanged(manual: true)
     }
 
-    func nextClip() {
+    func nextComposition() {
         let nextIndex = player.currentCompositionIndex + 1
         if nextIndex < player.hypnogram.compositions.count {
             player.currentCompositionIndex = nextIndex
-            applyClipSelectionChanged(manual: true)
+            applyCompositionSelectionChanged(manual: true)
         } else {
             new()
         }
     }
 
-    func deleteCurrentClip() {
+    func deleteCurrentComposition() {
         guard !player.hypnogram.compositions.isEmpty else { return }
 
         if player.hypnogram.compositions.count == 1 {
-            replaceHistoryWithNewClip()
-            applyClipSelectionChanged(manual: true)
+            replaceHistoryWithNewComposition()
+            applyCompositionSelectionChanged(manual: true)
             return
         }
 
@@ -189,26 +189,26 @@ extension Studio {
             player.currentCompositionIndex = max(0, player.hypnogram.compositions.count - 1)
         }
         player.notifyHypnogramMutated()
-        applyClipSelectionChanged(manual: true)
+        applyCompositionSelectionChanged(manual: true)
     }
 
-    func clearCompositionHistory() {
+    func clearHistory() {
         let composition = player.currentComposition
         player.hypnogram = Hypnogram(compositions: [composition])
         player.currentCompositionIndex = 0
         player.notifyHypnogramMutated()
-        applyClipSelectionChanged(manual: true)
+        applyCompositionSelectionChanged(manual: true)
     }
 
-    private func flashCompositionHistoryIndicator() {
+    private func flashHistoryIndicator() {
         guard !player.hypnogram.compositions.isEmpty else { return }
-        compositionHistoryIndicatorText = "\(player.currentCompositionIndex + 1)/\(player.hypnogram.compositions.count)"
+        historyIndicatorText = "\(player.currentCompositionIndex + 1)/\(player.hypnogram.compositions.count)"
 
-        compositionHistoryIndicatorClearWorkItem?.cancel()
+        historyIndicatorClearWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in
-            self?.compositionHistoryIndicatorText = nil
+            self?.historyIndicatorText = nil
         }
-        compositionHistoryIndicatorClearWorkItem = workItem
+        historyIndicatorClearWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: workItem)
     }
 }

@@ -66,8 +66,13 @@ enum Environment {
         appSupportDirectory.appendingPathComponent("effects-studio-settings.json")
     }
 
-    /// ~/Library/Application Support/Hypnograph/clip-history.json
-    static var compositionHistoryURL: URL {
+    /// ~/Library/Application Support/Hypnograph/history.json
+    static var historyURL: URL {
+        appSupportDirectory.appendingPathComponent("history.json")
+    }
+
+    /// Legacy history filename kept for one-way migration reads.
+    static var legacyClipHistoryURL: URL {
         appSupportDirectory.appendingPathComponent("clip-history.json")
     }
 

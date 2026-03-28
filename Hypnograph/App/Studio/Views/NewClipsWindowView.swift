@@ -12,7 +12,7 @@ struct NewClipsWindowView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                sectionTitle("New Clips")
+                sectionTitle("New Compositions")
 
                 row {
                     Text("Max Layers")
@@ -27,7 +27,7 @@ struct NewClipsWindowView: View {
                         .opacity(isLiveMode ? 0.55 : 1.0)
                 }
 
-                clipLengthRangeRow()
+                compositionLengthRangeRow()
                 playRateRangeRow()
 
                 randomizationRow(
@@ -112,14 +112,14 @@ struct NewClipsWindowView: View {
     }
 
     @ViewBuilder
-    private func clipLengthRangeRow() -> some View {
+    private func compositionLengthRangeRow() -> some View {
         let bounds: ClosedRange<Double> = 1...60
         let minDistance: Double = 2
 
         let range = Binding<ClosedRange<Double>>(
             get: {
-                let lower = state.settings.clipLengthMinSeconds.clamped(to: bounds)
-                let upper = state.settings.clipLengthMaxSeconds.clamped(to: bounds)
+                let lower = state.settings.compositionLengthMinSeconds.clamped(to: bounds)
+                let upper = state.settings.compositionLengthMaxSeconds.clamped(to: bounds)
                 let fixedLower = min(lower, bounds.upperBound - minDistance)
                 let fixedUpper = max(upper, fixedLower + minDistance).clamped(to: bounds)
                 return fixedLower...fixedUpper
@@ -130,15 +130,15 @@ struct NewClipsWindowView: View {
                 let fixedLower = min(lower, upper - minDistance).clamped(to: bounds)
                 let fixedUpper = max(upper, fixedLower + minDistance).clamped(to: bounds)
                 state.settingsStore.update {
-                    $0.clipLengthMinSeconds = fixedLower
-                    $0.clipLengthMaxSeconds = fixedUpper
+                    $0.compositionLengthMinSeconds = fixedLower
+                    $0.compositionLengthMaxSeconds = fixedUpper
                 }
             }
         )
 
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("Clip Length")
+                Text("Composition Length")
                 Spacer()
                 Text("\(Int(range.wrappedValue.lowerBound))–\(Int(range.wrappedValue.upperBound))s")
                     .foregroundStyle(.secondary)
@@ -157,8 +157,8 @@ struct NewClipsWindowView: View {
 
         let range = Binding<ClosedRange<Double>>(
             get: {
-                let lower = state.settings.clipPlayRateMin.clamped(to: bounds)
-                let upper = state.settings.clipPlayRateMax.clamped(to: bounds)
+                let lower = state.settings.compositionPlayRateMin.clamped(to: bounds)
+                let upper = state.settings.compositionPlayRateMax.clamped(to: bounds)
                 return min(lower, upper)...max(lower, upper)
             },
             set: { newRange in
@@ -167,8 +167,8 @@ struct NewClipsWindowView: View {
                 let fixedLower = lower.clamped(to: bounds)
                 let fixedUpper = upper.clamped(to: bounds)
                 state.settingsStore.update {
-                    $0.clipPlayRateMin = min(fixedLower, fixedUpper)
-                    $0.clipPlayRateMax = max(fixedLower, fixedUpper)
+                    $0.compositionPlayRateMin = min(fixedLower, fixedUpper)
+                    $0.compositionPlayRateMax = max(fixedLower, fixedUpper)
                 }
             }
         )

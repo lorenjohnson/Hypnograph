@@ -155,7 +155,7 @@ struct HypnographApp: App {
 
                     let mediaURLs = urls.filter { !HypnogramFileStore.isSupportedExtension($0.pathExtension) }
                     guard !mediaURLs.isEmpty else { return }
-                    _ = studio?.addSourcesAsNewClip(fromFileURLs: mediaURLs)
+                    _ = studio?.addSourcesAsNewComposition(fromFileURLs: mediaURLs)
                 }
 
                 // Refresh available libraries (includes asset counts for menu)

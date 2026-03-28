@@ -124,7 +124,7 @@ struct EffectsComposerView: View {
             }
             model.restoreInitialSource(
                 from: state.library,
-                preferredLength: max(2.0, state.settings.clipLengthMaxSeconds)
+                preferredLength: max(2.0, state.settings.compositionLengthMaxSeconds)
             )
         }
         .onChange(of: model.selectedRuntimeType) { _, newType in
@@ -477,7 +477,7 @@ struct EffectsComposerView: View {
                 HStack(spacing: 8) {
                     Menu {
                         Button {
-                            model.loadRandomSource(from: state.library, preferredLength: max(2.0, state.settings.clipLengthMaxSeconds))
+                            model.loadRandomSource(from: state.library, preferredLength: max(2.0, state.settings.compositionLengthMaxSeconds))
                         } label: {
                             Label("Random Source", systemImage: "shuffle")
                         }

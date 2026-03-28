@@ -19,8 +19,8 @@ struct PlayerView: NSViewRepresentable {
     let aspectRatio: AspectRatio
     let displayResolution: OutputResolution
     let sourceFraming: SourceFraming
-    let autoAdvanceOnClipEnd: Bool
-    let onClipEnded: (() -> Bool)?
+    let autoAdvanceOnCompositionEnd: Bool
+    let onCompositionEnded: (() -> Bool)?
     @Binding var currentLayerIndex: Int
     @Binding var currentSourceTime: CMTime?
     let isPaused: Bool
@@ -43,21 +43,21 @@ struct PlayerView: NSViewRepresentable {
     //
     // Auto-advance state machine:
     // ─────────────────────────
-    // The coordinator manages automatic composition advancement where clips
+    // The coordinator manages automatic composition advancement where compositions
     // play through once and then advance to the next composition. The key challenge is
     // coordinating the timing so transitions start before the current composition ends,
     // while avoiding runaway advancement if the next composition isn't ready yet.
     //
     // State flags:
     // - `didRequestPreEndAdvance`: Set when we've requested the next composition via
-    //   `onClipEnded()`. Prevents duplicate requests during the same composition.
+    //   `onCompositionEnded()`. Prevents duplicate requests during the same composition.
     // - `isAutoAdvanceInFlight`: Set when a composition change is in progress (building
     //   composition + transitioning). If the current composition ends again while this
     //   is true, we loop the current composition instead of requesting another advance.
     //
     // Flow:
     // 1. Time observer fires when remaining time <= transitionDuration + 0.25s
-    // 2. If not already advancing, set both flags and call `onClipEnded()`
+    // 2. If not already advancing, set both flags and call `onCompositionEnded()`
     // 3. Parent builds new composition and calls `loadAndTransition()`
     // 4. Transition completes → `isAutoAdvanceInFlight` cleared
     // 5. New composition plays → `didRequestPreEndAdvance` reset when compositionID changes
@@ -81,8 +81,8 @@ struct PlayerView: NSViewRepresentable {
         var lastAppliedPlayRate: Float?
         var transitionDuration: Double = 1.5
         var lastVolume: Float?
-        var autoAdvanceOnClipEnd: Bool = false
-        var onClipEnded: (() -> Bool)?
+        var autoAdvanceOnCompositionEnd: Bool = false
+        var onCompositionEnded: (() -> Bool)?
         var isAllStillImages: Bool = false
         var lastRenderedComposition: Composition?
         /// Whether this is the first composition load (no transition needed)
@@ -151,10 +151,10 @@ struct PlayerView: NSViewRepresentable {
         c.playRate = composition.playRate
         c.historyPlaybackRate = Self.normalizedHistoryPlaybackRate(historyPlaybackRate)
         c.transitionDuration = transitionDuration
-        c.autoAdvanceOnClipEnd = autoAdvanceOnClipEnd
-        c.onClipEnded = onClipEnded
+        c.autoAdvanceOnCompositionEnd = autoAdvanceOnCompositionEnd
+        c.onCompositionEnded = onCompositionEnded
         c.isAllStillImages = composition.layers.allSatisfy { $0.mediaClip.file.mediaKind == .image }
-        if !autoAdvanceOnClipEnd || isPaused {
+        if !autoAdvanceOnCompositionEnd || isPaused {
             c.isAutoAdvanceInFlight = false
             c.didRequestPreEndAdvance = false
         }
@@ -408,7 +408,7 @@ struct PlayerView: NSViewRepresentable {
                         return
                     }
 
-                    if c.autoAdvanceOnClipEnd {
+                    if c.autoAdvanceOnCompositionEnd {
                         // Auto-advance: only advance when the ACTIVE player ends
                         // (not when the outgoing transition player loops)
                         if player === c.contentView?.activeAVPlayer {
@@ -439,7 +439,7 @@ struct PlayerView: NSViewRepresentable {
             let token = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak c, weak player] _ in
                 Task { @MainActor [weak c, weak player] in
                     guard let c, let player, let contentView = c.contentView else { return }
-                    guard c.autoAdvanceOnClipEnd else { return }
+                    guard c.autoAdvanceOnCompositionEnd else { return }
                     guard c.lastPauseState != true else { return }
                     guard !c.didRequestPreEndAdvance else { return }
                     guard !c.isAutoAdvanceInFlight else { return }
@@ -521,7 +521,7 @@ struct PlayerView: NSViewRepresentable {
         c.stillClipTimer?.invalidate()
         c.stillClipTimer = nil
 
-        guard c.autoAdvanceOnClipEnd, c.lastPauseState != true else { return }
+        guard c.autoAdvanceOnCompositionEnd, c.lastPauseState != true else { return }
 
         let speed = max(1.0, abs(c.historyPlaybackRate))
         let seconds = max(0.05, composition.targetDuration.seconds / speed)
@@ -537,7 +537,7 @@ struct PlayerView: NSViewRepresentable {
         coordinator.didRequestPreEndAdvance = true
         coordinator.isAutoAdvanceInFlight = true
 
-        let didAdvance = coordinator.onClipEnded?() ?? false
+        let didAdvance = coordinator.onCompositionEnded?() ?? false
         if !didAdvance {
             coordinator.didRequestPreEndAdvance = false
             coordinator.isAutoAdvanceInFlight = false

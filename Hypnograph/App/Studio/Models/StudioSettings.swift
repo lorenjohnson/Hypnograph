@@ -37,7 +37,28 @@ enum OutputResolution: Int, Codable, CaseIterable {
 
 enum PlaybackEndBehavior: String, Codable, CaseIterable {
     case autoAdvance
-    case loopCurrentClip
+    case loopCurrentComposition
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+        switch rawValue {
+        case "autoAdvance":
+            self = .autoAdvance
+        case "loopCurrentComposition", "loopCurrentClip":
+            self = .loopCurrentComposition
+        default:
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Unknown PlaybackEndBehavior raw value: \(rawValue)"
+            )
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
 }
 
 enum RenderVideoSaveDestination: String, Codable, CaseIterable {
@@ -57,15 +78,15 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     var playbackEndBehavior: PlaybackEndBehavior
     var snapshotsFolder: String
 
-    /// Default clip length range (seconds) for newly generated clips
-    var clipLengthMinSeconds: Double
-    var clipLengthMaxSeconds: Double
+    /// Default composition length range (seconds) for newly generated compositions
+    var compositionLengthMinSeconds: Double
+    var compositionLengthMaxSeconds: Double
 
-    /// Default play-rate range for newly generated clips (1.0 = 100%)
-    var clipPlayRateMin: Double
-    var clipPlayRateMax: Double
+    /// Default play-rate range for newly generated compositions (1.0 = 100%)
+    var compositionPlayRateMin: Double
+    var compositionPlayRateMax: Double
 
-    /// Max number of clips to retain in history (oldest dropped first)
+    /// Max number of compositions to retain in history (oldest dropped first)
     var historyLimit: Int
 
     /// Active source libraries (folder keys or Photos library keys)
@@ -104,18 +125,18 @@ struct StudioSettings: Codable, MediaLibrarySettings {
 
     /// Signed history playback rate for auto-advance mode.
     /// Positive values move forward, negative values move backward.
-    /// Clip-internal playback rate remains controlled by each hypnogram's `playRate`.
+    /// Composition playback rate remains controlled by each composition's `playRate`.
     var timelinePlaybackRate: Double
 
     // MARK: - Randomization StudioSettings (Generation Rules)
 
-    /// When true, randomly applies a global effect chain when generating new clips
+    /// When true, randomly applies a composition effect chain when generating new compositions
     var randomGlobalEffect: Bool
 
     /// Chance (0.0 - 1.0) of randomizing global effect on generation
     var randomGlobalEffectFrequency: Double
 
-    /// When true, randomly applies per-layer effect chains when generating new clips
+    /// When true, randomly applies per-layer effect chains when generating new compositions
     var randomLayerEffect: Bool
 
     /// Chance (0.0 - 1.0) of randomizing layer effects on generation
@@ -140,10 +161,10 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         static let playbackEndBehavior: PlaybackEndBehavior = .autoAdvance
         static let outputFolder = "~/Movies/Hypnograph/renders"
         static let snapshotsFolder = "~/Movies/Hypnograph/snapshots"
-        static let clipLengthMinSeconds: Double = 5.0
-        static let clipLengthMaxSeconds: Double = 20.0
-        static let clipPlayRateMin: Double = 1.0
-        static let clipPlayRateMax: Double = 1.0
+        static let compositionLengthMinSeconds: Double = 5.0
+        static let compositionLengthMaxSeconds: Double = 20.0
+        static let compositionPlayRateMin: Double = 1.0
+        static let compositionPlayRateMax: Double = 1.0
         static let historyLimit: Int = 200
         static let sources = MediaSourcesParam.dictionary([
             "default": ["~/Movies/Hypnograph/sources"],
@@ -182,10 +203,10 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             sources: Defaults.sources,
             playbackEndBehavior: Defaults.playbackEndBehavior,
             snapshotsFolder: Defaults.snapshotsFolder,
-            clipLengthMinSeconds: Defaults.clipLengthMinSeconds,
-            clipLengthMaxSeconds: Defaults.clipLengthMaxSeconds,
-            clipPlayRateMin: Defaults.clipPlayRateMin,
-            clipPlayRateMax: Defaults.clipPlayRateMax,
+            compositionLengthMinSeconds: Defaults.compositionLengthMinSeconds,
+            compositionLengthMaxSeconds: Defaults.compositionLengthMaxSeconds,
+            compositionPlayRateMin: Defaults.compositionPlayRateMin,
+            compositionPlayRateMax: Defaults.compositionPlayRateMax,
             historyLimit: Defaults.historyLimit,
             activeLibraries: Defaults.activeLibraries,
             outputResolution: Defaults.outputResolution,
@@ -216,8 +237,8 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     private enum CodingKeys: String, CodingKey {
         case outputFolder, sources
         case playbackEndBehavior, snapshotsFolder
-        case clipLengthMinSeconds, clipLengthMaxSeconds
-        case clipPlayRateMin, clipPlayRateMax
+        case compositionLengthMinSeconds, compositionLengthMaxSeconds
+        case compositionPlayRateMin, compositionPlayRateMax
         case historyLimit
         case activeLibraries
         case outputResolution, renderVideoSaveDestination, sourceFraming, sourceMediaTypes
@@ -232,6 +253,9 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         case playerConfig
         // Backward-compatible decode keys from pre-unified player config.
         case montagePlayerConfig, sequencePlayerConfig
+        // Backward-compatible decode keys from pre-composition terminology.
+        case clipLengthMinSeconds, clipLengthMaxSeconds
+        case clipPlayRateMin, clipPlayRateMax
     }
 
     init(
@@ -239,10 +263,10 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         sources: MediaSourcesParam,
         playbackEndBehavior: PlaybackEndBehavior = Defaults.playbackEndBehavior,
         snapshotsFolder: String = Defaults.snapshotsFolder,
-        clipLengthMinSeconds: Double = Defaults.clipLengthMinSeconds,
-        clipLengthMaxSeconds: Double = Defaults.clipLengthMaxSeconds,
-        clipPlayRateMin: Double = Defaults.clipPlayRateMin,
-        clipPlayRateMax: Double = Defaults.clipPlayRateMax,
+        compositionLengthMinSeconds: Double = Defaults.compositionLengthMinSeconds,
+        compositionLengthMaxSeconds: Double = Defaults.compositionLengthMaxSeconds,
+        compositionPlayRateMin: Double = Defaults.compositionPlayRateMin,
+        compositionPlayRateMax: Double = Defaults.compositionPlayRateMax,
         historyLimit: Int = Defaults.historyLimit,
         activeLibraries: [String] = Defaults.activeLibraries,
         outputResolution: OutputResolution = Defaults.outputResolution,
@@ -268,10 +292,10 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         self.sources = sources
         self.playbackEndBehavior = playbackEndBehavior
         self.snapshotsFolder = snapshotsFolder
-        self.clipLengthMinSeconds = clipLengthMinSeconds
-        self.clipLengthMaxSeconds = clipLengthMaxSeconds
-        self.clipPlayRateMin = clipPlayRateMin
-        self.clipPlayRateMax = clipPlayRateMax
+        self.compositionLengthMinSeconds = compositionLengthMinSeconds
+        self.compositionLengthMaxSeconds = compositionLengthMaxSeconds
+        self.compositionPlayRateMin = compositionPlayRateMin
+        self.compositionPlayRateMax = compositionPlayRateMax
         self.historyLimit = historyLimit
         self.activeLibraries = activeLibraries
         self.outputResolution = outputResolution
@@ -311,14 +335,22 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             ?? Defaults.playbackEndBehavior
         snapshotsFolder = try c.decodeIfPresent(String.self, forKey: .snapshotsFolder)
             ?? Defaults.snapshotsFolder
-        clipLengthMinSeconds = try c.decodeIfPresent(Double.self, forKey: .clipLengthMinSeconds)
-            ?? Defaults.clipLengthMinSeconds
-        clipLengthMaxSeconds = try c.decodeIfPresent(Double.self, forKey: .clipLengthMaxSeconds)
-            ?? Defaults.clipLengthMaxSeconds
-        clipPlayRateMin = try c.decodeIfPresent(Double.self, forKey: .clipPlayRateMin)
-            ?? Defaults.clipPlayRateMin
-        clipPlayRateMax = try c.decodeIfPresent(Double.self, forKey: .clipPlayRateMax)
-            ?? Defaults.clipPlayRateMax
+        compositionLengthMinSeconds =
+            try c.decodeIfPresent(Double.self, forKey: .compositionLengthMinSeconds)
+            ?? c.decodeIfPresent(Double.self, forKey: .clipLengthMinSeconds)
+            ?? Defaults.compositionLengthMinSeconds
+        compositionLengthMaxSeconds =
+            try c.decodeIfPresent(Double.self, forKey: .compositionLengthMaxSeconds)
+            ?? c.decodeIfPresent(Double.self, forKey: .clipLengthMaxSeconds)
+            ?? Defaults.compositionLengthMaxSeconds
+        compositionPlayRateMin =
+            try c.decodeIfPresent(Double.self, forKey: .compositionPlayRateMin)
+            ?? c.decodeIfPresent(Double.self, forKey: .clipPlayRateMin)
+            ?? Defaults.compositionPlayRateMin
+        compositionPlayRateMax =
+            try c.decodeIfPresent(Double.self, forKey: .compositionPlayRateMax)
+            ?? c.decodeIfPresent(Double.self, forKey: .clipPlayRateMax)
+            ?? Defaults.compositionPlayRateMax
         historyLimit = try c.decodeIfPresent(Int.self, forKey: .historyLimit)
             ?? Defaults.historyLimit
         activeLibraries = try c.decodeIfPresent([String].self, forKey: .activeLibraries)
@@ -378,10 +410,10 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         try c.encode(sources, forKey: .sources)
         try c.encode(playbackEndBehavior, forKey: .playbackEndBehavior)
         try c.encode(snapshotsFolder, forKey: .snapshotsFolder)
-        try c.encode(clipLengthMinSeconds, forKey: .clipLengthMinSeconds)
-        try c.encode(clipLengthMaxSeconds, forKey: .clipLengthMaxSeconds)
-        try c.encode(clipPlayRateMin, forKey: .clipPlayRateMin)
-        try c.encode(clipPlayRateMax, forKey: .clipPlayRateMax)
+        try c.encode(compositionLengthMinSeconds, forKey: .compositionLengthMinSeconds)
+        try c.encode(compositionLengthMaxSeconds, forKey: .compositionLengthMaxSeconds)
+        try c.encode(compositionPlayRateMin, forKey: .compositionPlayRateMin)
+        try c.encode(compositionPlayRateMax, forKey: .compositionPlayRateMax)
         try c.encode(historyLimit, forKey: .historyLimit)
         try c.encode(activeLibraries, forKey: .activeLibraries)
         try c.encode(outputResolution, forKey: .outputResolution)

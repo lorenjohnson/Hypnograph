@@ -42,7 +42,7 @@ This project now has a clearer intended direction. The remaining work is to carr
 | `HypnogramLayer` | `Layer` | one layer inside a composition | likely rename directly to `Layer` |
 | `effectChain` on current `Hypnogram` | composition-level effect chain | composition-wide effects | keep behavior, update surrounding naming |
 | `HypnogramStore` / `HypnogramEntry` | likely keep | store of saved top-level files | already aligned closely enough with intended `Hypnogram` meaning |
-| `ClipHistoryFile` / `ClipHistoryStore` | `CompositionHistoryFile` / `CompositionHistoryStore` | history of previously generated or visited Compositions in Studio | rename in this project as part of the same model cleanup |
+| `ClipHistoryFile` / `ClipHistoryStore` | `HistoryFile` / `HistoryStore` | history of previously generated or visited Compositions in Studio | rename in this project as part of the same model cleanup |
 
 ### Rename Surface
 
@@ -72,8 +72,8 @@ The rename surface appears to break down into three categories:
 Some nearby naming that looked ambiguous turns out to map cleanly once the core rename is accepted.
 
 - `ClipHistoryFile` is not really about top-level Hypnograms. It stores the history of the playable units inside Studio.
-- under the target model, that means it is really `CompositionHistoryFile`
-- `ClipHistoryStore` should likewise become `CompositionHistoryStore`
+- under the target model, that means it is really `HistoryFile`
+- `ClipHistoryStore` should likewise become `HistoryStore`
 - `hypnograms` inside that history payload should become `compositions`
 - `currentHypnogramIndex` inside that history payload should become `currentCompositionIndex`
 
@@ -107,13 +107,17 @@ The first implementation pass is now underway and is already proving out the mod
   - `HypnogramLayer` -> `Layer`
 - Hypnograph now builds successfully against those renamed package types.
 - the app-side first pass has already renamed several aligned areas:
-  - `ClipHistoryFile` / `ClipHistoryStore` -> `CompositionHistoryFile` / `CompositionHistoryStore`
+  - `ClipHistoryFile` / `ClipHistoryStore` -> `HistoryFile` / `HistoryStore`
   - `SessionStore` / `SessionFileActions` -> `HypnogramFileStore` / `HypnogramFileActions`
   - player-owned top-level model references from generic `session` language toward `hypnogram`
   - user-facing `Global` -> `Composition` and mistaken `Source` -> `Layer` cases already corrected earlier in this branch
-- encoded keys and on-disk compatibility have intentionally not been “cleaned up” yet:
-  - legacy decode support remains in HypnoPackages
-  - first-pass file and history persistence still preserve older key names where needed
+- the app-side persistence pass is now also in place:
+  - `HistoryFile` now writes `compositions` and `currentCompositionIndex` while still decoding the older history keys
+  - Studio settings now write composition-level keys and enum values while still decoding the older clip-named settings
+  - the history file path now moves forward from `clip-history.json` to `history.json` with a legacy fallback read
+- one package-side persistence step still remains:
+  - the top-level Hypnogram JSON in HypnoPackages still encodes `compositions` under the legacy on-disk key `hypnograms`
+  - that final key flip should happen in the paired HypnoPackages branch as the very last persistence step, with backward decode support preserved
 
 This means the rename is no longer speculative. The branch already demonstrates that the intended model can be carried through both the shared package layer and the app without breaking the build.
 
@@ -126,7 +130,4 @@ This means the rename is no longer speculative. The branch already demonstrates 
 ## Open Questions
 
 - whether `Layer` as a bare type name introduces any real ambiguity in shared code, or whether it is as safe in practice as it currently appears
-- how far the second pass should go on persistence naming:
-  - encoded keys
-  - on-disk history filenames
-  - legacy compatibility windows before we simplify them away
+- when to collapse the temporary backward-decode compatibility paths after older files have had time to normalize forward

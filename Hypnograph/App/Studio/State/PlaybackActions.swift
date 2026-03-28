@@ -8,8 +8,8 @@ import HypnoCore
 
 @MainActor
 extension Studio {
-    var isLoopCurrentClipEnabled: Bool {
-        state.settings.playbackEndBehavior == .loopCurrentClip
+    var isLoopCurrentCompositionEnabled: Bool {
+        state.settings.playbackEndBehavior == .loopCurrentComposition
     }
 
     func new() {
@@ -22,7 +22,7 @@ extension Studio {
             StillImageCache.clear()
         }
 
-        appendNewClipAndSelect(manual: true)
+        appendNewCompositionAndSelect(manual: true)
     }
 
     /// Send current hypnogram to live display
@@ -41,8 +41,8 @@ extension Studio {
         activePlayer.togglePause()
     }
 
-    func toggleLoopCurrentClipMode() {
-        state.toggleLoopCurrentClipMode()
+    func toggleLoopCurrentCompositionMode() {
+        state.toggleLoopCurrentCompositionMode()
     }
 
     func nextSource() {

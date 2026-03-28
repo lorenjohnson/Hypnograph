@@ -378,15 +378,15 @@ struct PlayerSettingsView: View {
                 .background(Color.white.opacity(0.3))
 
             HStack {
-                Text("Loop Current Clip:")
+                Text("Loop Current Composition:")
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white.opacity(0.8))
 
                 Spacer()
 
                 Toggle("", isOn: Binding(
-                    get: { main.state.settings.playbackEndBehavior == .loopCurrentClip },
-                    set: { main.state.setLoopCurrentClipMode($0) }
+                    get: { main.state.settings.playbackEndBehavior == .loopCurrentComposition },
+                    set: { main.state.setLoopCurrentCompositionMode($0) }
                 ))
                 .toggleStyle(.darkMode)
             }
@@ -412,56 +412,56 @@ struct PlayerSettingsView: View {
                 .background(Color.white.opacity(0.3))
                 .padding(.vertical, 4)
 
-            let clipMinBinding = Binding(
-                get: { Int(main.state.settings.clipLengthMinSeconds.rounded()) },
+            let compositionMinBinding = Binding(
+                get: { Int(main.state.settings.compositionLengthMinSeconds.rounded()) },
                 set: { newValue in
                     let minValue = max(1, newValue)
-                    let maxValue = max(minValue, Int(main.state.settings.clipLengthMaxSeconds.rounded()))
+                    let maxValue = max(minValue, Int(main.state.settings.compositionLengthMaxSeconds.rounded()))
                     main.state.settingsStore.update {
-                        $0.clipLengthMinSeconds = Double(minValue)
-                        $0.clipLengthMaxSeconds = Double(maxValue)
+                        $0.compositionLengthMinSeconds = Double(minValue)
+                        $0.compositionLengthMaxSeconds = Double(maxValue)
                     }
                 }
             )
 
-            let clipMaxBinding = Binding(
-                get: { Int(main.state.settings.clipLengthMaxSeconds.rounded()) },
+            let compositionMaxBinding = Binding(
+                get: { Int(main.state.settings.compositionLengthMaxSeconds.rounded()) },
                 set: { newValue in
-                    let maxValue = max(newValue, Int(main.state.settings.clipLengthMinSeconds.rounded()))
-                    main.state.settingsStore.update { $0.clipLengthMaxSeconds = Double(maxValue) }
+                    let maxValue = max(newValue, Int(main.state.settings.compositionLengthMinSeconds.rounded()))
+                    main.state.settingsStore.update { $0.compositionLengthMaxSeconds = Double(maxValue) }
                 }
             )
 
             HStack {
-                Text("Clip Length Min:")
+                Text("Composition Length Min:")
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white.opacity(main.isLiveMode ? 0.4 : 0.8))
 
                 Spacer()
 
-                Text("\(clipMinBinding.wrappedValue)s")
+                Text("\(compositionMinBinding.wrappedValue)s")
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white.opacity(main.isLiveMode ? 0.6 : 1.0))
                     .frame(minWidth: 50)
 
-                Stepper("", value: clipMinBinding, in: 1...60, step: 1)
+                Stepper("", value: compositionMinBinding, in: 1...60, step: 1)
                     .labelsHidden()
                     .disabled(main.isLiveMode)
             }
 
             HStack {
-                Text("Clip Length Max:")
+                Text("Composition Length Max:")
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white.opacity(main.isLiveMode ? 0.4 : 0.8))
 
                 Spacer()
 
-                Text("\(clipMaxBinding.wrappedValue)s")
+                Text("\(compositionMaxBinding.wrappedValue)s")
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white.opacity(main.isLiveMode ? 0.6 : 1.0))
                     .frame(minWidth: 50)
 
-                Stepper("", value: clipMaxBinding, in: clipMinBinding.wrappedValue...120, step: 1)
+                Stepper("", value: compositionMaxBinding, in: compositionMinBinding.wrappedValue...120, step: 1)
                     .labelsHidden()
                     .disabled(main.isLiveMode)
             }

@@ -24,7 +24,7 @@ final class Studio: ObservableObject {
     let dependencies: StudioDependencies
     let panelHostService: FilePanelService
     let photosIntegrationService: PhotosIntegrationService
-    let compositionHistoryPersistenceService: CompositionHistoryPersistenceService
+    let historyPersistenceService: HistoryPersistenceService
 
     /// Global templates store (shared across preview + live)
     let effectsLibrarySession: EffectsSession
@@ -57,17 +57,17 @@ final class Studio: ObservableObject {
     var isLiveMode: Bool { liveMode == .live }
     var isLiveModeAvailable: Bool { state.settings.liveModeEnabled }
 
-    // MARK: - Clip History HUD
+    // MARK: - History HUD
 
-    /// Flash-only clip position indicator (e.g. "3/57") shown when manually navigating history.
-    @Published var compositionHistoryIndicatorText: String?
+    /// Flash-only composition position indicator (e.g. "3/57") shown when manually navigating history.
+    @Published var historyIndicatorText: String?
 
-    var compositionHistoryIndicatorClearWorkItem: DispatchWorkItem?
+    var historyIndicatorClearWorkItem: DispatchWorkItem?
 
-    // MARK: - Clip History Persistence
+    // MARK: - History Persistence
 
-    var compositionHistorySaveTimer: Timer?
-    var compositionHistorySaveCancellables: Set<AnyCancellable> = []
+    var historySaveTimer: Timer?
+    var historySaveCancellables: Set<AnyCancellable> = []
 
     // MARK: - Audio Output
 
@@ -136,7 +136,7 @@ final class Studio: ObservableObject {
         self.dependencies = dependencies
         self.panelHostService = dependencies.makePanelHostService()
         self.photosIntegrationService = dependencies.photosIntegrationService
-        self.compositionHistoryPersistenceService = dependencies.compositionHistoryPersistenceService
+        self.historyPersistenceService = dependencies.historyPersistenceService
 
         // One canonical effects library across modes.
         self.effectsLibrarySession = EffectsSession(filename: "effects-library.json")
@@ -218,11 +218,11 @@ final class Studio: ObservableObject {
             }
             .store(in: &playerSubscriptions)
 
-        // Restore composition history if available
-        restoreCompositionHistory()
+        // Restore history if available
+        restoreHistory()
 
-        // Save composition history when app terminates and on edits
-        setupCompositionHistoryPersistence()
+        // Save history when app terminates and on edits
+        setupHistoryPersistence()
     }
 
     // MARK: - Display
@@ -242,10 +242,10 @@ final class Studio: ObservableObject {
             }
 
             if activePlayer.hypnogram.compositions.isEmpty {
-                replaceHistoryWithNewClip()
+                replaceHistoryWithNewComposition()
             } else if activePlayer.layers.isEmpty {
-                // Defensive: keep history shape, just replace the current clip if it is empty.
-                replaceCurrentClipWithNewClip()
+                // Defensive: keep history shape, just replace the current composition if it is empty.
+                replaceCurrentCompositionWithNewComposition()
             }
         }
 
@@ -257,9 +257,9 @@ final class Studio: ObservableObject {
         let displayResolution = player.config.playerResolution
         let sourceFraming = state.settings.sourceFraming
         let shouldAdvanceOnClipEnd = state.settings.playbackEndBehavior == .autoAdvance
-        let onClipEnded: (() -> Bool)? = { [weak self] in
+        let onCompositionEnded: (() -> Bool)? = { [weak self] in
             guard let self else { return false }
-            return self.advanceOrGenerateOnClipEnded()
+            return self.advanceOrGenerateOnCompositionEnded()
         }
         let currentLayerIndexBinding = Binding(
             get: { player.currentLayerIndex },
@@ -277,8 +277,8 @@ final class Studio: ObservableObject {
                 aspectRatio: aspectRatio,
                 displayResolution: displayResolution,
                 sourceFraming: sourceFraming,
-                autoAdvanceOnClipEnd: shouldAdvanceOnClipEnd,
-                onClipEnded: onClipEnded,
+                autoAdvanceOnCompositionEnd: shouldAdvanceOnClipEnd,
+                onCompositionEnded: onCompositionEnded,
                 currentLayerIndex: currentLayerIndexBinding,
                 currentSourceTime: currentSourceTimeBinding,
                 isPaused: player.isPaused,

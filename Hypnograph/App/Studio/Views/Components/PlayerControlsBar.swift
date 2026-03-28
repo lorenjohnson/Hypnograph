@@ -2,9 +2,9 @@ import SwiftUI
 
 struct PlayerControlsBar: View {
     let isPaused: Bool
-    let isLoopCurrentClipEnabled: Bool
-    let currentClipText: String
-    let clipLengthSeconds: Double
+    let isLoopCurrentCompositionEnabled: Bool
+    let currentCompositionText: String
+    let compositionLengthSeconds: Double
     let clipTrimContexts: [ClipTrimContext]
     @Binding var volume: Double
     let timelinePlaybackRate: Double
@@ -13,7 +13,7 @@ struct PlayerControlsBar: View {
     let onPrevious: () -> Void
     let onPlayPause: () -> Void
     let onNext: () -> Void
-    let onToggleLoopCurrentClipMode: () -> Void
+    let onToggleLoopCurrentCompositionMode: () -> Void
     let onSnapshotCurrent: () -> Void
     let onSaveCurrent: () -> Void
     let onRenderCurrent: () -> Void
@@ -62,9 +62,9 @@ struct PlayerControlsBar: View {
 
     private var controlsRow: some View {
         HStack(spacing: 14) {
-            deckButton(id: "prev", systemName: "backward.fill", tooltip: "Previous Clip", action: onPrevious)
+            deckButton(id: "prev", systemName: "backward.fill", tooltip: "Previous Composition", action: onPrevious)
             playPauseButton()
-            deckButton(id: "next", systemName: "forward.fill", tooltip: "Next Clip", action: onNext)
+            deckButton(id: "next", systemName: "forward.fill", tooltip: "Next Composition", action: onNext)
 
             Divider()
                 .frame(height: 30)
@@ -72,13 +72,13 @@ struct PlayerControlsBar: View {
             deckButton(
                 id: "loop",
                 systemName: "arrow.counterclockwise",
-                tooltip: isLoopCurrentClipEnabled ? "Loop Current Clip (L)" : "Auto-Advance Clips (L)",
+                tooltip: isLoopCurrentCompositionEnabled ? "Loop Current Composition (L)" : "Auto-Advance Compositions (L)",
                 tint: .white,
-                activeBackground: isLoopCurrentClipEnabled ? .blue : nil,
-                action: onToggleLoopCurrentClipMode
+                activeBackground: isLoopCurrentCompositionEnabled ? .blue : nil,
+                action: onToggleLoopCurrentCompositionMode
             )
 
-            Text("\(currentClipText.uppercased()) (\(formattedClipLength))")
+            Text("\(currentCompositionText.uppercased()) (\(formattedCompositionLength))")
                 .font(.system(.callout, design: .monospaced))
                 .fontWeight(.semibold)
                 .foregroundStyle(.secondary)
@@ -256,8 +256,8 @@ struct PlayerControlsBar: View {
         volume = 0
     }
 
-    private var formattedClipLength: String {
-        let seconds = max(0.1, clipLengthSeconds)
+    private var formattedCompositionLength: String {
+        let seconds = max(0.1, compositionLengthSeconds)
         let rounded = (seconds * 10).rounded() / 10
         if abs(rounded - rounded.rounded()) < 0.05 {
             return "\(Int(rounded.rounded()))s"

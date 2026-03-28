@@ -28,7 +28,7 @@ extension Studio {
         activePlayer.currentLayerIndex = -1
         activePlayer.notifyHypnogramMutated()
         enforceHistoryLimit()
-        applyClipSelectionChanged(manual: true)
+        applyCompositionSelectionChanged(manual: true)
     }
 
     func appendHypnogramToHistory(_ hypnogram: Hypnogram) {

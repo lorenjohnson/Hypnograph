@@ -6,21 +6,21 @@ On first launch, Hypnograph requires source setup before normal playback. It sup
 
 ## Continuous Random Playback
 
-After sources are configured, playback starts immediately and continues autonomously without operator intervention. The system continuously selects sources, generates successive clips, and advances through them as a stream. This feature includes parameters for random clip selection: max layer count (default 1), length range in seconds, and effect-change behavior (global/per-layer and frequency/percentage controls).
+After sources are configured, playback starts immediately and continues autonomously without operator intervention. The system continuously selects sources, generates successive Compositions, and advances through them as a stream. This feature includes parameters for random Composition generation: max layer count (default 1), length range in seconds, and effect-change behavior (composition/per-layer and frequency/percentage controls).
 
 ## Playback Controls
 
-Playback controls include play/pause for the currently playing hypnogram and toggle to loop the currently playing hypnogram. Loop repeats the currently playing hypnogram while it is on, otherwise a hypnogram plays and then transitions to the next randomly generated hypnogram, or to the next entry in history if not at the end of the history.
+Playback controls include play/pause for the current Composition and a toggle to loop the current Composition. Loop repeats the current Composition while it is on; otherwise a Composition plays and then transitions to the next randomly generated Composition, or to the next entry in history if not at the end of the history.
 
-## Global Composition
+## Composition-Level Controls
 
-Global composition controls shape the entire hypnogram canvas across all layers. This includes transition style between hypnograms, aspect ratio selection (including standards such as 16:9, 9:16, etc), fill-based canvas behavior, and source framing mode (fit/fill) rules for applying to individual sources. These settings persist across newly generated hypnograms and are not currently randomized. In the UI, this feature's controls appear at the top of the left sidebar and at the top of the right sidebar above layers as global settings for the current hypnogram.
+Composition-level controls shape the entire current Composition across all layers. This includes transition style between Compositions, aspect ratio selection (including standards such as 16:9, 9:16, etc), fill-based canvas behavior, and source framing mode (fit/fill) rules for applying to individual Sources. These settings persist across newly generated Compositions and are not currently randomized. In the UI, these controls appear above the Layers as Composition-level settings.
 
 ## Layer Composition
 
-Layers can be added, deleted, and adjusted independently from global composition settings. Adding new layers can be done via random selection or selection of an explicit media source from disk or Apple Photos. Additionally, layer blend mode and in/out ranges for the underlying source video can be adjusted via a thumbnail timeline view attached to player controls. Audio mute, solo, and visibility toggles are available per layer.
+Layers can be added, deleted, and adjusted independently from Composition-level settings. Adding new Layers can be done via random selection or selection of an explicit media Source from disk or Apple Photos. Additionally, layer blend mode and in/out ranges for the underlying source video can be adjusted via a thumbnail timeline view attached to player controls. Audio mute, solo, and visibility toggles are available per layer.
 
-Number keys select the corresponding layer in the current hypnogram (`1` selects layer 1, `2` selects layer 2, etc.), and backtick selects the global context. While a selection key is held, playback enters a temporary preview mode showing only that selection and bypassing effects for quick inspection.
+Number keys select the corresponding Layer in the current Composition (`1` selects layer 1, `2` selects layer 2, etc.), and backtick selects the Composition context. While a selection key is held, playback enters a temporary preview mode showing only that selection and bypassing effects for quick inspection.
 
 ## Settings Dialog
 
@@ -32,15 +32,15 @@ Hypnograph includes a CLI + Finder Action integration path that is installed fro
 
 ## History Buffer
 
-As playback advances, hypnograms are stored in a configurable history buffer (operator recalls ~200 default), with navigation/recall and clear operations. The UI buttons that look like rewind/fast-forward are history back/forward controls (not transport scrubbing).
+As playback advances, Compositions are stored in a configurable history buffer (operator recalls ~200 default), with navigation/recall and clear operations. The UI buttons that look like rewind/fast-forward are history back/forward controls (not transport scrubbing).
 
 ## Save and Reopen
 
-Saving a clip writes a JSON hypnogram metadata file (the reconstructable recipe/state), not rendered media. Reopening that JSON file restores and plays the saved composition. Render/export is separate: rendering writes actual media files for playback/sharing, and those rendered outputs can be saved to disk and optionally mirrored to Apple Photos when permissioned. Rendered media can be used as sources, but does not carry the original editable hypnogram spec.
+Saving writes a JSON Hypnogram metadata file (the reconstructable recipe/state), not rendered media. Reopening that JSON file restores one or more saved Compositions. Render/export is separate: rendering writes actual media files for playback/sharing, and those rendered outputs can be saved to disk and optionally mirrored to Apple Photos when permissioned. Rendered media can be used as Sources, but do not carry the original editable Hypnogram spec.
 
 ## Render and Screenshot Export Pipeline
 
-Users can export rendered video from a hypnogram and capture frame screenshots via hotkey/menu. Output destination is configurable (desktop by default, per operator recall), with optional Apple Photos write-back when permissioned.
+Users can export rendered video from the current Composition and capture frame screenshots via hotkey/menu. Output destination is configurable (desktop by default, per operator recall), with optional Apple Photos write-back when permissioned.
 
 ## Effects and Effect Chain Library
 
@@ -52,7 +52,7 @@ Hypnograph supports a family of quick content actions (hotkeys + command menu): 
 
 ## Live Mode / Performance Output (Feature-Flagged)
 
-Live mode allows sending the current running hypnogram to an external display for slideshow/performance use. A local in-window preview of the live output can be toggled on/off. Live output loops the currently sent hypnogram until another one is sent; when replaced, it transitions using the configured transition style. Live mode has its own audio routing controls (audio device and volume), intentionally architected to stay decoupled from core playback paths.
+Live mode allows sending the current Composition to an external display for slideshow/performance use. A local in-window preview of the live output can be toggled on/off. Live output loops the currently sent Composition until another one is sent; when replaced, it transitions using the configured transition style. Live mode has its own audio routing controls (audio device and volume), intentionally architected to stay decoupled from core playback paths.
 
 ## Effects Composer (Feature-Flagged)
 

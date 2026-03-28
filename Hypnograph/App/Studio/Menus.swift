@@ -35,11 +35,11 @@ extension Studio {
 
     @ViewBuilder
     func playbackMenu() -> some View {
-        Toggle("Loop Current Clip", isOn: Binding(
-            get: { [self] in isLoopCurrentClipEnabled },
+        Toggle("Loop Current Composition", isOn: Binding(
+            get: { [self] in isLoopCurrentCompositionEnabled },
             set: { [self] in
-                if $0 != isLoopCurrentClipEnabled {
-                    toggleLoopCurrentClipMode()
+                if $0 != isLoopCurrentCompositionEnabled {
+                    toggleLoopCurrentCompositionMode()
                 }
             }
         ))
@@ -49,13 +49,13 @@ extension Studio {
         Divider()
 
         Button("> Next") { [self] in
-            nextClip()
+            nextComposition()
         }
         .keyboardShortcut(.rightArrow, modifiers: [])
         .disabled(disableMainWindowShortcuts)
 
         Button("< Previous") { [self] in
-            previousClip()
+            previousComposition()
         }
         .keyboardShortcut(.leftArrow, modifiers: [])
         .disabled(disableMainWindowShortcuts)
@@ -106,7 +106,7 @@ extension Studio {
         Divider()
 
         Button("Delete") { [self] in
-            deleteCurrentClip()
+            deleteCurrentComposition()
         }
         .keyboardShortcut(.delete, modifiers: [.command])
         .disabled(disableMainWindowShortcuts)
@@ -139,7 +139,7 @@ extension Studio {
         .disabled(disableMainWindowShortcuts)
 
         Button("Random Source") { [self] in
-            newRandomClip()
+            randomizeCurrentSource()
         }
         .keyboardShortcut(".", modifiers: [])
         .disabled(disableMainWindowShortcuts)

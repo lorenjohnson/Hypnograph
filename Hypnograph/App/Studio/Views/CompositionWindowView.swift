@@ -132,7 +132,7 @@ struct CompositionWindowView: View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text("Clip Length")
+                    Text("Composition Length")
                         .font(.callout)
                     Spacer()
                     Text("\(Int(main.activePlayer.targetDuration.seconds.rounded()))s")

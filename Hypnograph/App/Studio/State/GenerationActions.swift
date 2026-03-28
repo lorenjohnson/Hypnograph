@@ -11,13 +11,13 @@ import HypnoUI
 @MainActor
 extension Studio {
     private func makeRandomComposition(preservingGlobalEffectFrom previous: Composition?) -> Composition {
-        let clipLengthMin = max(0.1, state.settings.clipLengthMinSeconds)
-        let clipLengthMax = max(clipLengthMin, state.settings.clipLengthMaxSeconds)
-        let clipLengthSeconds = Double.random(in: clipLengthMin...clipLengthMax)
-        let targetDuration = CMTime(seconds: clipLengthSeconds, preferredTimescale: 600)
+        let compositionLengthMin = max(0.1, state.settings.compositionLengthMinSeconds)
+        let compositionLengthMax = max(compositionLengthMin, state.settings.compositionLengthMaxSeconds)
+        let compositionLengthSeconds = Double.random(in: compositionLengthMin...compositionLengthMax)
+        let targetDuration = CMTime(seconds: compositionLengthSeconds, preferredTimescale: 600)
         let playRateBounds: ClosedRange<Double> = 0.2...2.0
-        let configuredPlayRateMin = min(max(state.settings.clipPlayRateMin, playRateBounds.lowerBound), playRateBounds.upperBound)
-        let configuredPlayRateMax = min(max(state.settings.clipPlayRateMax, playRateBounds.lowerBound), playRateBounds.upperBound)
+        let configuredPlayRateMin = min(max(state.settings.compositionPlayRateMin, playRateBounds.lowerBound), playRateBounds.upperBound)
+        let configuredPlayRateMax = min(max(state.settings.compositionPlayRateMax, playRateBounds.lowerBound), playRateBounds.upperBound)
         let playRateMin = min(configuredPlayRateMin, configuredPlayRateMax)
         let playRateMax = max(configuredPlayRateMin, configuredPlayRateMax)
         let selectedPlayRate: Float = {
@@ -85,50 +85,50 @@ extension Studio {
         )
     }
 
-    func replaceHistoryWithNewClip() {
+    func replaceHistoryWithNewComposition() {
         let composition = makeRandomComposition(preservingGlobalEffectFrom: nil)
         player.hypnogram = Hypnogram(compositions: [composition])
         player.currentCompositionIndex = 0
         player.currentLayerIndex = -1
         player.notifyHypnogramMutated()
-        applyClipSelectionChanged(manual: false)
+        applyCompositionSelectionChanged(manual: false)
     }
 
-    func replaceCurrentClipWithNewClip(manual: Bool = false) {
+    func replaceCurrentCompositionWithNewComposition(manual: Bool = false) {
         let composition = makeRandomComposition(preservingGlobalEffectFrom: player.currentComposition)
         player.currentComposition = composition
         player.currentLayerIndex = -1
-        applyClipSelectionChanged(manual: manual)
+        applyCompositionSelectionChanged(manual: manual)
     }
 
-    func appendNewClipAndSelect(manual: Bool) {
+    func appendNewCompositionAndSelect(manual: Bool) {
         let composition = makeRandomComposition(preservingGlobalEffectFrom: player.currentComposition)
         player.hypnogram.compositions.append(composition)
         player.currentCompositionIndex = player.hypnogram.compositions.count - 1
         player.currentLayerIndex = -1
         player.notifyHypnogramMutated()
         enforceHistoryLimit()
-        applyClipSelectionChanged(manual: manual)
+        applyCompositionSelectionChanged(manual: manual)
     }
 
     @discardableResult
-    func advanceOrGenerateOnClipEnded() -> Bool {
+    func advanceOrGenerateOnCompositionEnded() -> Bool {
         guard state.settings.playbackEndBehavior == .autoAdvance else { return false }
 
         if timelinePlaybackDirection < 0 {
             let previousIndex = player.currentCompositionIndex - 1
             guard previousIndex >= 0 else { return false }
             player.currentCompositionIndex = previousIndex
-            applyClipSelectionChanged(manual: false)
+            applyCompositionSelectionChanged(manual: false)
             return true
         }
 
         let nextIndex = player.currentCompositionIndex + 1
         if nextIndex < player.hypnogram.compositions.count {
             player.currentCompositionIndex = nextIndex
-            applyClipSelectionChanged(manual: false)
+            applyCompositionSelectionChanged(manual: false)
         } else {
-            appendNewClipAndSelect(manual: false)
+            appendNewCompositionAndSelect(manual: false)
         }
         return true
     }

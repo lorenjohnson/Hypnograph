@@ -83,7 +83,7 @@ struct ContentView: View {
             return ("LIVE", .red)
         }
 
-        if let clipText = main.compositionHistoryIndicatorText {
+        if let clipText = main.historyIndicatorText {
             return (clipText, .blue)
         }
 
@@ -128,9 +128,9 @@ struct ContentView: View {
             if isPlayerControlsVisible {
                 PlayerControlsBar(
                     isPaused: main.activePlayer.isPaused,
-                    isLoopCurrentClipEnabled: main.isLoopCurrentClipEnabled,
-                    currentClipText: main.currentCompositionIndicatorText,
-                    clipLengthSeconds: main.activePlayer.targetDuration.seconds,
+                    isLoopCurrentCompositionEnabled: main.isLoopCurrentCompositionEnabled,
+                    currentCompositionText: main.currentCompositionIndicatorText,
+                    compositionLengthSeconds: main.activePlayer.targetDuration.seconds,
                     clipTrimContexts: clipTrimContexts,
                     volume: Binding(
                         get: { Double(main.volume) },
@@ -145,10 +145,10 @@ struct ContentView: View {
                         get: { main.isTimelinePlaybackReverse },
                         set: { main.isTimelinePlaybackReverse = $0 }
                     ),
-                    onPrevious: { main.previousClip() },
+                    onPrevious: { main.previousComposition() },
                     onPlayPause: { main.togglePause() },
-                    onNext: { main.nextClip() },
-                    onToggleLoopCurrentClipMode: { main.toggleLoopCurrentClipMode() },
+                    onNext: { main.nextComposition() },
+                    onToggleLoopCurrentCompositionMode: { main.toggleLoopCurrentCompositionMode() },
                     onSnapshotCurrent: { main.saveSnapshotImage() },
                     onSaveCurrent: { main.save() },
                     onRenderCurrent: { main.renderAndSaveVideo() },

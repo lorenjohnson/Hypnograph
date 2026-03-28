@@ -23,7 +23,7 @@ extension Studio {
     /// Create a new composition and add each incoming file as a layer.
     /// Files that cannot be decoded as image/video are skipped.
     @discardableResult
-    func addSourcesAsNewClip(fromFileURLs urls: [URL]) -> Bool {
+    func addSourcesAsNewComposition(fromFileURLs urls: [URL]) -> Bool {
         let fileURLs = urls.filter(\.isFileURL)
         guard !fileURLs.isEmpty else { return false }
 
@@ -63,7 +63,7 @@ extension Studio {
         activePlayer.currentLayerIndex = layers.count - 1
         activePlayer.notifyHypnogramMutated()
         enforceHistoryLimit()
-        applyClipSelectionChanged(manual: true)
+        applyCompositionSelectionChanged(manual: true)
 
         let importedCount = layers.count
         if failedCount == 0 {
@@ -101,8 +101,8 @@ extension Studio {
         return true
     }
 
-    func newRandomClip() {
-        replaceClipForCurrentLayer()
+    func randomizeCurrentSource() {
+        replaceSourceForCurrentLayer()
     }
 
     func removeCurrentLayer() {
@@ -125,7 +125,7 @@ extension Studio {
         guard idx >= 0, idx < activePlayer.layers.count else { return }
 
         if activePlayer.layers.count == 1 {
-            replaceClip(forSourceIndex: idx)
+            replaceSource(atLayerIndex: idx)
             return
         }
 
@@ -179,12 +179,12 @@ extension Studio {
         return duplicatedLayer
     }
 
-    private func replaceClipForCurrentLayer() {
+    private func replaceSourceForCurrentLayer() {
         let idx = activePlayer.currentLayerIndex
-        replaceClip(forSourceIndex: idx)
+        replaceSource(atLayerIndex: idx)
     }
 
-    func replaceClip(forSourceIndex idx: Int) {
+    func replaceSource(atLayerIndex idx: Int) {
         guard idx >= 0, idx < activePlayer.layers.count else { return }
         guard let mediaClip = state.library.randomClip(clipLength: activePlayer.targetDuration.seconds) else { return }
         activePlayer.layers[idx].mediaClip = mediaClip
@@ -430,7 +430,7 @@ extension Studio {
             switch action {
             case .excluded:
                 state.library.exclude(file: file)
-                replaceClip(forSourceIndex: idx)
+                replaceSource(atLayerIndex: idx)
             case .favorited:
                 state.sourceFavoritesStore.add(file.source)
             }
@@ -443,7 +443,7 @@ extension Studio {
                 if action == .favorited {
                     AppNotifications.show("Photos permission required", flash: true, duration: 1.25)
                 } else {
-                    replaceClip(forSourceIndex: idx)
+                    replaceSource(atLayerIndex: idx)
                     state.library.removeFromIndex(source: file.source)
                     AppNotifications.show("Photos permission required", flash: true, duration: 1.25)
                 }
@@ -451,7 +451,7 @@ extension Studio {
             }
 
             if action == .excluded {
-                replaceClip(forSourceIndex: idx)
+                replaceSource(atLayerIndex: idx)
                 state.library.removeFromIndex(source: file.source)
             }
 

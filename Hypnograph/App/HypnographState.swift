@@ -86,15 +86,15 @@ final class HypnographState: ObservableObject {
 
     // MARK: - UI Toggles
 
-    func setLoopCurrentClipMode(_ enabled: Bool) {
+    func setLoopCurrentCompositionMode(_ enabled: Bool) {
         settingsStore.update { settings in
-            settings.playbackEndBehavior = enabled ? .loopCurrentClip : .autoAdvance
+            settings.playbackEndBehavior = enabled ? .loopCurrentComposition : .autoAdvance
         }
     }
 
-    func toggleLoopCurrentClipMode() {
-        let shouldEnableLoop = settings.playbackEndBehavior != .loopCurrentClip
-        setLoopCurrentClipMode(shouldEnableLoop)
+    func toggleLoopCurrentCompositionMode() {
+        let shouldEnableLoop = settings.playbackEndBehavior != .loopCurrentComposition
+        setLoopCurrentCompositionMode(shouldEnableLoop)
     }
 
     // MARK: - Library switching (unified: folders + Photos)

@@ -1,20 +1,20 @@
 //
-//  CompositionHistoryStore.swift
+//  HistoryStore.swift
 //  Hypnograph
 //
-//  Persistence store for composition history materialized hypnograms + selection index.
+//  Persistence store for composition history materialized compositions + selection index.
 //
 
 import Foundation
 
-enum CompositionHistoryStore {
-    static func load(url: URL, historyLimit: Int) -> CompositionHistoryFile? {
+enum HistoryStore {
+    static func load(url: URL, historyLimit: Int) -> HistoryFile? {
         let fm = FileManager.default
         guard fm.fileExists(atPath: url.path) else { return nil }
 
         do {
             let data = try Data(contentsOf: url)
-            let decoded = try JSONDecoder().decode(CompositionHistoryFile.self, from: data)
+            let decoded = try JSONDecoder().decode(HistoryFile.self, from: data)
             return sanitize(decoded, historyLimit: historyLimit)
         } catch {
             backupCorruptFile(at: url)
@@ -22,7 +22,7 @@ enum CompositionHistoryStore {
         }
     }
 
-    static func save(_ history: CompositionHistoryFile, url: URL, historyLimit: Int) throws {
+    static func save(_ history: HistoryFile, url: URL, historyLimit: Int) throws {
         let sanitized = sanitize(history, historyLimit: historyLimit)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -30,7 +30,7 @@ enum CompositionHistoryStore {
         try data.write(to: url, options: .atomic)
     }
 
-    private static func sanitize(_ history: CompositionHistoryFile, historyLimit: Int) -> CompositionHistoryFile {
+    private static func sanitize(_ history: HistoryFile, historyLimit: Int) -> HistoryFile {
         var compositions = history.compositions
         var index = history.currentCompositionIndex
 
@@ -42,7 +42,7 @@ enum CompositionHistoryStore {
         }
 
         guard !compositions.isEmpty else {
-            return CompositionHistoryFile(
+            return HistoryFile(
                 compositions: [],
                 currentCompositionIndex: 0
             )
@@ -50,7 +50,7 @@ enum CompositionHistoryStore {
 
         index = max(0, min(index, compositions.count - 1))
 
-        return CompositionHistoryFile(
+        return HistoryFile(
             compositions: compositions,
             currentCompositionIndex: index
         )
@@ -60,7 +60,7 @@ enum CompositionHistoryStore {
         let fm = FileManager.default
         let timestamp = ISO8601DateFormatter().string(from: Date())
             .replacingOccurrences(of: ":", with: "-")
-        let backupName = "clip-history.corrupt-\(timestamp).json"
+        let backupName = "history.corrupt-\(timestamp).json"
         let backupURL = url.deletingLastPathComponent().appendingPathComponent(backupName)
 
         do {
@@ -68,9 +68,9 @@ enum CompositionHistoryStore {
                 try fm.removeItem(at: backupURL)
             }
             try fm.moveItem(at: url, to: backupURL)
-            print("⚠️ CompositionHistoryStore: Backed up corrupt history to \(backupURL.lastPathComponent)")
+            print("⚠️ HistoryStore: Backed up corrupt history to \(backupURL.lastPathComponent)")
         } catch {
-            print("⚠️ CompositionHistoryStore: Failed to backup corrupt history: \(error)")
+            print("⚠️ HistoryStore: Failed to backup corrupt history: \(error)")
         }
     }
 }
