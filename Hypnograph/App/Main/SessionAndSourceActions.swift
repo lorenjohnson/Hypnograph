@@ -300,9 +300,9 @@ extension Main {
             AppNotifications.show("Hypnogram saved", flash: true)
 
             // Also save to Apple Photos if write access is available
-            if ApplePhotos.shared.status.canWrite {
+            if photosIntegrationService.canWrite {
                 Task {
-                    let success = await ApplePhotos.shared.saveImage(at: entry.sessionURL)
+                    let success = await photosIntegrationService.saveImage(at: entry.sessionURL)
                     if success {
                         print("✅ Main: Hypnogram added to Apple Photos")
                     }
@@ -362,15 +362,15 @@ extension Main {
             return
 
         case .diskAndPhotosIfAvailable:
-            guard ApplePhotos.shared.status.canWrite else { return }
-            let saved = await ApplePhotos.shared.saveVideo(at: outputURL)
+            guard photosIntegrationService.canWrite else { return }
+            let saved = await photosIntegrationService.saveVideo(at: outputURL)
             if !saved {
                 AppNotifications.show("Saved to disk (Photos save failed)", flash: true, duration: 2.0)
             }
 
         case .photosIfAvailableOtherwiseDisk:
-            guard ApplePhotos.shared.status.canWrite else { return }
-            let saved = await ApplePhotos.shared.saveVideo(at: outputURL)
+            guard photosIntegrationService.canWrite else { return }
+            let saved = await photosIntegrationService.saveVideo(at: outputURL)
             guard saved else {
                 AppNotifications.show("Saved to disk (Photos save failed)", flash: true, duration: 2.0)
                 return

@@ -137,7 +137,7 @@ struct AppSettingsView: View {
             description: "Where rendered videos are saved.",
             path: settingsStore.value.outputFolder
         ) {
-            chooseOutputFolder()
+            main.chooseOutputFolder()
         }
         Divider()
 
@@ -146,7 +146,7 @@ struct AppSettingsView: View {
             description: "Where camera snapshots are saved.",
             path: settingsStore.value.snapshotsFolder
         ) {
-            chooseSnapshotsFolder()
+            main.chooseSnapshotsFolder()
         }
         Divider()
 
@@ -271,7 +271,7 @@ struct AppSettingsView: View {
                 Text(description)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(displayPath(path))
+                Text(MainPathFormatting.displayPath(path))
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
@@ -404,50 +404,6 @@ struct AppSettingsView: View {
         .padding(.vertical, 12)
     }
 
-    private func chooseOutputFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = true
-        panel.prompt = "Choose"
-        panel.title = "Choose Render Output Folder"
-        panel.directoryURL = settingsStore.value.outputURL
-
-        guard panel.runModal() == .OK, let folderURL = panel.url else { return }
-        settingsStore.update { settings in
-            settings.outputFolder = storagePath(from: folderURL)
-        }
-    }
-
-    private func chooseSnapshotsFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = true
-        panel.prompt = "Choose"
-        panel.title = "Choose Snapshot Folder"
-        panel.directoryURL = settingsStore.value.snapshotsURL
-
-        guard panel.runModal() == .OK, let folderURL = panel.url else { return }
-        settingsStore.update { settings in
-            settings.snapshotsFolder = storagePath(from: folderURL)
-        }
-    }
-
-    private func displayPath(_ path: String) -> String {
-        ((path as NSString).expandingTildeInPath as NSString).abbreviatingWithTildeInPath
-    }
-
-    private func storagePath(from url: URL) -> String {
-        let expandedPath = url.path
-        let homePath = NSHomeDirectory()
-        if expandedPath.hasPrefix(homePath) {
-            return "~" + expandedPath.dropFirst(homePath.count)
-        }
-        return expandedPath
-    }
 }
 
 private extension RenderVideoSaveDestination {

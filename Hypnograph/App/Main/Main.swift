@@ -20,6 +20,10 @@ import HypnoUI
 final class Main: ObservableObject {
     let state: HypnographState
     let renderQueue: RenderEngine.ExportQueue
+    let dependencies: MainDependencies
+    let panelHostService: MainPanelHostService
+    let photosIntegrationService: MainPhotosIntegrationService
+    let clipHistoryPersistenceService: ClipHistoryPersistenceService
 
     /// Global templates store (shared across preview + live)
     let effectsLibrarySession: EffectsSession
@@ -120,9 +124,17 @@ final class Main: ObservableObject {
 
     // MARK: - Init
 
-    init(state: HypnographState, renderQueue: RenderEngine.ExportQueue) {
+    init(
+        state: HypnographState,
+        renderQueue: RenderEngine.ExportQueue,
+        dependencies: MainDependencies = .live
+    ) {
         self.state = state
         self.renderQueue = renderQueue
+        self.dependencies = dependencies
+        self.panelHostService = dependencies.makePanelHostService()
+        self.photosIntegrationService = dependencies.photosIntegrationService
+        self.clipHistoryPersistenceService = dependencies.clipHistoryPersistenceService
 
         // One canonical effects library across modes.
         self.effectsLibrarySession = EffectsSession(filename: "effects-library.json")
@@ -224,7 +236,7 @@ final class Main: ObservableObject {
         if activePlayer.session.hypnograms.isEmpty || activePlayer.layers.isEmpty {
             // Avoid an infinite "generate new clip" loop when the media library is empty.
             if state.library.assetCount == 0 {
-                return AnyView(NoSourcesView(state: state))
+                return AnyView(NoSourcesView(main: self))
             }
 
             if activePlayer.session.hypnograms.isEmpty {

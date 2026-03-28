@@ -57,29 +57,20 @@ extension Main {
             hypnograms: player.session.hypnograms,
             currentHypnogramIndex: player.currentHypnogramIndex
         )
-
-        if synchronous {
-            do {
-                try ClipHistoryStore.save(history, url: url, historyLimit: state.settings.historyLimit)
-            } catch {
-                print("⚠️ Main: Failed to save clip history (sync): \(error)")
-            }
-            return
-        }
-
-        let historyLimit = state.settings.historyLimit
-        DispatchQueue.global(qos: .utility).async {
-            do {
-                try ClipHistoryStore.save(history, url: url, historyLimit: historyLimit)
-            } catch {
-                print("⚠️ Main: Failed to save clip history: \(error)")
-            }
-        }
+        clipHistoryPersistenceService.save(
+            history,
+            url: url,
+            historyLimit: state.settings.historyLimit,
+            synchronous: synchronous
+        )
     }
 
     /// Restore persisted clip history (preview deck).
     func restoreClipHistory() {
-        if let history = ClipHistoryStore.load(url: Environment.clipHistoryURL, historyLimit: state.settings.historyLimit),
+        if let history = clipHistoryPersistenceService.load(
+            url: Environment.clipHistoryURL,
+            historyLimit: state.settings.historyLimit
+        ),
            !history.hypnograms.isEmpty {
             let session = HypnographSession(hypnograms: history.hypnograms)
             player.session = session

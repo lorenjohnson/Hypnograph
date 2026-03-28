@@ -1,6 +1,5 @@
 import SwiftUI
 import CoreMedia
-import AppKit
 import UniformTypeIdentifiers
 import HypnoCore
 
@@ -73,7 +72,7 @@ struct RightSidebarView: View {
                     Menu {
                         Menu {
                             Button {
-                                addLayerFromFiles()
+                                main.addSourceFromFilesPanel()
                             } label: {
                                 Label("From Files...", systemImage: "doc")
                             }
@@ -295,18 +294,6 @@ struct RightSidebarView: View {
 
         main.activePlayer.notifySessionChanged()
     }
-
-    private func addLayerFromFiles() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = [.image, .movie]
-
-        guard panel.runModal() == .OK, let selectedURL = panel.url else { return }
-        _ = main.addSource(fromFileURL: selectedURL)
-    }
-
 }
 
 private struct LayerReorderDropDelegate: DropDelegate {
