@@ -142,7 +142,7 @@
     }
 
     if (normalizedPath === "/docs") {
-      return "/docs/index.md";
+      return "/docs/queue.md";
     }
 
     if (normalizedPath.startsWith("/docs/")) {
@@ -204,7 +204,7 @@
       return "/";
     }
 
-    if (relativePath === "index.md") {
+    if (relativePath === "queue.md") {
       return "/docs";
     }
 

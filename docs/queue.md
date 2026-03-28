@@ -11,8 +11,7 @@ last_reviewed: 2026-03-24
 - [ ] [sources-window](active/sources-window.md)
 - [ ] [sidebar-windowization](active/sidebar-windowization/index.md)
 - [ ] [sequences](active/sequences/index.md)
-
-- [ ] Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause  causes a crash?
+- [ ] Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause a crash?
 
 ## Backlog Projects
 - [clip-length-model-global-target-vs-inferred-length](backlog/clip-length-model-global-target-vs-inferred-length.md)
