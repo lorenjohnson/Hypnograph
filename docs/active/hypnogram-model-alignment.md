@@ -115,9 +115,9 @@ The first implementation pass is now underway and is already proving out the mod
   - `HistoryFile` now writes `compositions` and `currentCompositionIndex` while still decoding the older history keys
   - Studio settings now write composition-level keys and enum values while still decoding the older clip-named settings
   - the history file path now moves forward from `clip-history.json` to `history.json` with a legacy fallback read
-- one package-side persistence step still remains:
-  - the top-level Hypnogram JSON in HypnoPackages still encodes `compositions` under the legacy on-disk key `hypnograms`
-  - that final key flip should happen in the paired HypnoPackages branch as the very last persistence step, with backward decode support preserved
+- the package-side persistence pass is now also complete:
+  - top-level Hypnogram JSON now encodes `compositions` as the canonical on-disk key
+  - backward decode support is still preserved for legacy `hypnograms`, `clips`, and top-level `sources`
 
 This means the rename is no longer speculative. The branch already demonstrates that the intended model can be carried through both the shared package layer and the app without breaking the build.
 
