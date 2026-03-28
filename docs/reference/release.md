@@ -33,6 +33,9 @@ To build unsigned artifacts locally without publishing:
 
 This writes the unsigned `.dmg`, `.zip`, and `.sha256` files into `dist/`.
 
+`dist/` is local build/release staging only.
+Those artifacts are uploaded directly to GitHub Releases by `scripts/release-unsigned.sh` and should not be committed to the repository.
+
 ## Prepare Release Version
 
 Recommended beta release preparation:
@@ -75,6 +78,7 @@ Generated artifacts:
 - `Hypnograph-<version>-<build>-macOS-unsigned.sha256`
 
 Notes:
+- `dist/` remains local staging and should stay uncommitted.
 - This path does not use TestFlight or notarization.
 - Gatekeeper will show a warning because the app is unsigned and not notarized.
 - This is the current direct-download beta path when Apple Developer Program distribution is not being used.

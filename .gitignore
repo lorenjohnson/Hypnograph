@@ -21,6 +21,7 @@ Podfile.lock
 # Swift Package Manager
 .build/
 .swiftpm/
+dist/
 
 # Claude Code
 .claude/settings.local.json
