@@ -11,9 +11,9 @@ APP_NAME="${APP_NAME:-Hypnograph.app}"
 VOLUME_NAME="${VOLUME_NAME:-Hypnograph}"
 
 BUILD_ROOT="${BUILD_ROOT:-$REPO_ROOT/.build/release-unsigned}"
-DERIVED_DATA_PATH="$BUILD_ROOT/DerivedData"
 DIST_DIR="${DIST_DIR:-$REPO_ROOT/dist}"
 DESTINATION="${DESTINATION:-platform=macOS}"
+DERIVED_DATA_ROOT="${DERIVED_DATA_ROOT:-$HOME/Library/Developer/Xcode/DerivedData}"
 
 for required_command in xcodebuild ditto hdiutil shasum codesign; do
   if ! command -v "$required_command" >/dev/null 2>&1; then
@@ -32,14 +32,22 @@ xcodebuild \
   -scheme "$SCHEME" \
   -configuration "$CONFIGURATION" \
   -destination "$DESTINATION" \
-  -derivedDataPath "$DERIVED_DATA_PATH" \
-  clean build \
+  build \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY="" \
   DEVELOPMENT_TEAM=""
 
-APP_PATH="$DERIVED_DATA_PATH/Build/Products/$CONFIGURATION/$APP_NAME"
+APP_PATH=""
+LATEST_MTIME=0
+while IFS= read -r -d '' candidate; do
+  candidate_mtime="$(stat -f '%m' "$candidate")"
+  if [[ "$candidate_mtime" -gt "$LATEST_MTIME" ]]; then
+    LATEST_MTIME="$candidate_mtime"
+    APP_PATH="$candidate"
+  fi
+done < <(find "$DERIVED_DATA_ROOT" -path "*/Build/Products/$CONFIGURATION/$APP_NAME" -type d -print0)
+
 if [[ ! -d "$APP_PATH" ]]; then
   echo "error: Expected app not found at $APP_PATH" >&2
   exit 1
