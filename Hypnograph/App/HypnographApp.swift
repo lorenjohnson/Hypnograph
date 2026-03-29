@@ -164,9 +164,16 @@ struct HypnographApp: App {
                     _ = studio?.addSourcesAsNewComposition(fromFileURLs: mediaURLs)
                 }
 
-                // Refresh available libraries (includes asset counts for menu)
+                // Refresh source availability at startup. If Photos is already authorized,
+                // run the stronger post-auth recovery path so an initial empty library
+                // can settle before the user has to open Sources manually.
                 Task {
-                    await state.refreshAvailableLibraries()
+                    let status = state.refreshPhotosAuthorizationStatus()
+                    if status.canRead {
+                        await state.refreshPhotosLibrariesAfterAuthorization()
+                    } else {
+                        await state.refreshAvailableLibraries()
+                    }
                 }
 
                 // When transport keys override accessibility navigation, start with no focused control.
@@ -179,6 +186,16 @@ struct HypnographApp: App {
                 guard isEnabled else { return }
                 DispatchQueue.main.async {
                     (appDelegate.mainWindow ?? NSApp.mainWindow ?? NSApp.windows.first)?.makeFirstResponder(nil)
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                Task { @MainActor in
+                    let status = state.refreshPhotosAuthorizationStatus()
+                    if status.canRead {
+                        await state.refreshPhotosLibrariesAfterAuthorization()
+                    } else {
+                        await state.refreshAvailableLibraries()
+                    }
                 }
             }
         }

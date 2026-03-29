@@ -241,6 +241,11 @@ final class HypnographState: ObservableObject {
             await refreshAvailableLibraries()
 
             if availableLibraries.contains(where: { $0.type == .applePhotos }) {
+                if activeLibraryKeys.contains(ApplePhotosLibraryKeys.photosAll)
+                    || activeLibraryKeys.contains(ApplePhotosLibraryKeys.photosCustom)
+                    || activeLibraryKeys.contains(where: { $0.hasPrefix(ApplePhotosLibraryKeys.photosPrefix) }) {
+                    await applyActiveLibrariesUnified(activeLibraryKeys, save: false)
+                }
                 return
             }
 
