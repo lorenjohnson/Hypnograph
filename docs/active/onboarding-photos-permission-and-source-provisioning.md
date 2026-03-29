@@ -29,5 +29,6 @@ This is the current top-priority onboarding project because the first-use path n
 ## Open Questions
 
 - Is the repeated Apple Photos prompt on fresh debug builds expected because of the build/install cycle, or is Hypnograph losing track of an already-granted authorization state?
+- Was at least part of the observed repro caused by accidentally running more than one Hypnograph instance or build at once, especially if those instances did not present as the same effective app identity to macOS permissioning?
 - After permission is granted, which part of startup is failing: source registration, media-library provisioning, UI refresh, or only the no-sources empty-state logic?
 - Should the first-use path eagerly surface Apple Photos as a configured source immediately after permission is granted, or does it still require a separate source-selection step that the UI is failing to communicate clearly?
