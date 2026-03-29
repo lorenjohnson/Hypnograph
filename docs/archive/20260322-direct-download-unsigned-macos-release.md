@@ -50,9 +50,3 @@ friend testers on macOS.
 Hypnograph currently ships as a direct macOS download while Apple beta channels are being
 set up. macOS may show a warning on first launch. To continue safely, move the app to
 Applications, then right-click the app and choose `Open` once.
-
-## Follow-up after enrollment
-
-- Keep this direct-download path as fallback for private builds.
-- Add signed/notarized release flow once Developer Program access is active.
-- Re-evaluate migration to TestFlight for wider beta.
