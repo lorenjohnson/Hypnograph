@@ -6,6 +6,7 @@ last_reviewed: 2026-03-29
 
 ## Active Projects
 - [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
+- [studio-panels-cleanup](active/studio-panels-cleanup.md)
 - [ ] [sequences](active/sequences/index.md)
 - [ ] Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause a crash?
 - [ ] Make global layer selection more clear in composition window.
