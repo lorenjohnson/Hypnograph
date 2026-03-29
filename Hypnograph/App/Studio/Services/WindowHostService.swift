@@ -79,7 +79,12 @@ private enum WindowKind: String {
     }
 
     var fixedHeightPadding: CGFloat {
-        16
+        switch self {
+        case .playerControls:
+            return 0
+        default:
+            return 16
+        }
     }
 
     var defaultOrigin: (NSRect, CGSize) -> CGPoint {
@@ -393,7 +398,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
             panel.titleVisibility = .hidden
             panel.titlebarAppearsTransparent = true
         }
-        panel.isMovableByWindowBackground = true
+        panel.isMovableByWindowBackground = (kind != .playerControls)
         panel.isReleasedWhenClosed = false
         panel.isFloatingPanel = false
         panel.level = parentWindow.level
