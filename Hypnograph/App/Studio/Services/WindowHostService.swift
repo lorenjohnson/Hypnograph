@@ -7,6 +7,7 @@ import SwiftUI
 import AppKit
 
 private enum WindowKind: String {
+    case hypnograms
     case sources
     case newClips
     case outputSettings
@@ -16,6 +17,7 @@ private enum WindowKind: String {
 
     var title: String {
         switch self {
+        case .hypnograms: return "Hypnograms"
         case .sources: return "Sources"
         case .newClips: return "New Compositions"
         case .outputSettings: return "Output Settings"
@@ -26,11 +28,17 @@ private enum WindowKind: String {
     }
 
     var windowStateID: String {
-        "\(rawValue)Window"
+        switch self {
+        case .hypnograms:
+            return "hypnogramList"
+        default:
+            return "\(rawValue)Window"
+        }
     }
 
     var defaultSize: CGSize {
         switch self {
+        case .hypnograms: return CGSize(width: 420, height: 520)
         case .sources: return CGSize(width: 420, height: 620)
         case .newClips: return CGSize(width: 360, height: 560)
         case .outputSettings: return CGSize(width: 360, height: 360)
@@ -51,6 +59,7 @@ private enum WindowKind: String {
 
     var minSize: CGSize {
         switch self {
+        case .hypnograms: return CGSize(width: 360, height: 320)
         case .sources: return CGSize(width: 360, height: 420)
         case .newClips: return CGSize(width: defaultSize.width, height: 360)
         case .outputSettings: return CGSize(width: defaultSize.width, height: 260)
@@ -61,7 +70,12 @@ private enum WindowKind: String {
     }
 
     var shouldFitHeightToContent: Bool {
-        self != .effects
+        switch self {
+        case .effects, .hypnograms:
+            return false
+        default:
+            return true
+        }
     }
 
     var fixedHeightPadding: CGFloat {
@@ -70,6 +84,10 @@ private enum WindowKind: String {
 
     var defaultOrigin: (NSRect, CGSize) -> CGPoint {
         switch self {
+        case .hypnograms:
+            return { parentFrame, size in
+                CGPoint(x: parentFrame.minX - size.width - 16, y: parentFrame.maxY - size.height - 36)
+            }
         case .sources:
             return { parentFrame, _ in
                 CGPoint(x: parentFrame.maxX + 16, y: parentFrame.maxY - 620)
@@ -189,6 +207,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
 
     func sync(
         parentWindow: NSWindow?,
+        showHypnograms: Bool,
         showSources: Bool,
         showNewClips: Bool,
         showOutputSettings: Bool,
@@ -198,6 +217,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         playerControlsLayoutSignature: Int,
         autoHideWindows: Bool,
         onPanelVisibilityChanged: @escaping (String, Bool) -> Void,
+        hypnogramsContent: AnyView,
         sourcesContent: AnyView,
         newClipsContent: AnyView,
         outputSettingsContent: AnyView,
@@ -207,7 +227,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     ) {
         self.onPanelVisibilityChanged = onPanelVisibilityChanged
         let anyVisibleRequested =
-            showSources || showNewClips || showOutputSettings || showComposition || showEffects || showPlayerControls
+            showHypnograms || showSources || showNewClips || showOutputSettings || showComposition || showEffects || showPlayerControls
         let shouldStartAutoHidden =
             autoHideWindows && anyVisibleRequested && !hasInitializedVisiblePanelPresentation
 
@@ -233,6 +253,13 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         configureParentWindowForFullScreen(parentWindow)
         updateAutoHideMonitoring(enabled: autoHideWindows, startHidden: shouldStartAutoHidden)
 
+        syncPanel(
+            kind: .hypnograms,
+            visible: showHypnograms,
+            content: hypnogramsContent,
+            parentWindow: parentWindow,
+            suppressVisibilityActivity: shouldStartAutoHidden
+        )
         syncPanel(
             kind: .sources,
             visible: showSources,
@@ -512,33 +539,35 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         toContentSize contentSize: CGSize,
         pinTopEdge: Bool
     ) {
-        let targetFrameSize = panel.frameRect(forContentRect: NSRect(origin: .zero, size: contentSize)).size
-        var targetFrame = panel.frame
-        let bottomEdge = targetFrame.minY
-        let topEdge = targetFrame.maxY
+        let startingFrame = panel.frame
+        let currentContentSize = panel.contentLayoutRect.size
+        let sizeChanged =
+            abs(currentContentSize.width - contentSize.width) > 1 ||
+            abs(currentContentSize.height - contentSize.height) > 1
 
-        targetFrame.size = targetFrameSize
-        if pinTopEdge {
-            targetFrame.origin.y = topEdge - targetFrameSize.height
-        } else {
-            targetFrame.origin.y = bottomEdge
+        if sizeChanged {
+            panel.setContentSize(contentSize)
         }
 
-        let sizeChanged =
-            abs(targetFrame.width - panel.frame.width) > 1 ||
-            abs(targetFrame.height - panel.frame.height) > 1
-        let originChanged =
-            abs(targetFrame.origin.x - panel.frame.origin.x) > 1 ||
-            abs(targetFrame.origin.y - panel.frame.origin.y) > 1
+        let targetOrigin: CGPoint
+        if pinTopEdge {
+            targetOrigin = CGPoint(
+                x: startingFrame.origin.x,
+                y: startingFrame.maxY - panel.frame.height
+            )
+        } else {
+            targetOrigin = CGPoint(
+                x: startingFrame.origin.x,
+                y: startingFrame.origin.y
+            )
+        }
 
-        if sizeChanged || originChanged {
-            panel.setFrame(targetFrame, display: true)
-            if !pinTopEdge {
-                let correctedOrigin = CGPoint(x: targetFrame.origin.x, y: bottomEdge)
-                if abs(panel.frame.origin.x - correctedOrigin.x) > 1 || abs(panel.frame.origin.y - correctedOrigin.y) > 1 {
-                    panel.setFrameOrigin(correctedOrigin)
-                }
-            }
+        let originChanged =
+            abs(panel.frame.origin.x - targetOrigin.x) > 1 ||
+            abs(panel.frame.origin.y - targetOrigin.y) > 1
+
+        if originChanged {
+            panel.setFrameOrigin(targetOrigin)
         }
     }
 

@@ -162,6 +162,20 @@ struct ContentView: View {
         .frame(maxWidth: 920)
     }
 
+    private var hypnogramsContent: some View {
+        HypnogramListView(
+            store: HypnogramStore.shared,
+            onLoad: { entry in
+                guard let hypnogram = HypnogramStore.shared.loadHypnogram(from: entry) else {
+                    AppNotifications.show("Failed to load hypnogram", flash: true)
+                    return
+                }
+                main.appendHypnogramToHistory(hypnogram, sourceURL: entry.sessionURL)
+                AppNotifications.show("Loaded: \(entry.name)", flash: true)
+            }
+        )
+    }
+
     private var playerControlsLayoutSignature: Int {
         clipTrimContexts.count
     }
@@ -179,26 +193,6 @@ struct ContentView: View {
             CursorAutoHideView(isEnabled: shouldAutoHideCursor, idleSeconds: 3.0)
                 .allowsHitTesting(false)
 
-            // HUD and Hypnogram List - top left (below LIVE if visible)
-            VStack(alignment: .leading, spacing: 8) {
-                if windows.isWindowVisible("hypnogramList") {
-                    HypnogramListView(
-                        store: HypnogramStore.shared,
-                        onLoad: { entry in
-                            guard let hypnogram = HypnogramStore.shared.loadHypnogram(from: entry) else {
-                                AppNotifications.show("Failed to load hypnogram", flash: true)
-                                return
-                            }
-                            main.appendHypnogramToHistory(hypnogram, sourceURL: entry.sessionURL)
-                            AppNotifications.show("Loaded: \(entry.name)", flash: true)
-                        }
-                    )
-                    .transition(.move(edge: .leading).combined(with: .opacity))
-                }
-            }
-            .padding(.top, main.isLiveMode ? 56 : 12)
-            .padding(.leading, 12)
-            .animation(.easeInOut(duration: 0.2), value: windows.isWindowVisible("hypnogramList"))
         }
         .overlay(alignment: .top) {
             VStack(spacing: 8) {
@@ -254,6 +248,7 @@ struct ContentView: View {
         .background(
             WindowHostBridge(
                 hostService: windowHostService,
+                showHypnograms: windows.isWindowVisible("hypnogramList"),
                 showSources: windows.isWindowVisible("sourcesWindow"),
                 showNewClips: windows.isWindowVisible("newClipsWindow"),
                 showOutputSettings: windows.isWindowVisible("outputSettingsWindow"),
@@ -265,6 +260,9 @@ struct ContentView: View {
                 onPanelVisibilityChanged: { windowID, isVisible in
                     windows.setWindowVisible(windowID, visible: isVisible)
                 },
+                hypnogramsContent: AnyView(
+                    hypnogramsContent
+                ),
                 sourcesContent: AnyView(
                     SourcesWindowView(state: state, main: main)
                 ),
@@ -289,6 +287,7 @@ struct ContentView: View {
         .appNotifications()
         .background(Color.black)
         .onAppear {
+            windows.registerWindow("hypnogramList", defaultVisible: false)
             windows.registerWindow("sourcesWindow", defaultVisible: false)
             windows.registerWindow("newClipsWindow", defaultVisible: true)
             windows.registerWindow("outputSettingsWindow", defaultVisible: true)
