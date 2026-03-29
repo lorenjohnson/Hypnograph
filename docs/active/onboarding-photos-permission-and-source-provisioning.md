@@ -1,0 +1,33 @@
+---
+doc-status: draft
+---
+
+# Onboarding Photos Permission and Source Provisioning
+
+## Overview
+
+This project captures the current top-priority onboarding failure around Apple Photos authorization and first-use source provisioning. On a fresh launch of a fresh build, Hypnograph is currently re-requesting Apple Photos permission more often than expected, which may itself indicate a regression in permission persistence or provisioning behavior for debug builds.
+
+The more critical failure is what happens after permission is granted. The prompt appears at an acceptable point in launch, but after granting full Apple Photos access the app can still land in the Studio showing the no-sources state as though Apple Photos had not actually provisioned yet. In practice, Apple Photos only appears to become visible or usable after opening the Sources window, which makes the first mile of the app feel unreliable exactly where it most needs to be solid.
+
+This is the current top-priority onboarding project because the first-use path needs to be extremely trustworthy. The immediate goal is not broader source-management cleanup; it is to make Apple Photos permissioning and source availability behave consistently and correctly on fresh launch.
+
+## Rules
+
+- MUST treat Apple Photos permissioning and first-use source provisioning as the primary onboarding issue to fix first.
+- MUST verify whether repeated Apple Photos reprovisioning on fresh debug builds is expected behavior or a real regression.
+- MUST make the post-permission launch path reliable so the app does not behave as though no Apple Photos source is available when access has just been granted.
+- SHOULD keep the initial scope focused on first-mile trust and correctness rather than folding in unrelated Sources-window cleanup.
+- MUST keep this document in `draft` until the current failure is reproduced and the first implementation slice is made explicit.
+
+## Plan
+
+- Smallest meaningful next slice: reproduce the fresh-build Apple Photos permission flow and document the exact state transitions before and after permission is granted.
+- Immediate acceptance check: determine whether the bug is primarily repeated permission prompting, broken post-grant source provisioning, or both.
+- Follow-on slice: implement the smallest fix that makes Apple Photos availability reflect granted permission immediately on the first-use path without requiring the Sources window to be opened manually.
+
+## Open Questions
+
+- Is the repeated Apple Photos prompt on fresh debug builds expected because of the build/install cycle, or is Hypnograph losing track of an already-granted authorization state?
+- After permission is granted, which part of startup is failing: source registration, media-library provisioning, UI refresh, or only the no-sources empty-state logic?
+- Should the first-use path eagerly surface Apple Photos as a configured source immediately after permission is granted, or does it still require a separate source-selection step that the UI is failing to communicate clearly?

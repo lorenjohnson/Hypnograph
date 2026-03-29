@@ -12,6 +12,7 @@ private enum WindowKind: String {
     case outputSettings
     case composition
     case effects
+    case playerControls
 
     var title: String {
         switch self {
@@ -20,6 +21,7 @@ private enum WindowKind: String {
         case .outputSettings: return "Output Settings"
         case .composition: return "Composition"
         case .effects: return "Effects"
+        case .playerControls: return "Playback Controls"
         }
     }
 
@@ -34,11 +36,17 @@ private enum WindowKind: String {
         case .outputSettings: return CGSize(width: 360, height: 360)
         case .composition: return CGSize(width: 420, height: 720)
         case .effects: return CGSize(width: 420, height: 720)
+        case .playerControls: return CGSize(width: 920, height: 170)
         }
     }
 
     var maxWidth: CGFloat {
-        defaultSize.width * 1.5
+        switch self {
+        case .playerControls:
+            return 1100
+        default:
+            return defaultSize.width * 1.5
+        }
     }
 
     var minSize: CGSize {
@@ -48,6 +56,7 @@ private enum WindowKind: String {
         case .outputSettings: return CGSize(width: defaultSize.width, height: 260)
         case .composition: return CGSize(width: defaultSize.width, height: 420)
         case .effects: return CGSize(width: defaultSize.width, height: 420)
+        case .playerControls: return CGSize(width: 720, height: 120)
         }
     }
 
@@ -81,11 +90,43 @@ private enum WindowKind: String {
             return { parentFrame, _ in
                 CGPoint(x: parentFrame.maxX + 16, y: parentFrame.maxY - 360)
             }
+        case .playerControls:
+            return { parentFrame, size in
+                CGPoint(
+                    x: parentFrame.midX - (size.width / 2),
+                    y: parentFrame.minY + 12
+                )
+            }
         }
     }
 
     var autosaveName: String {
         "Hypnograph.Studio.\(rawValue)"
+    }
+
+    var styleMask: NSWindow.StyleMask {
+        switch self {
+        case .playerControls:
+            return [.titled, .closable, .fullSizeContentView, .utilityWindow]
+        default:
+            return [.titled, .closable, .resizable, .fullSizeContentView, .utilityWindow]
+        }
+    }
+
+    var isResizable: Bool {
+        self != .playerControls
+    }
+
+    var backgroundColor: NSColor {
+        .black
+    }
+
+    var hasShadow: Bool {
+        true
+    }
+
+    var usesTitlebarChrome: Bool {
+        true
     }
 }
 
@@ -135,12 +176,14 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     private var requestedVisibility: [WindowKind: Bool] = [:]
     private var parentCloseObserver: NSObjectProtocol?
     private var onPanelVisibilityChanged: ((String, Bool) -> Void)?
+    private var panelLayoutSignatures: [WindowKind: Int] = [:]
     private var autoHideWindowsEnabled = false
     private var autoHideTimer: Timer?
     private var lastMouseLocation: NSPoint = NSEvent.mouseLocation
     private var lastActivityTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     private var panelsAutoHidden = false
-    @Published private(set) var arePanelsAutoHidden = false
+    private var hasInitializedVisiblePanelPresentation = false
+    private var requiresActivityToRevealPanels = false
 
     private let autoHideIdleSeconds: TimeInterval = 3.0
 
@@ -151,15 +194,22 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         showOutputSettings: Bool,
         showComposition: Bool,
         showEffects: Bool,
+        showPlayerControls: Bool,
+        playerControlsLayoutSignature: Int,
         autoHideWindows: Bool,
         onPanelVisibilityChanged: @escaping (String, Bool) -> Void,
         sourcesContent: AnyView,
         newClipsContent: AnyView,
         outputSettingsContent: AnyView,
         compositionContent: AnyView,
-        effectsContent: AnyView
+        effectsContent: AnyView,
+        playerControlsContent: AnyView
     ) {
         self.onPanelVisibilityChanged = onPanelVisibilityChanged
+        let anyVisibleRequested =
+            showSources || showNewClips || showOutputSettings || showComposition || showEffects || showPlayerControls
+        let shouldStartAutoHidden =
+            autoHideWindows && anyVisibleRequested && !hasInitializedVisiblePanelPresentation
 
         guard let parentWindow else {
             stopAutoHideMonitoring()
@@ -181,13 +231,55 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         }
 
         configureParentWindowForFullScreen(parentWindow)
-        updateAutoHideMonitoring(enabled: autoHideWindows)
+        updateAutoHideMonitoring(enabled: autoHideWindows, startHidden: shouldStartAutoHidden)
 
-        syncPanel(kind: .sources, visible: showSources, content: sourcesContent, parentWindow: parentWindow)
-        syncPanel(kind: .newClips, visible: showNewClips, content: newClipsContent, parentWindow: parentWindow)
-        syncPanel(kind: .outputSettings, visible: showOutputSettings, content: outputSettingsContent, parentWindow: parentWindow)
-        syncPanel(kind: .composition, visible: showComposition, content: compositionContent, parentWindow: parentWindow)
-        syncPanel(kind: .effects, visible: showEffects, content: effectsContent, parentWindow: parentWindow)
+        syncPanel(
+            kind: .sources,
+            visible: showSources,
+            content: sourcesContent,
+            parentWindow: parentWindow,
+            suppressVisibilityActivity: shouldStartAutoHidden
+        )
+        syncPanel(
+            kind: .newClips,
+            visible: showNewClips,
+            content: newClipsContent,
+            parentWindow: parentWindow,
+            suppressVisibilityActivity: shouldStartAutoHidden
+        )
+        syncPanel(
+            kind: .outputSettings,
+            visible: showOutputSettings,
+            content: outputSettingsContent,
+            parentWindow: parentWindow,
+            suppressVisibilityActivity: shouldStartAutoHidden
+        )
+        syncPanel(
+            kind: .composition,
+            visible: showComposition,
+            content: compositionContent,
+            parentWindow: parentWindow,
+            suppressVisibilityActivity: shouldStartAutoHidden
+        )
+        syncPanel(
+            kind: .effects,
+            visible: showEffects,
+            content: effectsContent,
+            parentWindow: parentWindow,
+            suppressVisibilityActivity: shouldStartAutoHidden
+        )
+        syncPanel(
+            kind: .playerControls,
+            visible: showPlayerControls,
+            content: playerControlsContent,
+            parentWindow: parentWindow,
+            suppressVisibilityActivity: shouldStartAutoHidden,
+            layoutSignature: playerControlsLayoutSignature
+        )
+
+        if anyVisibleRequested {
+            hasInitializedVisiblePanelPresentation = true
+        }
     }
 
     func teardown() {
@@ -197,7 +289,10 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         removeParentCloseObserver()
         panels.values.forEach { $0.panel.close() }
         panels.removeAll()
+        panelLayoutSignatures.removeAll()
         requestedVisibility.removeAll()
+        hasInitializedVisiblePanelPresentation = false
+        requiresActivityToRevealPanels = false
         parentWindow = nil
     }
 
@@ -205,29 +300,48 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         kind: WindowKind,
         visible: Bool,
         content: AnyView,
-        parentWindow: NSWindow
+        parentWindow: NSWindow,
+        suppressVisibilityActivity: Bool,
+        layoutSignature: Int? = nil
     ) {
         let previousVisibility = requestedVisibility[kind] ?? false
         requestedVisibility[kind] = visible
 
-        if visible && !previousVisibility {
+        if visible && !previousVisibility && !suppressVisibilityActivity {
             noteActivity()
         }
 
         if visible {
             let managed = ensurePanel(kind: kind, parentWindow: parentWindow, content: content)
             managed.host.rootView = content
-            applySizing(for: kind, managed: managed)
-
-            if managed.panel.parent == nil {
-                parentWindow.addChildWindow(managed.panel, ordered: .above)
+            let shouldApplySizing: Bool
+            if let layoutSignature {
+                let previousSignature = panelLayoutSignatures[kind]
+                shouldApplySizing = previousSignature != layoutSignature
+                panelLayoutSignatures[kind] = layoutSignature
+            } else {
+                shouldApplySizing = true
             }
+
+            if shouldApplySizing {
+                applySizing(for: kind, managed: managed)
+            }
+
             if panelsAutoHidden {
+                if managed.panel.parent === parentWindow {
+                    parentWindow.removeChildWindow(managed.panel)
+                }
                 managed.panel.orderOut(nil)
-            } else if !managed.panel.isVisible {
-                managed.panel.orderFront(nil)
+            } else {
+                if managed.panel.parent == nil {
+                    parentWindow.addChildWindow(managed.panel, ordered: .above)
+                }
+                if !managed.panel.isVisible {
+                    managed.panel.orderFront(nil)
+                }
             }
         } else if let managed = panels[kind] {
+            panelLayoutSignatures[kind] = nil
             if managed.panel.parent === parentWindow {
                 parentWindow.removeChildWindow(managed.panel)
             }
@@ -243,28 +357,32 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         let frame = defaultFrame(kind: kind, parentWindow: parentWindow)
         let panel = ChildWindowPanel(
             contentRect: frame,
-            styleMask: [.titled, .closable, .resizable, .fullSizeContentView, .utilityWindow],
+            styleMask: kind.styleMask,
             backing: .buffered,
             defer: false
         )
         panel.title = kind.title
-        panel.titleVisibility = .hidden
-        panel.titlebarAppearsTransparent = true
+        if kind.usesTitlebarChrome {
+            panel.titleVisibility = .hidden
+            panel.titlebarAppearsTransparent = true
+        }
         panel.isMovableByWindowBackground = true
         panel.isReleasedWhenClosed = false
         panel.isFloatingPanel = false
         panel.level = parentWindow.level
         panel.collectionBehavior = [.fullScreenAuxiliary, .moveToActiveSpace]
-        panel.backgroundColor = .black
+        panel.backgroundColor = kind.backgroundColor
         panel.isOpaque = false
-        panel.hasShadow = true
+        panel.hasShadow = kind.hasShadow
         panel.hidesOnDeactivate = false
         panel.delegate = self
         panel.setFrameAutosaveName(kind.autosaveName)
         _ = panel.setFrameUsingName(kind.autosaveName, force: false)
         panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
         panel.standardWindowButton(.zoomButton)?.isHidden = true
-        installTitleAccessory(for: panel, title: kind.title)
+        if kind.usesTitlebarChrome {
+            installTitleAccessory(for: panel, title: kind.title)
+        }
         panel.onUserInteraction = { [weak self, weak panel] in
             guard let self, let panel else { return }
             self.noteActivity()
@@ -278,6 +396,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         let host = NSHostingController(rootView: content)
         host.view.appearance = NSAppearance(named: .darkAqua)
         panel.contentViewController = host
+        panel.orderOut(nil)
 
         let managed = ManagedPanel(panel: panel, host: host)
         panels[kind] = managed
@@ -325,16 +444,17 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
                 ),
                 maxInitialHeight
             )
+            let targetHeight = measuredHeight
 
             applyContentConstraints(
                 panel: panel,
-                minContentSize: CGSize(width: kind.minSize.width, height: measuredHeight),
-                maxContentSize: CGSize(width: kind.maxWidth, height: measuredHeight)
+                minContentSize: CGSize(width: kind.minSize.width, height: targetHeight),
+                maxContentSize: CGSize(width: kind.maxWidth, height: targetHeight)
             )
             resizePanel(
                 panel,
-                toContentSize: CGSize(width: clampedWidth, height: measuredHeight),
-                pinTopEdge: true
+                toContentSize: CGSize(width: clampedWidth, height: targetHeight),
+                pinTopEdge: kind != .playerControls
             )
         } else {
             applyContentConstraints(
@@ -350,9 +470,14 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
                         width: clampedWidth,
                         height: max(kind.minSize.height, panel.contentLayoutRect.height)
                     ),
-                    pinTopEdge: true
+                    pinTopEdge: kind != .playerControls
                 )
             }
+        }
+
+        if !kind.isResizable {
+            panel.minSize = panel.frame.size
+            panel.maxSize = panel.frame.size
         }
     }
 
@@ -389,11 +514,14 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     ) {
         let targetFrameSize = panel.frameRect(forContentRect: NSRect(origin: .zero, size: contentSize)).size
         var targetFrame = panel.frame
+        let bottomEdge = targetFrame.minY
         let topEdge = targetFrame.maxY
 
         targetFrame.size = targetFrameSize
         if pinTopEdge {
             targetFrame.origin.y = topEdge - targetFrameSize.height
+        } else {
+            targetFrame.origin.y = bottomEdge
         }
 
         let sizeChanged =
@@ -405,6 +533,12 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
 
         if sizeChanged || originChanged {
             panel.setFrame(targetFrame, display: true)
+            if !pinTopEdge {
+                let correctedOrigin = CGPoint(x: targetFrame.origin.x, y: bottomEdge)
+                if abs(panel.frame.origin.x - correctedOrigin.x) > 1 || abs(panel.frame.origin.y - correctedOrigin.y) > 1 {
+                    panel.setFrameOrigin(correctedOrigin)
+                }
+            }
         }
     }
 
@@ -440,10 +574,13 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         }
     }
 
-    private func updateAutoHideMonitoring(enabled: Bool) {
+    private func updateAutoHideMonitoring(enabled: Bool, startHidden: Bool) {
         guard autoHideWindowsEnabled != enabled else {
             if enabled {
                 startAutoHideMonitoringIfNeeded()
+                if startHidden {
+                    setPanelsAutoHidden(true)
+                }
             }
             return
         }
@@ -451,7 +588,13 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         autoHideWindowsEnabled = enabled
         if enabled {
             startAutoHideMonitoringIfNeeded()
-            noteActivity()
+            if startHidden {
+                requiresActivityToRevealPanels = true
+                setPanelsAutoHidden(true)
+            } else {
+                requiresActivityToRevealPanels = false
+                noteActivity()
+            }
         } else {
             stopAutoHideMonitoring()
             setPanelsAutoHidden(false)
@@ -478,12 +621,13 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         autoHideTimer = nil
         autoHideWindowsEnabled = false
         panelsAutoHidden = false
-        arePanelsAutoHidden = false
+        requiresActivityToRevealPanels = false
     }
 
     private func noteActivity() {
         lastMouseLocation = NSEvent.mouseLocation
         lastActivityTime = CFAbsoluteTimeGetCurrent()
+        requiresActivityToRevealPanels = false
         if panelsAutoHidden {
             setPanelsAutoHidden(false)
         }
@@ -493,7 +637,6 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         guard autoHideWindowsEnabled else { return }
 
         guard NSApp.isActive else {
-            setPanelsAutoHidden(false)
             return
         }
 
@@ -501,7 +644,12 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         if location.x != lastMouseLocation.x || location.y != lastMouseLocation.y {
             lastMouseLocation = location
             lastActivityTime = CFAbsoluteTimeGetCurrent()
+            requiresActivityToRevealPanels = false
             setPanelsAutoHidden(false)
+            return
+        }
+
+        if requiresActivityToRevealPanels {
             return
         }
 
@@ -512,7 +660,6 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     private func setPanelsAutoHidden(_ hidden: Bool) {
         guard panelsAutoHidden != hidden else { return }
         panelsAutoHidden = hidden
-        arePanelsAutoHidden = hidden
 
         for (kind, managed) in panels where requestedVisibility[kind] == true {
             if hidden {

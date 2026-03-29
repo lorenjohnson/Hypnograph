@@ -13,7 +13,7 @@ struct AppSettings: Codable {
     static let defaultValue = AppSettings(
         keyboardAccessibilityOverridesEnabled: true,
         effectsComposerEnabled: true,
-        autoHideWindowsEnabled: false
+        autoHideWindowsEnabled: true
     )
 
     private enum CodingKeys: String, CodingKey {

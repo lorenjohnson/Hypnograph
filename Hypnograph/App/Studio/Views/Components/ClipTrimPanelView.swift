@@ -41,23 +41,14 @@ struct ClipTrimPanelView: View {
 }
 
 private struct ClipTrimRangeStrip: View {
-    enum DragMode {
-        case leadingHandle
-        case trailingHandle
-        case window
-    }
-
     let context: ClipTrimContext
     let onCommit: (ClosedRange<Double>) -> Void
 
     @StateObject private var thumbnailStore = ClipTrimThumbnailStripStore()
     @State private var draftRange: ClosedRange<Double>
-    @State private var dragStartRange: ClosedRange<Double>?
-    @State private var dragMode: DragMode?
 
     private let trackHeight: CGFloat = 38
     private let handleWidth: CGFloat = 10
-    private let handleHitWidth: CGFloat = 20
     private let minimumDurationSeconds: Double = 0.1
 
     init(
@@ -126,9 +117,20 @@ private struct ClipTrimRangeStrip: View {
 
                     trimHandle
                         .offset(x: endX - (handleWidth * 0.5), y: 1)
+
+                    ClipTrimInteractionOverlay(
+                        range: $draftRange,
+                        totalDurationSeconds: safeTotalSeconds,
+                        maxSelectionDurationSeconds: maxWindowSeconds,
+                        minimumDurationSeconds: minimumWindowSeconds,
+                        onCommit: { committed in
+                            let normalizedRange = normalized(committed)
+                            draftRange = normalizedRange
+                            onCommit(normalizedRange)
+                        }
+                    )
                 }
                 .contentShape(Rectangle())
-                .gesture(dragGesture(trackWidth: trackWidth))
             }
             .frame(height: trackHeight)
 
@@ -143,7 +145,6 @@ private struct ClipTrimRangeStrip: View {
             }
         }
         .onChange(of: context) { _, newValue in
-            guard dragStartRange == nil else { return }
             draftRange = normalized(newValue.selectedRangeSeconds)
         }
         .onAppear {
@@ -159,8 +160,6 @@ private struct ClipTrimRangeStrip: View {
             thumbnailStore.loadIfNeeded(context: context)
         }
         .onDisappear {
-            dragStartRange = nil
-            dragMode = nil
         }
     }
 
@@ -216,81 +215,6 @@ private struct ClipTrimRangeStrip: View {
         guard safeTotalSeconds > 0 else { return 0 }
         let fraction = max(0, min(seconds / safeTotalSeconds, 1))
         return CGFloat(fraction) * trackWidth
-    }
-
-    private func secondsDelta(forTranslationX translationX: CGFloat, trackWidth: CGFloat) -> Double {
-        guard trackWidth > 0 else { return 0 }
-        return Double(translationX / trackWidth) * safeTotalSeconds
-    }
-
-    private func dragGesture(trackWidth: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 0)
-            .onChanged { value in
-                if value.translation == .zero {
-                    dragStartRange = activeRange
-
-                    let startX = xPosition(forSeconds: activeRange.lowerBound, trackWidth: trackWidth)
-                    let endX = xPosition(forSeconds: activeRange.upperBound, trackWidth: trackWidth)
-                    let selectedWidth = max(0, endX - startX)
-                    let leftDistance = abs(value.startLocation.x - startX)
-                    let rightDistance = abs(value.startLocation.x - endX)
-                    let insideSelectedRange = value.startLocation.x >= startX && value.startLocation.x <= endX
-                    let edgeGrabTolerance = min(
-                        handleHitWidth * 0.5,
-                        max(3, selectedWidth * 0.25)
-                    )
-
-                    if insideSelectedRange {
-                        if leftDistance <= edgeGrabTolerance || rightDistance <= edgeGrabTolerance {
-                            dragMode = leftDistance <= rightDistance ? .leadingHandle : .trailingHandle
-                        } else {
-                            dragMode = .window
-                        }
-                    } else if leftDistance <= handleHitWidth * 0.5 {
-                        dragMode = .leadingHandle
-                    } else if rightDistance <= handleHitWidth * 0.5 {
-                        dragMode = .trailingHandle
-                    } else {
-                        dragMode = leftDistance < rightDistance ? .leadingHandle : .trailingHandle
-                    }
-                }
-
-                guard let mode = dragMode, let origin = dragStartRange else { return }
-
-                let delta = secondsDelta(forTranslationX: value.translation.width, trackWidth: trackWidth)
-                let minWindow = minimumWindowSeconds
-                let maxWindow = maxWindowSeconds
-                let total = safeTotalSeconds
-
-                switch mode {
-                case .leadingHandle:
-                    let minLower = origin.upperBound - maxWindow
-                    let maxLower = origin.upperBound - minWindow
-                    let newLower = max(minLower, min(origin.lowerBound + delta, maxLower))
-                    draftRange = newLower...origin.upperBound
-
-                case .trailingHandle:
-                    let minUpper = origin.lowerBound + minWindow
-                    let maxUpper = min(total, origin.lowerBound + maxWindow)
-                    let newUpper = max(minUpper, min(origin.upperBound + delta, maxUpper))
-                    draftRange = origin.lowerBound...newUpper
-
-                case .window:
-                    let windowWidth = origin.upperBound - origin.lowerBound
-                    let proposedLower = origin.lowerBound + delta
-                    let clampedLower = max(0, min(proposedLower, total - windowWidth))
-                    draftRange = clampedLower...(clampedLower + windowWidth)
-                }
-
-                draftRange = normalized(draftRange)
-            }
-            .onEnded { _ in
-                let committed = normalized(draftRange)
-                draftRange = committed
-                onCommit(committed)
-                dragStartRange = nil
-                dragMode = nil
-            }
     }
 
     @ViewBuilder
@@ -370,6 +294,202 @@ private struct ClipTrimRangeStrip: View {
                 }
             }
             .frame(width: handleWidth, height: trackHeight - 2)
+    }
+}
+
+private struct ClipTrimInteractionOverlay: NSViewRepresentable {
+    @Binding var range: ClosedRange<Double>
+    let totalDurationSeconds: Double
+    let maxSelectionDurationSeconds: Double
+    let minimumDurationSeconds: Double
+    let onCommit: (ClosedRange<Double>) -> Void
+
+    func makeNSView(context: Context) -> ClipTrimInteractionView {
+        let view = ClipTrimInteractionView()
+        view.onRangeChanged = { newRange in
+            range = newRange
+        }
+        view.onRangeCommitted = { committedRange in
+            onCommit(committedRange)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: ClipTrimInteractionView, context: Context) {
+        nsView.totalDurationSeconds = totalDurationSeconds
+        nsView.maxSelectionDurationSeconds = maxSelectionDurationSeconds
+        nsView.minimumDurationSeconds = minimumDurationSeconds
+        nsView.currentRange = range
+        nsView.onRangeChanged = { newRange in
+            range = newRange
+        }
+        nsView.onRangeCommitted = { committedRange in
+            onCommit(committedRange)
+        }
+    }
+}
+
+private final class ClipTrimInteractionView: NSView {
+    private enum DragMode {
+        case leadingHandle
+        case trailingHandle
+        case window
+    }
+
+    var totalDurationSeconds: Double = 0.1
+    var maxSelectionDurationSeconds: Double = 0.1
+    var minimumDurationSeconds: Double = 0.1
+    var currentRange: ClosedRange<Double> = 0...0.1
+    var onRangeChanged: ((ClosedRange<Double>) -> Void)?
+    var onRangeCommitted: ((ClosedRange<Double>) -> Void)?
+
+    private var dragStartPoint: CGPoint?
+    private var dragStartRange: ClosedRange<Double>?
+    private var dragMode: DragMode?
+
+    private let handleHitWidth: CGFloat = 20
+
+    override var mouseDownCanMoveWindow: Bool { false }
+    override var acceptsFirstResponder: Bool { true }
+    override var isOpaque: Bool { false }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        dragStartPoint = point
+        dragStartRange = normalized(currentRange)
+        dragMode = dragModeForStartPoint(point)
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let dragStartPoint, let dragStartRange, let dragMode else { return }
+
+        let point = convert(event.locationInWindow, from: nil)
+        let delta = secondsDelta(forTranslationX: point.x - dragStartPoint.x, trackWidth: bounds.width)
+        let total = safeTotalSeconds
+        let minWindow = safeMinimumDurationSeconds
+        let maxWindow = safeMaxSelectionDurationSeconds
+
+        let updatedRange: ClosedRange<Double>
+        switch dragMode {
+        case .leadingHandle:
+            let minLower = dragStartRange.upperBound - maxWindow
+            let maxLower = dragStartRange.upperBound - minWindow
+            let newLower = max(minLower, min(dragStartRange.lowerBound + delta, maxLower))
+            updatedRange = newLower...dragStartRange.upperBound
+
+        case .trailingHandle:
+            let minUpper = dragStartRange.lowerBound + minWindow
+            let maxUpper = min(total, dragStartRange.lowerBound + maxWindow)
+            let newUpper = max(minUpper, min(dragStartRange.upperBound + delta, maxUpper))
+            updatedRange = dragStartRange.lowerBound...newUpper
+
+        case .window:
+            let windowWidth = dragStartRange.upperBound - dragStartRange.lowerBound
+            let proposedLower = dragStartRange.lowerBound + delta
+            let clampedLower = max(0, min(proposedLower, total - windowWidth))
+            updatedRange = clampedLower...(clampedLower + windowWidth)
+        }
+
+        let normalizedRange = normalized(updatedRange)
+        currentRange = normalizedRange
+        onRangeChanged?(normalizedRange)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        let committedRange = normalized(currentRange)
+        currentRange = committedRange
+        onRangeCommitted?(committedRange)
+        dragStartPoint = nil
+        dragStartRange = nil
+        dragMode = nil
+    }
+
+    private var safeTotalSeconds: Double {
+        max(0.1, totalDurationSeconds)
+    }
+
+    private var safeMinimumDurationSeconds: Double {
+        min(max(0.1, minimumDurationSeconds), safeTotalSeconds)
+    }
+
+    private var safeMaxSelectionDurationSeconds: Double {
+        max(
+            safeMinimumDurationSeconds,
+            min(maxSelectionDurationSeconds, safeTotalSeconds)
+        )
+    }
+
+    private func normalized(_ range: ClosedRange<Double>) -> ClosedRange<Double> {
+        let total = safeTotalSeconds
+        let minWindow = safeMinimumDurationSeconds
+        let maxWindow = safeMaxSelectionDurationSeconds
+
+        var lower = max(0, min(range.lowerBound, total))
+        var upper = max(0, min(range.upperBound, total))
+
+        if upper < lower {
+            swap(&lower, &upper)
+        }
+
+        if (upper - lower) < minWindow {
+            if lower + minWindow <= total {
+                upper = lower + minWindow
+            } else {
+                upper = total
+                lower = max(0, upper - minWindow)
+            }
+        }
+
+        if (upper - lower) > maxWindow {
+            upper = lower + maxWindow
+            if upper > total {
+                upper = total
+                lower = max(0, upper - maxWindow)
+            }
+        }
+
+        return lower...upper
+    }
+
+    private func xPosition(forSeconds seconds: Double, trackWidth: CGFloat) -> CGFloat {
+        guard safeTotalSeconds > 0, trackWidth > 0 else { return 0 }
+        let fraction = max(0, min(seconds / safeTotalSeconds, 1))
+        return CGFloat(fraction) * trackWidth
+    }
+
+    private func secondsDelta(forTranslationX translationX: CGFloat, trackWidth: CGFloat) -> Double {
+        guard trackWidth > 0 else { return 0 }
+        return Double(translationX / trackWidth) * safeTotalSeconds
+    }
+
+    private func dragModeForStartPoint(_ point: CGPoint) -> DragMode {
+        let trackWidth = max(1, bounds.width)
+        let range = normalized(currentRange)
+        let startX = xPosition(forSeconds: range.lowerBound, trackWidth: trackWidth)
+        let endX = xPosition(forSeconds: range.upperBound, trackWidth: trackWidth)
+        let selectedWidth = max(0, endX - startX)
+        let leftDistance = abs(point.x - startX)
+        let rightDistance = abs(point.x - endX)
+        let insideSelectedRange = point.x >= startX && point.x <= endX
+        let edgeGrabTolerance = min(
+            handleHitWidth * 0.5,
+            max(3, selectedWidth * 0.25)
+        )
+
+        if insideSelectedRange {
+            if leftDistance <= edgeGrabTolerance || rightDistance <= edgeGrabTolerance {
+                return leftDistance <= rightDistance ? .leadingHandle : .trailingHandle
+            }
+            return .window
+        }
+
+        if leftDistance <= handleHitWidth * 0.5 {
+            return .leadingHandle
+        }
+        if rightDistance <= handleHitWidth * 0.5 {
+            return .trailingHandle
+        }
+        return leftDistance < rightDistance ? .leadingHandle : .trailingHandle
     }
 }
 

@@ -5,13 +5,14 @@ last_reviewed: 2026-03-29
 # Queue
 
 ## Active Projects
-- [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
 - [studio-panels-cleanup](active/studio-panels-cleanup.md)
-- [ ] [sequences](active/sequences/index.md)
-- [ ] Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause a crash?
-- [ ] History index HUD should not flash when advancing forward at the live end generates a new hypnogram; it should only appear when actually moving within history.
-- [ ] Make global layer selection more clear in composition window.
-- [ ] Add delete option to individual effect in current effects chain for global effect or layer effect
+- History index HUD should not flash when advancing forward at the live end generates a new hypnogram; it should only appear when actually moving within history. It SHOULD show when not in clean screen and Panels are not-auto-hidden and on a Composition in history (so anytime not on most recent history item).
+- [onboarding-photos-permission-and-source-provisioning](active/onboarding-photos-permission-and-source-provisioning.md)
+- [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
+- [sequences](active/sequences/index.md)
+- Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause a crash?
+- Make global layer selection more clear in composition window.
+- Add delete option to individual effect in current effects chain for global effect or layer effect
 
 ## Backlog Projects
 - [composition-timeline-and-length](backlog/composition-timeline-and-length.md)
@@ -30,6 +31,6 @@ last_reviewed: 2026-03-29
 
 ## Incubating
 
-- [ ] Auto blend mode sensing (like based on the relative brightness of the source images). I think I am already doing something like that.
-- [ ] Explore "Channels" for Hypnograph watching: e.g., select a pin on a map + max radius to constrain random clip selection; or time-based channels with begin/end date (or a slider for time period before/after a date). Or using Apple Foundation to formulate a PHAsset query (e.g. "All photos in and around Berlin, Germany in 2025")
-- [ ] Midi mapping, Mic input, MIDI Clock, OSC
+- Auto blend mode sensing (like based on the relative brightness of the source images). I think I am already doing something like that.
+- Explore "Channels" for Hypnograph watching: e.g., select a pin on a map + max radius to constrain random clip selection; or time-based channels with begin/end date (or a slider for time period before/after a date). Or using Apple Foundation to formulate a PHAsset query (e.g. "All photos in and around Berlin, Germany in 2025")
+- Midi mapping, Mic input, MIDI Clock, OSC

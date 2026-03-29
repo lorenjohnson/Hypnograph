@@ -13,7 +13,6 @@ struct ContentView: View {
     @ObservedObject private var appSettingsStore: AppSettingsStore
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
     @StateObject private var windowHostService = WindowHostService()
-    @State private var isPlayerControlsVisible: Bool = true
 
     init(state: HypnographState, main: Studio) {
         self.state = state
@@ -124,51 +123,47 @@ struct ContentView: View {
             .padding(.trailing, 28)
     }
 
-    @ViewBuilder
-    private var playerControlsOverlay: some View {
-        VStack(spacing: 0) {
-            if isPlayerControlsVisible {
-                PlayerControlsBar(
-                    isPaused: main.activePlayer.isPaused,
-                    isLoopCurrentCompositionEnabled: main.isLoopCurrentCompositionEnabled,
-                    currentCompositionText: main.currentCompositionIndicatorText,
-                    compositionLengthSeconds: main.activePlayer.targetDuration.seconds,
-                    clipTrimContexts: clipTrimContexts,
-                    volume: Binding(
-                        get: { Double(main.volume) },
-                        set: { main.volume = Float($0) }
-                    ),
-                    timelinePlaybackRate: main.timelinePlaybackRate,
-                    timelinePlaybackControlValue: Binding(
-                        get: { main.timelinePlaybackControlValue },
-                        set: { main.timelinePlaybackControlValue = $0 }
-                    ),
-                    isTimelinePlaybackReverse: Binding(
-                        get: { main.isTimelinePlaybackReverse },
-                        set: { main.isTimelinePlaybackReverse = $0 }
-                    ),
-                    onPrevious: { main.previousComposition() },
-                    onPlayPause: { main.togglePause() },
-                    onNext: { main.nextComposition() },
-                    onToggleLoopCurrentCompositionMode: { main.toggleLoopCurrentCompositionMode() },
-                    onSnapshotCurrent: { main.saveSnapshotImage() },
-                    onSaveCurrent: { main.save() },
-                    onRenderCurrent: { main.renderAndSaveVideo() },
-                    onCommitClipTrimRange: { layerIndex, range in
-                        main.setLayerClipRange(
-                            sourceIndex: layerIndex,
-                            startSeconds: range.lowerBound,
-                            endSeconds: range.upperBound,
-                            maxDurationSeconds: main.activePlayer.targetDuration.seconds
-                        )
-                    }
+    private var playerControlsContent: some View {
+        PlayerControlsBar(
+            isPaused: main.activePlayer.isPaused,
+            isLoopCurrentCompositionEnabled: main.isLoopCurrentCompositionEnabled,
+            currentCompositionText: main.currentCompositionIndicatorText,
+            compositionLengthSeconds: main.activePlayer.targetDuration.seconds,
+            clipTrimContexts: clipTrimContexts,
+            volume: Binding(
+                get: { Double(main.volume) },
+                set: { main.volume = Float($0) }
+            ),
+            timelinePlaybackRate: main.timelinePlaybackRate,
+            timelinePlaybackControlValue: Binding(
+                get: { main.timelinePlaybackControlValue },
+                set: { main.timelinePlaybackControlValue = $0 }
+            ),
+            isTimelinePlaybackReverse: Binding(
+                get: { main.isTimelinePlaybackReverse },
+                set: { main.isTimelinePlaybackReverse = $0 }
+            ),
+            onPrevious: { main.previousComposition() },
+            onPlayPause: { main.togglePause() },
+            onNext: { main.nextComposition() },
+            onToggleLoopCurrentCompositionMode: { main.toggleLoopCurrentCompositionMode() },
+            onSnapshotCurrent: { main.saveSnapshotImage() },
+            onSaveCurrent: { main.save() },
+            onRenderCurrent: { main.renderAndSaveVideo() },
+            onCommitClipTrimRange: { layerIndex, range in
+                main.setLayerClipRange(
+                    sourceIndex: layerIndex,
+                    startSeconds: range.lowerBound,
+                    endSeconds: range.upperBound,
+                    maxDurationSeconds: main.activePlayer.targetDuration.seconds
                 )
-                .frame(maxWidth: 920)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-        }
-        .padding(.bottom, 12)
-        .animation(.easeInOut(duration: 0.2), value: isPlayerControlsVisible)
+        )
+        .frame(maxWidth: 920)
+    }
+
+    private var playerControlsLayoutSignature: Int {
+        clipTrimContexts.count
     }
 
     var body: some View {
@@ -183,16 +178,6 @@ struct ContentView: View {
 
             CursorAutoHideView(isEnabled: shouldAutoHideCursor, idleSeconds: 3.0)
                 .allowsHitTesting(false)
-
-            MouseIdleVisibilityView(
-                isEnabled: true,
-                idleSeconds: 3.0,
-                startHiddenOnEnable: windows.isCleanScreen,
-                activityIgnoreLeftInset: 0,
-                activityIgnoreRightInset: 0,
-                isVisible: $isPlayerControlsVisible
-            )
-            .allowsHitTesting(false)
 
             // HUD and Hypnogram List - top left (below LIVE if visible)
             VStack(alignment: .leading, spacing: 8) {
@@ -233,13 +218,6 @@ struct ContentView: View {
                     .frame(width: 170)
                 }
 
-                if !windows.isCleanScreen &&
-                    windows.isWindowVisible("keyboardHints") &&
-                    !windowHostService.arePanelsAutoHidden {
-                    KeyboardHintBar()
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
-
                 if let loadStatus = externalLoadHarness.status {
                     externalLoadStatusBadge(loadStatus)
                         .transition(.move(edge: .top).combined(with: .opacity))
@@ -247,11 +225,6 @@ struct ContentView: View {
             }
             .padding(.top, 12)
             .animation(.easeInOut(duration: 0.2), value: externalLoadHarness.status)
-            .animation(.easeInOut(duration: 0.25), value: windows.isWindowVisible("keyboardHints"))
-            .animation(.easeInOut(duration: 0.2), value: windowHostService.arePanelsAutoHidden)
-        }
-        .overlay(alignment: .bottom) {
-            playerControlsOverlay
         }
         .overlay(alignment: .topTrailing) {
             if let indicator = topRightIndicator {
@@ -286,6 +259,8 @@ struct ContentView: View {
                 showOutputSettings: windows.isWindowVisible("outputSettingsWindow"),
                 showComposition: windows.isWindowVisible("compositionWindow"),
                 showEffects: windows.isWindowVisible("effectsWindow"),
+                showPlayerControls: true,
+                playerControlsLayoutSignature: playerControlsLayoutSignature,
                 autoHideWindows: appSettingsStore.value.autoHideWindowsEnabled,
                 onPanelVisibilityChanged: { windowID, isVisible in
                     windows.setWindowVisible(windowID, visible: isVisible)
@@ -304,6 +279,9 @@ struct ContentView: View {
                 ),
                 effectsContent: AnyView(
                     EffectsWindowView(state: state, main: main, effectsSession: main.effectsLibrarySession)
+                ),
+                playerControlsContent: AnyView(
+                    playerControlsContent
                 )
             )
             .frame(width: 0, height: 0)
@@ -316,10 +294,6 @@ struct ContentView: View {
             windows.registerWindow("outputSettingsWindow", defaultVisible: true)
             windows.registerWindow("compositionWindow", defaultVisible: true)
             windows.registerWindow("effectsWindow", defaultVisible: true)
-            windows.registerWindow("keyboardHints", defaultVisible: true)
-        }
-        .onChange(of: windows.isCleanScreen) { _, isCleanScreen in
-            isPlayerControlsVisible = !isCleanScreen
         }
         .sheet(isPresented: $state.showPhotosPicker) {
             PhotosPickerSheet(

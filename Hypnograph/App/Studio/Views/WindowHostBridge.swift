@@ -12,6 +12,8 @@ struct WindowHostBridge: NSViewRepresentable {
     let showOutputSettings: Bool
     let showComposition: Bool
     let showEffects: Bool
+    let showPlayerControls: Bool
+    let playerControlsLayoutSignature: Int
     let autoHideWindows: Bool
     let onPanelVisibilityChanged: (String, Bool) -> Void
     let sourcesContent: AnyView
@@ -19,6 +21,7 @@ struct WindowHostBridge: NSViewRepresentable {
     let outputSettingsContent: AnyView
     let compositionContent: AnyView
     let effectsContent: AnyView
+    let playerControlsContent: AnyView
 
     final class Coordinator {
         var hostService: WindowHostService
@@ -45,13 +48,16 @@ struct WindowHostBridge: NSViewRepresentable {
             showOutputSettings: showOutputSettings,
             showComposition: showComposition,
             showEffects: showEffects,
+            showPlayerControls: showPlayerControls,
+            playerControlsLayoutSignature: playerControlsLayoutSignature,
             autoHideWindows: autoHideWindows,
             onPanelVisibilityChanged: onPanelVisibilityChanged,
             sourcesContent: sourcesContent,
             newClipsContent: newClipsContent,
             outputSettingsContent: outputSettingsContent,
             compositionContent: compositionContent,
-            effectsContent: effectsContent
+            effectsContent: effectsContent,
+            playerControlsContent: playerControlsContent
         )
     }
 
