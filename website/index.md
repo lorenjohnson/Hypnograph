@@ -1,6 +1,6 @@
 ---
 created: 2026-03-14
-updated: 2026-03-29
+updated: 2026-03-30
 ---
 
 <div class="collab-hero">
@@ -12,9 +12,9 @@ updated: 2026-03-29
 </div>
 
 <aside class="beta-inset beta-download download-cta">
-  <p><a class="download-button" href="https://github.com/lorenjohnson/Hypnograph/releases/download/v0.2.0-beta.5/Hypnograph-0.2.0-5-macOS-unsigned.dmg">Download Beta</a></p>
-  <p class="download-subtext"><span class="download-chip">Beta</span> <span class="download-chip">v0.2.0 (build 5)</span> <span class="download-chip">Apple Silicon</span></p>
-  <p class="download-subtext">Released March 29, 2026 at 13:02 UTC</p>
+  <p><a class="download-button" href="https://github.com/lorenjohnson/Hypnograph/releases/download/v0.2.0-beta.6/Hypnograph-0.2.0-6-macOS-unsigned.dmg">Download Beta</a></p>
+  <p class="download-subtext"><span class="download-chip">Beta</span> <span class="download-chip">v0.2.0 (build 6)</span> <span class="download-chip">Apple Silicon</span></p>
+  <p class="download-subtext">Released March 29, 2026 at 23:23 UTC</p>
   <p class="download-subtext">Open the downloaded file and drag <code>Hypnograph.app</code> into <code>Applications</code>. On first launch, it is expected that you will need to override Security settings.</p>
 </aside>
 
