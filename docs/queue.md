@@ -5,28 +5,30 @@ last_reviewed: 2026-03-30
 # Queue
 
 ## Active Projects
-- History index HUD should not flash when advancing forward at the live end generates a new hypnogram; it should only appear when actually moving within history. It SHOULD show when not in clean screen and Panels are not-auto-hidden and on a Composition in history (so anytime not on most recent history item).
+
 - [onboarding-photos-permission-and-source-provisioning](active/onboarding-photos-permission-and-source-provisioning.md)
 - [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
 - [sequences](active/sequences/index.md)
+- History index HUD should not flash when advancing forward at the live end generates a new hypnogram; it should only appear when actually moving within history. It SHOULD show when not in clean screen and Panels are not-auto-hidden and on a Composition in history (so anytime not on most recent history item).
 - Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause a crash?
 - Make global layer selection more clear in composition window.
 - Add delete option to individual effect in current effects chain for global effect or layer effect
 
 ## Backlog Projects
-- [composition-timeline-and-length](backlog/composition-timeline-and-length.md)
+
 - [panel-grid-and-default-layout](backlog/panel-grid-and-default-layout.md)
-- [contextual-help](backlog/contextual-help.md)
 - [clip-length-model-global-target-vs-inferred-length](backlog/clip-length-model-global-target-vs-inferred-length.md)
-- [hypnograms-window-relevance-and-model-clarity](backlog/hypnograms-window-relevance-and-model-clarity.md)
-- [play-rate-vs-history-playback-speed](backlog/play-rate-vs-history-playback-speed.md)
-- [effects-engine-pass-graph-pivot-spike](backlog/effects-engine-pass-graph-pivot-spike.md)
-- [effects-and-effect-chain-ux](backlog/effects-and-effect-chain-ux.md)
+- [composition-timeline-and-length](backlog/composition-timeline-and-length.md)
 - [effect-chain-library-curation](backlog/effect-chain-library-curation.md)
+- [contextual-help](backlog/contextual-help.md)
+- [hypnograms-window-relevance-and-model-clarity](backlog/hypnograms-window-relevance-and-model-clarity.md)
+- [effects-and-effect-chain-ux](backlog/effects-and-effect-chain-ux.md)
 - [in-app-feedback](backlog/in-app-feedback.md)
 - [location-overlay-effect](backlog/location-overlay-effect.md)
 - [preview-frame-buffer-bleed-between-clips](backlog/preview-frame-buffer-bleed-between-clips.md)
+- [play-rate-vs-history-playback-speed](backlog/play-rate-vs-history-playback-speed.md)
 - [volume-leveling](backlog/volume-leveling.md)
+- [effects-engine-pass-graph-pivot-spike](backlog/effects-engine-pass-graph-pivot-spike.md)
 
 ## Incubating
 

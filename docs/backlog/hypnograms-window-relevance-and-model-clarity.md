@@ -6,25 +6,22 @@ doc-status: draft
 
 ## Overview
 
-The current Hypnograms window is a legacy surface from an earlier windowing approach in the app. It predates the SwiftUI sidebar pattern, and Hypnograph now appears to be moving again toward AppKit-managed floating windows. That makes this project less about polishing one existing window in place and more about deciding whether this surface still deserves to exist, and if so, in what form.
+The current Hypnograms window basically works, but its purpose and tab model need a focused product review. The question is no longer whether this surface is an artifact of an older UI direction. The useful question is whether the current functionality is clear enough, whether the existing `Recents` and `Favorites` tabs are the right model, and whether the window should include additional tabs such as `History` or `Saved`.
 
-Right now the window feels visually old-style, can appear underneath or behind other UI, and has an unclear mental model. There is also product confusion in what it is meant to contain: app-managed recents, favorites, saved `.hypno` files, live clip history, or some mixture of those. On top of that, future sequence or sets work may reshape this area again, so it would be easy to over-invest in a surface that is about to be retired or replaced.
+The main ambiguity is what each collection is meant to represent. `Favorites` is relatively clear. `Recents` is less clear, especially in relation to recently saved hypnograms versus live browsing history. This project should clarify what the current tabs actually query, whether those meanings are legible to the user, and whether the surface needs a more explicit tab set to match the real data model.
 
-The clearest useful direction from earlier notes is this: if a `Hypnograms` surface survives, it should probably become one coherent browsing surface for `History`, `Saved`, and `Favorites` rather than a vague legacy window centered on `Recents`. `History` would mean live clip history, `Saved` would mean intentionally kept hypnograms, and `Favorites` would remain a subset of saved items. Those categories should feel related but not collapsed into one storage model. In particular, live history should not automatically become full saved-recipe persistence just to make the UI easier.
-
-That said, this project should not assume the answer is "expand the legacy window." The real question is whether to improve and modernize this surface, reshape it into the newer window model, or retire it for now until Hypnograph has a clearer longer-term browsing model.
+This is a narrower backlog project than a broad redesign. The goal is to review the current behavior, tighten the model, and decide whether the window is already sufficient with clearer semantics or whether it should grow into a more explicit browsing surface.
 
 ## Rules
 
-- MUST decide whether this surface should be improved, reshaped, or temporarily retired.
-- MUST treat the current window as legacy UI rather than assuming it is the final form to build on.
-- SHOULD prefer one coherent `Hypnograms` browsing surface over separate overlapping `Recents` and `Favorites` concepts if the surface survives.
-- MUST keep `History`, `Saved`, and `Favorites` conceptually distinct even if they appear together in one surface.
-- MUST NOT convert live clip history into full saved-recipe persistence unless there is a stronger reason than UI consistency.
-- SHOULD assume any surviving version of this surface needs to fit the newer AppKit window direction rather than the old embedded/sidebar-era assumptions.
+- MUST review the current Hypnograms window behavior before proposing redesign.
+- MUST clarify what `Recents` and `Favorites` actually mean in the product model.
+- SHOULD decide whether additional tabs such as `History` or `Saved` are needed.
+- MUST keep `History`, `Saved`, and `Favorites` conceptually distinct if they appear together in one surface.
+- MUST NOT collapse live history into saved persistence just to simplify the UI model.
 
 ## Plan
 
-First decide the product stance: retire this surface, keep it with a narrower purpose, or reshape it into a clearer `Hypnograms` window that belongs in the newer window model. That decision should come before implementation detail, because otherwise we risk solving the wrong problem on top of legacy UI.
+First review the current tabs and their real data sources so the product model is explicit rather than inferred. Then decide whether the current two-tab shape is already sufficient, whether the naming needs refinement, or whether the window should add clearer tabs such as `History` or `Saved`.
 
-If the surface survives, the likely next shape is a unified browsing window with `History`, `Saved`, and `Favorites`, shared row treatment, and lightweight thumbnail support for history where useful. Keep that initial shape modest. The point is to make the model legible and the surface feel intentional, not to prematurely spec every row action, metadata field, or persistence detail before the larger relevance decision is settled.
+If the surface expands, keep the change modest and driven by model clarity. The goal is to make it obvious what the user is browsing, not to turn this into a large browsing-system redesign.
