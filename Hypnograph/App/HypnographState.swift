@@ -33,6 +33,7 @@ final class HypnographState: ObservableObject {
     let exclusionStore: ExclusionStore
     let sourceFavoritesStore: SourceFavoritesStore
 
+    @Published private(set) var photosAuthorizationStatus: ApplePhotos.AuthorizationStatus
     @Published private(set) var currentLibraryKey: String
     @Published private(set) var activeLibraryKeys: Set<String>
 
@@ -48,6 +49,9 @@ final class HypnographState: ObservableObject {
         self.appSettingsStore = appSettingsStore
         self.exclusionStore = exclusionStore
         self.sourceFavoritesStore = sourceFavoritesStore
+
+        ApplePhotos.shared.refreshStatus()
+        self.photosAuthorizationStatus = ApplePhotos.shared.status
 
         // Local alias for init (self.settings is a computed property that can't be used yet)
         let settings = settingsStore.value
@@ -120,6 +124,19 @@ final class HypnographState: ObservableObject {
         }
     }
 
+    func setLibraryActive(key: String, active: Bool) async {
+        let isCurrentlyActive = activeLibraryKeys.contains(key)
+        guard isCurrentlyActive != active else { return }
+
+        guard let newKeys = MediaLibraryBuilder.computeToggledKeys(
+            currentKeys: activeLibraryKeys,
+            toggledKey: key,
+            folderLibraryKeys: Set(settings.sourceLibraryOrder)
+        ) else { return }
+
+        await applyActiveLibrariesUnified(newKeys, save: true)
+    }
+
     func activatePhotosAllIfAvailable() async {
         // Shared post-auth fallback: if Photos is authorized but the active library is empty,
         // ensure Photos "All Items" is selected. This is centralized in HypnoCore so both
@@ -158,6 +175,14 @@ final class HypnographState: ObservableObject {
     /// Useful after settings changes that affect library contents (e.g. updating source folders).
     func rebuildLibrary() async {
         await applyActiveLibrariesUnified(activeLibraryKeys, save: false)
+    }
+
+    /// Re-sync active library selection from persisted settings before rebuilding.
+    /// This is needed when settings mutations happen outside the usual toggle path.
+    func reloadActiveLibrariesFromSettings() async {
+        let persistedKeys = Set(settings.activeLibraries)
+        let keysToApply = persistedKeys.isEmpty ? [settings.defaultSourceLibraryKey] : persistedKeys
+        await applyActiveLibrariesUnified(keysToApply, save: false)
     }
 
     // MARK: - Source Media Types
@@ -208,7 +233,8 @@ final class HypnographState: ObservableObject {
     /// before the library menu becomes queryable. Retry a few short passes so first-run
     /// users do not have to relaunch to see Apple Photos sources.
     func refreshPhotosLibrariesAfterAuthorization() async {
-        guard ApplePhotos.shared.status.canRead else { return }
+        let status = refreshPhotosAuthorizationStatus()
+        guard status.canRead else { return }
 
         for _ in 0..<6 {
             await activatePhotosAllIfAvailable()
@@ -220,8 +246,36 @@ final class HypnographState: ObservableObject {
 
             try? await Task.sleep(nanoseconds: 350_000_000)
             ApplePhotos.shared.refreshStatus()
-            guard ApplePhotos.shared.status.canRead else { return }
+            photosAuthorizationStatus = ApplePhotos.shared.status
+            guard photosAuthorizationStatus.canRead else { return }
         }
+    }
+
+    @discardableResult
+    func refreshPhotosAuthorizationStatus() -> ApplePhotos.AuthorizationStatus {
+        ApplePhotos.shared.refreshStatus()
+        let status = ApplePhotos.shared.status
+        photosAuthorizationStatus = status
+        return status
+    }
+
+    @discardableResult
+    func requestPhotosAuthorizationIfNeeded() async -> ApplePhotos.AuthorizationStatus {
+        let currentStatus = refreshPhotosAuthorizationStatus()
+        if currentStatus.canRead {
+            await refreshPhotosLibrariesAfterAuthorization()
+            return currentStatus
+        }
+
+        let status = await ApplePhotos.shared.requestAuthorization()
+        photosAuthorizationStatus = status
+        let refreshedStatus = refreshPhotosAuthorizationStatus()
+
+        if refreshedStatus.canRead {
+            await refreshPhotosLibrariesAfterAuthorization()
+        }
+
+        return refreshedStatus
     }
 
     // MARK: - Custom Photo Selection

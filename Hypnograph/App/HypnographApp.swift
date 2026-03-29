@@ -141,7 +141,13 @@ struct HypnographApp: App {
                 }
 
                 // Wire up external file opening (hypnogram documents + media sources)
-                appDelegate.openIncomingFiles = { [weak studio] urls in
+                appDelegate.openIncomingFiles = { [weak studio, weak state] urls in
+                    Task { @MainActor in
+                        let status = studio?.refreshPhotosStatus() ?? state?.refreshPhotosAuthorizationStatus()
+                        if status?.canRead == true {
+                            await state?.refreshPhotosLibrariesAfterAuthorization()
+                        }
+                    }
 
                     let hypnogramURLs = urls.filter { HypnogramFileStore.isSupportedExtension($0.pathExtension) }
                     if let url = hypnogramURLs.first {

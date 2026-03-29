@@ -45,20 +45,15 @@ struct EffectDefinitionRowView: View {
 
     private var header: some View {
         HStack {
-            Button {
-                onToggleExpanded()
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                    Text(displayName)
-                        .font(.callout)
-                        .foregroundStyle(effect.isEnabled ? .primary : .secondary)
-                        .lineLimit(1)
-                }
+            HStack(spacing: 4) {
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                Text(displayName)
+                    .font(.callout)
+                    .foregroundStyle(effect.isEnabled ? .primary : .secondary)
+                    .lineLimit(1)
             }
-            .buttonStyle(.plain)
 
             Spacer()
 
@@ -97,6 +92,10 @@ struct EffectDefinitionRowView: View {
                     .foregroundStyle(.tertiary)
             }
             .buttonStyle(.borderless)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onToggleExpanded()
         }
     }
 

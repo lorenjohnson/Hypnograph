@@ -12,6 +12,7 @@ struct WindowHostBridge: NSViewRepresentable {
     let showOutputSettings: Bool
     let showComposition: Bool
     let showEffects: Bool
+    let autoHideWindows: Bool
     let onPanelVisibilityChanged: (String, Bool) -> Void
     let sourcesContent: AnyView
     let newClipsContent: AnyView
@@ -44,6 +45,7 @@ struct WindowHostBridge: NSViewRepresentable {
             showOutputSettings: showOutputSettings,
             showComposition: showComposition,
             showEffects: showEffects,
+            autoHideWindows: autoHideWindows,
             onPanelVisibilityChanged: onPanelVisibilityChanged,
             sourcesContent: sourcesContent,
             newClipsContent: newClipsContent,

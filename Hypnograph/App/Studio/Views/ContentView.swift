@@ -10,6 +10,7 @@ struct ContentView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
     @ObservedObject private var windows: WindowStateController
+    @ObservedObject private var appSettingsStore: AppSettingsStore
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
     @StateObject private var windowHostService = WindowHostService()
     @State private var isPlayerControlsVisible: Bool = true
@@ -18,6 +19,7 @@ struct ContentView: View {
         self.state = state
         self.main = main
         _windows = ObservedObject(initialValue: main.windows)
+        _appSettingsStore = ObservedObject(initialValue: state.appSettingsStore)
     }
 
     private var clipTrimContexts: [ClipTrimContext] {
@@ -231,7 +233,9 @@ struct ContentView: View {
                     .frame(width: 170)
                 }
 
-                if !windows.isCleanScreen && windows.isWindowVisible("keyboardHints") {
+                if !windows.isCleanScreen &&
+                    windows.isWindowVisible("keyboardHints") &&
+                    !windowHostService.arePanelsAutoHidden {
                     KeyboardHintBar()
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
@@ -244,6 +248,7 @@ struct ContentView: View {
             .padding(.top, 12)
             .animation(.easeInOut(duration: 0.2), value: externalLoadHarness.status)
             .animation(.easeInOut(duration: 0.25), value: windows.isWindowVisible("keyboardHints"))
+            .animation(.easeInOut(duration: 0.2), value: windowHostService.arePanelsAutoHidden)
         }
         .overlay(alignment: .bottom) {
             playerControlsOverlay
@@ -281,6 +286,7 @@ struct ContentView: View {
                 showOutputSettings: windows.isWindowVisible("outputSettingsWindow"),
                 showComposition: windows.isWindowVisible("compositionWindow"),
                 showEffects: windows.isWindowVisible("effectsWindow"),
+                autoHideWindows: appSettingsStore.value.autoHideWindowsEnabled,
                 onPanelVisibilityChanged: { windowID, isVisible in
                     windows.setWindowVisible(windowID, visible: isVisible)
                 },

@@ -242,7 +242,7 @@ final class Studio: ObservableObject {
         if activePlayer.hypnogram.compositions.isEmpty || activePlayer.layers.isEmpty {
             // Avoid an infinite "generate new clip" loop when the media library is empty.
             if state.library.assetCount == 0 {
-                return AnyView(NoSourcesView(main: self))
+                return AnyView(NoSourcesView(state: state, main: self))
             }
 
             if activePlayer.hypnogram.compositions.isEmpty {

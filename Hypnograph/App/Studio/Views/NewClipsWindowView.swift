@@ -12,8 +12,6 @@ struct NewClipsWindowView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                sectionTitle("New Compositions")
-
                 row {
                     Text("Max Layers")
                     Spacer()

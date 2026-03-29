@@ -6,8 +6,9 @@ struct SourcesWindowView: View {
     @ObservedObject var main: Studio
 
     @State private var isRequestingPhotos = false
+    @State private var showPhotosAlbumsPicker = false
 
-    private struct FolderLibraryRow: Identifiable {
+    private struct FilesystemSourceRow: Identifiable {
         let key: String
         let displayName: String
         let paths: [String]
@@ -16,11 +17,28 @@ struct SourcesWindowView: View {
         var id: String { key }
     }
 
+    private struct SourceRow: Identifiable {
+        enum Kind {
+            case filesystem(paths: [String], assetCount: Int)
+            case photosAll(assetCount: Int)
+            case photosCustom(assetCount: Int)
+            case photosAlbum(assetCount: Int)
+        }
+
+        let id: String
+        let key: String
+        let typeLabel: String
+        let title: String
+        let detail: String
+        let kind: Kind
+        let canEditSelection: Bool
+    }
+
     private var folderAssetCounts: [String: Int] {
         Dictionary(uniqueKeysWithValues: state.availableLibraries.map { ($0.id, $0.assetCount) })
     }
 
-    private var folderLibraryRows: [FolderLibraryRow] {
+    private var filesystemSourceRows: [FilesystemSourceRow] {
         state.settings.sourceLibraryOrder.compactMap { key in
             guard let paths = state.settings.sourceLibraries[key] else { return nil }
 
@@ -31,7 +49,7 @@ struct SourcesWindowView: View {
                 displayName = key
             }
 
-            return FolderLibraryRow(
+            return FilesystemSourceRow(
                 key: key,
                 displayName: displayName,
                 paths: paths,
@@ -44,23 +62,99 @@ struct SourcesWindowView: View {
         state.availableLibraries.filter { $0.type == .applePhotos }
     }
 
+    private var photosLibrariesByID: [String: SourceLibraryInfo] {
+        photosLibraries.reduce(into: [String: SourceLibraryInfo]()) { result, item in
+            result[item.id] = item
+        }
+    }
+
     private var canReadPhotos: Bool {
-        main.photosAuthorizationStatus.canRead
+        state.photosAuthorizationStatus.canRead
+    }
+
+    private var sourceRows: [SourceRow] {
+        var rows: [SourceRow] = filesystemSourceRows.map { row in
+            SourceRow(
+                id: row.key,
+                key: row.key,
+                typeLabel: filesystemTypeLabel(for: row.paths),
+                title: row.displayName,
+                detail: filesystemDetail(for: row.paths),
+                kind: .filesystem(paths: row.paths, assetCount: row.assetCount),
+                canEditSelection: false
+            )
+        }
+
+        let activeKeys = state.activeLibraryKeys
+
+        if activeKeys.contains(ApplePhotosLibraryKeys.photosAll) {
+            rows.append(
+                SourceRow(
+                    id: ApplePhotosLibraryKeys.photosAll,
+                    key: ApplePhotosLibraryKeys.photosAll,
+                    typeLabel: "Photos",
+                    title: "All Items",
+                    detail: "Entire Apple Photos library",
+                    kind: .photosAll(assetCount: photosLibrariesByID[ApplePhotosLibraryKeys.photosAll]?.assetCount ?? 0),
+                    canEditSelection: false
+                )
+            )
+        }
+
+        if activeKeys.contains(ApplePhotosLibraryKeys.photosCustom) || !state.customPhotosAssetIds.isEmpty {
+            let count = state.customPhotosAssetIds.count
+            let detail = count > 0 ? "\(count) selected items" : "Custom selection"
+            rows.append(
+                SourceRow(
+                    id: ApplePhotosLibraryKeys.photosCustom,
+                    key: ApplePhotosLibraryKeys.photosCustom,
+                    typeLabel: "Photos",
+                    title: "Custom Selection",
+                    detail: detail,
+                    kind: .photosCustom(assetCount: count),
+                    canEditSelection: true
+                )
+            )
+        }
+
+        let activeAlbumKeys = activeKeys
+            .filter { $0.hasPrefix(ApplePhotosLibraryKeys.photosPrefix) }
+            .filter { $0 != ApplePhotosLibraryKeys.photosAll && $0 != ApplePhotosLibraryKeys.photosCustom }
+            .sorted {
+                let lhsName = photosLibrariesByID[$0]?.name ?? $0
+                let rhsName = photosLibrariesByID[$1]?.name ?? $1
+                return lhsName.localizedCaseInsensitiveCompare(rhsName) == .orderedAscending
+            }
+
+        for key in activeAlbumKeys {
+            let info = photosLibrariesByID[key]
+            rows.append(
+                SourceRow(
+                    id: key,
+                    key: key,
+                    typeLabel: "Album",
+                    title: info?.name ?? "Album",
+                    detail: "Apple Photos album",
+                    kind: .photosAlbum(assetCount: info?.assetCount ?? 0),
+                    canEditSelection: false
+                )
+            )
+        }
+
+        return rows
     }
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
-                sectionTitle("Sources")
-
                 Text("Manage the media pool used for random clip generation, and keep source setup out of the menu bar.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 mediaTypesSection
-                folderLibrariesSection
-                photosSection
+                sourcesSection
+                photosAccessSection
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -70,9 +164,25 @@ struct SourcesWindowView: View {
                 .ignoresSafeArea()
         )
         .onAppear {
-            Task {
-                await state.refreshAvailableLibraries()
+            Task { @MainActor in
+                let status = main.refreshPhotosStatus()
+                if status.canRead {
+                    await state.refreshPhotosLibrariesAfterAuthorization()
+                } else {
+                    await state.refreshAvailableLibraries()
+                }
             }
+        }
+        .sheet(isPresented: $showPhotosAlbumsPicker) {
+            ApplePhotosAlbumPickerSheet(
+                albums: ApplePhotos.shared.fetchUserAlbums(),
+                isPresented: $showPhotosAlbumsPicker,
+                onConfirm: { keys in
+                    Task { @MainActor in
+                        await main.addApplePhotosAlbumSources(keys)
+                    }
+                }
+            )
         }
     }
 
@@ -99,79 +209,64 @@ struct SourcesWindowView: View {
         }
     }
 
-    private var folderLibrariesSection: some View {
+    private var sourcesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionDivider()
             HStack(alignment: .center, spacing: 8) {
-                sectionTitle("File & Folder Sources")
+                sectionTitle("Source Selections")
                 Spacer(minLength: 8)
 
-                Button {
-                    main.addSourceLibrariesFromPanel()
+                Menu {
+                    Button("Files or Folders…") {
+                        main.addSourceLibrariesFromPanel()
+                    }
+
+                    if canReadPhotos {
+                        Divider()
+
+                        Menu("Apple Photos") {
+                            Button("All Items") {
+                                Task { @MainActor in
+                                    await main.addApplePhotosAllSource()
+                                }
+                            }
+
+                            Button("Custom Selection…") {
+                                state.showPhotosPicker = true
+                            }
+
+                            Button("Albums…") {
+                                showPhotosAlbumsPicker = true
+                            }
+                        }
+                    }
                 } label: {
                     Image(systemName: "plus")
                         .font(.caption.weight(.semibold))
                 }
                 .buttonStyle(.borderless)
-                .help("Add Files or Folders")
+                .help(canReadPhotos ? "Add source selection" : "Add files or folders")
             }
 
-            if folderLibraryRows.isEmpty {
-                emptyState("No file or folder sources configured yet.")
+            if sourceRows.isEmpty {
+                emptyState("No source selections configured yet.")
             } else {
-                ForEach(folderLibraryRows) { row in
-                    folderLibraryRow(row)
+                ForEach(sourceRows) { row in
+                    sourceRow(row)
                 }
             }
         }
     }
 
-    private var photosSection: some View {
+    private var photosAccessSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionDivider()
-            HStack(alignment: .center, spacing: 8) {
-                sectionTitle("Apple Photos")
-                Spacer(minLength: 8)
-
-                Button {
-                    state.showPhotosPicker = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.caption.weight(.semibold))
-                }
-                .buttonStyle(.borderless)
-                .disabled(!canReadPhotos)
-                .help("Pick Custom Photos")
-            }
+            sectionTitle("Apple Photos")
 
             if canReadPhotos {
-                if let allItems = photosLibraries.first(where: { $0.id == ApplePhotosLibraryKeys.photosAll }) {
-                    sourceToggleRow(
-                        title: allItems.name,
-                        trailingText: "\(allItems.assetCount)",
-                        isOn: Binding(
-                            get: { state.isLibraryActive(key: allItems.id) },
-                            set: { _ in state.toggleLibrary(key: allItems.id) }
-                        )
-                    )
-                }
-
-                customPhotosRow
-
-                ForEach(photosLibraries.filter { $0.id != ApplePhotosLibraryKeys.photosAll && $0.id != ApplePhotosLibraryKeys.photosCustom }) { library in
-                    sourceToggleRow(
-                        title: library.name,
-                        trailingText: "\(library.assetCount)",
-                        isOn: Binding(
-                            get: { state.isLibraryActive(key: library.id) },
-                            set: { _ in state.toggleLibrary(key: library.id) }
-                        )
-                    )
-                }
-
-                if photosLibraries.isEmpty {
-                    emptyState("No Photos scopes available yet.")
-                }
+                Text("Apple Photos access is enabled. Add All Items, a Custom Selection, or Albums from the source menu above.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Apple Photos access is not enabled.")
@@ -186,74 +281,50 @@ struct SourcesWindowView: View {
         }
     }
 
-    private func folderLibraryRow(_ row: FolderLibraryRow) -> some View {
+    private func sourceRow(_ row: SourceRow) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            Toggle("", isOn: Binding(
-                get: { state.isLibraryActive(key: row.key) },
-                set: { _ in state.toggleLibrary(key: row.key) }
-            ))
-            .labelsHidden()
-
             VStack(alignment: .leading, spacing: 3) {
-                Text(row.displayName)
-                    .font(.body.weight(.medium))
+                HStack(spacing: 8) {
+                    Text(row.typeLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
 
-                Text(row.paths.joined(separator: "\n"))
+                    Text(row.title)
+                        .font(.body.weight(.medium))
+                }
+
+                Text(row.detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
 
-                Text("\(row.assetCount) eligible item\(row.assetCount == 1 ? "" : "s")")
+                Text(assetCountText(for: row.kind))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
 
             Spacer(minLength: 8)
 
-            Button(role: .destructive) {
-                main.removeFolderLibrary(row.key)
-            } label: {
-                Image(systemName: "trash")
-            }
-            .buttonStyle(.borderless)
-            .help("Remove folder library")
-        }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white.opacity(0.04))
-        )
-    }
-
-    private var customPhotosRow: some View {
-        let count = state.customPhotosAssetIds.count
-        let isActive = state.isLibraryActive(key: ApplePhotosLibraryKeys.photosCustom)
-        let trailingText = count > 0 ? "\(count)" : "Edit"
-
-        return HStack(alignment: .top, spacing: 10) {
-            Toggle("", isOn: Binding(
-                get: { isActive },
-                set: { newValue in
-                    if newValue {
+            HStack(spacing: 10) {
+                if row.canEditSelection {
+                    Button {
                         state.showPhotosPicker = true
-                    } else {
-                        state.toggleLibrary(key: ApplePhotosLibraryKeys.photosCustom)
+                    } label: {
+                        Image(systemName: "slider.horizontal.3")
                     }
+                    .buttonStyle(.borderless)
+                    .help("Edit custom selection")
                 }
-            ))
-            .labelsHidden()
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Custom Selection")
-                    .font(.body.weight(.medium))
+                Button(role: .destructive) {
+                    removeSourceRow(row)
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.borderless)
+                .help("Remove source selection")
             }
-
-            Spacer(minLength: 8)
-
-            Button(trailingText) {
-                state.showPhotosPicker = true
-            }
-            .buttonStyle(.borderless)
         }
         .padding(10)
         .background(
@@ -262,27 +333,43 @@ struct SourcesWindowView: View {
         )
     }
 
-    private func sourceToggleRow(title: String, trailingText: String, isOn: Binding<Bool>) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Toggle("", isOn: isOn)
-                .labelsHidden()
+    private func filesystemTypeLabel(for paths: [String]) -> String {
+        guard paths.count == 1, let firstPath = paths.first else { return "Selection" }
 
-            Text(title)
-                .font(.body.weight(.medium))
-                .lineLimit(1)
+        var isDirectory: ObjCBool = false
+        FileManager.default.fileExists(atPath: firstPath, isDirectory: &isDirectory)
+        return isDirectory.boolValue ? "Folder" : "File"
+    }
 
-            Spacer(minLength: 8)
-
-            Text(trailingText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
+    private func filesystemDetail(for paths: [String]) -> String {
+        if paths.count > 1 {
+            return "\(paths.count) paths"
         }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white.opacity(0.04))
-        )
+        return paths.first ?? ""
+    }
+
+    private func assetCountText(for kind: SourceRow.Kind) -> String {
+        let count: Int
+        switch kind {
+        case let .filesystem(_, assetCount),
+             let .photosAll(assetCount),
+             let .photosCustom(assetCount),
+             let .photosAlbum(assetCount):
+            count = assetCount
+        }
+
+        return "\(count) eligible item\(count == 1 ? "" : "s")"
+    }
+
+    private func removeSourceRow(_ row: SourceRow) {
+        switch row.kind {
+        case .filesystem:
+            main.removeFolderLibrary(row.key)
+        case .photosAll, .photosCustom, .photosAlbum:
+            Task { @MainActor in
+                await main.removePhotosSource(row.key)
+            }
+        }
     }
 
     private func requestPhotosAccess() {
@@ -317,5 +404,72 @@ struct SourcesWindowView: View {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.white.opacity(0.03))
             )
+    }
+}
+
+private struct ApplePhotosAlbumPickerSheet: View {
+    let albums: [ApplePhotos.AlbumInfo]
+    @Binding var isPresented: Bool
+    let onConfirm: ([String]) -> Void
+
+    @State private var selectedKeys: Set<String> = []
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Choose Apple Photos Albums")
+                .font(.headline)
+
+            if albums.isEmpty {
+                Text("No user albums found")
+                    .foregroundStyle(.secondary)
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        ForEach(albums, id: \.libraryKey) { album in
+                            Toggle(isOn: binding(for: album.libraryKey)) {
+                                HStack {
+                                    Text(album.title)
+                                    Spacer()
+                                    Text("\(album.assetCount)")
+                                        .foregroundStyle(.secondary)
+                                        .monospacedDigit()
+                                }
+                            }
+                        }
+                    }
+                    .padding(4)
+                }
+                .frame(minHeight: 260)
+            }
+
+            HStack {
+                Button("Cancel") {
+                    isPresented = false
+                }
+
+                Spacer()
+
+                Button("Add") {
+                    onConfirm(Array(selectedKeys))
+                    isPresented = false
+                }
+                .disabled(selectedKeys.isEmpty)
+            }
+        }
+        .padding(16)
+        .frame(minWidth: 520, idealWidth: 560, maxWidth: 760, minHeight: 360, idealHeight: 420, maxHeight: 700)
+    }
+
+    private func binding(for key: String) -> Binding<Bool> {
+        Binding(
+            get: { selectedKeys.contains(key) },
+            set: { enabled in
+                if enabled {
+                    selectedKeys.insert(key)
+                } else {
+                    selectedKeys.remove(key)
+                }
+            }
+        )
     }
 }

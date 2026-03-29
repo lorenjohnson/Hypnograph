@@ -16,7 +16,7 @@ private enum WindowKind: String {
     var title: String {
         switch self {
         case .sources: return "Sources"
-        case .newClips: return "New Clips"
+        case .newClips: return "New Compositions"
         case .outputSettings: return "Output Settings"
         case .composition: return "Composition"
         case .effects: return "Effects"
@@ -105,8 +105,11 @@ private final class ChildWindowPanel: NSPanel {
     }
 
     override func sendEvent(_ event: NSEvent) {
-        if event.type == .leftMouseDown {
+        switch event.type {
+        case .leftMouseDown, .rightMouseDown, .otherMouseDown, .keyDown, .scrollWheel:
             onUserInteraction?()
+        default:
+            break
         }
         super.sendEvent(event)
     }
@@ -129,8 +132,17 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
 
     private weak var parentWindow: NSWindow?
     private var panels: [WindowKind: ManagedPanel] = [:]
+    private var requestedVisibility: [WindowKind: Bool] = [:]
     private var parentCloseObserver: NSObjectProtocol?
     private var onPanelVisibilityChanged: ((String, Bool) -> Void)?
+    private var autoHideWindowsEnabled = false
+    private var autoHideTimer: Timer?
+    private var lastMouseLocation: NSPoint = NSEvent.mouseLocation
+    private var lastActivityTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
+    private var panelsAutoHidden = false
+    @Published private(set) var arePanelsAutoHidden = false
+
+    private let autoHideIdleSeconds: TimeInterval = 3.0
 
     func sync(
         parentWindow: NSWindow?,
@@ -139,6 +151,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         showOutputSettings: Bool,
         showComposition: Bool,
         showEffects: Bool,
+        autoHideWindows: Bool,
         onPanelVisibilityChanged: @escaping (String, Bool) -> Void,
         sourcesContent: AnyView,
         newClipsContent: AnyView,
@@ -149,6 +162,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         self.onPanelVisibilityChanged = onPanelVisibilityChanged
 
         guard let parentWindow else {
+            stopAutoHideMonitoring()
             hideAllPanels()
             return
         }
@@ -161,11 +175,13 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         }
 
         guard parentWindow.isVisible else {
+            stopAutoHideMonitoring()
             hideAllPanels()
             return
         }
 
         configureParentWindowForFullScreen(parentWindow)
+        updateAutoHideMonitoring(enabled: autoHideWindows)
 
         syncPanel(kind: .sources, visible: showSources, content: sourcesContent, parentWindow: parentWindow)
         syncPanel(kind: .newClips, visible: showNewClips, content: newClipsContent, parentWindow: parentWindow)
@@ -175,11 +191,13 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     }
 
     func teardown() {
+        stopAutoHideMonitoring()
         hideAllPanels()
         detachFromCurrentParent()
         removeParentCloseObserver()
         panels.values.forEach { $0.panel.close() }
         panels.removeAll()
+        requestedVisibility.removeAll()
         parentWindow = nil
     }
 
@@ -189,14 +207,24 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         content: AnyView,
         parentWindow: NSWindow
     ) {
+        let previousVisibility = requestedVisibility[kind] ?? false
+        requestedVisibility[kind] = visible
+
+        if visible && !previousVisibility {
+            noteActivity()
+        }
+
         if visible {
             let managed = ensurePanel(kind: kind, parentWindow: parentWindow, content: content)
+            managed.host.rootView = content
             applySizing(for: kind, managed: managed)
 
             if managed.panel.parent == nil {
                 parentWindow.addChildWindow(managed.panel, ordered: .above)
             }
-            if !managed.panel.isVisible {
+            if panelsAutoHidden {
+                managed.panel.orderOut(nil)
+            } else if !managed.panel.isVisible {
                 managed.panel.orderFront(nil)
             }
         } else if let managed = panels[kind] {
@@ -232,8 +260,6 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         panel.hasShadow = true
         panel.hidesOnDeactivate = false
         panel.delegate = self
-        panel.minSize = kind.minSize
-        panel.maxSize = CGSize(width: kind.maxWidth, height: .greatestFiniteMagnitude)
         panel.setFrameAutosaveName(kind.autosaveName)
         _ = panel.setFrameUsingName(kind.autosaveName, force: false)
         panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
@@ -241,7 +267,8 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         installTitleAccessory(for: panel, title: kind.title)
         panel.onUserInteraction = { [weak self, weak panel] in
             guard let self, let panel else { return }
-            bringToFront(panel)
+            self.noteActivity()
+            self.bringToFront(panel)
         }
         panel.onCloseRequest = { [weak self, weak panel] in
             guard let self else { return }
@@ -282,7 +309,8 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
 
     private func applySizing(for kind: WindowKind, managed: ManagedPanel) {
         let panel = managed.panel
-        let clampedWidth = min(max(panel.frame.width, kind.minSize.width), kind.maxWidth)
+        let currentContentWidth = max(1, panel.contentLayoutRect.width)
+        let clampedWidth = min(max(currentContentWidth, kind.minSize.width), kind.maxWidth)
         let maxInitialHeight = maximumInitialHeight(for: panel)
 
         panel.contentView?.frame = NSRect(origin: .zero, size: CGSize(width: clampedWidth, height: panel.frame.height))
@@ -298,31 +326,85 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
                 maxInitialHeight
             )
 
-            panel.minSize = CGSize(width: kind.minSize.width, height: measuredHeight)
-            panel.maxSize = CGSize(width: kind.maxWidth, height: measuredHeight)
-
-            let targetFrame = NSRect(
-                x: panel.frame.origin.x,
-                y: panel.frame.origin.y,
-                width: clampedWidth,
-                height: measuredHeight
+            applyContentConstraints(
+                panel: panel,
+                minContentSize: CGSize(width: kind.minSize.width, height: measuredHeight),
+                maxContentSize: CGSize(width: kind.maxWidth, height: measuredHeight)
             )
-            if panel.frame.size != targetFrame.size {
-                panel.setFrame(targetFrame, display: true)
-            }
+            resizePanel(
+                panel,
+                toContentSize: CGSize(width: clampedWidth, height: measuredHeight),
+                pinTopEdge: true
+            )
         } else {
-            panel.minSize = kind.minSize
-            panel.maxSize = CGSize(width: kind.maxWidth, height: .greatestFiniteMagnitude)
+            applyContentConstraints(
+                panel: panel,
+                minContentSize: kind.minSize,
+                maxContentSize: CGSize(width: kind.maxWidth, height: .greatestFiniteMagnitude)
+            )
 
-            if panel.frame.width != clampedWidth {
-                let targetFrame = NSRect(
-                    x: panel.frame.origin.x,
-                    y: panel.frame.origin.y,
-                    width: clampedWidth,
-                    height: panel.frame.height
+            if abs(panel.contentLayoutRect.width - clampedWidth) > 1 {
+                resizePanel(
+                    panel,
+                    toContentSize: CGSize(
+                        width: clampedWidth,
+                        height: max(kind.minSize.height, panel.contentLayoutRect.height)
+                    ),
+                    pinTopEdge: true
                 )
-                panel.setFrame(targetFrame, display: true)
             }
+        }
+    }
+
+    private func applyContentConstraints(
+        panel: NSPanel,
+        minContentSize: CGSize,
+        maxContentSize: CGSize
+    ) {
+        panel.contentMinSize = minContentSize
+        panel.contentMaxSize = maxContentSize
+
+        let minFrameSize = panel.frameRect(forContentRect: NSRect(origin: .zero, size: minContentSize)).size
+        panel.minSize = minFrameSize
+
+        if maxContentSize.height.isFinite {
+            let maxFrameSize = panel.frameRect(forContentRect: NSRect(origin: .zero, size: maxContentSize)).size
+            panel.maxSize = maxFrameSize
+        } else {
+            let referenceContentHeight = max(max(minContentSize.height, panel.contentLayoutRect.height), 1)
+            let maxFrameWidth = panel.frameRect(
+                forContentRect: NSRect(
+                    origin: .zero,
+                    size: CGSize(width: maxContentSize.width, height: referenceContentHeight)
+                )
+            ).width
+            panel.maxSize = CGSize(width: maxFrameWidth, height: .greatestFiniteMagnitude)
+        }
+    }
+
+    private func resizePanel(
+        _ panel: NSPanel,
+        toContentSize contentSize: CGSize,
+        pinTopEdge: Bool
+    ) {
+        let targetFrameSize = panel.frameRect(forContentRect: NSRect(origin: .zero, size: contentSize)).size
+        var targetFrame = panel.frame
+        let topEdge = targetFrame.maxY
+
+        targetFrame.size = targetFrameSize
+        if pinTopEdge {
+            targetFrame.origin.y = topEdge - targetFrameSize.height
+        }
+
+        let sizeChanged =
+            abs(targetFrame.width - panel.frame.width) > 1 ||
+            abs(targetFrame.height - panel.frame.height) > 1
+        let originChanged =
+            abs(targetFrame.origin.x - panel.frame.origin.x) > 1 ||
+            abs(targetFrame.origin.y - panel.frame.origin.y) > 1
+
+        if sizeChanged || originChanged {
+            panel.setFrame(targetFrame, display: true)
         }
     }
 
@@ -355,6 +437,92 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
                 parent.removeChildWindow(managed.panel)
             }
             managed.panel.orderOut(nil)
+        }
+    }
+
+    private func updateAutoHideMonitoring(enabled: Bool) {
+        guard autoHideWindowsEnabled != enabled else {
+            if enabled {
+                startAutoHideMonitoringIfNeeded()
+            }
+            return
+        }
+
+        autoHideWindowsEnabled = enabled
+        if enabled {
+            startAutoHideMonitoringIfNeeded()
+            noteActivity()
+        } else {
+            stopAutoHideMonitoring()
+            setPanelsAutoHidden(false)
+        }
+    }
+
+    private func startAutoHideMonitoringIfNeeded() {
+        guard autoHideTimer == nil else { return }
+
+        lastMouseLocation = NSEvent.mouseLocation
+        lastActivityTime = CFAbsoluteTimeGetCurrent()
+        autoHideTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.pollAutoHideState()
+            }
+        }
+        if let autoHideTimer {
+            RunLoop.main.add(autoHideTimer, forMode: .common)
+        }
+    }
+
+    private func stopAutoHideMonitoring() {
+        autoHideTimer?.invalidate()
+        autoHideTimer = nil
+        autoHideWindowsEnabled = false
+        panelsAutoHidden = false
+        arePanelsAutoHidden = false
+    }
+
+    private func noteActivity() {
+        lastMouseLocation = NSEvent.mouseLocation
+        lastActivityTime = CFAbsoluteTimeGetCurrent()
+        if panelsAutoHidden {
+            setPanelsAutoHidden(false)
+        }
+    }
+
+    private func pollAutoHideState() {
+        guard autoHideWindowsEnabled else { return }
+
+        guard NSApp.isActive else {
+            setPanelsAutoHidden(false)
+            return
+        }
+
+        let location = NSEvent.mouseLocation
+        if location.x != lastMouseLocation.x || location.y != lastMouseLocation.y {
+            lastMouseLocation = location
+            lastActivityTime = CFAbsoluteTimeGetCurrent()
+            setPanelsAutoHidden(false)
+            return
+        }
+
+        let shouldHide = (CFAbsoluteTimeGetCurrent() - lastActivityTime) >= autoHideIdleSeconds
+        setPanelsAutoHidden(shouldHide)
+    }
+
+    private func setPanelsAutoHidden(_ hidden: Bool) {
+        guard panelsAutoHidden != hidden else { return }
+        panelsAutoHidden = hidden
+        arePanelsAutoHidden = hidden
+
+        for (kind, managed) in panels where requestedVisibility[kind] == true {
+            if hidden {
+                managed.panel.orderOut(nil)
+            } else if let parentWindow {
+                if managed.panel.parent == nil {
+                    parentWindow.addChildWindow(managed.panel, ordered: .above)
+                }
+                managed.panel.orderFront(nil)
+            }
         }
     }
 
@@ -407,6 +575,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     }
 
     private func handleParentWillClose() {
+        stopAutoHideMonitoring()
         hideAllPanels()
         detachFromCurrentParent()
         parentWindow = nil
@@ -416,5 +585,26 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         guard let kind = kind(for: sender) else { return true }
         handleCloseRequest(for: kind, panel: sender as? NSPanel)
         return false
+    }
+
+    func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
+        guard let kind = kind(for: sender) else { return frameSize }
+
+        let proposedContentRect = sender.contentRect(forFrameRect: NSRect(origin: .zero, size: frameSize))
+        let clampedContentWidth = min(max(proposedContentRect.width, kind.minSize.width), kind.maxWidth)
+
+        let targetContentHeight: CGFloat
+        if kind.shouldFitHeightToContent {
+            targetContentHeight = max(kind.minSize.height, sender.contentLayoutRect.height)
+        } else {
+            targetContentHeight = max(kind.minSize.height, proposedContentRect.height)
+        }
+
+        return sender.frameRect(
+            forContentRect: NSRect(
+                origin: .zero,
+                size: CGSize(width: clampedContentWidth, height: targetContentHeight)
+            )
+        ).size
     }
 }

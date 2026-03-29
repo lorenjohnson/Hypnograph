@@ -51,9 +51,35 @@ extension Studio {
         }
 
         Task { @MainActor in
-            await state.rebuildLibrary()
+            await state.reloadActiveLibrariesFromSettings()
             await state.refreshAvailableLibraries()
         }
+    }
+
+    func addApplePhotosAllSource() async {
+        await state.setLibraryActive(key: ApplePhotosLibraryKeys.photosAll, active: true)
+        await state.refreshAvailableLibraries()
+    }
+
+    func addApplePhotosAlbumSources(_ keys: [String]) async {
+        for key in keys {
+            await state.setLibraryActive(key: key, active: true)
+        }
+        await state.refreshAvailableLibraries()
+    }
+
+    func removePhotosSource(_ key: String) async {
+        guard key == ApplePhotosLibraryKeys.photosAll
+            || key == ApplePhotosLibraryKeys.photosCustom
+            || key.hasPrefix(ApplePhotosLibraryKeys.photosPrefix)
+        else { return }
+
+        if key == ApplePhotosLibraryKeys.photosCustom {
+            state.clearCustomPhotosAssets()
+        }
+
+        await state.setLibraryActive(key: key, active: false)
+        await state.refreshAvailableLibraries()
     }
 
     func removeFolderLibrary(_ key: String) {
@@ -74,7 +100,7 @@ extension Studio {
         }
 
         Task { @MainActor in
-            await state.rebuildLibrary()
+            await state.reloadActiveLibrariesFromSettings()
             await state.refreshAvailableLibraries()
         }
     }

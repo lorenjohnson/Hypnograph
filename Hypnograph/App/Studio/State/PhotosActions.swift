@@ -9,20 +9,14 @@ import HypnoCore
 @MainActor
 extension Studio {
     var photosAuthorizationStatus: ApplePhotos.AuthorizationStatus {
-        photosIntegrationService.authorizationStatus
+        state.photosAuthorizationStatus
     }
 
     func refreshPhotosStatus() -> ApplePhotos.AuthorizationStatus {
-        photosIntegrationService.refreshStatus()
-        return photosIntegrationService.authorizationStatus
+        state.refreshPhotosAuthorizationStatus()
     }
 
     func requestPhotosAccess() async -> ApplePhotos.AuthorizationStatus {
-        let status = await photosIntegrationService.requestAuthorization()
-        photosIntegrationService.refreshStatus()
-        if status.canRead {
-            await state.refreshPhotosLibrariesAfterAuthorization()
-        }
-        return photosIntegrationService.authorizationStatus
+        await state.requestPhotosAuthorizationIfNeeded()
     }
 }

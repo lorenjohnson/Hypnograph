@@ -2,12 +2,12 @@ import SwiftUI
 import HypnoCore
 
 struct NoSourcesView: View {
+    @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
 
     @State private var isRequestingPhotos = false
-    @State private var lastPhotosStatus: ApplePhotos.AuthorizationStatus = PhotosIntegrationService.live.authorizationStatus
 
-    private var canReadPhotos: Bool { main.photosAuthorizationStatus.canRead }
+    private var canReadPhotos: Bool { state.photosAuthorizationStatus.canRead }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -49,7 +49,12 @@ struct NoSourcesView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black)
         .onAppear {
-            lastPhotosStatus = main.refreshPhotosStatus()
+            Task { @MainActor in
+                let status = main.refreshPhotosStatus()
+                if status.canRead {
+                    await state.refreshPhotosLibrariesAfterAuthorization()
+                }
+            }
         }
     }
 
@@ -65,13 +70,13 @@ struct NoSourcesView: View {
     }
 
     private var statusFooter: String {
-        "Photos authorization: \(String(describing: lastPhotosStatus))"
+        "Photos authorization: \(String(describing: state.photosAuthorizationStatus))"
     }
 
     private func requestPhotosAccess() {
         isRequestingPhotos = true
         Task { @MainActor in
-            lastPhotosStatus = await main.requestPhotosAccess()
+            _ = await main.requestPhotosAccess()
             isRequestingPhotos = false
         }
     }

@@ -8,23 +8,28 @@ import Foundation
 struct AppSettings: Codable {
     var keyboardAccessibilityOverridesEnabled: Bool
     var effectsComposerEnabled: Bool
+    var autoHideWindowsEnabled: Bool
 
     static let defaultValue = AppSettings(
         keyboardAccessibilityOverridesEnabled: true,
-        effectsComposerEnabled: true
+        effectsComposerEnabled: true,
+        autoHideWindowsEnabled: false
     )
 
     private enum CodingKeys: String, CodingKey {
         case keyboardAccessibilityOverridesEnabled
         case effectsComposerEnabled
+        case autoHideWindowsEnabled
     }
 
     init(
         keyboardAccessibilityOverridesEnabled: Bool = Self.defaultValue.keyboardAccessibilityOverridesEnabled,
-        effectsComposerEnabled: Bool = Self.defaultValue.effectsComposerEnabled
+        effectsComposerEnabled: Bool = Self.defaultValue.effectsComposerEnabled,
+        autoHideWindowsEnabled: Bool = Self.defaultValue.autoHideWindowsEnabled
     ) {
         self.keyboardAccessibilityOverridesEnabled = keyboardAccessibilityOverridesEnabled
         self.effectsComposerEnabled = effectsComposerEnabled
+        self.autoHideWindowsEnabled = autoHideWindowsEnabled
     }
 
     init(from decoder: Decoder) throws {
@@ -35,5 +40,8 @@ struct AppSettings: Codable {
         effectsComposerEnabled =
             try container.decodeIfPresent(Bool.self, forKey: .effectsComposerEnabled)
             ?? Self.defaultValue.effectsComposerEnabled
+        autoHideWindowsEnabled =
+            try container.decodeIfPresent(Bool.self, forKey: .autoHideWindowsEnabled)
+            ?? Self.defaultValue.autoHideWindowsEnabled
     }
 }

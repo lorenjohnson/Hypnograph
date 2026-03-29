@@ -21,6 +21,7 @@ struct AppCommands: Commands {
     @ObservedObject private var state: HypnographState
     @ObservedObject private var studio: Studio
     @ObservedObject private var windows: WindowStateController
+    @ObservedObject private var appSettingsStore: AppSettingsStore
 
     /// Whether a text field is currently being edited
     private var isTyping: Bool { state.isKeyboardTextInputActive }
@@ -35,6 +36,7 @@ struct AppCommands: Commands {
         _state = ObservedObject(initialValue: state)
         _studio = ObservedObject(initialValue: studio)
         _windows = ObservedObject(initialValue: studio.windows)
+        _appSettingsStore = ObservedObject(initialValue: state.appSettingsStore)
     }
 
     var body: some Commands {
@@ -46,7 +48,7 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(after: .appInfo) {
-            if state.appSettings.effectsComposerEnabled {
+            if appSettingsStore.value.effectsComposerEnabled {
                 Button("Open Effects Composer") {
                     openWindow(id: "effectsComposer")
                 }
@@ -102,35 +104,50 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(replacing: .sidebar) {
-            Section("Studio Windows") {
-                Toggle("Sources", isOn: Binding(
-                    get: { windows.isWindowVisible("sourcesWindow") },
-                    set: { _ in windows.toggleWindow("sourcesWindow") }
+            Section("Studio Panels") {
+                Toggle("Composition", isOn: Binding(
+                    get: { windows.isWindowVisible("compositionWindow") },
+                    set: { _ in windows.toggleWindow("compositionWindow") }
                 ))
-                .disabled(isTyping || !isStudioWindowShortcutContext)
-                Toggle("New Clips", isOn: Binding(
-                    get: { windows.isWindowVisible("newClipsWindow") },
-                    set: { _ in windows.toggleWindow("newClipsWindow") }
-                ))
+                .keyboardShortcut("1", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("Output Settings", isOn: Binding(
                     get: { windows.isWindowVisible("outputSettingsWindow") },
                     set: { _ in windows.toggleWindow("outputSettingsWindow") }
                 ))
+                .keyboardShortcut("2", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
-                Toggle("Composition", isOn: Binding(
-                    get: { windows.isWindowVisible("compositionWindow") },
-                    set: { _ in windows.toggleWindow("compositionWindow") }
+                Toggle("New Compositions", isOn: Binding(
+                    get: { windows.isWindowVisible("newClipsWindow") },
+                    set: { _ in windows.toggleWindow("newClipsWindow") }
                 ))
+                .keyboardShortcut("3", modifiers: [.option])
+                .disabled(isTyping || !isStudioWindowShortcutContext)
+
+                Toggle("Sources", isOn: Binding(
+                    get: { windows.isWindowVisible("sourcesWindow") },
+                    set: { _ in windows.toggleWindow("sourcesWindow") }
+                ))
+                .keyboardShortcut("4", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("Effects", isOn: Binding(
                     get: { windows.isWindowVisible("effectsWindow") },
                     set: { _ in windows.toggleWindow("effectsWindow") }
                 ))
+                .keyboardShortcut("5", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
+
+                Divider()
+
+                Toggle("Auto-Hide Panels", isOn: Binding(
+                    get: { appSettingsStore.value.autoHideWindowsEnabled },
+                    set: { newValue in
+                        appSettingsStore.update { $0.autoHideWindowsEnabled = newValue }
+                    }
+                ))
 
                 // Clean Screen: Tab key handled via NSEvent monitor in app delegate
                 // (workaround for SwiftUI menu shortcut not registering until menu opened)
