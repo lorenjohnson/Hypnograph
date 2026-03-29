@@ -15,23 +15,25 @@ enum HypnogramFileActions {
     static func saveAs(
         hypnogram: Hypnogram,
         snapshot: CGImage,
-        onSaved: (() -> Void)? = nil
+        existingURL: URL? = nil,
+        onSaved: ((URL) -> Void)? = nil
     ) {
         let panel = NSSavePanel()
         panel.allowedContentTypes = allowedContentTypes()
-        panel.nameFieldStringValue = HypnogramFileStore.defaultFilename()
-        panel.directoryURL = HypnogramFileStore.hypnogramsDirectory
+        panel.nameFieldStringValue = existingURL?.lastPathComponent ?? HypnogramFileStore.defaultFilename()
+        panel.directoryURL = existingURL?.deletingLastPathComponent() ?? HypnogramFileStore.hypnogramsDirectory
+        panel.canCreateDirectories = true
 
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
             if HypnogramFileStore.save(hypnogram, snapshot: snapshot, to: url) != nil {
-                onSaved?()
+                onSaved?(url)
             }
         }
     }
 
     static func openHypnogram(
-        onLoaded: @escaping (Hypnogram) -> Void,
+        onLoaded: @escaping (Hypnogram, URL) -> Void,
         onFailure: (() -> Void)? = nil
     ) {
         let panel = NSOpenPanel()
@@ -45,7 +47,7 @@ enum HypnogramFileActions {
                 onFailure?()
                 return
             }
-            onLoaded(hypnogram)
+            onLoaded(hypnogram, url)
         }
     }
 

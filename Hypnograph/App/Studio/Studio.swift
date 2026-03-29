@@ -43,6 +43,10 @@ final class Studio: ObservableObject {
     /// Subscriptions to forward player state changes to Studio's objectWillChange
     private var playerSubscriptions: Set<AnyCancellable> = []
 
+    /// Working file target for each composition currently present in Studio history.
+    /// This stays app-local rather than becoming part of the persisted model.
+    private var saveTargetsByCompositionID: [UUID: URL] = [:]
+
     /// The active preview player (always the preview deck)
     var activePlayer: PlayerState { player }
 
@@ -295,18 +299,38 @@ final class Studio: ObservableObject {
         )
     }
 
-    /// The live hypnogram from the active player - use for direct access/mutation
-    var currentHypnogram: Hypnogram {
-        get { activePlayer.hypnogram }
-        set { activePlayer.hypnogram = newValue }
-    }
-
     /// Build a hypnogram snapshot for display/export (timestamp + effects library snapshot)
     func makeDisplayHypnogram() -> Hypnogram {
         let createdAt = Date()
         var composition = activePlayer.currentComposition
         composition.createdAt = createdAt
         return Hypnogram(compositions: [composition], createdAt: createdAt)
+    }
+
+    var currentSaveTargetURL: URL? {
+        saveTargetsByCompositionID[activePlayer.currentComposition.id]
+    }
+
+    func setSaveTargetURL(_ url: URL?, for compositionID: UUID) {
+        if let url {
+            saveTargetsByCompositionID[compositionID] = url
+        } else {
+            saveTargetsByCompositionID.removeValue(forKey: compositionID)
+        }
+    }
+
+    func assignSaveTargetIfUnambiguous(_ url: URL?, for compositions: [Composition]) {
+        guard compositions.count == 1, let composition = compositions.first else { return }
+        setSaveTargetURL(url, for: composition.id)
+    }
+
+    func clearSaveTarget(for compositionID: UUID) {
+        saveTargetsByCompositionID.removeValue(forKey: compositionID)
+    }
+
+    func pruneSaveTargetsToCurrentHistory() {
+        let validIDs = Set(activePlayer.hypnogram.compositions.map(\.id))
+        saveTargetsByCompositionID = saveTargetsByCompositionID.filter { validIDs.contains($0.key) }
     }
 
 }

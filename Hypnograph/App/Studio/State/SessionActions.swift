@@ -11,8 +11,8 @@ import HypnoUI
 extension Studio {
     func openHypnogram() {
         HypnogramFileActions.openHypnogram(
-            onLoaded: { [weak self] hypnogram in
-                self?.appendHypnogramToHistory(hypnogram)
+            onLoaded: { [weak self] hypnogram, url in
+                self?.appendHypnogramToHistory(hypnogram, sourceURL: url)
                 AppNotifications.show("Hypnogram loaded", flash: true)
             },
             onFailure: {
@@ -31,7 +31,7 @@ extension Studio {
         applyCompositionSelectionChanged(manual: true)
     }
 
-    func appendHypnogramToHistory(_ hypnogram: Hypnogram) {
+    func appendHypnogramToHistory(_ hypnogram: Hypnogram, sourceURL: URL? = nil) {
         var mutableHypnogram = hypnogram
         mutableHypnogram.ensureEffectChainNames()
 
@@ -42,5 +42,8 @@ extension Studio {
 
         EffectChainLibraryActions.importChainsFromSession(mutableHypnogram, into: effectsSession)
         appendLoadedCompositions(loadedCompositions)
+        assignSaveTargetIfUnambiguous(sourceURL, for: loadedCompositions)
+        pruneSaveTargetsToCurrentHistory()
+        state.setLoopCurrentCompositionMode(true)
     }
 }

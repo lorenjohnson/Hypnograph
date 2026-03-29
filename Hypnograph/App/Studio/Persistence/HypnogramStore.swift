@@ -16,8 +16,8 @@ import HypnoCore
 /// Metadata for a saved hypnogram
 struct HypnogramEntry: Identifiable, Codable {
     let id: UUID
-    let name: String
-    let createdAt: Date
+    var name: String
+    var createdAt: Date
     var favoritedAt: Date?
     let sessionURL: URL
     var thumbnailBase64: String?
@@ -157,6 +157,39 @@ final class HypnogramStore: ObservableObject {
         entries.append(entry)
         save()
 
+        return entry
+    }
+
+    @discardableResult
+    func upsertSavedSession(
+        at sessionURL: URL,
+        snapshot: CGImage,
+        name: String? = nil,
+        isFavorite: Bool = false
+    ) -> HypnogramEntry {
+        let thumbnailBase64 = Self.encodeThumbnail(CIImage(cgImage: snapshot))
+
+        if let index = entries.firstIndex(where: { $0.sessionURL.standardizedFileURL == sessionURL.standardizedFileURL }) {
+            entries[index].name = name ?? entries[index].name
+            entries[index].createdAt = Date()
+            entries[index].thumbnailBase64 = thumbnailBase64
+            entries[index].isFavorite = entries[index].isFavorite || isFavorite
+            if entries[index].isFavorite {
+                entries[index].favoritedAt = entries[index].favoritedAt ?? Date()
+            }
+            save()
+            return entries[index]
+        }
+
+        let displayName = name ?? sessionURL.deletingPathExtension().lastPathComponent
+        let entry = HypnogramEntry(
+            name: displayName,
+            sessionURL: sessionURL,
+            thumbnailBase64: thumbnailBase64,
+            isFavorite: isFavorite
+        )
+        entries.append(entry)
+        save()
         return entry
     }
 

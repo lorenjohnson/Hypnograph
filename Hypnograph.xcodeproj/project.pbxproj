@@ -93,13 +93,6 @@
 		045DA39C2F4D5DCE00D41089 /* layer-editor.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "layer-editor.md"; sourceTree = "<group>"; };
 		045DA39D2F4D5DCE00D41089 /* save-fullscreen-state.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "save-fullscreen-state.md"; sourceTree = "<group>"; };
 		045DA39E2F4D5DCE00D41089 /* sets-model-direction.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "sets-model-direction.md"; sourceTree = "<group>"; };
-		045DA3A02F4D5DCE00D41089 /* dream-players.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "dream-players.md"; sourceTree = "<group>"; };
-		045DA3A12F4D5DCE00D41089 /* effects.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = effects.md; sourceTree = "<group>"; };
-		045DA3A22F4D5DCE00D41089 /* index.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = index.md; sourceTree = "<group>"; };
-		045DA3A32F4D5DCE00D41089 /* media-library.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "media-library.md"; sourceTree = "<group>"; };
-		045DA3A42F4D5DCE00D41089 /* recipes.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = recipes.md; sourceTree = "<group>"; };
-		045DA3A52F4D5DCE00D41089 /* rendering.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = rendering.md; sourceTree = "<group>"; };
-		045DA3A62F4D5DCE00D41089 /* settings.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = settings.md; sourceTree = "<group>"; };
 		045DA3A82F4D5DCE00D41089 /* ComponentMockups.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentMockups.swift; sourceTree = "<group>"; };
 		045DA3A92F4D5DCE00D41089 /* FullLayoutMockup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullLayoutMockup.swift; sourceTree = "<group>"; };
 		045DA3AA2F4D5DCE00D41089 /* index.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = index.md; sourceTree = "<group>"; };
@@ -133,12 +126,9 @@
 		045DA3C82F4D5DCE00D41089 /* library-manager.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "library-manager.md"; sourceTree = "<group>"; };
 		045DA3C92F4D5DCE00D41089 /* location-overlay-effect.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "location-overlay-effect.md"; sourceTree = "<group>"; };
 		045DA3CA2F4D5DCE00D41089 /* volume-leveling.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "volume-leveling.md"; sourceTree = "<group>"; };
-		045DA3CD2F4D5DCE00D41089 /* mission.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = mission.md; sourceTree = "<group>"; };
-		045DA3CE2F4D5DCE00D41089 /* tech-stack.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "tech-stack.md"; sourceTree = "<group>"; };
 		045DA3D02F4D5DCE00D41089 /* controls.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = controls.md; sourceTree = "<group>"; };
 		045DA3D22F4D5DCE00D41089 /* 2026-01-25-Eli.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "2026-01-25-Eli.md"; sourceTree = "<group>"; };
 		045DA3D42F4D5DCE00D41089 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		045DA3D52F4D5DCE00D41089 /* roadmap.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = roadmap.md; sourceTree = "<group>"; };
 		049B39042F26C1A300FFF6A8 /* SwiftUIPreviewHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftUIPreviewHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A2B3C4D5E6F708192A3B4C5 /* HypnoUI.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = HypnoUI.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		764AADFE87DF1064AD85DF6E /* HypnoCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = HypnoCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -294,20 +284,6 @@
 			path = active;
 			sourceTree = "<group>";
 		};
-		045DA3A72F4D5DCE00D41089 /* architecture */ = {
-			isa = PBXGroup;
-			children = (
-				045DA3A02F4D5DCE00D41089 /* dream-players.md */,
-				045DA3A12F4D5DCE00D41089 /* effects.md */,
-				045DA3A22F4D5DCE00D41089 /* index.md */,
-				045DA3A32F4D5DCE00D41089 /* media-library.md */,
-				045DA3A42F4D5DCE00D41089 /* recipes.md */,
-				045DA3A52F4D5DCE00D41089 /* rendering.md */,
-				045DA3A62F4D5DCE00D41089 /* settings.md */,
-			);
-			path = architecture;
-			sourceTree = "<group>";
-		};
 		045DA3AD2F4D5DCE00D41089 /* 20260221-sidebar-ui-redesign-assets */ = {
 			isa = PBXGroup;
 			children = (
@@ -363,15 +339,6 @@
 			path = backlog;
 			sourceTree = "<group>";
 		};
-		045DA3CF2F4D5DCE00D41089 /* product */ = {
-			isa = PBXGroup;
-			children = (
-				045DA3CD2F4D5DCE00D41089 /* mission.md */,
-				045DA3CE2F4D5DCE00D41089 /* tech-stack.md */,
-			);
-			path = product;
-			sourceTree = "<group>";
-		};
 		045DA3D12F4D5DCE00D41089 /* reference */ = {
 			isa = PBXGroup;
 			children = (
@@ -392,14 +359,11 @@
 			isa = PBXGroup;
 			children = (
 				045DA39F2F4D5DCE00D41089 /* active */,
-				045DA3A72F4D5DCE00D41089 /* architecture */,
 				045DA3C72F4D5DCE00D41089 /* archive */,
 				045DA3CB2F4D5DCE00D41089 /* backlog */,
-				045DA3CF2F4D5DCE00D41089 /* product */,
 				045DA3D12F4D5DCE00D41089 /* reference */,
 				045DA3D32F4D5DCE00D41089 /* user-testing */,
 				045DA3D42F4D5DCE00D41089 /* README.md */,
-				045DA3D52F4D5DCE00D41089 /* roadmap.md */,
 			);
 			path = docs;
 			sourceTree = "<group>";

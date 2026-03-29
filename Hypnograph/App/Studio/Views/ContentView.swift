@@ -202,7 +202,7 @@ struct ContentView: View {
                                 AppNotifications.show("Failed to load hypnogram", flash: true)
                                 return
                             }
-                            main.appendHypnogramToHistory(hypnogram)
+                            main.appendHypnogramToHistory(hypnogram, sourceURL: entry.sessionURL)
                             AppNotifications.show("Loaded: \(entry.name)", flash: true)
                         }
                     )

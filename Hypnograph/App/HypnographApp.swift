@@ -149,7 +149,7 @@ struct HypnographApp: App {
                             AppNotifications.show("Failed to load hypnogram", flash: true)
                             return
                         }
-                        studio?.appendHypnogramToHistory(hypnogram)
+                        studio?.appendHypnogramToHistory(hypnogram, sourceURL: url)
                         AppNotifications.show("Loaded \(url.lastPathComponent)", flash: true)
                     }
 

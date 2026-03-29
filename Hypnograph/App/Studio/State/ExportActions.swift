@@ -81,13 +81,19 @@ extension Studio {
             return
         }
 
-        print("Studio: saving hypnogram...")
-
         let hypnogram = makeDisplayHypnogram().copyForExport()
+        let compositionID = activePlayer.currentComposition.id
 
-        if let entry = HypnogramStore.shared.add(hypnogram: hypnogram, snapshot: cgImage, isFavorite: false) {
-            print("✅ Studio: Hypnogram saved to \(entry.sessionURL.path)")
-            AppNotifications.show("Hypnogram saved", flash: true)
+        guard let saveURL = currentSaveTargetURL else {
+            guard let entry = HypnogramStore.shared.add(hypnogram: hypnogram, snapshot: cgImage, isFavorite: false) else {
+                print("Studio: failed to create new hypnogram file")
+                AppNotifications.show("Failed to save", flash: true)
+                return
+            }
+
+            setSaveTargetURL(entry.sessionURL, for: compositionID)
+            print("✅ Studio: Created new hypnogram at \(entry.sessionURL.path)")
+            AppNotifications.show("Created new hypnogram: \(entry.sessionURL.lastPathComponent)", flash: true)
 
             if photosIntegrationService.canWrite {
                 Task {
@@ -97,9 +103,27 @@ extension Studio {
                     }
                 }
             }
-        } else {
+            return
+        }
+
+        guard let savedURL = HypnogramFileStore.save(hypnogram, snapshot: cgImage, to: saveURL) else {
             print("Studio: failed to save hypnogram")
             AppNotifications.show("Failed to save", flash: true)
+            return
+        }
+
+        setSaveTargetURL(savedURL, for: compositionID)
+        let entry = HypnogramStore.shared.upsertSavedSession(at: savedURL, snapshot: cgImage)
+        print("✅ Studio: Hypnogram saved to \(entry.sessionURL.path)")
+        AppNotifications.show("Saved \(savedURL.lastPathComponent)", flash: true)
+
+        if photosIntegrationService.canWrite {
+            Task {
+                let success = await photosIntegrationService.saveImage(at: entry.sessionURL)
+                if success {
+                    print("✅ Studio: Hypnogram added to Apple Photos")
+                }
+            }
         }
     }
 
@@ -173,8 +197,16 @@ extension Studio {
         }
 
         let hypnogram = makeDisplayHypnogram().copyForExport()
-        HypnogramFileActions.saveAs(hypnogram: hypnogram, snapshot: cgImage) {
-            AppNotifications.show("Hypnogram saved", flash: true)
+        let compositionID = activePlayer.currentComposition.id
+        HypnogramFileActions.saveAs(
+            hypnogram: hypnogram,
+            snapshot: cgImage,
+            existingURL: currentSaveTargetURL
+        ) { [weak self] savedURL in
+            guard let self else { return }
+            self.setSaveTargetURL(savedURL, for: compositionID)
+            _ = HypnogramStore.shared.upsertSavedSession(at: savedURL, snapshot: cgImage)
+            AppNotifications.show("Saved \(savedURL.lastPathComponent)", flash: true)
         }
     }
 
