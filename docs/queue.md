@@ -8,6 +8,7 @@ last_reviewed: 2026-03-30
 
 - [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
 - [sequences](active/sequences.md)
+- [tighten-up-panel-design](active/tighten-up-panel-design.md)
 - Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause a crash?
 
 ## Backlog Projects
