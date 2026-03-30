@@ -785,7 +785,8 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
 
         let targetContentHeight: CGFloat
         if kind.shouldFitHeightToContent {
-            targetContentHeight = max(kind.minSize.height, sender.contentLayoutRect.height)
+            let currentContentHeight = sender.contentRect(forFrameRect: sender.frame).height
+            targetContentHeight = max(kind.minSize.height, currentContentHeight)
         } else {
             targetContentHeight = max(kind.minSize.height, proposedContentRect.height)
         }
