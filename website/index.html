@@ -28,12 +28,53 @@
       margin: 0 auto;
       padding: 24px 16px;
       box-sizing: border-box;
+      position: relative;
     }
     .topbar {
       display: flex;
       align-items: center;
-      gap: 0.55rem;
+      justify-content: space-between;
+      gap: 1rem;
       margin: 0 0 12px;
+    }
+    .topbar-main {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .topbar-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+    .topbar-nav a,
+    .topbar-nav span {
+      color: var(--muted);
+      text-decoration: none;
+    }
+    .topbar-nav a:hover {
+      color: var(--text);
+      text-decoration: underline;
+    }
+    .topbar-nav-sep {
+      opacity: 0.55;
+    }
+    .topbar-nav-github {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .topbar-nav-github svg {
+      width: 0.95rem;
+      height: 0.95rem;
+      fill: currentColor;
+      flex: 0 0 auto;
     }
     .sidebar-toggle {
       width: 2rem;
@@ -364,9 +405,19 @@
       grid-column: 2;
       grid-row: 1;
     }
-    body.homepage-route .topbar,
     body.homepage-route .docs-sidebar {
       display: none !important;
+    }
+    body.homepage-route .topbar {
+      position: absolute;
+      top: 24px;
+      right: 16px;
+      justify-content: flex-end;
+      margin: 0;
+      z-index: 20;
+    }
+    body.homepage-route .topbar-main {
+      display: none;
     }
     .docs-tree ul {
       list-style: none;
@@ -467,14 +518,21 @@
         right: 0;
         top: -2rem;
       }
+      body.homepage-route .topbar {
+        position: static;
+        margin-bottom: 12px;
+      }
     }
   </style>
 </head>
 <body>
   <main class="page">
     <div class="topbar">
-      <button type="button" class="sidebar-toggle" id="docs-sidebar-toggle" aria-label="Toggle docs sidebar" aria-expanded="false">☰</button>
-      <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb"></nav>
+      <div class="topbar-main">
+        <button type="button" class="sidebar-toggle" id="docs-sidebar-toggle" aria-label="Toggle docs sidebar" aria-expanded="false">☰</button>
+        <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb"></nav>
+      </div>
+      <nav class="topbar-nav" id="topbar-nav" aria-label="Site Navigation"></nav>
     </div>
     <div class="layout">
       <article class="document" id="document"></article>
