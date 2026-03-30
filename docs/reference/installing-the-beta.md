@@ -4,9 +4,8 @@ Because Hypnograph is currently distributed as a direct beta download during ear
 
 ## Steps
 
-1. Download the current Hypnograph beta DMG.
-2. Open the DMG and drag `Hypnograph.app` into `Applications`.
-3. Open Hypnograph from `Applications`.
+1. Download the current [Hypnograph beta](https://github.com/lorenjohnson/Hypnograph/releases/download/v0.2.0-beta.7/Hypnograph-0.2.0-7-macOS-unsigned.dmg). You may already have done this from the homepage.
+2. Open the downloaded file, drag the Hypnograph icon into the `Applications` folder, and then open Hypnograph from `Applications`.
 4. If macOS shows a warning with only `Move to Trash` or `Cancel`, choose `Cancel`.
 5. Open `System Settings` > `Privacy & Security`.
 6. Scroll down until you see the message about Hypnograph, then click `Open Anyway`.
