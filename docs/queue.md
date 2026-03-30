@@ -8,7 +8,7 @@ last_reviewed: 2026-03-30
 
 - [onboarding-photos-permission-and-source-provisioning](active/onboarding-photos-permission-and-source-provisioning.md)
 - [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
-- [sequences](active/sequences/index.md)
+- [sequences](active/sequences.md)
 - History index HUD should not flash when advancing forward at the live end generates a new hypnogram; it should only appear when actually moving within history. It SHOULD show when not in clean screen and Panels are not-auto-hidden and on a Composition in history (so anytime not on most recent history item).
 - Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause a crash?
 - Make global layer selection more clear in composition window.
@@ -20,12 +20,14 @@ last_reviewed: 2026-03-30
 - [clip-length-model-global-target-vs-inferred-length](backlog/clip-length-model-global-target-vs-inferred-length.md)
 - [composition-timeline-and-length](backlog/composition-timeline-and-length.md)
 - [effect-chain-library-curation](backlog/effect-chain-library-curation.md)
+- [sequence-render-and-export](backlog/sequence-render-and-export.md)
 - [contextual-help](backlog/contextual-help.md)
 - [hypnograms-window-relevance-and-model-clarity](backlog/hypnograms-window-relevance-and-model-clarity.md)
 - [effects-and-effect-chain-ux](backlog/effects-and-effect-chain-ux.md)
 - [in-app-feedback](backlog/in-app-feedback.md)
 - [location-overlay-effect](backlog/location-overlay-effect.md)
 - [preview-frame-buffer-bleed-between-clips](backlog/preview-frame-buffer-bleed-between-clips.md)
+- [sequence-fcpxml-export](backlog/sequence-fcpxml-export.md)
 - [play-rate-vs-history-playback-speed](backlog/play-rate-vs-history-playback-speed.md)
 - [volume-leveling](backlog/volume-leveling.md)
 - [effects-engine-pass-graph-pivot-spike](backlog/effects-engine-pass-graph-pivot-spike.md)

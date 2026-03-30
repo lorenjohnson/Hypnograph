@@ -17,7 +17,7 @@ This should remain a spike for now. There is enough product direction to open th
 ## Rules
 
 - MUST keep this project focused on timeline editing and playback visibility within a single composition, not on multi-hypnogram sequencing or history authoring.
-- MUST treat this work as separate from [Sequences](/Users/lorenjohnson/dev/Hypnograph/docs/active/sequences/index.md), even if the visual language ends up related.
+- MUST treat this work as separate from [Sequences](/Users/lorenjohnson/dev/Hypnograph/docs/active/sequences.md), even if the visual language ends up related.
 - MUST explore adding a composition timeline above the existing layer timelines in the play bar.
 - SHOULD reuse the same or very similar control language as the current layer timelines rather than inventing a disconnected timeline UI.
 - MUST clarify how composition length edits affect underlying layer trim ranges.
