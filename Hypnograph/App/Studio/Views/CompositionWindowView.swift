@@ -146,7 +146,7 @@ struct CompositionWindowView: View {
                         set: { main.activePlayer.playRate = Float($0) }
                     ),
                     bounds: 0.2...2.0,
-                    step: 0.2
+                    step: 0.1
                 )
             }
             .padding(.horizontal, 4)
