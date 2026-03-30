@@ -6,19 +6,16 @@ last_reviewed: 2026-03-30
 
 ## Active Projects
 
-- [onboarding-photos-permission-and-source-provisioning](active/onboarding-photos-permission-and-source-provisioning.md)
+- [composition-timeline-and-length](active/composition-timeline-and-length.md)
 - [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
 - [sequences](active/sequences.md)
 - History index HUD should not flash when advancing forward at the live end generates a new hypnogram; it should only appear when actually moving within history. It SHOULD show when not in clean screen and Panels are not-auto-hidden and on a Composition in history (so anytime not on most recent history item).
 - Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause a crash?
-- Make global layer selection more clear in composition window.
 - Add delete option to individual effect in current effects chain for global effect or layer effect
 
 ## Backlog Projects
 
 - [panel-grid-and-default-layout](backlog/panel-grid-and-default-layout.md)
-- [clip-length-model-global-target-vs-inferred-length](backlog/clip-length-model-global-target-vs-inferred-length.md)
-- [composition-timeline-and-length](backlog/composition-timeline-and-length.md)
 - [effect-chain-library-curation](backlog/effect-chain-library-curation.md)
 - [sequence-render-and-export](backlog/sequence-render-and-export.md)
 - [contextual-help](backlog/contextual-help.md)

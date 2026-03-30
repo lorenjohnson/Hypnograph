@@ -136,7 +136,7 @@ struct NewClipsWindowView: View {
 
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("Composition Length")
+                Text("Composition Length (Range)")
                 Spacer()
                 Text("\(Int(range.wrappedValue.lowerBound))–\(Int(range.wrappedValue.upperBound))s")
                     .foregroundStyle(.secondary)
@@ -177,7 +177,7 @@ struct NewClipsWindowView: View {
 
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("Play Rate Range")
+                Text("Play Rate (Range)")
                 Spacer()
                 Text(valueText)
                     .foregroundStyle(.secondary)

@@ -6,11 +6,11 @@ doc-status: draft
 
 ## Overview
 
-This project captures the current top-priority onboarding failure around Apple Photos authorization and first-use source provisioning. On a fresh launch of a fresh build, Hypnograph is currently re-requesting Apple Photos permission more often than expected, which may itself indicate a regression in permission persistence or provisioning behavior for debug builds.
+This project captured the top-priority onboarding failure around Apple Photos authorization and first-use source provisioning. On a fresh launch of a fresh build, Hypnograph was re-requesting Apple Photos permission more often than expected, which may itself indicate a regression in permission persistence or provisioning behavior for debug builds.
 
-The more critical failure is what happens after permission is granted. The prompt appears at an acceptable point in launch, but after granting full Apple Photos access the app can still land in the Studio showing the no-sources state as though Apple Photos had not actually provisioned yet. In practice, Apple Photos only appears to become visible or usable after opening the Sources window, which makes the first mile of the app feel unreliable exactly where it most needs to be solid.
+The more critical failure was what happened after permission was granted. The prompt appeared at an acceptable point in launch, but after granting full Apple Photos access the app could still land in the Studio showing the no-sources state as though Apple Photos had not actually provisioned yet. In practice, Apple Photos only appeared to become visible or usable after opening the Sources window, which made the first mile of the app feel unreliable exactly where it most needed to be solid.
 
-This is the current top-priority onboarding project because the first-use path needs to be extremely trustworthy. The immediate goal is not broader source-management cleanup; it is to make Apple Photos permissioning and source availability behave consistently and correctly on fresh launch.
+The issue appears sufficiently resolved for now that it is no longer an active top-priority project. It still may deserve later testing and diligence, especially around fresh-install or debug-build edge cases, but the current behavior is good enough to clear out of the active queue.
 
 ## Rules
 
