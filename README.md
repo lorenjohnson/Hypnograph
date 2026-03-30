@@ -21,6 +21,8 @@ If you want to try the current beta build, start at [hypnogra.ph](https://hypnog
 
 Hypnograph is a macOS app built in Swift with SwiftUI and AppKit, using AVFoundation, Core Image, Metal, and Photos.
 
+This repository is public so the work can be seen and discussed during active development. I still expect Hypnograph to become open source, but I have not finalized a license yet, so for now it should be considered source-available rather than open source. If you are interested in contributing, feel free to open a PR or reach out.
+
 ### Setup
 
 Development prerequisites:

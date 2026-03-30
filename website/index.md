@@ -24,8 +24,6 @@ Instead of browsing your archive like a filing cabinet, Hypnograph replays your 
 
 The point is not synthetic generation. The point is to re-encounter material that already belongs to your life or project and shape it into something that feels newly alive, exploratory, and creatively useful. You can save hypnograms, reopen them later, and render them out when something worth keeping appears.
 
-This is an active beta. If you want to follow development more closely, open the <a href="/docs">Active Development Documents</a>.
-
 <div id="homepage-screencast-lightbox" class="video-lightbox" aria-hidden="true">
   <div class="video-lightbox-panel" role="dialog" aria-modal="true" aria-label="Hypnograph screencast player">
     <button type="button" class="video-lightbox-close" data-video-lightbox-close aria-label="Close video">&times;</button>
@@ -55,11 +53,13 @@ If you download Hypnograph and spend any real time with it, I would genuinely lo
 
 Please feel free to reach out.
 
-## Contributing
+## Development
 
-Hypnograph is being developed in a very hands-on AI-assisted coding workflow, with a product context management system that helps keep the work grounded in the product itself rather than letting implementation sprawl. If you're a software engineer and are interested in contributing to the project, I'd also be very glad to hear from you.
+Hypnograph is being built in public, and you can follow the active product development of Hypnograph in the <a href="/docs">Open Product Development Documents</a>.
 
-You can get started by looking at [Hypnograph](https://github.com/lorenjohnson/Hypnograph) on GitHub. If you want to contribute, feel free to fork the project and open a pull request. Please feel free to reach out.
+I welcome product-level feedback and discussion, and code-level contributions from anyone interested enough to bring either. I do anticipate eventually open sourcing Hypnograph, but I have not yet settled on a particular license, so for now the project should be considered source-available rather than open source. The source code for Hypnograph is publicly available on GitHub <a href="https://github.com/lorenjohnson/Hypnograph" target="_blank" rel="noopener noreferrer">here</a>.
+
+If you are interested in contributing, feel free to open a PR there or reach out directly by one of the means below.
 
 ## Connect
 
