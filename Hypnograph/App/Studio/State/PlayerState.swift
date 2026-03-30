@@ -67,11 +67,15 @@ final class PlayerState: ObservableObject {
     var currentComposition: Composition {
         get {
             let index = max(0, min(currentCompositionIndex, hypnogram.compositions.count - 1))
-            return hypnogram.compositions[index]
+            var composition = hypnogram.compositions[index]
+            composition.syncTargetDurationToLayers()
+            return composition
         }
         set {
             let index = max(0, min(currentCompositionIndex, hypnogram.compositions.count - 1))
-            hypnogram.compositions[index] = newValue
+            var normalized = newValue
+            normalized.syncTargetDurationToLayers()
+            hypnogram.compositions[index] = normalized
             hypnogramRevision &+= 1
             objectWillChange.send()
         }
@@ -93,7 +97,7 @@ final class PlayerState: ObservableObject {
 
     /// Target duration - reads/writes directly to the current composition
     var targetDuration: CMTime {
-        get { currentComposition.targetDuration }
+        get { currentComposition.effectiveDuration }
         set {
             updateCurrentComposition { $0.targetDuration = newValue }
         }
@@ -168,7 +172,11 @@ final class PlayerState: ObservableObject {
 
     /// Replace the entire hypnogram (used when loading from file)
     func setHypnogram(_ newSession: Hypnogram) {
-        hypnogram = newSession
+        var normalizedSession = newSession
+        for index in normalizedSession.compositions.indices {
+            normalizedSession.compositions[index].syncTargetDurationToLayers()
+        }
+        hypnogram = normalizedSession
         currentCompositionIndex = 0
         hypnogramRevision &+= 1
     }
@@ -180,6 +188,9 @@ final class PlayerState: ObservableObject {
 
     /// Notify that the hypnogram has changed (triggers persistence).
     func notifyHypnogramMutated() {
+        for index in hypnogram.compositions.indices {
+            hypnogram.compositions[index].syncTargetDurationToLayers()
+        }
         hypnogramRevision &+= 1
     }
 

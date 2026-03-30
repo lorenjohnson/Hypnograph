@@ -132,34 +132,6 @@ struct CompositionWindowView: View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text("Composition Length")
-                        .font(.callout)
-                    Spacer()
-                    Text("\(Int(main.activePlayer.targetDuration.seconds.rounded()))s")
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-
-                PanelSliderView(
-                    value: Binding(
-                        get: {
-                            let seconds = main.activePlayer.targetDuration.seconds
-                            return max(1, min(seconds, 60))
-                        },
-                        set: { newValue in
-                            let seconds = max(1, min(newValue.rounded(), 60))
-                            main.activePlayer.targetDuration = CMTime(seconds: seconds, preferredTimescale: 600)
-                            main.activePlayer.notifyHypnogramMutated()
-                        }
-                    ),
-                    bounds: 1...60,
-                    step: 1
-                )
-            }
-            .padding(.horizontal, 4)
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
                     Text("Play Rate")
                         .font(.callout)
                     Spacer()

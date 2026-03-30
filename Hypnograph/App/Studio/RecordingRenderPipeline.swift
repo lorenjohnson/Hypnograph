@@ -136,7 +136,7 @@ enum RecordingRenderPipeline {
         )
         return try await convertStillImageSegmentToVideo(
             imageURL: renderedURL,
-            duration: composition.targetDuration,
+            duration: composition.effectiveDuration,
             outputSize: outputSize,
             frameRate: frameRate,
             outputURL: convertedURL

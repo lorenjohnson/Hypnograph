@@ -13,6 +13,7 @@ struct ContentView: View {
     @ObservedObject private var appSettingsStore: AppSettingsStore
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
     @StateObject private var windowHostService = WindowHostService()
+    @State private var panelsCurrentlyAutoHidden = false
 
     init(state: HypnographState, main: Studio) {
         self.state = state
@@ -25,14 +26,12 @@ struct ContentView: View {
         let layers = main.activePlayer.layers
         guard !layers.isEmpty else { return [] }
 
-        let maxSelectionForClip = max(0.1, main.activePlayer.targetDuration.seconds)
-
         func makeContext(layer: Layer, index: Int) -> ClipTrimContext? {
             guard layer.mediaClip.file.mediaKind == .video else { return nil }
 
             let total = max(0.1, layer.mediaClip.file.duration.seconds)
             let start = max(0, min(layer.mediaClip.startTime.seconds, total))
-            let maxSelection = max(0.1, min(maxSelectionForClip, total))
+            let maxSelection = total
             let selectedDuration = min(layer.mediaClip.duration.seconds, maxSelection, total - start)
             let end = max(start + 0.1, min(start + selectedDuration, total))
 
@@ -84,6 +83,10 @@ struct ContentView: View {
             return ("LIVE", .red)
         }
 
+        if shouldShowPersistentHistoryIndicator {
+            return (main.currentHistoryPositionText, .blue)
+        }
+
         if let clipText = main.historyIndicatorText {
             return (clipText, .blue)
         }
@@ -100,6 +103,12 @@ struct ContentView: View {
         }
 
         return nil
+    }
+
+    private var shouldShowPersistentHistoryIndicator: Bool {
+        guard !windows.isCleanScreen else { return false }
+        guard !panelsCurrentlyAutoHidden else { return false }
+        return main.isViewingHistoryComposition
     }
 
     private var shouldAutoHideCursor: Bool {
@@ -134,15 +143,6 @@ struct ContentView: View {
                 get: { Double(main.volume) },
                 set: { main.volume = Float($0) }
             ),
-            timelinePlaybackRate: main.timelinePlaybackRate,
-            timelinePlaybackControlValue: Binding(
-                get: { main.timelinePlaybackControlValue },
-                set: { main.timelinePlaybackControlValue = $0 }
-            ),
-            isTimelinePlaybackReverse: Binding(
-                get: { main.isTimelinePlaybackReverse },
-                set: { main.isTimelinePlaybackReverse = $0 }
-            ),
             onPrevious: { main.previousComposition() },
             onPlayPause: { main.togglePause() },
             onNext: { main.nextComposition() },
@@ -154,8 +154,7 @@ struct ContentView: View {
                 main.setLayerClipRange(
                     sourceIndex: layerIndex,
                     startSeconds: range.lowerBound,
-                    endSeconds: range.upperBound,
-                    maxDurationSeconds: main.activePlayer.targetDuration.seconds
+                    endSeconds: range.upperBound
                 )
             }
         )
@@ -259,6 +258,11 @@ struct ContentView: View {
                 autoHideWindows: appSettingsStore.value.autoHideWindowsEnabled,
                 onPanelVisibilityChanged: { windowID, isVisible in
                     windows.setWindowVisible(windowID, visible: isVisible)
+                },
+                onPanelsAutoHiddenChanged: { isHidden in
+                    DispatchQueue.main.async {
+                        panelsCurrentlyAutoHidden = isHidden
+                    }
                 },
                 hypnogramsContent: AnyView(
                     hypnogramsContent

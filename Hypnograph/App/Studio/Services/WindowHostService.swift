@@ -208,6 +208,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     private var requestedVisibility: [WindowKind: Bool] = [:]
     private var parentCloseObserver: NSObjectProtocol?
     private var onPanelVisibilityChanged: ((String, Bool) -> Void)?
+    private var onPanelsAutoHiddenChanged: ((Bool) -> Void)?
     private var panelLayoutSignatures: [WindowKind: Int] = [:]
     private var autoHideWindowsEnabled = false
     private var autoHideTimer: Timer?
@@ -231,6 +232,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         playerControlsLayoutSignature: Int,
         autoHideWindows: Bool,
         onPanelVisibilityChanged: @escaping (String, Bool) -> Void,
+        onPanelsAutoHiddenChanged: @escaping (Bool) -> Void,
         hypnogramsContent: AnyView,
         sourcesContent: AnyView,
         newClipsContent: AnyView,
@@ -240,6 +242,8 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         playerControlsContent: AnyView
     ) {
         self.onPanelVisibilityChanged = onPanelVisibilityChanged
+        self.onPanelsAutoHiddenChanged = onPanelsAutoHiddenChanged
+        onPanelsAutoHiddenChanged(panelsAutoHidden)
         let anyVisibleRequested =
             showHypnograms || showSources || showNewClips || showOutputSettings || showComposition || showEffects || showPlayerControls
         let shouldStartAutoHidden =
@@ -703,6 +707,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     private func setPanelsAutoHidden(_ hidden: Bool) {
         guard panelsAutoHidden != hidden else { return }
         panelsAutoHidden = hidden
+        onPanelsAutoHiddenChanged?(hidden)
 
         for (kind, managed) in panels where requestedVisibility[kind] == true {
             if hidden {

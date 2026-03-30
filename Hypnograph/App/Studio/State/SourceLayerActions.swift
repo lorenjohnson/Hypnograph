@@ -50,13 +50,14 @@ extension Studio {
             ? EffectChain()
             : activePlayer.currentComposition.effectChain.clone()
 
-        let importedComposition = Composition(
+        var importedComposition = Composition(
             layers: layers,
             targetDuration: activePlayer.targetDuration,
             playRate: activePlayer.playRate,
             effectChain: globalEffect,
             createdAt: Date()
         )
+        importedComposition.syncTargetDurationToLayers()
 
         activePlayer.hypnogram.compositions.append(importedComposition)
         activePlayer.currentCompositionIndex = activePlayer.hypnogram.compositions.count - 1

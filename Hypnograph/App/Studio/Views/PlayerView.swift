@@ -495,7 +495,7 @@ struct PlayerView: NSViewRepresentable {
             }.joined(separator: ";")
             return "\(name)|\(start)|\(dur)|\(muted)|\(transformsStr)"
         }
-        let durationPart = "dur=\(composition.targetDuration.seconds)"
+        let durationPart = "dur=\(composition.effectiveDuration.seconds)"
         let framingPart = "framing=\(sourceFraming.rawValue)"
         return pairs.joined(separator: ";;") + "||" + durationPart + "||" + framingPart
     }
@@ -524,7 +524,7 @@ struct PlayerView: NSViewRepresentable {
         guard c.autoAdvanceOnCompositionEnd, c.lastPauseState != true else { return }
 
         let speed = max(1.0, abs(c.historyPlaybackRate))
-        let seconds = max(0.05, composition.targetDuration.seconds / speed)
+        let seconds = max(0.05, composition.effectiveDuration.seconds / speed)
         c.stillClipTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { _ in
             Task { @MainActor in
                 triggerAutoAdvance(c)

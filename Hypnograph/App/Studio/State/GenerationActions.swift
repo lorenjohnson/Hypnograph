@@ -76,13 +76,15 @@ extension Studio {
             )
         }
 
-        return Composition(
+        var composition = Composition(
             layers: layers,
             targetDuration: targetDuration,
             playRate: selectedPlayRate,
             effectChain: globalEffectChain,
             createdAt: Date()
         )
+        composition.syncTargetDurationToLayers()
+        return composition
     }
 
     func replaceHistoryWithNewComposition() {

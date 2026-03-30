@@ -136,7 +136,7 @@ extension Studio {
         let renderHypnogram = activePlayer.currentComposition.copyForExport()
         let outputSize = exportSettings()
 
-        print("Studio: enqueueing clip with \(renderHypnogram.layers.count) layer(s), duration: \(renderHypnogram.targetDuration.seconds)s")
+        print("Studio: enqueueing clip with \(renderHypnogram.layers.count) layer(s), duration: \(renderHypnogram.effectiveDuration.seconds)s")
 
         renderQueue.enqueue(
             composition: renderHypnogram,
@@ -151,11 +151,6 @@ extension Studio {
                 }
             }
         )
-
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.new()
-        }
     }
 
     private func handleRenderedVideoDestination(result: Result<URL, RenderError>) async {

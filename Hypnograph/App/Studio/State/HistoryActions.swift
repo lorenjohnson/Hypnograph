@@ -87,6 +87,19 @@ extension Studio {
         return "Composition \(displayIndex)"
     }
 
+    var currentHistoryPositionText: String {
+        let compositions = player.hypnogram.compositions
+        guard !compositions.isEmpty else { return "--/--" }
+        let displayIndex = max(0, min(player.currentCompositionIndex, compositions.count - 1)) + 1
+        return "\(displayIndex)/\(compositions.count)"
+    }
+
+    var isViewingHistoryComposition: Bool {
+        let count = player.hypnogram.compositions.count
+        guard count > 1 else { return false }
+        return player.currentCompositionIndex < (count - 1)
+    }
+
     var timelinePlaybackRate: Double {
         get { Self.normalizedTimelinePlaybackRate(state.settings.timelinePlaybackRate) }
         set {
@@ -170,7 +183,7 @@ extension Studio {
             player.currentCompositionIndex = nextIndex
             applyCompositionSelectionChanged(manual: true)
         } else {
-            new()
+            appendNewCompositionAndSelect(manual: false)
         }
     }
 
@@ -202,7 +215,7 @@ extension Studio {
 
     private func flashHistoryIndicator() {
         guard !player.hypnogram.compositions.isEmpty else { return }
-        historyIndicatorText = "\(player.currentCompositionIndex + 1)/\(player.hypnogram.compositions.count)"
+        historyIndicatorText = currentHistoryPositionText
 
         historyIndicatorClearWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in
