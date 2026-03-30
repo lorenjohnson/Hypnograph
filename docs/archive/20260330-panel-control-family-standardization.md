@@ -1,16 +1,16 @@
 ---
-doc-status: in-progress
+doc-status: completed
 ---
 
 # Panel Control Family Standardization
 
 ## Overview
 
-This project standardizes the slider and toggle control family used across Studio panels. Right now the app mixes custom AppKit-backed range controls with default SwiftUI sliders and toggles, which creates both visual inconsistency and interaction inconsistency inside the same windows.
+This project standardized the slider and toggle control family used across Studio panels. The app had been mixing custom AppKit-backed range controls with default SwiftUI sliders and toggles, which created both visual inconsistency and interaction inconsistency inside the same windows.
 
-The immediate direction is to standardize toward AppKit-backed controls for panel UI. The first implementation slice should use the `New Compositions` window as the proving ground, replacing the current SwiftUI frequency sliders and default toggles with controls that match the thinner track, circular handle, inset layout, and more reliable interaction model already used by the AppKit-backed range sliders.
+The project established a shared AppKit-backed single-value slider and toggle family, first proving it in `New Compositions` and then extending it across the major Studio panel surfaces. It also included a small follow-on pass for stepped slider snap markers so the shared control family could cover the most important snapping cases without reverting to custom one-off slider implementations.
 
-This project also needs to account for the richer slider cases already present elsewhere in the app, including stepped sliders and sliders with snap-point legends. The first pass does not need to solve every slider variant, but it should establish the shared control family that later passes can extend.
+This project is now complete enough to archive. The shared control family is in place, the major panel/window surfaces are using it, and the remaining design work belongs more to ongoing panel polish than to the standardization project itself.
 
 ## Rules
 

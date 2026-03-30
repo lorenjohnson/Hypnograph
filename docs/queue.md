@@ -6,7 +6,6 @@ last_reviewed: 2026-03-30
 
 ## Active Projects
 
-- [panel-control-family-standardization](active/panel-control-family-standardization.md)
 - [composition-timeline-and-length](active/composition-timeline-and-length.md)
 - [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
 - [sequences](active/sequences.md)

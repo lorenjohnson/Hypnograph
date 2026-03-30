@@ -522,7 +522,8 @@ struct PlayerSettingsView: View {
                             main.state.settingsStore.update { $0.transitionDuration = newValue }
                         }
                     ),
-                    bounds: 0.1...3.0
+                    bounds: 0.1...3.0,
+                    step: 0.1
                 )
                 .frame(width: 100)
             }

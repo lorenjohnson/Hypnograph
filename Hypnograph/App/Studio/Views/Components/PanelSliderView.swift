@@ -8,6 +8,7 @@ struct PanelSliderView: NSViewRepresentable {
     let bounds: ClosedRange<Double>
 
     var step: Double = 0
+    var snapMarkers: [Double] = []
 
     @SwiftUI.Environment(\.isEnabled) private var isEnabled
 
@@ -23,6 +24,7 @@ struct PanelSliderView: NSViewRepresentable {
         nsView.isEnabled = isEnabled
         nsView.sliderBounds = bounds
         nsView.step = step
+        nsView.snapMarkers = snapMarkers
         nsView.onValueChanged = { newValue in
             value = newValue
         }
@@ -39,6 +41,10 @@ final class PanelSliderControl: NSControl {
         didSet { needsDisplay = true }
     }
 
+    var snapMarkers: [Double] = [] {
+        didSet { needsDisplay = true }
+    }
+
     var onValueChanged: ((Double) -> Void)?
 
     private(set) var currentValue: Double = 0
@@ -46,9 +52,12 @@ final class PanelSliderControl: NSControl {
 
     private let thumbDiameter: CGFloat = 16
     private let trackHeight: CGFloat = 4
+    private let markerDiameter: CGFloat = 3
+    private let markerSpacing: CGFloat = 6
+    private let maxAutoMarkerCount = 24
 
     override var intrinsicContentSize: NSSize {
-        NSSize(width: NSView.noIntrinsicMetric, height: 20)
+        NSSize(width: NSView.noIntrinsicMetric, height: effectiveSnapMarkers.isEmpty ? 20 : 26)
     }
 
     override var mouseDownCanMoveWindow: Bool {
@@ -71,6 +80,8 @@ final class PanelSliderControl: NSControl {
         let trackPath = NSBezierPath(roundedRect: trackRect, xRadius: trackHeight / 2, yRadius: trackHeight / 2)
         NSColor.secondaryLabelColor.withAlphaComponent(0.3).setFill()
         trackPath.fill()
+
+        drawSnapMarkers()
 
         let selectionRect = NSRect(
             x: trackRect.minX,
@@ -124,7 +135,8 @@ final class PanelSliderControl: NSControl {
     }
 
     private var trackRect: NSRect {
-        let y = (bounds.height - trackHeight) * 0.5
+        let availableHeight = bounds.height - (effectiveSnapMarkers.isEmpty ? 0 : markerSpacing)
+        let y = (availableHeight - trackHeight) * 0.5
         return NSRect(
             x: thumbDiameter * 0.5,
             y: y,
@@ -157,6 +169,45 @@ final class PanelSliderControl: NSControl {
         NSColor.white.setFill()
         thumbPath.fill()
         NSGraphicsContext.restoreGraphicsState()
+    }
+
+    private func drawSnapMarkers() {
+        let markers = effectiveSnapMarkers
+        guard !markers.isEmpty else { return }
+
+        let markerY = trackRect.maxY + markerSpacing
+        let uniqueMarkers = Dictionary(
+            markers.map { (normalizedMarkerKey($0), $0) },
+            uniquingKeysWith: { first, _ in first }
+        ).values.sorted()
+
+        for marker in uniqueMarkers {
+            let x = xPosition(for: marker, usableWidth: usableWidth)
+            let rect = NSRect(
+                x: x - markerDiameter * 0.5,
+                y: markerY,
+                width: markerDiameter,
+                height: markerDiameter
+            )
+            let path = NSBezierPath(ovalIn: rect)
+            NSColor.secondaryLabelColor.withAlphaComponent(0.35).setFill()
+            path.fill()
+        }
+    }
+
+    private func normalizedMarkerKey(_ value: Double) -> Int {
+        Int((value * 1000).rounded())
+    }
+
+    private var effectiveSnapMarkers: [Double] {
+        if !snapMarkers.isEmpty {
+            return snapMarkers
+        }
+
+        guard step > 0 else { return [] }
+        let count = Int(((sliderBounds.upperBound - sliderBounds.lowerBound) / step).rounded()) + 1
+        guard count >= 2, count <= maxAutoMarkerCount else { return [] }
+        return stride(from: sliderBounds.lowerBound, through: sliderBounds.upperBound, by: step).map { $0 }
     }
 
     private func xPosition(for value: Double, usableWidth: CGFloat) -> CGFloat {
