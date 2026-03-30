@@ -80,12 +80,14 @@ struct EffectsComposerParameterDefinitionRow: View {
             }
 
             if parameter.type == .bool {
-                Toggle("Default", isOn: Binding(
-                    get: { parameter.defaultBool },
-                    set: { parameter.defaultBool = $0; onChanged() }
-                ))
-                .toggleStyle(.switch)
-                .controlSize(.small)
+                HStack(spacing: 8) {
+                    Text("Default")
+                    PanelToggleView(isOn: Binding(
+                        get: { parameter.defaultBool },
+                        set: { parameter.defaultBool = $0; onChanged() }
+                    ))
+                    .fixedSize()
+                }
             } else if parameter.type == .choice {
                 choiceEditor
             } else {

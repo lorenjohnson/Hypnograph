@@ -86,12 +86,12 @@ struct ParameterSliderRow: View {
                     })
 
                 case .bool(let b):
-                    Toggle("", isOn: Binding(
+                    Spacer(minLength: 0)
+                    PanelToggleView(isOn: Binding(
                         get: { b },
                         set: { onChange(.bool($0)) }
                     ))
-                    .toggleStyle(.darkModeCheckbox)
-                    .labelsHidden()
+                    .fixedSize()
 
                 case .string(let s):
                     // Check if this is a color parameter
@@ -200,7 +200,7 @@ struct ParameterSliderRow: View {
         // NOTE: Do NOT use Slider(step:) - it causes AppKit to create tick marks
         // which triggers extremely slow layout calculations (1+ seconds per slider).
         // Instead, we snap values to step in the onChange handler.
-        Slider(value: $sliderValue, in: range)
+        PanelSliderView(value: $sliderValue, bounds: range, step: step ?? 0)
             .frame(minWidth: 100)
             .onChange(of: sliderValue) { _, newVal in
                 // Snap to step if we have one

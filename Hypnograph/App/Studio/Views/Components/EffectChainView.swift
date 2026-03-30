@@ -94,7 +94,7 @@ struct EffectChainView: View {
             Spacer()
 
             if hasChain {
-                Toggle("", isOn: Binding(
+                PanelToggleView(isOn: Binding(
                     get: { chain.effects.contains(where: { $0.isEnabled }) },
                     set: { enabled in
                         for idx in chain.effects.indices {
@@ -102,9 +102,7 @@ struct EffectChainView: View {
                         }
                     }
                 ))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .labelsHidden()
+                .fixedSize()
                 .onTapGesture { }
             } else {
                 Menu {

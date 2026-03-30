@@ -97,7 +97,7 @@ struct PlayerControlsBar: View {
                 }
                 .buttonStyle(.plain)
                 .help(volume <= 0.001 ? "Unmute" : "Mute")
-                Slider(value: $volume, in: 0...1)
+                PanelSliderView(value: $volume, bounds: 0...1)
                     .frame(width: 120)
                     .help("Volume")
                 Image(systemName: "speaker.wave.3.fill")
@@ -215,12 +215,12 @@ struct PlayerControlsBar: View {
                 Text("1x")
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
-                Slider(
+                PanelSliderView(
                     value: Binding(
                         get: { timelinePlaybackControlValue },
                         set: { timelinePlaybackControlValue = $0 }
                     ),
-                    in: 0...20
+                    bounds: 0...20
                 )
                 Text("20x")
                     .font(.system(.caption, design: .monospaced))
@@ -238,9 +238,13 @@ struct PlayerControlsBar: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
             }
-            Toggle("Reverse", isOn: $isTimelinePlaybackReverse)
-                .toggleStyle(.checkbox)
-                .font(.system(.caption, design: .monospaced))
+            HStack {
+                Text("Reverse")
+                    .font(.system(.caption, design: .monospaced))
+                Spacer()
+                PanelToggleView(isOn: $isTimelinePlaybackReverse)
+                    .fixedSize()
+            }
         }
         .padding(12)
         .frame(width: 300)

@@ -315,15 +315,13 @@ private struct EffectDefinitionSessionRow: View {
 
                 Spacer()
 
-                Toggle("", isOn: Binding(
+                PanelToggleView(isOn: Binding(
                     get: { effect.isEnabled },
                     set: { enabled in
                         session.setEffectEnabled(chainIndex: chainIndex, effectIndex: effectIndex, enabled: enabled)
                     }
                 ))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .labelsHidden()
+                .fixedSize()
 
                 Button(role: .destructive) {
                     session.removeEffectFromChain(chainIndex: chainIndex, effectIndex: effectIndex)

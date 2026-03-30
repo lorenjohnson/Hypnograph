@@ -192,15 +192,23 @@ struct SourcesWindowView: View {
             sectionTitle("Media Types")
 
             HStack(spacing: 16) {
-                Toggle("Images", isOn: Binding(
-                    get: { state.isMediaTypeActive(.images) },
-                    set: { _ in state.toggleMediaType(.images) }
-                ))
+                HStack(spacing: 8) {
+                    Text("Images")
+                    PanelToggleView(isOn: Binding(
+                        get: { state.isMediaTypeActive(.images) },
+                        set: { _ in state.toggleMediaType(.images) }
+                    ))
+                    .fixedSize()
+                }
 
-                Toggle("Videos", isOn: Binding(
-                    get: { state.isMediaTypeActive(.videos) },
-                    set: { _ in state.toggleMediaType(.videos) }
-                ))
+                HStack(spacing: 8) {
+                    Text("Videos")
+                    PanelToggleView(isOn: Binding(
+                        get: { state.isMediaTypeActive(.videos) },
+                        set: { _ in state.toggleMediaType(.videos) }
+                    ))
+                    .fixedSize()
+                }
             }
 
             Text("Current eligible pool: \(state.library.assetCount) item\(state.library.assetCount == 1 ? "" : "s")")
@@ -426,14 +434,14 @@ private struct ApplePhotosAlbumPickerSheet: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
                         ForEach(albums, id: \.libraryKey) { album in
-                            Toggle(isOn: binding(for: album.libraryKey)) {
-                                HStack {
-                                    Text(album.title)
-                                    Spacer()
-                                    Text("\(album.assetCount)")
-                                        .foregroundStyle(.secondary)
-                                        .monospacedDigit()
-                                }
+                            HStack(spacing: 10) {
+                                Text(album.title)
+                                Spacer()
+                                Text("\(album.assetCount)")
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                                PanelToggleView(isOn: binding(for: album.libraryKey))
+                                    .fixedSize()
                             }
                         }
                     }

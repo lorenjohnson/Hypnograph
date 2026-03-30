@@ -197,7 +197,13 @@ struct NewClipsWindowView: View {
         frequency: Binding<Double>
     ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Toggle(title, isOn: isOn)
+            HStack {
+                Text(title)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer()
+                PanelToggleView(isOn: isOn)
+                    .fixedSize()
+            }
             HStack {
                 Text("Frequency")
                 Spacer()
@@ -205,7 +211,7 @@ struct NewClipsWindowView: View {
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
-            Slider(value: frequency, in: 0...1)
+            PanelSliderView(value: frequency, bounds: 0...1, step: 0.01)
         }
     }
 }

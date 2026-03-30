@@ -244,16 +244,19 @@ struct LayerRowView: View {
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
-                Slider(value: Binding(
-                    get: { layer.opacity.clamped(to: 0...1) },
-                    set: { newValue in
-                        layer.opacity = newValue.clamped(to: 0...1)
-                        if layer.opacity > 0.001 {
-                            lastVisibleOpacity = layer.opacity
+                PanelSliderView(
+                    value: Binding(
+                        get: { layer.opacity.clamped(to: 0...1) },
+                        set: { newValue in
+                            layer.opacity = newValue.clamped(to: 0...1)
+                            if layer.opacity > 0.001 {
+                                lastVisibleOpacity = layer.opacity
+                            }
+                            main.activePlayer.notifyHypnogramMutated()
                         }
-                        main.activePlayer.notifyHypnogramMutated()
-                    }
-                ), in: 0...1)
+                    ),
+                    bounds: 0...1
+                )
             }
 
             EffectChainView(

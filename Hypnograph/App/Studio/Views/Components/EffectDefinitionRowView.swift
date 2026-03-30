@@ -45,15 +45,20 @@ struct EffectDefinitionRowView: View {
 
     private var header: some View {
         HStack {
-            HStack(spacing: 4) {
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                Text(displayName)
-                    .font(.callout)
-                    .foregroundStyle(effect.isEnabled ? .primary : .secondary)
-                    .lineLimit(1)
+            Button(action: onToggleExpanded) {
+                HStack(spacing: 4) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    Text(displayName)
+                        .font(.callout)
+                        .foregroundStyle(effect.isEnabled ? .primary : .secondary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
 
             Spacer()
 
@@ -75,15 +80,13 @@ struct EffectDefinitionRowView: View {
             .buttonStyle(.borderless)
             .help("Randomize effect parameters")
 
-            Toggle("", isOn: Binding(
+            PanelToggleView(isOn: Binding(
                 get: { effect.isEnabled },
                 set: { enabled in
                     main.activeEffectManager.setEffectEnabled(for: layer, effectDefIndex: effectIndex, enabled: enabled)
                 }
             ))
-            .toggleStyle(.switch)
-            .controlSize(.mini)
-            .labelsHidden()
+            .fixedSize()
 
             Button(role: .destructive) {
                 main.activeEffectManager.removeEffectFromChain(for: layer, effectDefIndex: effectIndex)
@@ -92,10 +95,6 @@ struct EffectDefinitionRowView: View {
                     .foregroundStyle(.tertiary)
             }
             .buttonStyle(.borderless)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            onToggleExpanded()
         }
     }
 

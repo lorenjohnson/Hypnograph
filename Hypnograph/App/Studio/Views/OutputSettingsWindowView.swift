@@ -38,12 +38,16 @@ struct OutputSettingsWindowView: View {
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                     }
-                    Slider(value: Binding(
-                        get: { state.settings.transitionDuration },
-                        set: { newValue in
-                            state.settingsStore.update { $0.transitionDuration = newValue }
-                        }
-                    ), in: 0.1...3.0, step: 0.1)
+                    PanelSliderView(
+                        value: Binding(
+                            get: { state.settings.transitionDuration },
+                            set: { newValue in
+                                state.settingsStore.update { $0.transitionDuration = newValue }
+                            }
+                        ),
+                        bounds: 0.1...3.0,
+                        step: 0.1
+                    )
                 }
 
                 GlassDivider()

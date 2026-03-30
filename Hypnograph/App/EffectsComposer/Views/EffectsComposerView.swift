@@ -271,16 +271,18 @@ struct EffectsComposerView: View {
                     Text("Panels")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    Slider(value: $panelOpacity, in: 0.22...0.92)
+                    PanelSliderView(value: $panelOpacity, bounds: 0.22...0.92)
                         .frame(width: 110)
                         .help("Adjust overlay window transparency.")
 
                     Spacer(minLength: 0)
 
-                    Toggle("Live", isOn: $autoCompile)
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                        .help("Automatically compile after code or parameter edits.")
+                    HStack(spacing: 8) {
+                        Text("Live")
+                        PanelToggleView(isOn: $autoCompile)
+                            .fixedSize()
+                    }
+                    .help("Automatically compile after code or parameter edits.")
 
                     Button("Compile") { _ = model.compileCode() }
                         .buttonStyle(.borderedProminent)
@@ -521,7 +523,7 @@ struct EffectsComposerView: View {
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
 
-                    Slider(value: $model.time, in: 0...duration)
+                    PanelSliderView(value: $model.time, bounds: 0...duration)
 
                     Button {
                         model.isPlaying.toggle()

@@ -250,8 +250,8 @@ struct AppSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 12)
-            Toggle("", isOn: isOn)
-                .labelsHidden()
+            PanelToggleView(isOn: isOn)
+                .fixedSize()
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)

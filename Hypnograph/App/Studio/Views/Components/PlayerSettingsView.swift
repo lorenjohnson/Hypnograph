@@ -183,34 +183,12 @@ struct PlayRateControl: View {
                 }
                 .buttonStyle(.plain)
 
-                // Slider with snap point indicators behind
-                Slider(
+                PanelSliderView(
                     value: Binding(
                         get: { Double(playRate) },
                         set: { playRate = snappedValue(Float($0)) }
                     ),
-                    in: Double(minValue)...Double(maxValue)
-                )
-                .controlSize(.small)
-                .background(
-                    GeometryReader { geometry in
-                        // Account for slider thumb radius (the handle center can't go to the edge)
-                        // For small controlSize, thumb is about 12px wide, so 6px from edge
-                        let thumbRadius: CGFloat = 6
-                        let trackWidth = geometry.size.width - (thumbRadius * 2)
-
-                        // Snap point indicators (behind slider)
-                        ForEach(snapPoints, id: \.self) { snap in
-                            let normalizedPosition = CGFloat((snap - minValue) / (maxValue - minValue))
-                            let position = thumbRadius + (normalizedPosition * trackWidth)
-                            let isAt100 = snap == 1.0
-
-                            Rectangle()
-                                .fill(Color.white.opacity(0.2))
-                                .frame(width: 2, height: isAt100 ? 18 : 12)
-                                .position(x: position, y: geometry.size.height / 2)
-                        }
-                    }
+                    bounds: Double(minValue)...Double(maxValue)
                 )
 
                 // Rabbit button - go to next snap point
@@ -280,8 +258,13 @@ struct AudioDeviceRow: View {
                 .buttonStyle(.plain)
                 .frame(height: 24)
 
-                Slider(value: $volume, in: 0...1)
-                .controlSize(.small)
+                PanelSliderView(
+                    value: Binding(
+                        get: { Double(volume) },
+                        set: { volume = Float($0) }
+                    ),
+                    bounds: 0...1
+                )
 
                 // Max volume button
                 Button {
@@ -384,11 +367,11 @@ struct PlayerSettingsView: View {
 
                 Spacer()
 
-                Toggle("", isOn: Binding(
+                PanelToggleView(isOn: Binding(
                     get: { main.state.settings.playbackEndBehavior == .loopCurrentComposition },
                     set: { main.state.setLoopCurrentCompositionMode($0) }
                 ))
-                .toggleStyle(.darkMode)
+                .fixedSize()
             }
 
             HStack {
@@ -532,17 +515,16 @@ struct PlayerSettingsView: View {
                     .foregroundColor(.white)
                     .frame(minWidth: 40)
 
-                Slider(
+                PanelSliderView(
                     value: Binding(
                         get: { main.state.settings.transitionDuration },
                         set: { newValue in
                             main.state.settingsStore.update { $0.transitionDuration = newValue }
                         }
                     ),
-                    in: 0.1...3.0
+                    bounds: 0.1...3.0
                 )
                 .frame(width: 100)
-                .controlSize(.small)
             }
 
             Divider()

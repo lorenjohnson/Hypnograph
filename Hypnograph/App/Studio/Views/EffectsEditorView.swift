@@ -753,18 +753,30 @@ struct EffectsEditorView: View {
         let isExpanded = expandedEffectIndices.contains(childIndex)
 
         VStack(alignment: .leading, spacing: 0) {
-            // Header with controls - tap anywhere (except buttons) to expand/collapse
             HStack(spacing: 6) {
-                // Drag handle indicator
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.white.opacity(0.4))
-                    .frame(width: 20)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        if expandedEffectIndices.contains(childIndex) {
+                            expandedEffectIndices.remove(childIndex)
+                        } else {
+                            expandedEffectIndices.insert(childIndex)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "line.3.horizontal")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.white.opacity(0.4))
+                            .frame(width: 20)
 
-                // Effect name
-                Text(formatEffectType(effectDef.type) ?? "Effect \(childIndex + 1)")
-                    .font(.system(.body, design: .monospaced).bold())
-                    .foregroundColor(isEnabled ? .white : .white.opacity(0.5))
+                        Text(formatEffectType(effectDef.type) ?? "Effect \(childIndex + 1)")
+                            .font(.system(.body, design: .monospaced).bold())
+                            .foregroundColor(isEnabled ? .white : .white.opacity(0.5))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
 
                 Spacer()
 
@@ -806,14 +818,13 @@ struct EffectsEditorView: View {
                 .help("Remove from chain")
 
                 // Enable/disable toggle
-                Toggle("", isOn: Binding(
+                PanelToggleView(isOn: Binding(
                     get: { isEnabled },
                     set: { newValue in
                         main.activeEffectManager.setEffectEnabled(for: layer, effectDefIndex: childIndex, enabled: newValue)
                     }
                 ))
-                .toggleStyle(.darkModeSwitchCompact)
-                .labelsHidden()
+                .fixedSize()
                 .help(isEnabled ? "Disable effect" : "Enable effect")
                 .focused($focusedField, equals: .effectCheckbox(childIndex))
             }
@@ -821,17 +832,6 @@ struct EffectsEditorView: View {
             .padding(.vertical, 6)
             .background(isExpanded ? Color.white.opacity(0.24) : Color.white.opacity(0.1))
             .cornerRadius(6)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                // Toggle expand/collapse on tap (buttons have higher priority)
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    if expandedEffectIndices.contains(childIndex) {
-                        expandedEffectIndices.remove(childIndex)
-                    } else {
-                        expandedEffectIndices.insert(childIndex)
-                    }
-                }
-            }
 
             // Parameters (show when expanded, even if disabled - allows pre-configuration)
             if isExpanded {
@@ -849,20 +849,34 @@ struct EffectsEditorView: View {
 
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.white.opacity(0.25))
-                    .frame(width: 20)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        if expandedEffectIndices.contains(childIndex) {
+                            expandedEffectIndices.remove(childIndex)
+                        } else {
+                            expandedEffectIndices.insert(childIndex)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "line.3.horizontal")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.white.opacity(0.25))
+                            .frame(width: 20)
 
-                Text(formatEffectType(effectDef.type) ?? "Effect \(childIndex + 1)")
-                    .font(.system(.body, design: .monospaced).bold())
-                    .foregroundColor(isEnabled ? .white : .white.opacity(0.5))
+                        Text(formatEffectType(effectDef.type) ?? "Effect \(childIndex + 1)")
+                            .font(.system(.body, design: .monospaced).bold())
+                            .foregroundColor(isEnabled ? .white : .white.opacity(0.5))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
 
                 Spacer()
 
-                Toggle("", isOn: .constant(isEnabled))
-                    .toggleStyle(.darkModeSwitchCompact)
-                    .labelsHidden()
+                PanelToggleView(isOn: .constant(isEnabled))
+                    .fixedSize()
                     .disabled(true)
                     .help(isEnabled ? "Enabled" : "Disabled")
             }
@@ -870,16 +884,6 @@ struct EffectsEditorView: View {
             .padding(.vertical, 6)
             .background(isExpanded ? Color.white.opacity(0.24) : Color.white.opacity(0.1))
             .cornerRadius(6)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    if expandedEffectIndices.contains(childIndex) {
-                        expandedEffectIndices.remove(childIndex)
-                    } else {
-                        expandedEffectIndices.insert(childIndex)
-                    }
-                }
-            }
 
             if isExpanded {
                 parameterFieldsForEffectReadOnly(effectDef)

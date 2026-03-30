@@ -1,0 +1,187 @@
+import SwiftUI
+import AppKit
+
+/// AppKit-backed single-value slider for Studio panels.
+/// Matches the visual language of `RangeSliderView` and avoids window-drag conflicts.
+struct PanelSliderView: NSViewRepresentable {
+    @Binding var value: Double
+    let bounds: ClosedRange<Double>
+
+    var step: Double = 0
+
+    @SwiftUI.Environment(\.isEnabled) private var isEnabled
+
+    func makeNSView(context: Context) -> PanelSliderControl {
+        let control = PanelSliderControl()
+        control.onValueChanged = { newValue in
+            value = newValue
+        }
+        return control
+    }
+
+    func updateNSView(_ nsView: PanelSliderControl, context: Context) {
+        nsView.isEnabled = isEnabled
+        nsView.sliderBounds = bounds
+        nsView.step = step
+        nsView.onValueChanged = { newValue in
+            value = newValue
+        }
+        nsView.setValue(value)
+    }
+}
+
+final class PanelSliderControl: NSControl {
+    var sliderBounds: ClosedRange<Double> = 0...1 {
+        didSet { needsDisplay = true }
+    }
+
+    var step: Double = 0 {
+        didSet { needsDisplay = true }
+    }
+
+    var onValueChanged: ((Double) -> Void)?
+
+    private(set) var currentValue: Double = 0
+    private var isTrackingThumb = false
+
+    private let thumbDiameter: CGFloat = 16
+    private let trackHeight: CGFloat = 4
+
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: NSView.noIntrinsicMetric, height: 20)
+    }
+
+    override var mouseDownCanMoveWindow: Bool {
+        false
+    }
+
+    func setValue(_ newValue: Double) {
+        let clamped = snapped(newValue).clamped(to: sliderBounds)
+        guard abs(currentValue - clamped) > 0.0001 else { return }
+        currentValue = clamped
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+
+        let trackRect = self.trackRect
+        let centerX = xPosition(for: currentValue, usableWidth: usableWidth)
+
+        let trackPath = NSBezierPath(roundedRect: trackRect, xRadius: trackHeight / 2, yRadius: trackHeight / 2)
+        NSColor.secondaryLabelColor.withAlphaComponent(0.3).setFill()
+        trackPath.fill()
+
+        let selectionRect = NSRect(
+            x: trackRect.minX,
+            y: trackRect.minY,
+            width: max(thumbDiameter * 0.5, centerX - trackRect.minX),
+            height: trackRect.height
+        )
+        let selectionPath = NSBezierPath(roundedRect: selectionRect, xRadius: trackHeight / 2, yRadius: trackHeight / 2)
+        NSColor.controlAccentColor.setFill()
+        selectionPath.fill()
+
+        drawThumb(centerX: centerX, active: isTrackingThumb)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard isEnabled else {
+            super.mouseDown(with: event)
+            return
+        }
+
+        isTrackingThumb = true
+        updateValue(with: convert(event.locationInWindow, from: nil))
+        needsDisplay = true
+
+        guard let window else {
+            isTrackingThumb = false
+            needsDisplay = true
+            return
+        }
+
+        while let nextEvent = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
+            switch nextEvent.type {
+            case .leftMouseDragged:
+                updateValue(with: convert(nextEvent.locationInWindow, from: nil))
+            case .leftMouseUp:
+                updateValue(with: convert(nextEvent.locationInWindow, from: nil))
+                isTrackingThumb = false
+                needsDisplay = true
+                return
+            default:
+                break
+            }
+        }
+
+        isTrackingThumb = false
+        needsDisplay = true
+    }
+
+    private var span: Double {
+        max(0.000_001, sliderBounds.upperBound - sliderBounds.lowerBound)
+    }
+
+    private var trackRect: NSRect {
+        let y = (bounds.height - trackHeight) * 0.5
+        return NSRect(
+            x: thumbDiameter * 0.5,
+            y: y,
+            width: max(1, bounds.width - thumbDiameter),
+            height: trackHeight
+        )
+    }
+
+    private var usableWidth: CGFloat {
+        max(1, bounds.width - thumbDiameter)
+    }
+
+    private func drawThumb(centerX: CGFloat, active: Bool) {
+        let rect = NSRect(
+            x: centerX,
+            y: (bounds.height - thumbDiameter) * 0.5,
+            width: thumbDiameter,
+            height: thumbDiameter
+        )
+
+        let thumbRect = rect.offsetBy(dx: -thumbDiameter * 0.5, dy: 0)
+        let thumbPath = NSBezierPath(ovalIn: thumbRect)
+
+        NSGraphicsContext.saveGraphicsState()
+        let shadow = NSShadow()
+        shadow.shadowBlurRadius = active ? 3 : 2
+        shadow.shadowOffset = NSSize(width: 0, height: -1)
+        shadow.shadowColor = NSColor.black.withAlphaComponent(0.25)
+        shadow.set()
+        NSColor.white.setFill()
+        thumbPath.fill()
+        NSGraphicsContext.restoreGraphicsState()
+    }
+
+    private func xPosition(for value: Double, usableWidth: CGFloat) -> CGFloat {
+        let t = ((value - sliderBounds.lowerBound) / span).clamped(to: 0...1)
+        return (thumbDiameter * 0.5) + CGFloat(t) * usableWidth
+    }
+
+    private func value(for point: CGPoint) -> Double {
+        let clampedX = point.x.clamped(to: (thumbDiameter * 0.5)...(bounds.width - thumbDiameter * 0.5))
+        let normalized = Double((clampedX - (thumbDiameter * 0.5)) / usableWidth).clamped(to: 0...1)
+        let rawValue = sliderBounds.lowerBound + (normalized * span)
+        return snapped(rawValue).clamped(to: sliderBounds)
+    }
+
+    private func snapped(_ value: Double) -> Double {
+        guard step > 0 else { return value }
+        return (value / step).rounded() * step
+    }
+
+    private func updateValue(with point: CGPoint) {
+        let newValue = value(for: point)
+        guard abs(newValue - currentValue) > 0.0001 else { return }
+        currentValue = newValue
+        onValueChanged?(newValue)
+        sendAction(action, to: target)
+        needsDisplay = true
+    }
+}

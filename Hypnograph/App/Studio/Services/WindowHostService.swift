@@ -78,6 +78,15 @@ private enum WindowKind: String {
         }
     }
 
+    var allowsBackgroundDragging: Bool {
+        switch self {
+        case .composition, .effects, .playerControls:
+            return false
+        default:
+            return true
+        }
+    }
+
     var fixedHeightPadding: CGFloat {
         switch self {
         case .playerControls:
@@ -398,7 +407,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
             panel.titleVisibility = .hidden
             panel.titlebarAppearsTransparent = true
         }
-        panel.isMovableByWindowBackground = (kind != .playerControls)
+        panel.isMovableByWindowBackground = kind.allowsBackgroundDragging
         panel.isReleasedWhenClosed = false
         panel.isFloatingPanel = false
         panel.level = parentWindow.level

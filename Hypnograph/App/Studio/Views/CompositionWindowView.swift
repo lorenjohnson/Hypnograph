@@ -140,7 +140,7 @@ struct CompositionWindowView: View {
                         .monospacedDigit()
                 }
 
-                Slider(
+                PanelSliderView(
                     value: Binding(
                         get: {
                             let seconds = main.activePlayer.targetDuration.seconds
@@ -152,7 +152,7 @@ struct CompositionWindowView: View {
                             main.activePlayer.notifyHypnogramMutated()
                         }
                     ),
-                    in: 1...60,
+                    bounds: 1...60,
                     step: 1
                 )
             }
@@ -168,12 +168,12 @@ struct CompositionWindowView: View {
                         .monospacedDigit()
                 }
 
-                Slider(
+                PanelSliderView(
                     value: Binding(
-                        get: { main.activePlayer.playRate },
-                        set: { main.activePlayer.playRate = $0 }
+                        get: { Double(main.activePlayer.playRate) },
+                        set: { main.activePlayer.playRate = Float($0) }
                     ),
-                    in: 0.2...2.0,
+                    bounds: 0.2...2.0,
                     step: 0.2
                 )
             }
