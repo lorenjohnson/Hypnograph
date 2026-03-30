@@ -209,7 +209,9 @@
     }
 
     let routeValue = relativePath;
-    if (routeValue.endsWith("/README.md")) {
+    if (routeValue.endsWith("/index.md")) {
+      routeValue = routeValue.slice(0, -"/index.md".length);
+    } else if (routeValue.endsWith("/README.md")) {
       routeValue = routeValue.slice(0, -"/README.md".length);
     } else {
       routeValue = routeValue.replace(/\.md$/i, "");
@@ -220,6 +222,36 @@
       .filter((segment) => segment.length > 0)
       .map((segment) => encodeURIComponent(segment))
       .join("/");
+  }
+
+  function routePathForDirectory(relativeDirectoryPath) {
+    return "/" + relativeDirectoryPath
+      .split("/")
+      .filter((segment) => segment.length > 0)
+      .map((segment) => encodeURIComponent(segment))
+      .join("/");
+  }
+
+  function relativeDirectoryPathForRoute(pathname) {
+    const normalizedPath = pathname.replace(/\/+$/, "");
+
+    if (normalizedPath === "" || normalizedPath === "/" || normalizedPath === "/docs") {
+      return null;
+    }
+
+    if (normalizedPath === "/index" || normalizedPath === "/index.md") {
+      return null;
+    }
+
+    const relativePath = normalizedPath.startsWith("/docs/")
+      ? normalizedPath.slice("/docs/".length)
+      : normalizedPath.replace(/^\/+/, "");
+
+    if (!relativePath || relativePath.endsWith(".md")) {
+      return null;
+    }
+
+    return relativePath;
   }
 
   function joinUrlPath(base, child) {
@@ -439,10 +471,100 @@
     }
   }
 
+  function renderDirectoryIndex(relativeDirectoryPath, entries) {
+    const title = titleCaseSegment(relativeDirectoryPath.split("/").pop() || relativeDirectoryPath);
+    const directories = [];
+    const files = [];
+
+    for (const entry of entries) {
+      const name = (entry && entry.name ? String(entry.name) : "").trim();
+      if (!name || name === "../") {
+        continue;
+      }
+
+      const isDirectory = entry.type === "directory" || name.endsWith("/");
+      const cleanName = isDirectory ? name.replace(/\/+$/, "") : name;
+      if (!cleanName || cleanName === "assets") {
+        continue;
+      }
+
+      if (isDirectory) {
+        directories.push(cleanName);
+        continue;
+      }
+
+      if (cleanName.toLowerCase().endsWith(".md")) {
+        files.push(cleanName);
+      }
+    }
+
+    directories.sort((a, b) => a.localeCompare(b));
+    files.sort((a, b) => a.localeCompare(b));
+
+    const markdownLines = [
+      "# " + title,
+      "",
+      "Browse the documents in this section.",
+      ""
+    ];
+
+    if (directories.length > 0) {
+      markdownLines.push("## Directories", "");
+      for (const directoryName of directories) {
+        const directoryPath = relativeDirectoryPath + "/" + directoryName;
+        markdownLines.push("- [" + titleCaseSegment(directoryName) + "](" + routePathForDirectory(directoryPath) + ")");
+      }
+      markdownLines.push("");
+    }
+
+    if (files.length > 0) {
+      markdownLines.push("## Documents", "");
+      for (const fileName of files) {
+        const filePath = relativeDirectoryPath + "/" + fileName;
+        markdownLines.push("- [" + titleCaseSegment(fileName) + "](" + routePathForDoc(filePath) + ")");
+      }
+      markdownLines.push("");
+    }
+
+    if (directories.length === 0 && files.length === 0) {
+      markdownLines.push("No documents found in this section.", "");
+    }
+
+    return markdownLines.join("\n");
+  }
+
   async function loadDoc() {
     try {
       const response = await fetch(resolvedDocPath + "?ts=" + Date.now(), { cache: "no-store" });
       if (!response.ok) {
+        if (response.status === 404) {
+          const relativeDirectoryPath = relativeDirectoryPathForRoute(window.location.pathname);
+          if (relativeDirectoryPath) {
+            try {
+              const indexResponse = await fetch(
+                "/docs/" + encodePath(relativeDirectoryPath) + "/index.md?ts=" + Date.now(),
+                { cache: "no-store" }
+              );
+              if (indexResponse.ok) {
+                const indexText = await indexResponse.text();
+                if (indexText !== lastText) {
+                  documentEl.innerHTML = markdown.render(stripFrontMatter(indexText));
+                  setupVideoLightboxes();
+                  lastText = indexText;
+                }
+                return;
+              }
+
+              const entries = await fetchDirectoryListing("docs/" + relativeDirectoryPath);
+              const directoryIndex = renderDirectoryIndex(relativeDirectoryPath, entries);
+              if (directoryIndex !== lastText) {
+                documentEl.innerHTML = markdown.render(directoryIndex);
+                lastText = directoryIndex;
+              }
+              return;
+            } catch (_) {}
+          }
+        }
         throw new Error("HTTP " + response.status);
       }
       const text = await response.text();
