@@ -22,7 +22,7 @@ private enum WindowKind: String {
         case .newClips: return "New Compositions"
         case .outputSettings: return "Output Settings"
         case .composition: return "Composition"
-        case .effects: return "Effects"
+        case .effects: return "Effect Chains"
         case .playerControls: return "Playback Controls"
         }
     }

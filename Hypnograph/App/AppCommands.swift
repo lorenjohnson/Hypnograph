@@ -133,7 +133,7 @@ struct AppCommands: Commands {
                 .keyboardShortcut("4", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
-                Toggle("Effects", isOn: Binding(
+                Toggle("Effect Chains", isOn: Binding(
                     get: { windows.isWindowVisible("effectsWindow") },
                     set: { _ in windows.toggleWindow("effectsWindow") }
                 ))

@@ -27,11 +27,6 @@ struct EffectChainLibraryView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Library")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 4)
-
                 if session.chains.isEmpty {
                     Text("No saved effect chains.")
                         .foregroundStyle(.secondary)

@@ -300,7 +300,7 @@ struct EffectsEditorView: View {
 
     private var effectListColumn: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Effects")
+            Text("Effect Chains")
                 .font(.headline)
 
             effectsList
