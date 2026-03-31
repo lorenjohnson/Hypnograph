@@ -12,8 +12,8 @@ updated: 2026-03-31
 </div>
 
 <aside class="beta-inset beta-download download-cta">
-  <p><a class="download-button" href="https://github.com/lorenjohnson/Hypnograph/releases/download/v0.2.0-beta.10/Hypnograph-0.2.0-10-macOS-unsigned.dmg">Download Beta</a></p>
-  <p class="download-subtext"><span class="download-chip">Beta</span> <span class="download-chip">v0.2.0 (build 10)</span> <span class="download-chip">Apple Silicon</span></p>
+  <p><a class="download-button" href="https://github.com/lorenjohnson/Hypnograph/releases/download/v0.2.0-beta.11/Hypnograph-0.2.0-11-macOS-unsigned.dmg">Download Beta</a></p>
+  <p class="download-subtext"><span class="download-chip">Beta</span> <span class="download-chip">v0.2.0 (build 11)</span> <span class="download-chip">Apple Silicon</span></p>
   <p class="download-subtext">Released March 31, 2026</p>
   <p class="download-subtext">There are a couple of extra steps to running the beta app at this time. See <a href="/reference/installing-the-beta">beta install steps</a>.</p>
 </aside>
