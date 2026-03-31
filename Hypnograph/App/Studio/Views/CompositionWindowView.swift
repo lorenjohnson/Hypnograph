@@ -129,7 +129,13 @@ struct CompositionWindowView: View {
     }
 
     private var globalSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let isSelected = main.activePlayer.currentLayerIndex == -1
+
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("Composition")
+                .font(.headline)
+                .foregroundStyle(isSelected ? .primary : .secondary)
+
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text("Play Rate")
@@ -149,7 +155,6 @@ struct CompositionWindowView: View {
                     step: 0.1
                 )
             }
-            .padding(.horizontal, 4)
             .disabled(main.isLiveMode)
             .opacity(main.isLiveMode ? 0.55 : 1.0)
 
@@ -160,7 +165,16 @@ struct CompositionWindowView: View {
                 title: "Effects"
             )
         }
+        .padding(10)
         .contentShape(Rectangle())
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(isSelected ? Color.accentColor.opacity(0.14) : Color.white.opacity(0.05))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(isSelected ? Color.accentColor.opacity(0.55) : Color.white.opacity(0.08), lineWidth: isSelected ? 1.0 : 0.5)
+        )
         .onTapGesture {
             main.activePlayer.selectGlobalLayer()
         }
