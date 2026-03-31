@@ -44,12 +44,12 @@ struct ParameterSliderRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             // Label row with reset button right-aligned
             HStack {
                 Text(displayName)
                     .font(.caption)
-                    .foregroundColor(.white.opacity(0.7))
+                    .foregroundColor(.white.opacity(0.68))
                 Spacer()
                 Button(action: resetToDefault) {
                     Image(systemName: "arrow.uturn.backward")
@@ -60,7 +60,7 @@ struct ParameterSliderRow: View {
                 .help("Reset to default")
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 switch value {
                 case .double:
                     numericSlider(isInt: false)
@@ -123,8 +123,8 @@ struct ParameterSliderRow: View {
                 }
             }
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 3)
         .focusable()  // Makes this row participate in Tab navigation
         .onAppear {
             initializeValues()

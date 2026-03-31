@@ -16,21 +16,21 @@ struct EffectDefinitionRowView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             header
 
             if isExpanded {
                 paramsEditor
-                    .padding(.leading, 16)
+                    .padding(.leading, 12)
                     .opacity(effect.isEnabled ? 1.0 : 0.5)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
         .background(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(.quaternary)
+                .fill(Color.white.opacity(0.07))
         )
         .contextMenu {
             Button("Reset to Defaults") {
@@ -99,7 +99,7 @@ struct EffectDefinitionRowView: View {
     }
 
     private var paramsEditor: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 5) {
             let specs = EffectRegistry.parameterSpecs(for: effect.type)
             let keys = EffectRegistry.parameterNames(for: effect.type).filter { $0 != "_enabled" }
 

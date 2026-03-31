@@ -189,26 +189,22 @@ struct SourcesWindowView: View {
     private var mediaTypesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionDivider()
-            sectionTitle("Media Types")
+            PanelSectionHeader(title: "Media Types")
 
-            HStack(spacing: 16) {
-                HStack(spacing: 8) {
-                    Text("Images")
-                    PanelToggleView(isOn: Binding(
-                        get: { state.isMediaTypeActive(.images) },
-                        set: { _ in state.toggleMediaType(.images) }
-                    ))
-                    .fixedSize()
-                }
+            PanelInlineFieldRow(title: "Images") {
+                PanelToggleView(isOn: Binding(
+                    get: { state.isMediaTypeActive(.images) },
+                    set: { _ in state.toggleMediaType(.images) }
+                ))
+                .fixedSize()
+            }
 
-                HStack(spacing: 8) {
-                    Text("Videos")
-                    PanelToggleView(isOn: Binding(
-                        get: { state.isMediaTypeActive(.videos) },
-                        set: { _ in state.toggleMediaType(.videos) }
-                    ))
-                    .fixedSize()
-                }
+            PanelInlineFieldRow(title: "Videos") {
+                PanelToggleView(isOn: Binding(
+                    get: { state.isMediaTypeActive(.videos) },
+                    set: { _ in state.toggleMediaType(.videos) }
+                ))
+                .fixedSize()
             }
 
             Text("Current eligible pool: \(state.library.assetCount) item\(state.library.assetCount == 1 ? "" : "s")")
@@ -220,10 +216,7 @@ struct SourcesWindowView: View {
     private var sourcesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionDivider()
-            HStack(alignment: .center, spacing: 8) {
-                sectionTitle("Source Selections")
-                Spacer(minLength: 8)
-
+            PanelInlineFieldRow(title: "Source Selections") {
                 Menu {
                     Button("Files or Folders…") {
                         main.addSourceLibrariesFromPanel()
@@ -269,7 +262,7 @@ struct SourcesWindowView: View {
     private var photosAccessSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionDivider()
-            sectionTitle("Apple Photos")
+            PanelSectionHeader(title: "Apple Photos")
 
             if canReadPhotos {
                 Text("Apple Photos access is enabled. Add All Items, a Custom Selection, or Albums from the source menu above.")
@@ -295,7 +288,7 @@ struct SourcesWindowView: View {
                 HStack(spacing: 8) {
                     Text(row.typeLabel)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.tertiary)
                         .textCase(.uppercase)
 
                     Text(row.title)
@@ -304,12 +297,12 @@ struct SourcesWindowView: View {
 
                 Text(row.detail)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.tertiary)
                     .lineLimit(3)
 
                 Text(assetCountText(for: row.kind))
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.quaternary)
             }
 
             Spacer(minLength: 8)
@@ -386,13 +379,6 @@ struct SourcesWindowView: View {
             _ = await main.requestPhotosAccess()
             isRequestingPhotos = false
         }
-    }
-
-    @ViewBuilder
-    private func sectionTitle(_ text: String) -> some View {
-        Text(text)
-            .font(.headline)
-            .foregroundStyle(.secondary)
     }
 
     @ViewBuilder

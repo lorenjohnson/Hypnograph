@@ -135,8 +135,11 @@ final class PanelSliderControl: NSControl {
     }
 
     private var trackRect: NSRect {
-        let availableHeight = bounds.height - (effectiveSnapMarkers.isEmpty ? 0 : markerSpacing)
-        let y = (availableHeight - trackHeight) * 0.5
+        let markerAllowance = effectiveSnapMarkers.isEmpty ? 0 : markerSpacing
+        let availableHeight = bounds.height - markerAllowance
+        let y = effectiveSnapMarkers.isEmpty
+            ? (availableHeight - trackHeight) * 0.5
+            : markerSpacing + (availableHeight - trackHeight) * 0.5
         return NSRect(
             x: thumbDiameter * 0.5,
             y: y,
@@ -175,7 +178,7 @@ final class PanelSliderControl: NSControl {
         let markers = effectiveSnapMarkers
         guard !markers.isEmpty else { return }
 
-        let markerY = trackRect.maxY + markerSpacing
+        let markerY = trackRect.minY - markerSpacing + ((trackHeight - markerDiameter) * 0.5)
         let uniqueMarkers = Dictionary(
             markers.map { (normalizedMarkerKey($0), $0) },
             uniquingKeysWith: { first, _ in first }
@@ -201,13 +204,14 @@ final class PanelSliderControl: NSControl {
 
     private var effectiveSnapMarkers: [Double] {
         if !snapMarkers.isEmpty {
-            return snapMarkers
+            return Array(snapMarkers.sorted().dropFirst().dropLast())
         }
 
         guard step > 0 else { return [] }
         let count = Int(((sliderBounds.upperBound - sliderBounds.lowerBound) / step).rounded()) + 1
         guard count >= 2, count <= maxAutoMarkerCount else { return [] }
-        return stride(from: sliderBounds.lowerBound, through: sliderBounds.upperBound, by: step).map { $0 }
+        let generated = stride(from: sliderBounds.lowerBound, through: sliderBounds.upperBound, by: step).map { $0 }
+        return Array(generated.dropFirst().dropLast())
     }
 
     private func xPosition(for value: Double, usableWidth: CGFloat) -> CGFloat {

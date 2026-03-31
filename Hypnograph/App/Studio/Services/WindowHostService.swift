@@ -216,7 +216,6 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     private var lastActivityTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     private var panelsAutoHidden = false
     private var hasInitializedVisiblePanelPresentation = false
-    private var requiresActivityToRevealPanels = false
 
     private let autoHideIdleSeconds: TimeInterval = 3.0
 
@@ -337,7 +336,6 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         panelLayoutSignatures.removeAll()
         requestedVisibility.removeAll()
         hasInitializedVisiblePanelPresentation = false
-        requiresActivityToRevealPanels = false
         parentWindow = nil
     }
 
@@ -627,6 +625,8 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
                 startAutoHideMonitoringIfNeeded()
                 if startHidden {
                     setPanelsAutoHidden(true)
+                } else {
+                    noteActivity()
                 }
             }
             return
@@ -636,15 +636,35 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         if enabled {
             startAutoHideMonitoringIfNeeded()
             if startHidden {
-                requiresActivityToRevealPanels = true
                 setPanelsAutoHidden(true)
             } else {
-                requiresActivityToRevealPanels = false
                 noteActivity()
             }
         } else {
-            stopAutoHideMonitoring()
+            autoHideTimer?.invalidate()
+            autoHideTimer = nil
+        }
+    }
+
+    func hidePanelsForCanvasInteraction() {
+        togglePanelsVisibility()
+    }
+
+    func hidePanelsNow() {
+        togglePanelsVisibility()
+    }
+
+    func togglePanelsVisibility() {
+        if panelsAutoHidden {
             setPanelsAutoHidden(false)
+            noteActivity()
+            if autoHideWindowsEnabled {
+                startAutoHideMonitoringIfNeeded()
+            }
+        } else {
+            setPanelsAutoHidden(true)
+            lastMouseLocation = NSEvent.mouseLocation
+            lastActivityTime = CFAbsoluteTimeGetCurrent()
         }
     }
 
@@ -668,16 +688,11 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         autoHideTimer = nil
         autoHideWindowsEnabled = false
         panelsAutoHidden = false
-        requiresActivityToRevealPanels = false
     }
 
     private func noteActivity() {
         lastMouseLocation = NSEvent.mouseLocation
         lastActivityTime = CFAbsoluteTimeGetCurrent()
-        requiresActivityToRevealPanels = false
-        if panelsAutoHidden {
-            setPanelsAutoHidden(false)
-        }
     }
 
     private func pollAutoHideState() {
@@ -691,12 +706,10 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         if location.x != lastMouseLocation.x || location.y != lastMouseLocation.y {
             lastMouseLocation = location
             lastActivityTime = CFAbsoluteTimeGetCurrent()
-            requiresActivityToRevealPanels = false
-            setPanelsAutoHidden(false)
             return
         }
 
-        if requiresActivityToRevealPanels {
+        if panelsAutoHidden {
             return
         }
 

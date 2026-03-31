@@ -12,13 +12,7 @@ struct NewClipsWindowView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                row {
-                    Text("Max Layers")
-                    Spacer()
-                    Text("\(player.config.maxLayers)")
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-
+                PanelInlineFieldRow(title: "Max Layers", valueText: "\(player.config.maxLayers)") {
                     Stepper("", value: $player.config.maxLayers, in: 1...20)
                         .labelsHidden()
                         .disabled(isLiveMode)
@@ -67,11 +61,9 @@ struct NewClipsWindowView: View {
 #if DEBUG
                 sectionDivider()
 
-                sectionTitle("Debug")
+                PanelSectionHeader(title: "Debug")
 
-                row {
-                    Text("Load Scenario")
-                    Spacer()
+                PanelInlineFieldRow(title: "Load Scenario") {
                     Picker("", selection: $externalLoadHarness.scenario) {
                         ForEach(ExternalMediaLoadHarness.Scenario.allCases) { scenario in
                             Text(scenario.displayName).tag(scenario)
@@ -89,24 +81,9 @@ struct NewClipsWindowView: View {
     }
 
     @ViewBuilder
-    private func sectionTitle(_ text: String) -> some View {
-        Text(text)
-            .font(.headline)
-            .foregroundStyle(.secondary)
-    }
-
-    @ViewBuilder
     private func sectionDivider() -> some View {
         GlassDivider()
             .padding(.vertical, 4)
-    }
-
-    @ViewBuilder
-    private func row(@ViewBuilder content: () -> some View) -> some View {
-        HStack(alignment: .center, spacing: 8) {
-            content()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -134,15 +111,10 @@ struct NewClipsWindowView: View {
             }
         )
 
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text("Composition Length (Range)")
-                Spacer()
-                Text("\(Int(range.wrappedValue.lowerBound))–\(Int(range.wrappedValue.upperBound))s")
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-
+        PanelFieldRow(
+            title: "Composition Length (Range)",
+            valueText: "\(Int(range.wrappedValue.lowerBound))–\(Int(range.wrappedValue.upperBound))s"
+        ) {
             RangeSliderView(range: range, bounds: bounds, step: 1, minimumDistance: minDistance)
                 .disabled(isLiveMode)
                 .opacity(isLiveMode ? 0.55 : 1.0)
@@ -175,15 +147,7 @@ struct NewClipsWindowView: View {
         let upperPercent = Int((range.wrappedValue.upperBound * 100).rounded())
         let valueText = lowerPercent == upperPercent ? "\(lowerPercent)%" : "\(lowerPercent)–\(upperPercent)%"
 
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text("Play Rate (Range)")
-                Spacer()
-                Text(valueText)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-
+        PanelFieldRow(title: "Play Rate (Range)", valueText: valueText) {
             RangeSliderView(range: range, bounds: bounds, step: 0.1, minimumDistance: 0)
                 .disabled(isLiveMode)
                 .opacity(isLiveMode ? 0.55 : 1.0)
@@ -196,22 +160,18 @@ struct NewClipsWindowView: View {
         isOn: Binding<Bool>,
         frequency: Binding<Double>
     ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(title)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Spacer()
+        VStack(alignment: .leading, spacing: 6) {
+            PanelInlineFieldRow(title: title) {
                 PanelToggleView(isOn: isOn)
                     .fixedSize()
             }
-            HStack {
-                Text("Frequency")
-                Spacer()
-                Text("\(Int((frequency.wrappedValue * 100).rounded()))%")
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+
+            PanelFieldRow(
+                title: "Frequency",
+                valueText: "\(Int((frequency.wrappedValue * 100).rounded()))%"
+            ) {
+                PanelSliderView(value: frequency, bounds: 0...1, step: 0.01)
             }
-            PanelSliderView(value: frequency, bounds: 0...1, step: 0.01)
         }
     }
 }

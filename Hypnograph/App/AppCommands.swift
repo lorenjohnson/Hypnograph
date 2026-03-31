@@ -93,14 +93,6 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("f", modifiers: [.command])
 
-            Divider()
-
-            Toggle("Hypnogram List", isOn: Binding(
-                get: { windows.isWindowVisible("hypnogramList") },
-                set: { _ in windows.toggleWindow("hypnogramList") }
-            ))
-            .keyboardShortcut("h", modifiers: [])
-            .disabled(isTyping || !isStudioWindowShortcutContext)
         }
 
         CommandGroup(replacing: .sidebar) {
@@ -140,6 +132,13 @@ struct AppCommands: Commands {
                 .keyboardShortcut("5", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
+                Toggle("Hypnograms", isOn: Binding(
+                    get: { windows.isWindowVisible("hypnogramList") },
+                    set: { _ in windows.toggleWindow("hypnogramList") }
+                ))
+                .keyboardShortcut("6", modifiers: [.option])
+                .disabled(isTyping || !isStudioWindowShortcutContext)
+
                 Divider()
 
                 Toggle("Auto-Hide Panels", isOn: Binding(
@@ -149,11 +148,14 @@ struct AppCommands: Commands {
                     }
                 ))
 
-                // Clean Screen: Tab key handled via NSEvent monitor in app delegate
-                // (workaround for SwiftUI menu shortcut not registering until menu opened)
-                Button("Clean Screen (Tab)") {
-                    toggleCleanScreenForActiveWindow()
-                }
+                Toggle("Hide Panels", isOn: Binding(
+                    get: { windows.panelsHidden },
+                    set: { newValue in
+                        guard windows.panelsHidden != newValue else { return }
+                        hidePanelsNowForActiveWindow()
+                    }
+                ))
+                .keyboardShortcut(.tab, modifiers: [])
             }
 
             if studio.isLiveModeAvailable {
@@ -243,11 +245,11 @@ struct AppCommands: Commands {
         return .unknown
     }
 
-    private func toggleCleanScreenForActiveWindow() {
+    private func hidePanelsNowForActiveWindow() {
         if activeWindowContext == .effectsComposer {
             NotificationCenter.default.post(name: .effectsComposerToggleCleanScreen, object: nil)
         } else {
-            windows.toggleCleanScreen()
+            NotificationCenter.default.post(name: ContentView.studioHidePanelsNowNotification, object: nil)
         }
     }
 }

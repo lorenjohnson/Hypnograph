@@ -14,8 +14,8 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     weak var renderQueue: RenderEngine.ExportQueue?
     weak var mainWindow: NSWindow?
 
-    /// Callback to toggle clean screen (injected by app)
-    var toggleCleanScreen: (() -> Void)?
+    /// Callback to hide panels now (injected by app)
+    var hidePanelsNow: (() -> Void)?
 
     /// Callback to toggle play/pause (injected by app)
     var togglePlayPause: (() -> Void)?
@@ -183,8 +183,8 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// relying on menu key equivalents (which can enter menu tracking and stall playback).
     var selectSourceIndex: ((Int) -> Void)?
 
-    /// Event monitor for Tab key (workaround for SwiftUI menu shortcut not registering until menu opened)
-    private var tabKeyMonitor: Any?
+    /// Event monitor for Tab key panel toggle (workaround for SwiftUI menu shortcut not registering until menu opened)
+    private var panelToggleKeyMonitor: Any?
 
     /// Event monitor for Space key (play/pause transport)
     private var spaceKeyMonitor: Any?
@@ -203,13 +203,24 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     private var lastSourceKeyIndex: Int = -1
     private var isSoloLatched: Bool = false
 
+    private func windowBelongsToStudio(_ window: NSWindow?) -> Bool {
+        guard let window else { return false }
+        if window.title == "Hypnograph" {
+            return true
+        }
+        if let parent = window.parent {
+            return windowBelongsToStudio(parent)
+        }
+        return false
+    }
+
     private func shouldHandleKeyboardOverride(_ event: NSEvent) -> Bool {
         guard isKeyboardAccessibilityOverridesEnabled?() ?? true else { return false }
         guard isTypingActive?() != true else { return false }
         guard let main = resolveMainWindow() else { return false }
         registerMainWindow(main)
-        guard NSApp.keyWindow === main else { return false }
-        if let eventWindow = event.window, eventWindow !== main {
+        guard windowBelongsToStudio(NSApp.keyWindow) else { return false }
+        if let eventWindow = event.window, !windowBelongsToStudio(eventWindow) {
             return false
         }
         return true
@@ -268,8 +279,8 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
             return nil
         }
 
-        // Install Tab key monitor for clean screen toggle (including Shift-Tab)
-        tabKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        // Install Tab key monitor for Studio panel toggle (including Shift-Tab).
+        panelToggleKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
 
             let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
@@ -284,7 +295,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
                 return event
             }
 
-            guard let toggleCleanScreen = self.toggleCleanScreen else {
+            guard let hidePanelsNow = self.hidePanelsNow else {
                 return event
             }
 
@@ -292,7 +303,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
                 return nil
             }
 
-            toggleCleanScreen()
+            hidePanelsNow()
             return nil
         }
 

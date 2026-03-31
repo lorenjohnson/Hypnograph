@@ -200,8 +200,8 @@ struct AppSettingsView: View {
         Divider()
 
         settingsToggleRow(
-            title: "Override Keyboard Accessibility Keys (Space, Tab)",
-            description: "When enabled, Space controls Play/Pause and Tab toggles Clean Screen.",
+            title: "Override Global Keyboard Controls",
+            description: "When enabled, Hypnograph uses direct keyboard controls like Space for Play/Pause and Tab for panel toggle.",
             isOn: Binding(
                 get: { appSettingsStore.value.keyboardAccessibilityOverridesEnabled },
                 set: { newValue in
