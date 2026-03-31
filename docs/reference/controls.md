@@ -27,7 +27,7 @@ Source of truth: `Hypnograph/HypnographApp.swift`, `Hypnograph/Dream/Dream.swift
 | Overlays | Right Sidebar | `]` | Disabled while typing |
 | Overlays | Effects Editor | `E` | Dream only |
 | Overlays | Hypnogram List | `H` | Dream only |
-| Overlays | Clean Screen | `Tab` | Handled via NSEvent monitor |
+| Overlays | Toggle Panels | `Tab` | Toggles Studio panels on or off; auto-hide only controls whether visible panels hide again after inactivity |
 | Live | Live Preview | `L` | Dream only |
 | Live | Live Mode | `Cmd+L` | Dream only |
 | Live | External Monitor | `Cmd+Shift+L` | Dream only |

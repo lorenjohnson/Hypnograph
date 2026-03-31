@@ -15,6 +15,8 @@ struct ContentView: View {
     @StateObject private var windowHostService = WindowHostService()
     @State private var panelsCurrentlyAutoHidden = false
 
+    private static let hidePanelsNowNotification = Notification.Name("StudioHidePanelsNow")
+
     init(state: HypnographState, main: Studio) {
         self.state = state
         self.main = main
@@ -106,7 +108,6 @@ struct ContentView: View {
     }
 
     private var shouldShowPersistentHistoryIndicator: Bool {
-        guard !windows.isCleanScreen else { return false }
         guard !panelsCurrentlyAutoHidden else { return false }
         return main.isViewingHistoryComposition
     }
@@ -188,6 +189,10 @@ struct ContentView: View {
             // Studio display
             main.makeDisplayView()
                 .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    windowHostService.hidePanelsForCanvasInteraction()
+                }
 
             CursorAutoHideView(isEnabled: shouldAutoHideCursor, idleSeconds: 3.0)
                 .allowsHitTesting(false)
@@ -195,7 +200,7 @@ struct ContentView: View {
         }
         .overlay(alignment: .top) {
             VStack(spacing: 8) {
-                if !windows.isCleanScreen && main.isLiveModeAvailable {
+                if main.isLiveModeAvailable {
                     Picker("", selection: Binding(
                         get: { main.isLiveMode ? 1 : 0 },
                         set: { newValue in
@@ -262,6 +267,7 @@ struct ContentView: View {
                 onPanelsAutoHiddenChanged: { isHidden in
                     DispatchQueue.main.async {
                         panelsCurrentlyAutoHidden = isHidden
+                        windows.setPanelsHidden(isHidden)
                     }
                 },
                 hypnogramsContent: AnyView(
@@ -290,6 +296,9 @@ struct ContentView: View {
         )
         .appNotifications()
         .background(Color.black)
+        .onReceive(NotificationCenter.default.publisher(for: Self.hidePanelsNowNotification)) { _ in
+            windowHostService.hidePanelsNow()
+        }
         .onAppear {
             windows.registerWindow("hypnogramList", defaultVisible: false)
             windows.registerWindow("sourcesWindow", defaultVisible: false)
@@ -315,6 +324,10 @@ struct ContentView: View {
                 }
             )
         }
+    }
+
+    static var studioHidePanelsNowNotification: Notification.Name {
+        hidePanelsNowNotification
     }
 
     @ViewBuilder

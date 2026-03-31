@@ -11,11 +11,9 @@ struct OutputSettingsWindowView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                sectionTitle("Playback")
+                PanelSectionHeader(title: "Playback")
 
-                row {
-                    Text("Transition Style")
-                    Spacer()
+                PanelInlineFieldRow(title: "Transition Style") {
                     Picker("", selection: Binding(
                         get: { state.settings.transitionStyle },
                         set: { newValue in
@@ -30,14 +28,10 @@ struct OutputSettingsWindowView: View {
                     .frame(width: 160, alignment: .trailing)
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Transition Duration")
-                        Spacer()
-                        Text(String(format: "%.1fs", state.settings.transitionDuration))
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                    }
+                PanelFieldRow(
+                    title: "Transition Duration",
+                    valueText: String(format: "%.1fs", state.settings.transitionDuration)
+                ) {
                     PanelSliderView(
                         value: Binding(
                             get: { state.settings.transitionDuration },
@@ -53,17 +47,13 @@ struct OutputSettingsWindowView: View {
                 GlassDivider()
                     .padding(.vertical, 4)
 
-                sectionTitle("Display")
+                PanelSectionHeader(title: "Display")
 
-                row {
-                    Text("Source Framing")
-                    Spacer()
+                PanelInlineFieldRow(title: "Source Framing") {
                     sourceFramingButtons
                 }
 
-                row {
-                    Text("Aspect Ratio")
-                    Spacer()
+                PanelInlineFieldRow(title: "Aspect Ratio") {
                     aspectRatioButtons
                         .frame(width: 170, alignment: .trailing)
                         .disabled(isLiveMode)
@@ -74,21 +64,6 @@ struct OutputSettingsWindowView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(Color.black.opacity(0.96).ignoresSafeArea())
-    }
-
-    @ViewBuilder
-    private func sectionTitle(_ text: String) -> some View {
-        Text(text)
-            .font(.headline)
-            .foregroundStyle(.secondary)
-    }
-
-    @ViewBuilder
-    private func row(@ViewBuilder content: () -> some View) -> some View {
-        HStack(alignment: .center, spacing: 8) {
-            content()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder

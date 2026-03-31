@@ -10,6 +10,7 @@ import HypnoUI
 final class WindowStateController: ObservableObject {
     @Published private(set) var windowState = WindowState()
     @Published private(set) var mainWindowFullScreen: Bool = true
+    @Published private(set) var panelsHidden: Bool = false
 
     private struct PersistedWindowState: Codable {
         let windowState: WindowState
@@ -18,10 +19,6 @@ final class WindowStateController: ObservableObject {
 
     init() {
         loadFromDisk()
-    }
-
-    var isCleanScreen: Bool {
-        windowState.isCleanScreen
     }
 
     func registerWindow(_ windowID: String, defaultVisible: Bool = false) {
@@ -50,21 +47,15 @@ final class WindowStateController: ObservableObject {
         saveToDisk()
     }
 
-    func toggleCleanScreen() {
-        var next = windowState
-        if next.isCleanScreen {
-            next.isCleanScreen = false
-        } else if next.hasAnyWindowVisible {
-            next.isCleanScreen = true
-        }
-        windowState = next
-        saveToDisk()
-    }
-
     func setMainWindowFullScreen(_ isFullScreen: Bool) {
         guard mainWindowFullScreen != isFullScreen else { return }
         mainWindowFullScreen = isFullScreen
         saveToDisk()
+    }
+
+    func setPanelsHidden(_ hidden: Bool) {
+        guard panelsHidden != hidden else { return }
+        panelsHidden = hidden
     }
 
     func saveToDisk() {
@@ -96,13 +87,17 @@ final class WindowStateController: ObservableObject {
             let decoder = JSONDecoder()
 
             if let persisted = try? decoder.decode(PersistedWindowState.self, from: data) {
-                windowState = persisted.windowState
+                var loadedWindowState = persisted.windowState
+                loadedWindowState.isCleanScreen = false
+                windowState = loadedWindowState
                 mainWindowFullScreen = persisted.mainWindowFullScreen
                 print("WindowStateController: Loaded window state from disk")
                 return
             }
 
-            windowState = try decoder.decode(WindowState.self, from: data)
+            var loadedWindowState = try decoder.decode(WindowState.self, from: data)
+            loadedWindowState.isCleanScreen = false
+            windowState = loadedWindowState
             mainWindowFullScreen = true
             print("WindowStateController: Loaded legacy window state from disk")
         } catch {

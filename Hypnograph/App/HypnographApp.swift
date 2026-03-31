@@ -86,15 +86,15 @@ struct HypnographApp: App {
                     studio?.effectsSession.save()
                 }
 
-                // Wire up transport and clean screen callbacks
+                // Wire up transport and panel-hide callbacks
                 appDelegate.togglePlayPause = { [weak studio] in
                     studio?.activePlayer.isPaused.toggle()
                 }
                 appDelegate.saveSnapshotImage = { [weak studio] in
                     studio?.saveSnapshotImage()
                 }
-                appDelegate.toggleCleanScreen = { [weak studio] in
-                    studio?.windows.toggleCleanScreen()
+                appDelegate.hidePanelsNow = {
+                    NotificationCenter.default.post(name: ContentView.studioHidePanelsNowNotification, object: nil)
                 }
                 appDelegate.isTypingActive = { [weak state] in
                     state?.isKeyboardTextInputActive ?? false

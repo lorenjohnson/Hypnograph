@@ -1,5 +1,5 @@
 ---
-doc-status: draft
+doc-status: in-progress
 ---
 
 # Tighten Up Panel Design
