@@ -6,6 +6,7 @@ last_reviewed: 2026-03-30
 
 ## Active Projects
 
+- [effects-and-effect-chain-ux](active/effects-and-effect-chain-ux/index.md)
 - [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
 - [sequences](active/sequences.md)
 - Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause a crash?
@@ -13,11 +14,9 @@ last_reviewed: 2026-03-30
 ## Backlog Projects
 
 - [panel-grid-and-default-layout](backlog/panel-grid-and-default-layout.md)
-- [effect-chain-library-curation](backlog/effect-chain-library-curation.md)
 - [sequence-render-and-export](backlog/sequence-render-and-export.md)
 - [contextual-help](backlog/contextual-help.md)
 - [hypnograms-window-relevance-and-model-clarity](backlog/hypnograms-window-relevance-and-model-clarity.md)
-- [effects-and-effect-chain-ux](backlog/effects-and-effect-chain-ux.md)
 - [in-app-feedback](backlog/in-app-feedback.md)
 - [location-overlay-effect](backlog/location-overlay-effect.md)
 - [preview-frame-buffer-bleed-between-clips](backlog/preview-frame-buffer-bleed-between-clips.md)
