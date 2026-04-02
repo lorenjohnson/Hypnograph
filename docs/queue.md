@@ -6,6 +6,7 @@ last_reviewed: 2026-03-30
 
 ## Active Projects
 
+- [new-compositions-advanced-source-selection](active/new-compositions-advanced-source-selection.md)
 - [effects-and-effect-chain-ux](active/effects-and-effect-chain-ux/index.md)
 - [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
 - [sequences](active/sequences.md)
