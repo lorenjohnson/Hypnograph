@@ -73,8 +73,9 @@ struct PlayerConfiguration: Codable {
     // MARK: - View Identity
 
     /// Stable identity string for SwiftUI .id() - includes all config properties
-    /// so view rebuilds when any config changes
+    /// so view rebuilds when display-affecting config changes.
+    /// Generation-only settings like maxLayers should not force the current player to refresh.
     var viewID: String {
-        "\(aspectRatio.displayString)-\(playerResolution.rawValue)-\(maxLayers)"
+        "\(aspectRatio.displayString)-\(playerResolution.rawValue)"
     }
 }

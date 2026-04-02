@@ -211,6 +211,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     private var onPanelsAutoHiddenChanged: ((Bool) -> Void)?
     private var panelLayoutSignatures: [WindowKind: Int] = [:]
     private var autoHideWindowsEnabled = false
+    private var keyboardAccessibilityOverridesEnabled = true
     private var autoHideTimer: Timer?
     private var lastMouseLocation: NSPoint = NSEvent.mouseLocation
     private var lastActivityTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
@@ -230,6 +231,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         showPlayerControls: Bool,
         playerControlsLayoutSignature: Int,
         autoHideWindows: Bool,
+        keyboardAccessibilityOverridesEnabled: Bool,
         onPanelVisibilityChanged: @escaping (String, Bool) -> Void,
         onPanelsAutoHiddenChanged: @escaping (Bool) -> Void,
         hypnogramsContent: AnyView,
@@ -243,6 +245,11 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         self.onPanelVisibilityChanged = onPanelVisibilityChanged
         self.onPanelsAutoHiddenChanged = onPanelsAutoHiddenChanged
         onPanelsAutoHiddenChanged(panelsAutoHidden)
+        let keyboardOverrideJustEnabled = !self.keyboardAccessibilityOverridesEnabled && keyboardAccessibilityOverridesEnabled
+        self.keyboardAccessibilityOverridesEnabled = keyboardAccessibilityOverridesEnabled
+        if keyboardOverrideJustEnabled {
+            clearFocusForVisiblePanels()
+        }
         let anyVisibleRequested =
             showHypnograms || showSources || showNewClips || showOutputSettings || showComposition || showEffects || showPlayerControls
         let shouldStartAutoHidden =
@@ -381,6 +388,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
                 }
                 if !managed.panel.isVisible {
                     managed.panel.orderFront(nil)
+                    clearInitialFocusIfNeeded(for: managed.panel)
                 }
             }
         } else if let managed = panels[kind] {
@@ -423,6 +431,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         _ = panel.setFrameUsingName(kind.autosaveName, force: false)
         panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
         panel.standardWindowButton(.zoomButton)?.isHidden = true
+        panel.initialFirstResponder = nil
         if kind.usesTitlebarChrome {
             installTitleAccessory(for: panel, title: kind.title)
         }
@@ -444,6 +453,20 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         let managed = ManagedPanel(panel: panel, host: host)
         panels[kind] = managed
         return managed
+    }
+
+    private func clearInitialFocusIfNeeded(for panel: NSWindow) {
+        guard keyboardAccessibilityOverridesEnabled else { return }
+        DispatchQueue.main.async {
+            guard panel.isVisible else { return }
+            panel.makeFirstResponder(nil)
+        }
+    }
+
+    private func clearFocusForVisiblePanels() {
+        for managed in panels.values where managed.panel.isVisible {
+            clearInitialFocusIfNeeded(for: managed.panel)
+        }
     }
 
     private func installTitleAccessory(for panel: NSPanel, title: String) {
@@ -793,6 +816,15 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         guard let kind = kind(for: sender) else { return true }
         handleCloseRequest(for: kind, panel: sender as? NSPanel)
         return false
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        guard keyboardAccessibilityOverridesEnabled else { return }
+        guard let window = notification.object as? NSWindow else { return }
+        guard kind(for: window) != nil else { return }
+        DispatchQueue.main.async {
+            window.makeFirstResponder(nil)
+        }
     }
 
     func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {

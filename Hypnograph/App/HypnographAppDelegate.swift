@@ -183,6 +183,9 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// relying on menu key equivalents (which can enter menu tracking and stall playback).
     var selectSourceIndex: ((Int) -> Void)?
 
+    /// Callback to select the composition/global layer (used by ` key hold).
+    var selectGlobalLayer: (() -> Void)?
+
     /// Event monitor for Tab key panel toggle (workaround for SwiftUI menu shortcut not registering until menu opened)
     private var panelToggleKeyMonitor: Any?
 
@@ -320,7 +323,10 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
             }
             // Suspend on keyDown, resume on keyUp
             self.setGlobalEffectSuspended?(event.type == .keyDown)
-            return event  // Don't consume - let SwiftUI handle the key press for layer selection
+            if event.type == .keyDown, !event.isARepeat {
+                self.selectGlobalLayer?()
+            }
+            return nil
         }
 
         // Install 1-9 key monitor for hold-to-solo source (bypasses global effects, keeps source effect)

@@ -261,6 +261,7 @@ struct ContentView: View {
                 showPlayerControls: true,
                 playerControlsLayoutSignature: playerControlsLayoutSignature,
                 autoHideWindows: appSettingsStore.value.autoHideWindowsEnabled,
+                keyboardAccessibilityOverridesEnabled: appSettingsStore.value.keyboardAccessibilityOverridesEnabled,
                 onPanelVisibilityChanged: { windowID, isVisible in
                     windows.setWindowVisible(windowID, visible: isVisible)
                 },

@@ -201,7 +201,7 @@ struct AppSettingsView: View {
 
         settingsToggleRow(
             title: "Override Global Keyboard Controls",
-            description: "When enabled, Hypnograph uses direct keyboard controls like Space for Play/Pause and Tab for panel toggle.",
+            description: "When enabled, Hypnograph uses direct keyboard controls like Space for Play/Pause and Tab for panel toggle, and suppresses default keyboard focus navigation highlights in Studio panels.",
             isOn: Binding(
                 get: { appSettingsStore.value.keyboardAccessibilityOverridesEnabled },
                 set: { newValue in

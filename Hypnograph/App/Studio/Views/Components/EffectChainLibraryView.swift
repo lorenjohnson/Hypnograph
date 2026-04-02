@@ -24,6 +24,16 @@ struct EffectChainLibraryView: View {
         return idx
     }
 
+    private func commitActiveRename() {
+        guard let targetID = renameTargetID else { return }
+        guard let chainIndex = session.chainIndex(id: targetID) else {
+            renameTargetID = nil
+            return
+        }
+        session.updateChainName(chainIndex: chainIndex, name: renameText)
+        renameTargetID = nil
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
@@ -40,7 +50,6 @@ struct EffectChainLibraryView: View {
                                 session: session,
                                 chainIndex: chainIndex,
                                 chain: chain,
-                                selectedLayerIndex: selectedLayerIndex,
                                 isExpanded: expandedChainIDs.contains(chain.id),
                                 expandedEffectIndices: Binding(
                                     get: { expandedEffectIndicesByChainID[chain.id] ?? [] },
@@ -55,9 +64,27 @@ struct EffectChainLibraryView: View {
                                         }
                                     }
                                 },
+                                isRenaming: renameTargetID == chain.id,
+                                renameText: Binding(
+                                    get: { renameTargetID == chain.id ? renameText : chain.name ?? "" },
+                                    set: { renameText = $0 }
+                                ),
+                                onInteractionOutsideRename: {
+                                    if renameTargetID != nil, renameTargetID != chain.id {
+                                        commitActiveRename()
+                                    }
+                                },
                                 onRename: {
                                     renameTargetID = chain.id
                                     renameText = chain.name ?? ""
+                                },
+                                onCommitRename: {
+                                    guard renameTargetID == chain.id else { return }
+                                    commitActiveRename()
+                                },
+                                onCancelRename: {
+                                    guard renameTargetID == chain.id else { return }
+                                    renameTargetID = nil
                                 },
                                 onDuplicate: {
                                     _ = session.duplicateTemplate(id: chain.id)
@@ -88,24 +115,13 @@ struct EffectChainLibraryView: View {
                         }
                     }
                 }
+
+                Color.clear
+                    .frame(height: 1)
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: commitActiveRename)
             }
             .padding(12)
-        }
-        .alert("Rename Effect Chain", isPresented: Binding(
-            get: { renameTargetID != nil },
-            set: { if !$0 { renameTargetID = nil } }
-        )) {
-            TextField("Name", text: $renameText)
-            Button("Cancel", role: .cancel) {
-                renameTargetID = nil
-            }
-            Button("Save") {
-                guard let id = renameTargetID, let idx = session.chainIndex(id: id) else { return }
-                session.updateChainName(chainIndex: idx, name: renameText)
-                renameTargetID = nil
-            }
-        } message: {
-            Text("Enter a new name.")
         }
         .confirmationDialog("Delete this effect chain?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
@@ -151,56 +167,47 @@ private struct EffectChainLibraryRow: View {
 
     let chainIndex: Int
     let chain: EffectChain
-    let selectedLayerIndex: Int?
 
     let isExpanded: Bool
     @Binding var expandedEffectIndices: Set<Int>
     let onToggleExpanded: () -> Void
 
+    let isRenaming: Bool
+    @Binding var renameText: String
+    let onInteractionOutsideRename: () -> Void
     let onRename: () -> Void
+    let onCommitRename: () -> Void
+    let onCancelRename: () -> Void
     let onDuplicate: () -> Void
     let onDelete: () -> Void
 
+    @FocusState private var isNameFieldFocused: Bool
+
     private var displayName: String { chain.name ?? "Unnamed" }
+
+    private var currentTargetLayer: Int {
+        main.activePlayer.currentLayerIndex
+    }
+
+    private var currentTargetLabel: String {
+        currentTargetLayer < 0 ? "Composition" : "Layer \(currentTargetLayer + 1)"
+    }
+
+    private func applyToCurrentSelection() {
+        if isRenaming {
+            onCommitRename()
+        }
+        main.activeEffectManager.applyTemplate(chain, to: currentTargetLayer)
+        AppNotifications.show("Applied to \(currentTargetLabel)", flash: true)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(displayName)
-                    .font(.callout.weight(.medium))
-                    .lineLimit(1)
-
-                Spacer()
-
-                Text("\(chain.effects.count)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(.quaternary))
-            }
-            .contentShape(Rectangle())
-            .onTapGesture(perform: onToggleExpanded)
+            headerRow
             .contextMenu {
-                Button {
-                    main.activeEffectManager.applyTemplate(chain, to: -1)
-                    AppNotifications.show("Applied to Composition", flash: true)
-                } label: {
-                    Label("Apply to Composition", systemImage: "globe")
+                Button(action: applyToCurrentSelection) {
+                    Label("Apply to \(currentTargetLabel)", systemImage: "square.stack.3d.up")
                 }
-
-                Button {
-                    guard let layer = selectedLayerIndex else { return }
-                    main.activeEffectManager.applyTemplate(chain, to: layer)
-                    AppNotifications.show("Applied to Layer \(layer + 1)", flash: true)
-                } label: {
-                    Label("Apply to Selected Layer", systemImage: "square.stack.3d.up")
-                }
-                .disabled(selectedLayerIndex == nil)
 
                 Divider()
 
@@ -220,38 +227,7 @@ private struct EffectChainLibraryRow: View {
             }
 
             if isExpanded {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(Array(chain.effects.enumerated()), id: \.offset) { index, effect in
-                        EffectDefinitionSessionRow(
-                            session: session,
-                            chainIndex: chainIndex,
-                            effectIndex: index,
-                            effect: effect,
-                            isExpanded: expandedEffectIndices.contains(index),
-                            onToggleExpanded: {
-                                if expandedEffectIndices.contains(index) {
-                                    expandedEffectIndices.remove(index)
-                                } else {
-                                    expandedEffectIndices.insert(index)
-                                }
-                            }
-                        )
-                        .animation(.easeInOut(duration: 0.15), value: expandedEffectIndices)
-                    }
-
-                    Menu {
-                        ForEach(EffectRegistry.availableEffectTypes, id: \.type) { entry in
-                            Button(entry.displayName) {
-                                session.addEffectToChain(chainIndex: chainIndex, effectType: entry.type)
-                            }
-                        }
-                    } label: {
-                        Label("Add Effect", systemImage: "plus")
-                            .font(.callout)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
+                expandedContent
                 .padding(.leading, 16)
                 .padding(.top, 4)
             }
@@ -275,6 +251,171 @@ private struct EffectChainLibraryRow: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(.white.opacity(0.1), lineWidth: 0.5)
         )
+    }
+
+    private var headerRow: some View {
+        HStack(spacing: 8) {
+            Button(action: toggleExpandedFromChevron) {
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .focusable(false)
+
+            rowMainTapArea
+
+            actionButtons
+        }
+    }
+
+    private var rowMainTapArea: some View {
+        HStack(spacing: 8) {
+            nameView
+
+            Spacer()
+
+            Text("\(chain.effects.count)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(.quaternary))
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            guard !isRenaming else { return }
+            applyToCurrentSelection()
+        }
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                onInteractionOutsideRename()
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var nameView: some View {
+        if isRenaming {
+            TextField("Name", text: $renameText)
+                .textFieldStyle(.plain)
+                .font(.callout.weight(.medium))
+                .lineLimit(1)
+                .focused($isNameFieldFocused)
+                .onSubmit(onCommitRename)
+                .onExitCommand(perform: onCancelRename)
+                .onAppear {
+                    DispatchQueue.main.async {
+                        isNameFieldFocused = true
+                    }
+                }
+                .onChange(of: isNameFieldFocused) { _, focused in
+                    if !focused, isRenaming {
+                        onCommitRename()
+                    }
+                }
+        } else {
+            Text(displayName)
+                .font(.callout.weight(.medium))
+                .lineLimit(1)
+                .onLongPressGesture(minimumDuration: 0.4, perform: onRename)
+        }
+    }
+
+    private var actionButtons: some View {
+        HStack(spacing: 6) {
+            iconActionButton(
+                systemImage: "plus.square.on.square",
+                help: "Duplicate",
+                action: duplicateChain
+            )
+
+            iconActionButton(
+                systemImage: "trash",
+                help: "Delete",
+                role: .destructive,
+                action: deleteChain
+            )
+        }
+    }
+
+    private var expandedContent: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(chain.effects.enumerated()), id: \.offset) { index, effect in
+                EffectDefinitionSessionRow(
+                    session: session,
+                    chainIndex: chainIndex,
+                    effectIndex: index,
+                    effect: effect,
+                    isExpanded: expandedEffectIndices.contains(index),
+                    onToggleExpanded: {
+                        if expandedEffectIndices.contains(index) {
+                            expandedEffectIndices.remove(index)
+                        } else {
+                            expandedEffectIndices.insert(index)
+                        }
+                    }
+                )
+                .animation(.easeInOut(duration: 0.15), value: expandedEffectIndices)
+            }
+
+            Menu {
+                ForEach(EffectRegistry.availableEffectTypes, id: \.type) { entry in
+                    Button(entry.displayName) {
+                        session.addEffectToChain(chainIndex: chainIndex, effectType: entry.type)
+                    }
+                }
+            } label: {
+                Label("Add Effect", systemImage: "plus")
+                    .font(.callout)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+    }
+
+    private func toggleExpandedFromChevron() {
+        if isRenaming {
+            onCommitRename()
+        }
+        onToggleExpanded()
+    }
+
+    private func duplicateChain() {
+        if isRenaming {
+            onCommitRename()
+        }
+        onDuplicate()
+    }
+
+    private func deleteChain() {
+        if isRenaming {
+            onCommitRename()
+        }
+        onDelete()
+    }
+
+    @ViewBuilder
+    private func iconActionButton(
+        systemImage: String,
+        help: String,
+        role: ButtonRole? = nil,
+        isDisabled: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(role: role, action: action) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .frame(width: 20, height: 20)
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+        .foregroundStyle(role == .destructive ? .red.opacity(isDisabled ? 0.35 : 0.8) : .secondary.opacity(isDisabled ? 0.35 : 0.9))
+        .help(help)
+        .disabled(isDisabled)
+        .onTapGesture { }
     }
 }
 

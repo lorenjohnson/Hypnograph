@@ -27,6 +27,10 @@ struct EffectChainView: View {
             }
     }
 
+    private var isTemporarilyGlobalSuspended: Bool {
+        layer == -1 && main.player.isGlobalEffectSuspended
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             headerRow
@@ -95,14 +99,13 @@ struct EffectChainView: View {
 
             if hasChain {
                 PanelToggleView(isOn: Binding(
-                    get: { chain.effects.contains(where: { $0.isEnabled }) },
+                    get: { chain.isEnabled && !isTemporarilyGlobalSuspended },
                     set: { enabled in
-                        for idx in chain.effects.indices {
-                            main.activeEffectManager.setEffectEnabled(for: layer, effectDefIndex: idx, enabled: enabled)
-                        }
+                        main.activeEffectManager.setChainEnabled(for: layer, enabled: enabled)
                     }
                 ))
                 .fixedSize()
+                .disabled(isTemporarilyGlobalSuspended)
                 .onTapGesture { }
             } else {
                 Menu {

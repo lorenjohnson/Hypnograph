@@ -16,6 +16,7 @@ struct WindowHostBridge: NSViewRepresentable {
     let showPlayerControls: Bool
     let playerControlsLayoutSignature: Int
     let autoHideWindows: Bool
+    let keyboardAccessibilityOverridesEnabled: Bool
     let onPanelVisibilityChanged: (String, Bool) -> Void
     let onPanelsAutoHiddenChanged: (Bool) -> Void
     let hypnogramsContent: AnyView
@@ -55,6 +56,7 @@ struct WindowHostBridge: NSViewRepresentable {
             showPlayerControls: showPlayerControls,
             playerControlsLayoutSignature: playerControlsLayoutSignature,
             autoHideWindows: autoHideWindows,
+            keyboardAccessibilityOverridesEnabled: keyboardAccessibilityOverridesEnabled,
             onPanelVisibilityChanged: onPanelVisibilityChanged,
             onPanelsAutoHiddenChanged: onPanelsAutoHiddenChanged,
             hypnogramsContent: hypnogramsContent,

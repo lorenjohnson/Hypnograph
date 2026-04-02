@@ -139,6 +139,10 @@ struct HypnographApp: App {
                     guard index >= 0, index < studio.player.layers.count else { return }
                     studio.player.selectSource(index)
                 }
+                appDelegate.selectGlobalLayer = { [weak studio] in
+                    guard let studio, !studio.isLiveMode else { return }
+                    studio.player.selectGlobalLayer()
+                }
 
                 // Wire up external file opening (hypnogram documents + media sources)
                 appDelegate.openIncomingFiles = { [weak studio, weak state] urls in
