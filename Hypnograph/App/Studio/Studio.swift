@@ -277,6 +277,14 @@ final class Studio: ObservableObject {
             get: { player.currentClipTimeOffset },
             set: { player.currentClipTimeOffset = $0 }
         )
+        let compositionLoadInFlightBinding = Binding(
+            get: { player.isPrimaryCompositionLoadInFlight },
+            set: { player.isPrimaryCompositionLoadInFlight = $0 }
+        )
+        let pendingGeneratedNextCompositionBinding = Binding(
+            get: { player.hasPendingGeneratedNextComposition },
+            set: { player.hasPendingGeneratedNextComposition = $0 }
+        )
         let viewID = "main-preview-\(player.config.viewID)-\(player.playRate)"
 
         return AnyView(
@@ -289,6 +297,8 @@ final class Studio: ObservableObject {
                 onCompositionEnded: onCompositionEnded,
                 currentLayerIndex: currentLayerIndexBinding,
                 currentSourceTime: currentSourceTimeBinding,
+                isPrimaryCompositionLoadInFlight: compositionLoadInFlightBinding,
+                hasPendingGeneratedNextComposition: pendingGeneratedNextCompositionBinding,
                 isPaused: player.isPaused,
                 effectsChangeCounter: player.effectsChangeCounter,
                 hypnogramRevision: player.hypnogramRevision,

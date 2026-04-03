@@ -173,6 +173,7 @@ extension Studio {
 
     func previousComposition() {
         guard player.currentCompositionIndex > 0 else { return }
+        player.hasPendingGeneratedNextComposition = false
         player.currentCompositionIndex -= 1
         applyCompositionSelectionChanged(manual: true)
     }
@@ -180,9 +181,12 @@ extension Studio {
     func nextComposition() {
         let nextIndex = player.currentCompositionIndex + 1
         if nextIndex < player.hypnogram.compositions.count {
+            player.hasPendingGeneratedNextComposition = false
             player.currentCompositionIndex = nextIndex
             applyCompositionSelectionChanged(manual: true)
         } else {
+            guard !player.hasPendingGeneratedNextComposition else { return }
+            player.hasPendingGeneratedNextComposition = true
             appendNewCompositionAndSelect(manual: false)
         }
     }

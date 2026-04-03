@@ -2,11 +2,10 @@ import Foundation
 import AVFoundation
 import HypnoCore
 
-/// Drives external-media loading UX and debug simulation scenarios.
-/// Wraps HypnoCore external resolvers so UI can observe loading/downloading/failure states.
+/// Drives external-media download UX and debug simulation scenarios.
+/// Wraps HypnoCore external resolvers so UI can observe per-asset transfer state.
 final class ExternalMediaLoadHarness: ObservableObject {
     static let shared = ExternalMediaLoadHarness()
-    private static let liveIndicatorDelayNanoseconds: UInt64 = 2_000_000_000
 
     private enum SimulationMode {
         case live
@@ -28,8 +27,6 @@ final class ExternalMediaLoadHarness: ObservableObject {
 
     private struct RequestPlan {
         let mode: SimulationMode
-        let showInitialStatus: Bool
-        let detailOverride: String?
     }
 
     enum Scenario: String, CaseIterable, Identifiable {
@@ -55,35 +52,41 @@ final class ExternalMediaLoadHarness: ObservableObject {
         }
     }
 
-    enum Phase: Equatable {
-        case loading
-        case downloading
-        case timeout
-        case failed
+    struct AssetDownloadStatus: Identifiable, Equatable {
+        let id: String
+        let localIdentifier: String
+        let mediaLabel: String
+        let progress: Double
     }
 
-    struct Status: Equatable {
-        let phase: Phase
-        let title: String
-        let detail: String?
-        let progress: Double?
+    private struct PendingDownloadPromotion {
+        let localIdentifier: String
+        let mediaLabel: String
+        var latestProgress: Double
+        let task: Task<Void, Never>
     }
 
     @Published var scenario: Scenario = .live
-    @Published private(set) var status: Status?
+    @Published private(set) var activeDownloads: [AssetDownloadStatus] = []
 
     private var isInstalled = false
-    private var statusToken: UInt64 = 0
-    private var clearTask: Task<Void, Never>?
-    private var activeRequestTokens: Set<UInt64> = []
     private var activeSequenceScenario: Scenario?
     private var activeSequenceIndex = 0
+    private var pendingDownloadPromotions: [String: PendingDownloadPromotion] = [:]
+
+    private static let downloadVisibilityDelayNanoseconds: UInt64 = 700_000_000
 
     private init() {}
 
     func installHookWrappersIfNeeded() {
         guard !isInstalled else { return }
         isInstalled = true
+
+        ApplePhotos.shared.onTransferEvent = { [weak self] event in
+            Task { @MainActor in
+                self?.handleTransferEvent(event)
+            }
+        }
 
         let baseVideoResolver = HypnoCoreHooks.shared.resolveExternalVideo
         let baseImageResolver = HypnoCoreHooks.shared.resolveExternalImage
@@ -114,152 +117,97 @@ final class ExternalMediaLoadHarness: ObservableObject {
     ) async -> T? {
         guard let resolver else { return nil }
 
-        let activeScenario = await MainActor.run { scenario }
-        let requestPlan = await buildRequestPlan(for: activeScenario)
-        let token = await beginRequest(
-            mediaLabel: mediaLabel,
-            identifier: identifier,
-            scenario: activeScenario,
-            showInitialStatus: requestPlan.showInitialStatus,
-            detailOverride: requestPlan.detailOverride
-        )
+        let requestPlan = await buildRequestPlan(for: await MainActor.run { scenario })
+        let simulatedRequestID = "simulated-\(UUID().uuidString)"
 
-        var delayedLiveLoadingTask: Task<Void, Never>?
-        if requestPlan.mode == .live {
-            delayedLiveLoadingTask = Task { [weak self] in
-                // In production/live mode, avoid flashing the badge for normal local loads.
-                // Only surface the indicator when resolution is meaningfully delayed.
-                do {
-                    try await Task.sleep(nanoseconds: Self.liveIndicatorDelayNanoseconds)
-                } catch {
-                    return
-                }
-                await self?.showLiveLoadingIfNeeded(
-                    token: token,
-                    mediaLabel: mediaLabel,
-                    identifier: identifier
-                )
-            }
-        }
-
-        let result: T?
         switch requestPlan.mode {
         case .live:
-            result = await resolver(identifier)
+            return await resolver(identifier)
 
         case .slow:
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            result = await resolver(identifier)
+            for progress in [0.08, 0.14, 0.2, 0.28, 0.34] {
+                await emitTransferEvent(
+                    .downloading(progress: progress),
+                    requestID: simulatedRequestID,
+                    localIdentifier: identifier,
+                    mediaLabel: mediaLabel
+                )
+                try? await Task.sleep(nanoseconds: 400_000_000)
+            }
+
+            let result = await resolver(identifier)
+            await emitTransferEvent(
+                result == nil ? .failed : .completed,
+                requestID: simulatedRequestID,
+                localIdentifier: identifier,
+                mediaLabel: mediaLabel
+            )
+            return result
 
         case .progress:
-            await updateDownloadProgress(token: token, mediaLabel: mediaLabel, progress: 0.0)
+            await emitTransferEvent(
+                .downloading(progress: 0.0),
+                requestID: simulatedRequestID,
+                localIdentifier: identifier,
+                mediaLabel: mediaLabel
+            )
+
             for step in 1...8 {
                 try? await Task.sleep(nanoseconds: 250_000_000)
-                await updateDownloadProgress(
-                    token: token,
-                    mediaLabel: mediaLabel,
-                    progress: Double(step) / 10.0
+                await emitTransferEvent(
+                    .downloading(progress: Double(step) / 10.0),
+                    requestID: simulatedRequestID,
+                    localIdentifier: identifier,
+                    mediaLabel: mediaLabel
                 )
             }
-            let loaded = await resolver(identifier)
-            if loaded != nil {
-                await updateDownloadProgress(token: token, mediaLabel: mediaLabel, progress: 1.0)
+
+            let result = await resolver(identifier)
+            if result != nil {
+                await emitTransferEvent(
+                    .downloading(progress: 1.0),
+                    requestID: simulatedRequestID,
+                    localIdentifier: identifier,
+                    mediaLabel: mediaLabel
+                )
             }
-            result = loaded
+            await emitTransferEvent(
+                result == nil ? .failed : .completed,
+                requestID: simulatedRequestID,
+                localIdentifier: identifier,
+                mediaLabel: mediaLabel
+            )
+            return result
 
         case .timeout:
-            await updateDownloadProgress(token: token, mediaLabel: mediaLabel, progress: 0.0)
+            await emitTransferEvent(
+                .downloading(progress: 0.0),
+                requestID: simulatedRequestID,
+                localIdentifier: identifier,
+                mediaLabel: mediaLabel
+            )
+
             for step in 1...8 {
                 try? await Task.sleep(nanoseconds: 250_000_000)
-                await updateDownloadProgress(
-                    token: token,
-                    mediaLabel: mediaLabel,
-                    progress: Double(step) / 10.0
+                await emitTransferEvent(
+                    .downloading(progress: Double(step) / 10.0),
+                    requestID: simulatedRequestID,
+                    localIdentifier: identifier,
+                    mediaLabel: mediaLabel
                 )
             }
-            result = nil
+
+            await emitTransferEvent(
+                .failed,
+                requestID: simulatedRequestID,
+                localIdentifier: identifier,
+                mediaLabel: mediaLabel
+            )
+            return nil
 
         case .failure:
             try? await Task.sleep(nanoseconds: 800_000_000)
-            result = nil
-        }
-
-        delayedLiveLoadingTask?.cancel()
-
-        if result != nil {
-            await clearStatusIfCurrent(token: token)
-            return result
-        }
-
-        switch requestPlan.mode {
-        case .timeout:
-            await showTerminalStatusAndClear(
-                token: token,
-                phase: .timeout,
-                title: "\(mediaLabel) Timed Out",
-                detail: "Simulated timeout while waiting for iCloud download."
-            )
-        case .failure:
-            await showTerminalStatusAndClear(
-                token: token,
-                phase: .failed,
-                title: "\(mediaLabel) Failed",
-                detail: "Simulated load failure."
-            )
-        default:
-            await showTerminalStatusAndClear(
-                token: token,
-                phase: .failed,
-                title: "\(mediaLabel) Failed",
-                detail: "Could not load selected asset."
-            )
-        }
-
-        return nil
-    }
-
-    private func beginRequest(
-        mediaLabel: String,
-        identifier: String,
-        scenario: Scenario,
-        showInitialStatus: Bool,
-        detailOverride: String?
-    ) async -> UInt64 {
-        await MainActor.run {
-            clearTask?.cancel()
-            statusToken &+= 1
-            activeRequestTokens.insert(statusToken)
-
-            guard showInitialStatus else {
-                status = nil
-                return statusToken
-            }
-
-            let detail: String = detailOverride ?? {
-                switch scenario {
-                case .live:
-                    return "Resolving \(identifier.prefix(10))..."
-                case .simulateSlow:
-                    return "Scenario: Simulated slow load."
-                case .simulateProgress:
-                    return "Scenario: Simulated iCloud download."
-                case .simulateTimeout:
-                    return "Scenario: Simulated timeout."
-                case .simulateFailure:
-                    return "Scenario: Simulated failure."
-                case .sequenceFailureSlowNormalFailureNormal:
-                    return "Scenario sequence active."
-                }
-            }()
-
-            status = Status(
-                phase: .loading,
-                title: "Loading \(mediaLabel)...",
-                detail: detail,
-                progress: nil
-            )
-
-            return statusToken
+            return nil
         }
     }
 
@@ -272,118 +220,92 @@ final class ExternalMediaLoadHarness: ObservableObject {
 
             switch scenario {
             case .live:
-                return RequestPlan(
-                    mode: .live,
-                    showInitialStatus: false,
-                    detailOverride: nil
-                )
+                return RequestPlan(mode: .live)
             case .simulateSlow:
-                return RequestPlan(
-                    mode: .slow,
-                    showInitialStatus: true,
-                    detailOverride: nil
-                )
+                return RequestPlan(mode: .slow)
             case .simulateProgress:
-                return RequestPlan(
-                    mode: .progress,
-                    showInitialStatus: true,
-                    detailOverride: nil
-                )
+                return RequestPlan(mode: .progress)
             case .simulateTimeout:
-                return RequestPlan(
-                    mode: .timeout,
-                    showInitialStatus: true,
-                    detailOverride: nil
-                )
+                return RequestPlan(mode: .timeout)
             case .simulateFailure:
-                return RequestPlan(
-                    mode: .failure,
-                    showInitialStatus: true,
-                    detailOverride: nil
-                )
+                return RequestPlan(mode: .failure)
             case .sequenceFailureSlowNormalFailureNormal:
                 let sequence: [SimulationMode] = [.failure, .slow, .live, .failure, .live]
                 let stepIndex = activeSequenceIndex % sequence.count
                 let step = sequence[stepIndex]
                 activeSequenceIndex += 1
+                return RequestPlan(mode: step)
+            }
+        }
+    }
 
-                return RequestPlan(
-                    mode: step,
-                    showInitialStatus: true,
-                    detailOverride: "Scenario sequence step \(stepIndex + 1)/\(sequence.count): \(step.displayName)."
+    private func emitTransferEvent(
+        _ phase: ApplePhotos.TransferEvent.Phase,
+        requestID: String,
+        localIdentifier: String,
+        mediaLabel: String
+    ) async {
+        await MainActor.run {
+            handleTransferEvent(
+                ApplePhotos.TransferEvent(
+                    requestID: requestID,
+                    localIdentifier: localIdentifier,
+                    mediaLabel: mediaLabel,
+                    phase: phase
+                )
+            )
+        }
+    }
+
+    @MainActor
+    private func handleTransferEvent(_ event: ApplePhotos.TransferEvent) {
+        switch event.phase {
+        case .downloading(let progress):
+            let clamped = min(max(progress, 0), 1)
+            if let index = activeDownloads.firstIndex(where: { $0.id == event.requestID }) {
+                activeDownloads[index] = AssetDownloadStatus(
+                    id: event.requestID,
+                    localIdentifier: event.localIdentifier,
+                    mediaLabel: event.mediaLabel,
+                    progress: clamped
+                )
+            } else if var pending = pendingDownloadPromotions[event.requestID] {
+                pending.latestProgress = clamped
+                pendingDownloadPromotions[event.requestID] = pending
+            } else {
+                let requestID = event.requestID
+                let promotionTask = Task { [weak self] in
+                    try? await Task.sleep(nanoseconds: Self.downloadVisibilityDelayNanoseconds)
+                    await MainActor.run {
+                        guard let self,
+                              let pending = self.pendingDownloadPromotions.removeValue(forKey: requestID) else {
+                            return
+                        }
+
+                        self.activeDownloads.append(
+                            AssetDownloadStatus(
+                                id: requestID,
+                                localIdentifier: pending.localIdentifier,
+                                mediaLabel: pending.mediaLabel,
+                                progress: pending.latestProgress
+                            )
+                        )
+                    }
+                }
+
+                pendingDownloadPromotions[requestID] = PendingDownloadPromotion(
+                    localIdentifier: event.localIdentifier,
+                    mediaLabel: event.mediaLabel,
+                    latestProgress: clamped,
+                    task: promotionTask
                 )
             }
-        }
-    }
 
-    private func showLiveLoadingIfNeeded(
-        token: UInt64,
-        mediaLabel: String,
-        identifier: String
-    ) async {
-        await MainActor.run {
-            guard token == statusToken else { return }
-            guard activeRequestTokens.contains(token) else { return }
-            guard status == nil else { return }
-
-            status = Status(
-                phase: .loading,
-                title: "Loading \(mediaLabel)...",
-                detail: "Resolving \(identifier.prefix(10))...",
-                progress: nil
-            )
-        }
-    }
-
-    private func updateDownloadProgress(
-        token: UInt64,
-        mediaLabel: String,
-        progress: Double
-    ) async {
-        await MainActor.run {
-            guard token == statusToken else { return }
-            status = Status(
-                phase: .downloading,
-                title: "Downloading \(mediaLabel)...",
-                detail: "Waiting for iCloud asset.",
-                progress: min(max(progress, 0), 1)
-            )
-        }
-    }
-
-    private func clearStatusIfCurrent(token: UInt64) async {
-        await MainActor.run {
-            guard token == statusToken else { return }
-            clearTask?.cancel()
-            activeRequestTokens.remove(token)
-            status = nil
-        }
-    }
-
-    private func showTerminalStatusAndClear(
-        token: UInt64,
-        phase: Phase,
-        title: String,
-        detail: String
-    ) async {
-        await MainActor.run {
-            guard token == statusToken else { return }
-            activeRequestTokens.remove(token)
-            status = Status(
-                phase: phase,
-                title: title,
-                detail: detail,
-                progress: nil
-            )
-            clearTask?.cancel()
-            clearTask = Task { [weak self] in
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                await MainActor.run {
-                    guard let self else { return }
-                    guard token == self.statusToken else { return }
-                    self.status = nil
-                }
+        case .completed, .failed:
+            if let pending = pendingDownloadPromotions.removeValue(forKey: event.requestID) {
+                pending.task.cancel()
             }
+            activeDownloads.removeAll { $0.id == event.requestID }
         }
     }
 }

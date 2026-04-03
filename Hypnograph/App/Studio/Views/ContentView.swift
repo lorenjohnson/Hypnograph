@@ -14,6 +14,8 @@ struct ContentView: View {
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
     @StateObject private var windowHostService = WindowHostService()
     @State private var panelsCurrentlyAutoHidden = false
+    @State private var completedDownloadIdentifiersThisLoad: Set<String> = []
+    @State private var previouslyVisibleDownloadIdentifiers: Set<String> = []
 
     private static let hidePanelsNowNotification = Notification.Name("StudioHidePanelsNow")
     private static let showPanelsNowNotification = Notification.Name("StudioShowPanelsNow")
@@ -124,6 +126,48 @@ struct ContentView: View {
         return hasVideo && (main.activePlayer.isPaused == false)
     }
 
+    private struct CurrentCompositionDownloadRow: Identifiable, Equatable {
+        let id: String
+        let identifier: String
+        let title: String
+        let subtitle: String
+        let progress: Double
+    }
+
+    private var currentCompositionDownloadRows: [CurrentCompositionDownloadRow] {
+        guard !main.isLiveMode else { return [] }
+        guard main.activePlayer.isPrimaryCompositionLoadInFlight else { return [] }
+
+        let composition = main.activePlayer.currentComposition
+        guard !composition.layers.isEmpty else { return [] }
+
+        let latestDownloadsByIdentifier = Dictionary(
+            grouping: externalLoadHarness.activeDownloads,
+            by: \.localIdentifier
+        ).compactMapValues { $0.last }
+
+        return composition.layers.enumerated().compactMap { index, layer -> CurrentCompositionDownloadRow? in
+            guard case .external(let identifier) = layer.mediaClip.file.source,
+                  let status = latestDownloadsByIdentifier[identifier] else {
+                return nil
+            }
+
+            return CurrentCompositionDownloadRow(
+                id: "\(identifier)-\(index)",
+                identifier: identifier,
+                title: layer.mediaClip.file.displayName,
+                subtitle: status.mediaLabel,
+                progress: status.progress
+            )
+        }
+    }
+
+    private var visibleCurrentCompositionDownloadRows: [CurrentCompositionDownloadRow] {
+        currentCompositionDownloadRows.filter { row in
+            !completedDownloadIdentifiersThisLoad.contains(row.identifier)
+        }
+    }
+
     @ViewBuilder
     private func topRightIndicatorBadge(_ indicator: (text: String, color: Color)) -> some View {
         Text(indicator.text)
@@ -200,34 +244,32 @@ struct ContentView: View {
 
         }
         .overlay(alignment: .top) {
-            VStack(spacing: 8) {
-                if main.isLiveModeAvailable {
-                    Picker("", selection: Binding(
-                        get: { main.isLiveMode ? 1 : 0 },
-                        set: { newValue in
-                            if (newValue == 1) != main.isLiveMode {
-                                main.toggleLiveMode()
-                            }
+            if main.isLiveModeAvailable {
+                Picker("", selection: Binding(
+                    get: { main.isLiveMode ? 1 : 0 },
+                    set: { newValue in
+                        if (newValue == 1) != main.isLiveMode {
+                            main.toggleLiveMode()
                         }
-                    )) {
-                        Text("Edit").tag(0)
-                        Text("Live").tag(1)
                     }
-                    .pickerStyle(.segmented)
-                    .frame(width: 170)
+                )) {
+                    Text("Edit").tag(0)
+                    Text("Live").tag(1)
                 }
-
-                if let loadStatus = externalLoadHarness.status {
-                    externalLoadStatusBadge(loadStatus)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
+                .pickerStyle(.segmented)
+                .frame(width: 170)
+                .padding(.top, 12)
             }
-            .padding(.top, 12)
-            .animation(.easeInOut(duration: 0.2), value: externalLoadHarness.status)
         }
         .overlay(alignment: .topTrailing) {
             if let indicator = topRightIndicator {
                 topRightIndicatorBadge(indicator)
+            }
+        }
+        .overlay {
+            if !visibleCurrentCompositionDownloadRows.isEmpty {
+                currentCompositionDownloadOverlay(rows: visibleCurrentCompositionDownloadRows)
+                    .transition(.opacity)
             }
         }
         .overlay(alignment: .topTrailing) {
@@ -312,6 +354,23 @@ struct ContentView: View {
             windows.registerWindow("compositionWindow", defaultVisible: true)
             windows.registerWindow("effectsWindow", defaultVisible: true)
         }
+        .onChange(of: main.activePlayer.isPrimaryCompositionLoadInFlight) { _, isInFlight in
+            if isInFlight {
+                completedDownloadIdentifiersThisLoad = []
+                previouslyVisibleDownloadIdentifiers = Set(visibleCurrentCompositionDownloadRows.map(\.identifier))
+            } else {
+                completedDownloadIdentifiersThisLoad = []
+                previouslyVisibleDownloadIdentifiers = []
+            }
+        }
+        .onChange(of: visibleCurrentCompositionDownloadRows) { _, rows in
+            let currentIdentifiers = Set(rows.map(\.identifier))
+            let completedIdentifiers = previouslyVisibleDownloadIdentifiers.subtracting(currentIdentifiers)
+            if !completedIdentifiers.isEmpty {
+                completedDownloadIdentifiersThisLoad.formUnion(completedIdentifiers)
+            }
+            previouslyVisibleDownloadIdentifiers = currentIdentifiers
+        }
         .sheet(isPresented: $state.showPhotosPicker) {
             PhotosPickerSheet(
                 isPresented: $state.showPhotosPicker,
@@ -340,36 +399,61 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private func externalLoadStatusBadge(_ status: ExternalMediaLoadHarness.Status) -> some View {
-        HStack(spacing: 8) {
-            switch status.phase {
-            case .loading:
-                ProgressView()
-                    .controlSize(.small)
-            case .downloading:
-                ProgressView(value: status.progress ?? 0, total: 1)
-                    .frame(width: 86)
-            case .timeout, .failed:
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-            }
+    private func currentCompositionDownloadOverlay(rows: [CurrentCompositionDownloadRow]) -> some View {
+        ZStack {
+            Color.black.opacity(0.82)
+                .ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(status.title)
-                    .font(.caption.weight(.semibold))
-                if let detail = status.detail {
-                    Text(detail)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Downloading Apple Photos Assets")
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(.white)
+
+                    Text("Playback will look incomplete until these source items finish downloading.")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(rows) { row in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                Text(row.title)
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(1)
+
+                                Spacer(minLength: 10)
+
+                                Text("\(Int((row.progress * 100).rounded()))%")
+                                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                                    .foregroundStyle(.white.opacity(0.68))
+                            }
+
+                            ProgressView(value: row.progress, total: 1)
+                                .tint(.blue)
+
+                            Text(row.subtitle)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.52))
+                        }
+                        .padding(.vertical, 2)
+                    }
                 }
             }
+            .frame(maxWidth: 520, alignment: .leading)
+            .padding(.horizontal, 28)
+            .padding(.vertical, 24)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.white.opacity(0.06))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+            )
+            .padding(32)
         }
-        .padding(.vertical, 7)
-        .padding(.horizontal, 10)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(
-            Capsule()
-                .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
-        )
     }
 }

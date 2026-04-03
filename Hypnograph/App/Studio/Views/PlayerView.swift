@@ -23,6 +23,8 @@ struct PlayerView: NSViewRepresentable {
     let onCompositionEnded: (() -> Bool)?
     @Binding var currentLayerIndex: Int
     @Binding var currentSourceTime: CMTime?
+    @Binding var isPrimaryCompositionLoadInFlight: Bool
+    @Binding var hasPendingGeneratedNextComposition: Bool
     let isPaused: Bool
     let effectsChangeCounter: Int
     let hypnogramRevision: Int
@@ -165,6 +167,8 @@ struct PlayerView: NSViewRepresentable {
             c.currentTask?.cancel()
             c.currentTask = nil
             c.compositionID = nil
+            isPrimaryCompositionLoadInFlight = false
+            hasPendingGeneratedNextComposition = false
             if currentSourceTime != nil {
                 currentSourceTime = nil
             }
@@ -189,6 +193,7 @@ struct PlayerView: NSViewRepresentable {
             c.currentTask?.cancel()
             c.compositionID = newID
             c.didRequestPreEndAdvance = false
+            isPrimaryCompositionLoadInFlight = true
 
             c.currentTask = Task { @MainActor in
                 let engine = RenderEngine()
@@ -206,6 +211,8 @@ struct PlayerView: NSViewRepresentable {
                 )
 
                 guard !Task.isCancelled else {
+                    isPrimaryCompositionLoadInFlight = false
+                    hasPendingGeneratedNextComposition = false
                     if c.compositionID == newID { c.compositionID = nil }
                     return
                 }
@@ -277,6 +284,8 @@ struct PlayerView: NSViewRepresentable {
                             c.isAutoAdvanceInFlight = false
                         }
                     }
+                    isPrimaryCompositionLoadInFlight = false
+                    hasPendingGeneratedNextComposition = false
 
                     c.lastPauseState = self.isPaused
                     c.lastEffectsCounter = effectsChangeCounter
@@ -293,6 +302,8 @@ struct PlayerView: NSViewRepresentable {
                     self.setupPlaybackEndHandling(content: content, coordinator: c)
 
                 case .failure(let error):
+                    isPrimaryCompositionLoadInFlight = false
+                    hasPendingGeneratedNextComposition = false
                     error.log(context: "PlayerView")
                     c.compositionID = nil
                     c.isAutoAdvanceInFlight = false
