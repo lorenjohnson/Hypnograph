@@ -168,14 +168,53 @@ struct ContentView: View {
         }
     }
 
+    private var hasTrackedDownloadsThisLoad: Bool {
+        !visibleCurrentCompositionDownloadRows.isEmpty ||
+        !previouslyVisibleDownloadIdentifiers.isEmpty ||
+        !completedDownloadIdentifiersThisLoad.isEmpty
+    }
+
+    private var shouldShowCurrentCompositionDownloadHUD: Bool {
+        main.activePlayer.isPrimaryCompositionLoadInFlight && hasTrackedDownloadsThisLoad
+    }
+
+    private var currentCompositionDownloadAggregateProgress: Double {
+        if !visibleCurrentCompositionDownloadRows.isEmpty {
+            return visibleCurrentCompositionDownloadRows.map(\.progress).min() ?? 0
+        }
+
+        if shouldShowCurrentCompositionDownloadHUD {
+            return 1
+        }
+
+        return 0
+    }
+
     @ViewBuilder
     private func topRightIndicatorBadge(_ indicator: (text: String, color: Color)) -> some View {
         Text(indicator.text)
-            .font(.system(size: 36, weight: .bold))
+            .font(.system(size: 24, weight: .bold))
             .foregroundStyle(indicator.color)
-            .padding(.vertical, 14)
-            .padding(.leading, 14)
-            .padding(.trailing, 28)
+            .padding(.vertical, 6)
+            .padding(.leading, 10)
+            .padding(.trailing, 6)
+            .frame(height: 34, alignment: .center)
+    }
+
+    @ViewBuilder
+    private func currentCompositionDownloadHUD(progress: Double) -> some View {
+        ProgressView(value: min(max(progress, 0), 1), total: 1)
+            .progressViewStyle(.circular)
+            .controlSize(.regular)
+            .frame(width: 20, height: 20)
+            .padding(3)
+            .background(
+                Circle()
+                    .fill(Color.black.opacity(0.22))
+            )
+        .frame(width: 30, height: 30, alignment: .center)
+        .accessibilityLabel("Apple Photos download progress")
+        .accessibilityValue("\(Int((progress * 100).rounded())) percent")
     }
 
     private var playerControlsContent: some View {
@@ -262,15 +301,19 @@ struct ContentView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if let indicator = topRightIndicator {
-                topRightIndicatorBadge(indicator)
+            HStack(alignment: .center, spacing: 4) {
+                if shouldShowCurrentCompositionDownloadHUD {
+                    currentCompositionDownloadHUD(progress: currentCompositionDownloadAggregateProgress)
+                        .transition(.scale(scale: 0.9).combined(with: .opacity))
+                }
+
+                if let indicator = topRightIndicator {
+                    topRightIndicatorBadge(indicator)
+                }
             }
-        }
-        .overlay {
-            if !visibleCurrentCompositionDownloadRows.isEmpty {
-                currentCompositionDownloadOverlay(rows: visibleCurrentCompositionDownloadRows)
-                    .transition(.opacity)
-            }
+            .frame(height: 34, alignment: .trailing)
+            .padding(.top, 10)
+            .padding(.trailing, 12)
         }
         .overlay(alignment: .topTrailing) {
             // Right-side panels: Live panel (bottom)
@@ -398,62 +441,4 @@ struct ContentView: View {
         showPanelsNowNotification
     }
 
-    @ViewBuilder
-    private func currentCompositionDownloadOverlay(rows: [CurrentCompositionDownloadRow]) -> some View {
-        ZStack {
-            Color.black.opacity(0.82)
-                .ignoresSafeArea()
-
-            VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Downloading Apple Photos Assets")
-                        .font(.system(size: 28, weight: .semibold))
-                        .foregroundStyle(.white)
-
-                    Text("Playback will look incomplete until these source items finish downloading.")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.7))
-                }
-
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(rows) { row in
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                                Text(row.title)
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .foregroundStyle(.white)
-                                    .lineLimit(1)
-
-                                Spacer(minLength: 10)
-
-                                Text("\(Int((row.progress * 100).rounded()))%")
-                                    .font(.system(size: 13, weight: .medium, design: .monospaced))
-                                    .foregroundStyle(.white.opacity(0.68))
-                            }
-
-                            ProgressView(value: row.progress, total: 1)
-                                .tint(.blue)
-
-                            Text(row.subtitle)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.52))
-                        }
-                        .padding(.vertical, 2)
-                    }
-                }
-            }
-            .frame(maxWidth: 520, alignment: .leading)
-            .padding(.horizontal, 28)
-            .padding(.vertical, 24)
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
-            )
-            .padding(32)
-        }
-    }
 }
