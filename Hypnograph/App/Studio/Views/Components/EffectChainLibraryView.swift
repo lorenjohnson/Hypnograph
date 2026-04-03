@@ -202,7 +202,7 @@ private struct EffectChainLibraryRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             headerRow
             .contextMenu {
                 Button(action: applyToCurrentSelection) {
@@ -228,17 +228,18 @@ private struct EffectChainLibraryRow: View {
 
             if isExpanded {
                 expandedContent
-                .padding(.leading, 16)
-                .padding(.top, 4)
+                .padding(.leading, 12)
+                .padding(.top, 2)
             }
         }
-        .padding(8)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 5)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(.white.opacity(0.05))
         )
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [.white.opacity(0.08), .clear],
@@ -248,18 +249,18 @@ private struct EffectChainLibraryRow: View {
                 )
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .stroke(.white.opacity(0.1), lineWidth: 0.5)
         )
     }
 
     private var headerRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Button(action: toggleExpandedFromChevron) {
                 Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .frame(width: 28, height: 28)
+                    .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -272,7 +273,7 @@ private struct EffectChainLibraryRow: View {
     }
 
     private var rowMainTapArea: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             nameView
 
             Spacer()
@@ -280,8 +281,8 @@ private struct EffectChainLibraryRow: View {
             Text("\(chain.effects.count)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
                 .background(Capsule().fill(.quaternary))
         }
         .contentShape(Rectangle())

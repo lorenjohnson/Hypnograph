@@ -677,6 +677,15 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         togglePanelsVisibility()
     }
 
+    func showPanelsNow() {
+        guard panelsAutoHidden else { return }
+        setPanelsAutoHidden(false)
+        noteActivity()
+        if autoHideWindowsEnabled {
+            startAutoHideMonitoringIfNeeded()
+        }
+    }
+
     func togglePanelsVisibility() {
         if panelsAutoHidden {
             setPanelsAutoHidden(false)

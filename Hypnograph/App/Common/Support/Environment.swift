@@ -63,7 +63,7 @@ enum Environment {
         NSApp.terminate(nil)
     }
 
-    private static func resetPhotosPermissionForDebug() {
+    static func resetPhotosPermissionForDebug() {
         let bundleID = Bundle.main.bundleIdentifier ?? "lorenjohnson.Hypnograph"
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
@@ -199,6 +199,23 @@ enum Environment {
         ensureDefaultStudioSettingsFileExists()
         ensureDefaultAppSettingsFileExists()
         ensureDefaultEffectsComposerSettingsFileExists()
+    }
+
+    static func openApplePhotosPrivacySettings() {
+        let candidates = [
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Photos",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy"
+        ]
+
+        for candidate in candidates {
+            if let url = URL(string: candidate), NSWorkspace.shared.open(url) {
+                return
+            }
+        }
+
+        if let settingsURL = URL(string: "x-apple.systempreferences:") {
+            _ = NSWorkspace.shared.open(settingsURL)
+        }
     }
 
     /// Ensures a valid, decodable settings file exists at the provided URL.

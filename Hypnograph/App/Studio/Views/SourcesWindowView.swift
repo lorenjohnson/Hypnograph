@@ -8,6 +8,25 @@ struct SourcesWindowView: View {
     @State private var isRequestingPhotos = false
     @State private var showPhotosAlbumsPicker = false
 
+    enum ApplePhotosAddMode: String, CaseIterable, Identifiable {
+        case allItems
+        case albums
+        case custom
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .allItems:
+                return "All Items"
+            case .albums:
+                return "Specific Albums"
+            case .custom:
+                return "Custom Selection"
+            }
+        }
+    }
+
     private struct FilesystemSourceRow: Identifiable {
         let key: String
         let displayName: String
@@ -152,9 +171,8 @@ struct SourcesWindowView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                mediaTypesSection
                 sourcesSection
-                photosAccessSection
+                mediaTypesSection
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -174,13 +192,30 @@ struct SourcesWindowView: View {
             }
         }
         .sheet(isPresented: $showPhotosAlbumsPicker) {
-            ApplePhotosAlbumPickerSheet(
+            ApplePhotosSourcePickerSheet(
                 albums: ApplePhotos.shared.fetchUserAlbums(),
+                authorizationStatus: state.photosAuthorizationStatus,
+                isRequestingPhotos: isRequestingPhotos,
+                suppressInitialKeyboardFocus: state.appSettings.keyboardAccessibilityOverridesEnabled,
                 isPresented: $showPhotosAlbumsPicker,
-                onConfirm: { keys in
+                onAddAllItems: {
+                    Task { @MainActor in
+                        await main.addApplePhotosAllSource()
+                    }
+                },
+                onAddAlbums: { keys in
                     Task { @MainActor in
                         await main.addApplePhotosAlbumSources(keys)
                     }
+                },
+                onChooseCustomSelection: {
+                    state.showPhotosPicker = true
+                },
+                onRequestAccess: {
+                    requestPhotosAccess()
+                },
+                onOpenSystemSettings: {
+                    main.openApplePhotosPrivacySettings()
                 }
             )
         }
@@ -191,14 +226,6 @@ struct SourcesWindowView: View {
             sectionDivider()
             PanelSectionHeader(title: "Media Types")
 
-            PanelInlineFieldRow(title: "Images") {
-                PanelToggleView(isOn: Binding(
-                    get: { state.isMediaTypeActive(.images) },
-                    set: { _ in state.toggleMediaType(.images) }
-                ))
-                .fixedSize()
-            }
-
             PanelInlineFieldRow(title: "Videos") {
                 PanelToggleView(isOn: Binding(
                     get: { state.isMediaTypeActive(.videos) },
@@ -207,46 +234,34 @@ struct SourcesWindowView: View {
                 .fixedSize()
             }
 
-            Text("Current eligible pool: \(state.library.assetCount) item\(state.library.assetCount == 1 ? "" : "s")")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            PanelInlineFieldRow(title: "Images") {
+                PanelToggleView(isOn: Binding(
+                    get: { state.isMediaTypeActive(.images) },
+                    set: { _ in state.toggleMediaType(.images) }
+                ))
+                .fixedSize()
+            }
         }
     }
 
     private var sourcesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionDivider()
-            PanelInlineFieldRow(title: "Source Selections") {
+            PanelInlineFieldRow(title: "Eligible Sources: \(state.library.assetCount)") {
                 Menu {
                     Button("Files or Folders…") {
                         main.addSourceLibrariesFromPanel()
                     }
 
-                    if canReadPhotos {
-                        Divider()
-
-                        Menu("Apple Photos") {
-                            Button("All Items") {
-                                Task { @MainActor in
-                                    await main.addApplePhotosAllSource()
-                                }
-                            }
-
-                            Button("Custom Selection…") {
-                                state.showPhotosPicker = true
-                            }
-
-                            Button("Albums…") {
-                                showPhotosAlbumsPicker = true
-                            }
-                        }
+                    Button("Apple Photos…") {
+                        showPhotosAlbumsPicker = true
                     }
                 } label: {
                     Image(systemName: "plus")
                         .font(.caption.weight(.semibold))
                 }
                 .buttonStyle(.borderless)
-                .help(canReadPhotos ? "Add source selection" : "Add files or folders")
+                .help("Add source selection")
             }
 
             if sourceRows.isEmpty {
@@ -259,40 +274,17 @@ struct SourcesWindowView: View {
         }
     }
 
-    private var photosAccessSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionDivider()
-            PanelSectionHeader(title: "Apple Photos")
-
-            if canReadPhotos {
-                Text("Apple Photos access is enabled. Add All Items, a Custom Selection, or Albums from the source menu above.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Apple Photos access is not enabled.")
-                        .foregroundStyle(.secondary)
-
-                    Button(isRequestingPhotos ? "Requesting Photos Access…" : "Request Photos Access") {
-                        requestPhotosAccess()
-                    }
-                    .disabled(isRequestingPhotos)
-                }
-            }
-        }
-    }
-
     private func sourceRow(_ row: SourceRow) -> some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 8) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(row.typeLabel)
-                        .font(.caption)
+                        .font(.caption2.weight(.semibold))
                         .foregroundStyle(.tertiary)
                         .textCase(.uppercase)
 
                     Text(row.title)
-                        .font(.body.weight(.medium))
+                        .font(.callout.weight(.medium))
                 }
 
                 Text(row.detail)
@@ -329,8 +321,12 @@ struct SourcesWindowView: View {
         }
         .padding(10)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white.opacity(0.04))
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
         )
     }
 
@@ -395,63 +391,210 @@ struct SourcesWindowView: View {
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white.opacity(0.03))
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.white.opacity(0.05))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
             )
     }
 }
 
-private struct ApplePhotosAlbumPickerSheet: View {
+private struct ApplePhotosSourcePickerSheet: View {
     let albums: [ApplePhotos.AlbumInfo]
+    let authorizationStatus: ApplePhotos.AuthorizationStatus
+    let isRequestingPhotos: Bool
+    let suppressInitialKeyboardFocus: Bool
     @Binding var isPresented: Bool
-    let onConfirm: ([String]) -> Void
+    let onAddAllItems: () -> Void
+    let onAddAlbums: ([String]) -> Void
+    let onChooseCustomSelection: () -> Void
+    let onRequestAccess: () -> Void
+    let onOpenSystemSettings: () -> Void
 
+    @State private var mode: SourcesWindowView.ApplePhotosAddMode = .allItems
     @State private var selectedKeys: Set<String> = []
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Choose Apple Photos Albums")
+        VStack(alignment: .leading, spacing: canChooseSources ? 12 : 9) {
+            Text(canChooseSources ? "Add Apple Photos Source" : "Apple Photos Access Denied")
                 .font(.headline)
 
-            if albums.isEmpty {
-                Text("No user albums found")
-                    .foregroundStyle(.secondary)
-            } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 8) {
-                        ForEach(albums, id: \.libraryKey) { album in
-                            HStack(spacing: 10) {
-                                Text(album.title)
-                                Spacer()
-                                Text("\(album.assetCount)")
-                                    .foregroundStyle(.secondary)
-                                    .monospacedDigit()
-                                PanelToggleView(isOn: binding(for: album.libraryKey))
-                                    .fixedSize()
+            if canChooseSources {
+                HStack(alignment: .top, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Selection")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        Picker("Selection", selection: $mode) {
+                            ForEach(SourcesWindowView.ApplePhotosAddMode.allCases) { mode in
+                                Text(mode.title).tag(mode)
                             }
                         }
+                        .labelsHidden()
+                        .pickerStyle(.radioGroup)
                     }
-                    .padding(4)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(mode.title)
+                            .font(.subheadline.weight(.semibold))
+
+                        Group {
+                            switch mode {
+                            case .allItems:
+                                Text("Use the entire Apple Photos library as a source.")
+                                    .foregroundStyle(.secondary)
+
+                            case .albums:
+                                if albums.isEmpty {
+                                    Text("No user albums found.")
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    ScrollView {
+                                        LazyVStack(alignment: .leading, spacing: 8) {
+                                            ForEach(albums, id: \.libraryKey) { album in
+                                                HStack(spacing: 10) {
+                                                    PanelToggleView(isOn: binding(for: album.libraryKey))
+                                                        .fixedSize()
+                                                    Text(album.title)
+                                                    Spacer()
+                                                    Text("\(album.assetCount)")
+                                                        .foregroundStyle(.secondary)
+                                                        .monospacedDigit()
+                                                }
+                                            }
+                                        }
+                                        .padding(4)
+                                    }
+                                    .frame(minHeight: 180, maxHeight: 240)
+                                }
+
+                            case .custom:
+                                Text("Use the native Apple Photos picker to choose a custom set of items.")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 170, alignment: .topLeading)
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.white.opacity(0.04))
+                        )
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                .frame(minHeight: 260)
+            } else {
+                ApplePhotosAccessStatusView(
+                    authorizationStatus: authorizationStatus,
+                    isRequestingPhotos: isRequestingPhotos,
+                    presentation: .inline,
+                    showsAction: false,
+                    showsStatusLine: false,
+                    onRequestAccess: onRequestAccess,
+                    onOpenSystemSettings: onOpenSystemSettings
+                )
+                .frame(maxWidth: .infinity, alignment: .topLeading)
             }
 
             HStack {
-                Button("Cancel") {
-                    isPresented = false
-                }
+                if canChooseSources {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
 
-                Spacer()
+                    Spacer()
 
-                Button("Add") {
-                    onConfirm(Array(selectedKeys))
-                    isPresented = false
+                    Button(primaryButtonTitle) {
+                        handlePrimaryAction()
+                    }
+                    .disabled(!canPerformPrimaryAction)
+                    .buttonStyle(.borderedProminent)
+                } else {
+                    Spacer()
+
+                    HStack(spacing: 10) {
+                        Button("Cancel") {
+                            isPresented = false
+                        }
+
+                        Button {
+                            if authorizationStatus == .notDetermined {
+                                onRequestAccess()
+                            } else {
+                                onOpenSystemSettings()
+                            }
+                        } label: {
+                            if authorizationStatus == .notDetermined || isRequestingPhotos {
+                                Text(isRequestingPhotos ? "Requesting Photos Access…" : accessButtonTitle)
+                            } else {
+                                Label(accessButtonTitle, systemImage: "gearshape")
+                            }
+                        }
+                        .disabled(isRequestingPhotos)
+                        .buttonStyle(.borderedProminent)
+                    }
                 }
-                .disabled(selectedKeys.isEmpty)
             }
+            .padding(.top, canChooseSources ? 0 : 1)
         }
-        .padding(16)
-        .frame(minWidth: 520, idealWidth: 560, maxWidth: 760, minHeight: 360, idealHeight: 420, maxHeight: 700)
+        .padding(.horizontal, 16)
+        .padding(.top, canChooseSources ? 16 : 8)
+        .padding(.bottom, canChooseSources ? 16 : 8)
+        .frame(
+            minWidth: canChooseSources ? 560 : 430,
+            idealWidth: canChooseSources ? 620 : 460,
+            maxWidth: canChooseSources ? 760 : 500,
+            minHeight: canChooseSources ? 250 : 156,
+            idealHeight: canChooseSources ? 320 : 166,
+            maxHeight: canChooseSources ? 520 : 190
+        )
+        .background(
+            InitialWindowFocusClearer(enabled: suppressInitialKeyboardFocus)
+        )
+    }
+
+    private var canChooseSources: Bool {
+        authorizationStatus.canRead
+    }
+
+    private var canPerformPrimaryAction: Bool {
+        switch mode {
+        case .allItems:
+            return true
+        case .albums:
+            return !selectedKeys.isEmpty
+        case .custom:
+            return true
+        }
+    }
+
+    private var primaryButtonTitle: String {
+        switch mode {
+        case .custom:
+            return "Choose Custom Selection…"
+        case .allItems, .albums:
+            return "Add Source"
+        }
+    }
+
+    private func handlePrimaryAction() {
+        switch mode {
+        case .allItems:
+            onAddAllItems()
+            isPresented = false
+        case .albums:
+            onAddAlbums(Array(selectedKeys))
+            isPresented = false
+        case .custom:
+            isPresented = false
+            onChooseCustomSelection()
+        }
+    }
+
+    private var accessButtonTitle: String {
+        authorizationStatus == .notDetermined ? "Request Photos Access" : "Open System Settings"
     }
 
     private func binding(for key: String) -> Binding<Bool> {
@@ -465,5 +608,20 @@ private struct ApplePhotosAlbumPickerSheet: View {
                 }
             }
         )
+    }
+}
+
+private struct InitialWindowFocusClearer: NSViewRepresentable {
+    let enabled: Bool
+
+    func makeNSView(context: Context) -> NSView {
+        NSView(frame: .zero)
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard enabled else { return }
+        DispatchQueue.main.async {
+            nsView.window?.makeFirstResponder(nil)
+        }
     }
 }

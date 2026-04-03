@@ -254,9 +254,13 @@ final class Studio: ObservableObject {
         }
 
         let player = activePlayer
+        let composition = player.currentComposition
+
+        if currentCompositionRequiresPhotosAccess(composition) && !state.photosAuthorizationStatus.canRead {
+            return AnyView(PhotosAccessRequiredView(state: state, main: self))
+        }
 
         // Common view parameters
-        let composition = player.currentComposition
         let aspectRatio = player.config.aspectRatio
         let displayResolution = player.config.playerResolution
         let sourceFraming = state.settings.sourceFraming
@@ -297,6 +301,15 @@ final class Studio: ObservableObject {
             )
             .id(viewID)
         )
+    }
+
+    private func currentCompositionRequiresPhotosAccess(_ composition: Composition) -> Bool {
+        composition.layers.contains { layer in
+            if case .external = layer.mediaClip.file.source {
+                return true
+            }
+            return false
+        }
     }
 
     /// Build a hypnogram snapshot for display/export (timestamp + effects library snapshot)

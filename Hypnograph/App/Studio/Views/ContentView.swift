@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var panelsCurrentlyAutoHidden = false
 
     private static let hidePanelsNowNotification = Notification.Name("StudioHidePanelsNow")
+    private static let showPanelsNowNotification = Notification.Name("StudioShowPanelsNow")
 
     init(state: HypnographState, main: Studio) {
         self.state = state
@@ -300,6 +301,9 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: Self.hidePanelsNowNotification)) { _ in
             windowHostService.hidePanelsNow()
         }
+        .onReceive(NotificationCenter.default.publisher(for: Self.showPanelsNowNotification)) { _ in
+            windowHostService.showPanelsNow()
+        }
         .onAppear {
             windows.registerWindow("hypnogramList", defaultVisible: false)
             windows.registerWindow("sourcesWindow", defaultVisible: false)
@@ -329,6 +333,10 @@ struct ContentView: View {
 
     static var studioHidePanelsNowNotification: Notification.Name {
         hidePanelsNowNotification
+    }
+
+    static var studioShowPanelsNowNotification: Notification.Name {
+        showPanelsNowNotification
     }
 
     @ViewBuilder
