@@ -9,9 +9,14 @@ import AppKit
 import Foundation
 
 enum Environment {
-    static let appFolderName = "Hypnograph"
+    static var appFolderName: String {
+        #if DEBUG
+        "Hypnograph-Debug"
+        #else
+        "Hypnograph"
+        #endif
+    }
 
-    /// ~/Library/Application Support/Hypnograph
     static var appSupportDirectory: URL {
         let fm = FileManager.default
         let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
