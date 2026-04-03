@@ -36,6 +36,7 @@ Current concrete failure modes already observed:
 - MUST keep Apple Photos central to the product story for now.
 - SHOULD keep the UI for choosing Apple Photos scope coherent and lightweight.
 - SHOULD use existing source-selection UI where possible instead of creating a whole new onboarding framework immediately.
+- SHOULD improve the local debugging workflow enough that Photos permissioning can be reset and re-tested repeatedly without wiping the normal app's real state.
 - MUST keep on the map the broader optimized-storage concerns:
   - slow loading of cloud-backed assets
   - unclear first-run waiting behavior
@@ -65,6 +66,8 @@ Current concrete failure modes already observed:
 
 - Smallest meaningful next slice: reproduce and trace the current Apple Photos permission flow on a fresh run, especially the first-grant path, and identify where the app still behaves as though Photos access is unavailable.
 - Smallest meaningful next slice: reproduce and trace the current Apple Photos permission flow on a fresh run, especially the initial denied or granted path, and identify where startup or first-load state is assuming Apple Photos access before authorization state has settled.
+- Smallest meaningful next slice: make debug runs easier to reset and inspect so the first-launch permission path can be exercised repeatedly without touching the normal app-support directory.
+- Smallest meaningful next slice: provide a lightweight debug reset path for clearing Apple Photos permission and the debug app-support directory without adding more launch-time lifecycle interference than necessary.
 - Immediate acceptance check: after granting Apple Photos access, Hypnograph reliably recognizes that access without requiring unrelated UI actions or relaunch-like behavior, and after denying access it does not continue behaving as though `All Items` is still active.
 - Follow-on slice: make the no-permission and denied/canceled states in Sources clearly actionable, including a way to authorize Apple Photos from there that actually works.
 - Next slice after that: tighten the Apple Photos source-entry flow so `All Items`, albums, and `Custom Selection` all live under one coherent Apple Photos modal instead of the current split menu structure.

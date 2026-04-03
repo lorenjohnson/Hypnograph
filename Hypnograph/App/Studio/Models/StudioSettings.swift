@@ -177,7 +177,7 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         static let playerResolution: OutputResolution = .p1080
         static let maxLayers = 1
         static let sourceFraming: SourceFraming = .fill
-        static let sourceMediaTypes: Set<MediaType> = [.images, .videos]
+        static let sourceMediaTypes: Set<MediaType> = [.videos]
         static let effectsListCollapsed: Bool = false
         static let liveModeEnabled: Bool = false
         // Transition defaults
