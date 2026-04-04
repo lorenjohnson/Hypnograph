@@ -160,15 +160,18 @@ extension Studio {
     }
 
     func applyCompositionSelectionChanged(manual: Bool) {
-        player.currentCompositionLoadFailure = nil
-        player.clampCurrentSourceIndex()
-        player.currentClipTimeOffset = nil
-        player.effectManager.clearFrameBuffer()
-        player.effectManager.invalidateBlendAnalysis()
-        player.notifyHypnogramChanged()
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.player.currentCompositionLoadFailure = nil
+            self.player.clampCurrentSourceIndex()
+            self.player.currentClipTimeOffset = nil
+            self.player.effectManager.clearFrameBuffer()
+            self.player.effectManager.invalidateBlendAnalysis()
+            self.player.notifyHypnogramChanged()
 
-        if manual {
-            flashHistoryIndicator()
+            if manual {
+                self.flashHistoryIndicator()
+            }
         }
     }
 

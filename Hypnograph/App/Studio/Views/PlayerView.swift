@@ -168,10 +168,10 @@ struct PlayerView: NSViewRepresentable {
             c.currentTask?.cancel()
             c.currentTask = nil
             c.compositionID = nil
-            isPrimaryCompositionLoadInFlight = false
+            deferCompositionLoadInFlight(false)
             hasPendingGeneratedNextComposition = false
             if currentSourceTime != nil {
-                currentSourceTime = nil
+                deferCurrentSourceTime(nil)
             }
             c.stillClipTimer?.invalidate()
             c.stillClipTimer = nil
@@ -194,8 +194,8 @@ struct PlayerView: NSViewRepresentable {
             c.currentTask?.cancel()
             c.compositionID = newID
             c.didRequestPreEndAdvance = false
-            isPrimaryCompositionLoadInFlight = true
-            currentCompositionLoadFailure = nil
+            deferCompositionLoadInFlight(true)
+            deferCompositionLoadFailure(nil)
 
             c.currentTask = Task { @MainActor in
                 let engine = RenderEngine()
@@ -213,7 +213,7 @@ struct PlayerView: NSViewRepresentable {
                 )
 
                 guard !Task.isCancelled else {
-                    isPrimaryCompositionLoadInFlight = false
+                    deferCompositionLoadInFlight(false)
                     hasPendingGeneratedNextComposition = false
                     if c.compositionID == newID { c.compositionID = nil }
                     return
@@ -223,7 +223,7 @@ struct PlayerView: NSViewRepresentable {
 
                 switch result {
                 case .success(let playerItem):
-                    currentCompositionLoadFailure = nil
+                    deferCompositionLoadFailure(nil)
                     // Create or reuse content view
                     let content: PlayerContentView
                     if let existing = c.contentView {
@@ -287,7 +287,7 @@ struct PlayerView: NSViewRepresentable {
                             c.isAutoAdvanceInFlight = false
                         }
                     }
-                    isPrimaryCompositionLoadInFlight = false
+                    deferCompositionLoadInFlight(false)
                     hasPendingGeneratedNextComposition = false
 
                     c.lastPauseState = self.isPaused
@@ -305,18 +305,18 @@ struct PlayerView: NSViewRepresentable {
                     self.setupPlaybackEndHandling(content: content, coordinator: c)
 
                 case .failure(let error):
-                    isPrimaryCompositionLoadInFlight = false
+                    deferCompositionLoadInFlight(false)
                     hasPendingGeneratedNextComposition = false
                     if case .allSourcesFailedToLoad = error {
-                        currentCompositionLoadFailure = .init(compositionID: composition.id)
+                        deferCompositionLoadFailure(.init(compositionID: composition.id))
                     } else {
-                        currentCompositionLoadFailure = nil
+                        deferCompositionLoadFailure(nil)
                     }
                     error.log(context: "PlayerView")
                     c.compositionID = nil
                     c.isAutoAdvanceInFlight = false
                     if currentSourceTime != nil {
-                        currentSourceTime = nil
+                        deferCurrentSourceTime(nil)
                     }
                 }
             }
@@ -388,6 +388,29 @@ struct PlayerView: NSViewRepresentable {
         if c.audioDeviceChanged(to: audioDeviceUID) {
             c.contentView?.setAudioOutputDevice(audioDeviceUID)
             c.lastAudioDeviceUID = audioDeviceUID
+        }
+    }
+
+    private func deferCompositionLoadInFlight(_ value: Bool) {
+        guard isPrimaryCompositionLoadInFlight != value else { return }
+        DispatchQueue.main.async {
+            self.isPrimaryCompositionLoadInFlight = value
+        }
+    }
+
+    private func deferCompositionLoadFailure(_ value: PlayerState.CompositionLoadFailure?) {
+        guard currentCompositionLoadFailure != value else { return }
+        DispatchQueue.main.async {
+            self.currentCompositionLoadFailure = value
+        }
+    }
+
+    private func deferCurrentSourceTime(_ value: CMTime?) {
+        let currentSeconds = currentSourceTime?.seconds
+        let newSeconds = value?.seconds
+        guard currentSeconds != newSeconds || (currentSourceTime == nil) != (value == nil) else { return }
+        DispatchQueue.main.async {
+            self.currentSourceTime = value
         }
     }
 
