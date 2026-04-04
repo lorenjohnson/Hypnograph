@@ -15,6 +15,9 @@ import HypnoCore
 /// Maintains its own hypnogram, playback state, and generation settings.
 @MainActor
 final class PlayerState: ObservableObject {
+    struct CompositionLoadFailure: Equatable {
+        let compositionID: UUID
+    }
 
     // MARK: - Hypnogram
 
@@ -52,6 +55,9 @@ final class PlayerState: ObservableObject {
     /// True while a manually generated "next" composition at the end of history
     /// is still unresolved and has not yet started transitioning in.
     var hasPendingGeneratedNextComposition: Bool = false
+
+    /// Set when the current composition failed to resolve any playable sources.
+    @Published var currentCompositionLoadFailure: CompositionLoadFailure?
 
     // MARK: - Player Configuration
 

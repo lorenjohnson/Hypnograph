@@ -25,8 +25,8 @@ final class ExternalMediaLoadHarness: ObservableObject {
             case .verySlow: return "Very Slow Load"
             case .timeout: return "Timeout"
             case .failure: return "Failure"
+            }
         }
-    }
     }
 
     private struct RequestPlan {
@@ -39,7 +39,6 @@ final class ExternalMediaLoadHarness: ObservableObject {
         case simulateVerySlow = "simulate_very_slow"
         case simulateTimeout = "simulate_timeout"
         case simulateFailure = "simulate_failure"
-        case sequenceFailureSlowNormalFailureNormal = "sequence_failure_slow_normal_failure_normal"
 
         var id: String { rawValue }
 
@@ -50,8 +49,6 @@ final class ExternalMediaLoadHarness: ObservableObject {
             case .simulateVerySlow: return "Very Slow Load"
             case .simulateTimeout: return "Timeout"
             case .simulateFailure: return "Failure"
-            case .sequenceFailureSlowNormalFailureNormal:
-                return "Sequence: Fail -> Slow -> Normal -> Fail -> Normal"
             }
         }
     }
@@ -80,8 +77,6 @@ final class ExternalMediaLoadHarness: ObservableObject {
     @Published private(set) var activeDownloads: [AssetDownloadStatus] = []
 
     private var isInstalled = false
-    private var activeSequenceScenario: Scenario?
-    private var activeSequenceIndex = 0
     private var pendingDownloadPromotions: [String: PendingDownloadPromotion] = [:]
 
     private static let downloadVisibilityDelayNanoseconds: UInt64 = 700_000_000
@@ -193,11 +188,6 @@ final class ExternalMediaLoadHarness: ObservableObject {
 
     private func buildRequestPlan(for scenario: Scenario) async -> RequestPlan {
         await MainActor.run {
-            if activeSequenceScenario != scenario {
-                activeSequenceScenario = scenario
-                activeSequenceIndex = 0
-            }
-
             switch scenario {
             case .live:
                 return RequestPlan(mode: .live)
@@ -209,12 +199,6 @@ final class ExternalMediaLoadHarness: ObservableObject {
                 return RequestPlan(mode: .timeout)
             case .simulateFailure:
                 return RequestPlan(mode: .failure)
-            case .sequenceFailureSlowNormalFailureNormal:
-                let sequence: [SimulationMode] = [.failure, .progress, .live, .failure, .live]
-                let stepIndex = activeSequenceIndex % sequence.count
-                let step = sequence[stepIndex]
-                activeSequenceIndex += 1
-                return RequestPlan(mode: step)
             }
         }
     }

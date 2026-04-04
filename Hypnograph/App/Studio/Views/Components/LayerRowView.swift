@@ -178,7 +178,15 @@ struct LayerRowView: View {
 
     private var thumbnailView: some View {
         Group {
-            if let image = thumbnailStore.image(for: layer) {
+            if thumbnailStore.hasMissingLocalSource(for: layer) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(.white.opacity(0.06))
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.red.opacity(0.9))
+                }
+            } else if let image = thumbnailStore.image(for: layer) {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFill()

@@ -51,6 +51,7 @@ struct SourcesWindowView: View {
         let detail: String
         let kind: Kind
         let canEditSelection: Bool
+        let hasMissingPath: Bool
     }
 
     private var folderAssetCounts: [String: Int] {
@@ -100,7 +101,8 @@ struct SourcesWindowView: View {
                 title: row.displayName,
                 detail: filesystemDetail(for: row.paths),
                 kind: .filesystem(paths: row.paths, assetCount: row.assetCount),
-                canEditSelection: false
+                canEditSelection: false,
+                hasMissingPath: filesystemPathsMissing(for: row.paths)
             )
         }
 
@@ -115,7 +117,8 @@ struct SourcesWindowView: View {
                     title: "All Items",
                     detail: "Entire Apple Photos library",
                     kind: .photosAll(assetCount: photosLibrariesByID[ApplePhotosLibraryKeys.photosAll]?.assetCount ?? 0),
-                    canEditSelection: false
+                    canEditSelection: false,
+                    hasMissingPath: false
                 )
             )
         }
@@ -131,7 +134,8 @@ struct SourcesWindowView: View {
                     title: "Custom Selection",
                     detail: detail,
                     kind: .photosCustom(assetCount: count),
-                    canEditSelection: true
+                    canEditSelection: true,
+                    hasMissingPath: false
                 )
             )
         }
@@ -155,7 +159,8 @@ struct SourcesWindowView: View {
                     title: info?.name ?? "Album",
                     detail: "Apple Photos album",
                     kind: .photosAlbum(assetCount: info?.assetCount ?? 0),
-                    canEditSelection: false
+                    canEditSelection: false,
+                    hasMissingPath: false
                 )
             )
         }
@@ -285,12 +290,25 @@ struct SourcesWindowView: View {
 
                     Text(row.title)
                         .font(.callout.weight(.medium))
+
+                    if row.hasMissingPath {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.red.opacity(0.9))
+                            .help("One or more source paths are missing")
+                    }
                 }
 
                 Text(row.detail)
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .lineLimit(3)
+
+                if row.hasMissingPath {
+                    Text("Source path not found")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.red.opacity(0.9))
+                }
 
                 Text(assetCountText(for: row.kind))
                     .font(.caption2)
@@ -343,6 +361,10 @@ struct SourcesWindowView: View {
             return "\(paths.count) paths"
         }
         return paths.first ?? ""
+    }
+
+    private func filesystemPathsMissing(for paths: [String]) -> Bool {
+        paths.contains { !FileManager.default.fileExists(atPath: $0) }
     }
 
     private func assetCountText(for kind: SourceRow.Kind) -> String {

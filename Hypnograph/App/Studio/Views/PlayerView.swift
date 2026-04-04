@@ -25,6 +25,7 @@ struct PlayerView: NSViewRepresentable {
     @Binding var currentSourceTime: CMTime?
     @Binding var isPrimaryCompositionLoadInFlight: Bool
     @Binding var hasPendingGeneratedNextComposition: Bool
+    @Binding var currentCompositionLoadFailure: PlayerState.CompositionLoadFailure?
     let isPaused: Bool
     let effectsChangeCounter: Int
     let hypnogramRevision: Int
@@ -194,6 +195,7 @@ struct PlayerView: NSViewRepresentable {
             c.compositionID = newID
             c.didRequestPreEndAdvance = false
             isPrimaryCompositionLoadInFlight = true
+            currentCompositionLoadFailure = nil
 
             c.currentTask = Task { @MainActor in
                 let engine = RenderEngine()
@@ -221,6 +223,7 @@ struct PlayerView: NSViewRepresentable {
 
                 switch result {
                 case .success(let playerItem):
+                    currentCompositionLoadFailure = nil
                     // Create or reuse content view
                     let content: PlayerContentView
                     if let existing = c.contentView {
@@ -304,6 +307,11 @@ struct PlayerView: NSViewRepresentable {
                 case .failure(let error):
                     isPrimaryCompositionLoadInFlight = false
                     hasPendingGeneratedNextComposition = false
+                    if case .allSourcesFailedToLoad = error {
+                        currentCompositionLoadFailure = .init(compositionID: composition.id)
+                    } else {
+                        currentCompositionLoadFailure = nil
+                    }
                     error.log(context: "PlayerView")
                     c.compositionID = nil
                     c.isAutoAdvanceInFlight = false

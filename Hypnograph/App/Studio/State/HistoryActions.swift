@@ -160,6 +160,7 @@ extension Studio {
     }
 
     func applyCompositionSelectionChanged(manual: Bool) {
+        player.currentCompositionLoadFailure = nil
         player.clampCurrentSourceIndex()
         player.currentClipTimeOffset = nil
         player.effectManager.clearFrameBuffer()
@@ -174,6 +175,7 @@ extension Studio {
     func previousComposition() {
         guard player.currentCompositionIndex > 0 else { return }
         player.hasPendingGeneratedNextComposition = false
+        player.currentCompositionLoadFailure = nil
         player.currentCompositionIndex -= 1
         applyCompositionSelectionChanged(manual: true)
     }
@@ -182,6 +184,7 @@ extension Studio {
         let nextIndex = player.currentCompositionIndex + 1
         if nextIndex < player.hypnogram.compositions.count {
             player.hasPendingGeneratedNextComposition = false
+            player.currentCompositionLoadFailure = nil
             player.currentCompositionIndex = nextIndex
             applyCompositionSelectionChanged(manual: true)
         } else {

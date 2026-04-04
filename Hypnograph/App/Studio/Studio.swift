@@ -260,6 +260,14 @@ final class Studio: ObservableObject {
             return AnyView(PhotosAccessRequiredView(state: state, main: self))
         }
 
+        if currentCompositionHasNoReachableSources(composition) {
+            return AnyView(CompositionSourcesUnavailableView(main: self))
+        }
+
+        if player.currentCompositionLoadFailure?.compositionID == composition.id {
+            return AnyView(CompositionSourcesUnavailableView(main: self))
+        }
+
         // Common view parameters
         let aspectRatio = player.config.aspectRatio
         let displayResolution = player.config.playerResolution
@@ -299,6 +307,10 @@ final class Studio: ObservableObject {
                 currentSourceTime: currentSourceTimeBinding,
                 isPrimaryCompositionLoadInFlight: compositionLoadInFlightBinding,
                 hasPendingGeneratedNextComposition: pendingGeneratedNextCompositionBinding,
+                currentCompositionLoadFailure: Binding(
+                    get: { player.currentCompositionLoadFailure },
+                    set: { player.currentCompositionLoadFailure = $0 }
+                ),
                 isPaused: player.isPaused,
                 effectsChangeCounter: player.effectsChangeCounter,
                 hypnogramRevision: player.hypnogramRevision,
@@ -322,6 +334,19 @@ final class Studio: ObservableObject {
         }
     }
 
+    private func currentCompositionHasNoReachableSources(_ composition: Composition) -> Bool {
+        guard !composition.layers.isEmpty else { return false }
+
+        return !composition.layers.contains { layer in
+            switch layer.mediaClip.file.source {
+            case .url(let url):
+                return FileManager.default.fileExists(atPath: url.path)
+            case .external:
+                return state.photosAuthorizationStatus.canRead
+            }
+        }
+    }
+
     /// Build a hypnogram snapshot for display/export (timestamp + effects library snapshot)
     func makeDisplayHypnogram() -> Hypnogram {
         let createdAt = Date()
@@ -340,6 +365,10 @@ final class Studio: ObservableObject {
         } else {
             saveTargetsByCompositionID.removeValue(forKey: compositionID)
         }
+    }
+
+    func retryCurrentCompositionLoad() {
+        player.currentCompositionLoadFailure = nil
     }
 
     func assignSaveTargetIfUnambiguous(_ url: URL?, for compositions: [Composition]) {

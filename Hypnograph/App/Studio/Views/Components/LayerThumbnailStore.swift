@@ -13,6 +13,11 @@ final class LayerThumbnailStore: ObservableObject {
         cache[layer.mediaClip.file.id]
     }
 
+    func hasMissingLocalSource(for layer: Layer) -> Bool {
+        guard case .url(let url) = layer.mediaClip.file.source else { return false }
+        return !FileManager.default.fileExists(atPath: url.path)
+    }
+
     func loadIfNeeded(for layer: Layer, targetSize: CGSize) {
         let id = layer.mediaClip.file.id
         guard cache[id] == nil else { return }
