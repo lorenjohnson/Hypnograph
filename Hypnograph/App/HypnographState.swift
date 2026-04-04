@@ -58,13 +58,7 @@ final class HypnographState: ObservableObject {
         let settings = settingsStore.value
         let shouldClearPhotosSelections = Self.shouldClearPhotosSelections(for: initialPhotosAuthorizationStatus)
 
-        // Default to "Apple Photos: All Items" if available, otherwise folder sources
-        let defaultKey: String
-        if ApplePhotos.shared.status.canRead && ApplePhotos.shared.countAllAssets() > 0 {
-            defaultKey = ApplePhotosLibraryKeys.photosAll
-        } else {
-            defaultKey = settings.defaultSourceLibraryKey
-        }
+        let defaultKey = settings.defaultSourceLibraryKey
 
         // Load saved library keys from settings, or use defaults
         let activeKeys: Set<String>
@@ -146,21 +140,6 @@ final class HypnographState: ObservableObject {
         ) else { return }
 
         await applyActiveLibrariesUnified(newKeys, save: true)
-    }
-
-    func activatePhotosAllIfAvailable() async {
-        // Shared post-auth fallback: if Photos is authorized but the active library is empty,
-        // ensure Photos "All Items" is selected. This is centralized in HypnoCore so both
-        // Hypnograph + Divine behave identically.
-        let result = ApplePhotosCoordinator.ensurePhotosAllIfAuthorizedAndLibraryEmpty(
-            activeKeys: activeLibraryKeys,
-            libraryAssetCount: library.assetCount,
-            photosCanRead: ApplePhotos.shared.status.canRead,
-            photosAllAssetsCount: ApplePhotos.shared.countAllAssets()
-        )
-
-        guard result.didChange else { return }
-        await applyActiveLibrariesUnified(result.keys, save: true)
     }
 
     /// Apply a unified set of active library keys (both folder and Photos)
@@ -251,7 +230,6 @@ final class HypnographState: ObservableObject {
         guard status.canRead else { return }
 
         for _ in 0..<6 {
-            await activatePhotosAllIfAvailable()
             await refreshAvailableLibraries()
 
             if availableLibraries.contains(where: { $0.type == .applePhotos }) {
