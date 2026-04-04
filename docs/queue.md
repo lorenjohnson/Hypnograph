@@ -14,6 +14,9 @@ last_reviewed: 2026-04-04
 
 ## Backlog Projects
 
+- [history-as-editing-surface-spike](backlog/history-as-editing-surface-spike.md)
+- [demo-source-set](backlog/demo-source-set.md)
+- [audio-sources-spike](backlog/audio-sources-spike.md)
 - [panel-grid-and-default-layout](backlog/panel-grid-and-default-layout.md)
 - [sequence-render-and-export](backlog/sequence-render-and-export.md)
 - [contextual-help](backlog/contextual-help.md)
