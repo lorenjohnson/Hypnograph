@@ -18,7 +18,7 @@ updated: 2026-04-04
   <p class="download-subtext">There are a couple of extra steps to running the beta app at this time. See <a href="/reference/installing-the-beta">beta install steps</a>.</p>
 </aside>
 
-## Your Archive, Newly Alive
+## A Dream Machine
 
 Instead of browsing your archive like a filing cabinet, Hypnograph replays your photos and videos as evolving, remixable sequences. It can begin in a generative mode where surprising combinations emerge quickly, and it can also be steered into deliberate composition through clip selection, timing, layering, blend modes, and effect chains.
 
