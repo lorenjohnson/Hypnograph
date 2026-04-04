@@ -20,17 +20,10 @@ struct CompositionSourcesUnavailableView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 560)
 
-            HStack(spacing: 12) {
-                Button("Try Again") {
-                    main.retryCurrentCompositionLoad()
-                }
-                .buttonStyle(.borderedProminent)
-
-                Button("Configure Sources") {
-                    main.revealSourcesWindow()
-                }
-                .buttonStyle(.bordered)
+            Button("Configure Sources") {
+                main.revealSourcesWindow()
             }
+            .buttonStyle(.borderedProminent)
         }
         .padding(28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

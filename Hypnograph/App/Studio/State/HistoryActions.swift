@@ -160,8 +160,16 @@ extension Studio {
     }
 
     func applyCompositionSelectionChanged(manual: Bool) {
-        DispatchQueue.main.async { [weak self] in
+        let selectedCompositionID = player.currentComposition.id
+        compositionSelectionUpdateToken &+= 1
+        let token = compositionSelectionUpdateToken
+        compositionSelectionWorkItem?.cancel()
+
+        let workItem = DispatchWorkItem { [weak self] in
             guard let self else { return }
+            guard self.compositionSelectionUpdateToken == token else { return }
+            guard self.player.currentComposition.id == selectedCompositionID else { return }
+
             self.player.currentCompositionLoadFailure = nil
             self.player.clampCurrentSourceIndex()
             self.player.currentClipTimeOffset = nil
@@ -173,6 +181,9 @@ extension Studio {
                 self.flashHistoryIndicator()
             }
         }
+
+        compositionSelectionWorkItem = workItem
+        DispatchQueue.main.async(execute: workItem)
     }
 
     func previousComposition() {

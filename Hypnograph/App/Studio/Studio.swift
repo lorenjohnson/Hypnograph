@@ -67,6 +67,8 @@ final class Studio: ObservableObject {
     @Published var historyIndicatorText: String?
 
     var historyIndicatorClearWorkItem: DispatchWorkItem?
+    var compositionSelectionWorkItem: DispatchWorkItem?
+    var compositionSelectionUpdateToken: UInt64 = 0
 
     // MARK: - History Persistence
 
@@ -365,10 +367,6 @@ final class Studio: ObservableObject {
         } else {
             saveTargetsByCompositionID.removeValue(forKey: compositionID)
         }
-    }
-
-    func retryCurrentCompositionLoad() {
-        player.currentCompositionLoadFailure = nil
     }
 
     func assignSaveTargetIfUnambiguous(_ url: URL?, for compositions: [Composition]) {
