@@ -15,6 +15,9 @@ import HypnoCore
 /// Maintains its own hypnogram, playback state, and generation settings.
 @MainActor
 final class PlayerState: ObservableObject {
+    struct CompositionLoadFailure: Equatable {
+        let compositionID: UUID
+    }
 
     // MARK: - Hypnogram
 
@@ -45,6 +48,16 @@ final class PlayerState: ObservableObject {
 
     /// When true, global effect chain is temporarily bypassed (e.g., while holding 0 key)
     @Published var isGlobalEffectSuspended: Bool = false
+
+    /// True while the primary player is building/loading the current composition.
+    @Published var isPrimaryCompositionLoadInFlight: Bool = false
+
+    /// True while a manually generated "next" composition at the end of history
+    /// is still unresolved and has not yet started transitioning in.
+    var hasPendingGeneratedNextComposition: Bool = false
+
+    /// Set when the current composition failed to resolve any playable sources.
+    @Published var currentCompositionLoadFailure: CompositionLoadFailure?
 
     // MARK: - Player Configuration
 

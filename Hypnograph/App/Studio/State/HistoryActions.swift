@@ -160,19 +160,36 @@ extension Studio {
     }
 
     func applyCompositionSelectionChanged(manual: Bool) {
-        player.clampCurrentSourceIndex()
-        player.currentClipTimeOffset = nil
-        player.effectManager.clearFrameBuffer()
-        player.effectManager.invalidateBlendAnalysis()
-        player.notifyHypnogramChanged()
+        let selectedCompositionID = player.currentComposition.id
+        compositionSelectionUpdateToken &+= 1
+        let token = compositionSelectionUpdateToken
+        compositionSelectionWorkItem?.cancel()
 
-        if manual {
-            flashHistoryIndicator()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            guard self.compositionSelectionUpdateToken == token else { return }
+            guard self.player.currentComposition.id == selectedCompositionID else { return }
+
+            self.player.currentCompositionLoadFailure = nil
+            self.player.clampCurrentSourceIndex()
+            self.player.currentClipTimeOffset = nil
+            self.player.effectManager.clearFrameBuffer()
+            self.player.effectManager.invalidateBlendAnalysis()
+            self.player.notifyHypnogramChanged()
+
+            if manual {
+                self.flashHistoryIndicator()
+            }
         }
+
+        compositionSelectionWorkItem = workItem
+        DispatchQueue.main.async(execute: workItem)
     }
 
     func previousComposition() {
         guard player.currentCompositionIndex > 0 else { return }
+        player.hasPendingGeneratedNextComposition = false
+        player.currentCompositionLoadFailure = nil
         player.currentCompositionIndex -= 1
         applyCompositionSelectionChanged(manual: true)
     }
@@ -180,9 +197,13 @@ extension Studio {
     func nextComposition() {
         let nextIndex = player.currentCompositionIndex + 1
         if nextIndex < player.hypnogram.compositions.count {
+            player.hasPendingGeneratedNextComposition = false
+            player.currentCompositionLoadFailure = nil
             player.currentCompositionIndex = nextIndex
             applyCompositionSelectionChanged(manual: true)
         } else {
+            guard !player.hasPendingGeneratedNextComposition else { return }
+            player.hasPendingGeneratedNextComposition = true
             appendNewCompositionAndSelect(manual: false)
         }
     }

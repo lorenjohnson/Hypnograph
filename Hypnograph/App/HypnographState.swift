@@ -51,33 +51,38 @@ final class HypnographState: ObservableObject {
         self.sourceFavoritesStore = sourceFavoritesStore
 
         ApplePhotos.shared.refreshStatus()
-        self.photosAuthorizationStatus = ApplePhotos.shared.status
+        let initialPhotosAuthorizationStatus = ApplePhotos.shared.status
+        self.photosAuthorizationStatus = initialPhotosAuthorizationStatus
 
         // Local alias for init (self.settings is a computed property that can't be used yet)
         let settings = settingsStore.value
+        let shouldClearPhotosSelections = Self.shouldClearPhotosSelections(for: initialPhotosAuthorizationStatus)
 
-        // Default to "Apple Photos: All Items" if available, otherwise folder sources
-        let defaultKey: String
-        if ApplePhotos.shared.status.canRead && ApplePhotos.shared.countAllAssets() > 0 {
-            defaultKey = ApplePhotosLibraryKeys.photosAll
-        } else {
-            defaultKey = settings.defaultSourceLibraryKey
-        }
+        let defaultKey = settings.defaultSourceLibraryKey
 
         // Load saved library keys from settings, or use defaults
         let activeKeys: Set<String>
         if !settings.activeLibraries.isEmpty {
-            activeKeys = Set(settings.activeLibraries)
+            activeKeys = shouldClearPhotosSelections
+                ? Set(settings.activeLibraries).filter { !$0.hasPrefix(ApplePhotosLibraryKeys.photosPrefix) }
+                : Set(settings.activeLibraries)
         } else {
-            activeKeys = [defaultKey]
+            activeKeys = shouldClearPhotosSelections ? [] : [defaultKey]
         }
 
-        self.currentLibraryKey = defaultKey
+        self.currentLibraryKey = activeKeys.first ?? settings.defaultSourceLibraryKey
         self.activeLibraryKeys = activeKeys
 
         // Load custom photo selection BEFORE building library so it's included
-        let loadedCustomIds = Self.loadCustomSelectionFromDisk()
+        let loadedCustomIds = shouldClearPhotosSelections ? [] : Self.loadCustomSelectionFromDisk()
         self.customPhotosAssetIds = loadedCustomIds
+
+        if shouldClearPhotosSelections {
+            Self.saveCustomSelectionToDisk([])
+            settingsStore.update { settings in
+                settings.activeLibraries = Array(activeKeys)
+            }
+        }
 
         // Build initial library with custom selection
         self.library = MediaLibraryBuilder.buildLibrary(
@@ -137,21 +142,6 @@ final class HypnographState: ObservableObject {
         await applyActiveLibrariesUnified(newKeys, save: true)
     }
 
-    func activatePhotosAllIfAvailable() async {
-        // Shared post-auth fallback: if Photos is authorized but the active library is empty,
-        // ensure Photos "All Items" is selected. This is centralized in HypnoCore so both
-        // Hypnograph + Divine behave identically.
-        let result = ApplePhotosCoordinator.ensurePhotosAllIfAuthorizedAndLibraryEmpty(
-            activeKeys: activeLibraryKeys,
-            libraryAssetCount: library.assetCount,
-            photosCanRead: ApplePhotos.shared.status.canRead,
-            photosAllAssetsCount: ApplePhotos.shared.countAllAssets()
-        )
-
-        guard result.didChange else { return }
-        await applyActiveLibrariesUnified(result.keys, save: true)
-    }
-
     /// Apply a unified set of active library keys (both folder and Photos)
     private func applyActiveLibrariesUnified(_ keys: Set<String>, save: Bool) async {
         activeLibraryKeys = keys
@@ -180,7 +170,9 @@ final class HypnographState: ObservableObject {
     /// Re-sync active library selection from persisted settings before rebuilding.
     /// This is needed when settings mutations happen outside the usual toggle path.
     func reloadActiveLibrariesFromSettings() async {
-        let persistedKeys = Set(settings.activeLibraries)
+        let persistedKeys = Set(settings.activeLibraries).filter {
+            photosAuthorizationStatus.canRead || !$0.hasPrefix(ApplePhotosLibraryKeys.photosPrefix)
+        }
         let keysToApply = persistedKeys.isEmpty ? [settings.defaultSourceLibraryKey] : persistedKeys
         await applyActiveLibrariesUnified(keysToApply, save: false)
     }
@@ -207,9 +199,10 @@ final class HypnographState: ObservableObject {
                 }
 
                 settingsStore.update { $0.sourceMediaTypes = types }
-                // Rebuild library with new filter - reapply current libraries
+                // Rebuild the active library and refresh the source inventory counts
+                // shown in the Sources panel so this change reflects immediately.
                 await applyActiveLibrariesUnified(activeLibraryKeys, save: false)
-                AppNotifications.show("Takes effect on next Hypnogram", flash: true, duration: 1.5)
+                await refreshAvailableLibraries()
             }
         }
     }
@@ -237,7 +230,6 @@ final class HypnographState: ObservableObject {
         guard status.canRead else { return }
 
         for _ in 0..<6 {
-            await activatePhotosAllIfAvailable()
             await refreshAvailableLibraries()
 
             if availableLibraries.contains(where: { $0.type == .applePhotos }) {
@@ -261,6 +253,11 @@ final class HypnographState: ObservableObject {
         ApplePhotos.shared.refreshStatus()
         let status = ApplePhotos.shared.status
         photosAuthorizationStatus = status
+        if Self.shouldClearPhotosSelections(for: status) {
+            Task { @MainActor in
+                await clearPhotosSelectionsIfNeeded()
+            }
+        }
         return status
     }
 
@@ -278,6 +275,8 @@ final class HypnographState: ObservableObject {
 
         if refreshedStatus.canRead {
             await refreshPhotosLibrariesAfterAuthorization()
+        } else if Self.shouldClearPhotosSelections(for: refreshedStatus) {
+            await clearPhotosSelectionsIfNeeded()
         }
 
         return refreshedStatus
@@ -338,14 +337,18 @@ final class HypnographState: ObservableObject {
         }
     }
 
-    /// Save custom selection to disk
-    private func saveCustomSelectionToDisk() {
+    private static func saveCustomSelectionToDisk(_ identifiers: [String]) {
         do {
-            let data = try JSONEncoder().encode(customPhotosAssetIds)
-            try data.write(to: Self.customSelectionFileURL)
+            let data = try JSONEncoder().encode(identifiers)
+            try data.write(to: customSelectionFileURL)
         } catch {
             print("HypnographState: Failed to save custom selection: \(error)")
         }
+    }
+
+    /// Save custom selection to disk
+    private func saveCustomSelectionToDisk() {
+        Self.saveCustomSelectionToDisk(customPhotosAssetIds)
     }
 
     /// Save settings to disk (public - call after modifying state.settings via settingsStore.update)
@@ -355,5 +358,34 @@ final class HypnographState: ObservableObject {
 
     var isKeyboardTextInputActive: Bool {
         KeyboardTextInputContext.isTypingInKeyOrMainWindow()
+    }
+
+    private static func shouldClearPhotosSelections(for status: ApplePhotos.AuthorizationStatus) -> Bool {
+        status == .denied || status == .restricted
+    }
+
+    private func clearPhotosSelectionsIfNeeded() async {
+        let retainedKeys = activeLibraryKeys.filter { !$0.hasPrefix(ApplePhotosLibraryKeys.photosPrefix) }
+        let didChangeLibraries = retainedKeys != activeLibraryKeys
+        let hadCustomSelection = !customPhotosAssetIds.isEmpty
+
+        guard didChangeLibraries || hadCustomSelection else { return }
+
+        if hadCustomSelection {
+            customPhotosAssetIds = []
+            saveCustomSelectionToDisk()
+        }
+
+        if didChangeLibraries {
+            await applyActiveLibrariesUnified(retainedKeys, save: true)
+        } else {
+            settingsStore.update { settings in
+                settings.activeLibraries = settings.activeLibraries.filter {
+                    !$0.hasPrefix(ApplePhotosLibraryKeys.photosPrefix)
+                }
+            }
+        }
+
+        await refreshAvailableLibraries()
     }
 }

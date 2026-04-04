@@ -19,4 +19,14 @@ extension Studio {
     func requestPhotosAccess() async -> ApplePhotos.AuthorizationStatus {
         await state.requestPhotosAuthorizationIfNeeded()
     }
+
+    func openApplePhotosPrivacySettings() {
+        Environment.openApplePhotosPrivacySettings()
+    }
+
+    func revealSourcesWindow() {
+        windows.setPanelsHidden(false)
+        NotificationCenter.default.post(name: ContentView.studioShowPanelsNowNotification, object: nil)
+        windows.setWindowVisible("sourcesWindow", visible: true)
+    }
 }

@@ -23,6 +23,9 @@ struct PlayerView: NSViewRepresentable {
     let onCompositionEnded: (() -> Bool)?
     @Binding var currentLayerIndex: Int
     @Binding var currentSourceTime: CMTime?
+    @Binding var isPrimaryCompositionLoadInFlight: Bool
+    @Binding var hasPendingGeneratedNextComposition: Bool
+    @Binding var currentCompositionLoadFailure: PlayerState.CompositionLoadFailure?
     let isPaused: Bool
     let effectsChangeCounter: Int
     let hypnogramRevision: Int
@@ -72,6 +75,7 @@ struct PlayerView: NSViewRepresentable {
         var contentView: PlayerContentView?
         var stillClipTimer: Timer?
         var compositionID: String?
+        var bindingUpdateToken: UInt64 = 0
         var currentTask: Task<Void, Never>?
         var lastPauseState: Bool?
         var lastEffectsCounter: Int?
@@ -130,6 +134,11 @@ struct PlayerView: NSViewRepresentable {
             playbackTimeObservers.removeAll()
         }
 
+        func beginBindingUpdateCycle() -> UInt64 {
+            bindingUpdateToken &+= 1
+            return bindingUpdateToken
+        }
+
     }
 
     func makeCoordinator() -> Coordinator {
@@ -160,13 +169,16 @@ struct PlayerView: NSViewRepresentable {
         }
 
         guard !composition.layers.isEmpty else {
+            let bindingUpdateToken = c.beginBindingUpdateCycle()
             // Just pause, don't tear down - sources might be added back immediately
             c.contentView?.activeAVPlayer?.pause()
             c.currentTask?.cancel()
             c.currentTask = nil
             c.compositionID = nil
+            deferCompositionLoadInFlight(false, coordinator: c, token: bindingUpdateToken)
+            hasPendingGeneratedNextComposition = false
             if currentSourceTime != nil {
-                currentSourceTime = nil
+                deferCurrentSourceTime(nil, coordinator: c, token: bindingUpdateToken)
             }
             c.stillClipTimer?.invalidate()
             c.stillClipTimer = nil
@@ -183,12 +195,15 @@ struct PlayerView: NSViewRepresentable {
 
         if newID != c.compositionID {
             let previousID = c.compositionID
+            let bindingUpdateToken = c.beginBindingUpdateCycle()
 
             freezeOutgoingEffectsIfNeeded(coordinator: c, previousID: previousID)
 
             c.currentTask?.cancel()
             c.compositionID = newID
             c.didRequestPreEndAdvance = false
+            deferCompositionLoadInFlight(true, coordinator: c, token: bindingUpdateToken)
+            deferCompositionLoadFailure(nil, coordinator: c, token: bindingUpdateToken)
 
             c.currentTask = Task { @MainActor in
                 let engine = RenderEngine()
@@ -206,6 +221,8 @@ struct PlayerView: NSViewRepresentable {
                 )
 
                 guard !Task.isCancelled else {
+                    deferCompositionLoadInFlight(false, coordinator: c, token: bindingUpdateToken)
+                    hasPendingGeneratedNextComposition = false
                     if c.compositionID == newID { c.compositionID = nil }
                     return
                 }
@@ -214,6 +231,7 @@ struct PlayerView: NSViewRepresentable {
 
                 switch result {
                 case .success(let playerItem):
+                    deferCompositionLoadFailure(nil, coordinator: c, token: bindingUpdateToken)
                     // Create or reuse content view
                     let content: PlayerContentView
                     if let existing = c.contentView {
@@ -277,6 +295,8 @@ struct PlayerView: NSViewRepresentable {
                             c.isAutoAdvanceInFlight = false
                         }
                     }
+                    deferCompositionLoadInFlight(false, coordinator: c, token: bindingUpdateToken)
+                    hasPendingGeneratedNextComposition = false
 
                     c.lastPauseState = self.isPaused
                     c.lastEffectsCounter = effectsChangeCounter
@@ -293,11 +313,18 @@ struct PlayerView: NSViewRepresentable {
                     self.setupPlaybackEndHandling(content: content, coordinator: c)
 
                 case .failure(let error):
+                    deferCompositionLoadInFlight(false, coordinator: c, token: bindingUpdateToken)
+                    hasPendingGeneratedNextComposition = false
+                    if case .allSourcesFailedToLoad = error {
+                        deferCompositionLoadFailure(.init(compositionID: composition.id), coordinator: c, token: bindingUpdateToken)
+                    } else {
+                        deferCompositionLoadFailure(nil, coordinator: c, token: bindingUpdateToken)
+                    }
                     error.log(context: "PlayerView")
                     c.compositionID = nil
                     c.isAutoAdvanceInFlight = false
                     if currentSourceTime != nil {
-                        currentSourceTime = nil
+                        deferCurrentSourceTime(nil, coordinator: c, token: bindingUpdateToken)
                     }
                 }
             }
@@ -369,6 +396,36 @@ struct PlayerView: NSViewRepresentable {
         if c.audioDeviceChanged(to: audioDeviceUID) {
             c.contentView?.setAudioOutputDevice(audioDeviceUID)
             c.lastAudioDeviceUID = audioDeviceUID
+        }
+    }
+
+    private func deferCompositionLoadInFlight(_ value: Bool, coordinator: Coordinator, token: UInt64) {
+        guard isPrimaryCompositionLoadInFlight != value else { return }
+        DispatchQueue.main.async {
+            guard coordinator.bindingUpdateToken == token else { return }
+            self.isPrimaryCompositionLoadInFlight = value
+        }
+    }
+
+    private func deferCompositionLoadFailure(
+        _ value: PlayerState.CompositionLoadFailure?,
+        coordinator: Coordinator,
+        token: UInt64
+    ) {
+        guard currentCompositionLoadFailure != value else { return }
+        DispatchQueue.main.async {
+            guard coordinator.bindingUpdateToken == token else { return }
+            self.currentCompositionLoadFailure = value
+        }
+    }
+
+    private func deferCurrentSourceTime(_ value: CMTime?, coordinator: Coordinator, token: UInt64) {
+        let currentSeconds = currentSourceTime?.seconds
+        let newSeconds = value?.seconds
+        guard currentSeconds != newSeconds || (currentSourceTime == nil) != (value == nil) else { return }
+        DispatchQueue.main.async {
+            guard coordinator.bindingUpdateToken == token else { return }
+            self.currentSourceTime = value
         }
     }
 

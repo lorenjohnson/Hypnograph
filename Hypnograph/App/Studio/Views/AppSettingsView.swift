@@ -209,6 +209,19 @@ struct AppSettingsView: View {
                 }
             )
         )
+
+        #if DEBUG
+        Divider()
+
+        settingsActionRow(
+            title: "Reset Debug State and Quit",
+            description: "Clears the Hypnograph-Debug application support directory, resets Apple Photos permission for Hypnograph, and then quits. The reset happens on the next debug launch before normal bootstrap.",
+            buttonTitle: "Reset",
+            isDestructive: true
+        ) {
+            Environment.queueDebugResetAndQuit()
+        }
+        #endif
     }
 
     @ViewBuilder

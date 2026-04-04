@@ -14,8 +14,11 @@ struct ContentView: View {
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
     @StateObject private var windowHostService = WindowHostService()
     @State private var panelsCurrentlyAutoHidden = false
+    @State private var completedDownloadIdentifiersThisLoad: Set<String> = []
+    @State private var previouslyVisibleDownloadIdentifiers: Set<String> = []
 
     private static let hidePanelsNowNotification = Notification.Name("StudioHidePanelsNow")
+    private static let showPanelsNowNotification = Notification.Name("StudioShowPanelsNow")
 
     init(state: HypnographState, main: Studio) {
         self.state = state
@@ -123,14 +126,95 @@ struct ContentView: View {
         return hasVideo && (main.activePlayer.isPaused == false)
     }
 
+    private struct CurrentCompositionDownloadRow: Identifiable, Equatable {
+        let id: String
+        let identifier: String
+        let title: String
+        let subtitle: String
+        let progress: Double
+    }
+
+    private var currentCompositionDownloadRows: [CurrentCompositionDownloadRow] {
+        guard !main.isLiveMode else { return [] }
+        guard main.activePlayer.isPrimaryCompositionLoadInFlight else { return [] }
+
+        let composition = main.activePlayer.currentComposition
+        guard !composition.layers.isEmpty else { return [] }
+
+        let latestDownloadsByIdentifier = Dictionary(
+            grouping: externalLoadHarness.activeDownloads,
+            by: \.localIdentifier
+        ).compactMapValues { $0.last }
+
+        return composition.layers.enumerated().compactMap { index, layer -> CurrentCompositionDownloadRow? in
+            guard case .external(let identifier) = layer.mediaClip.file.source,
+                  let status = latestDownloadsByIdentifier[identifier] else {
+                return nil
+            }
+
+            return CurrentCompositionDownloadRow(
+                id: "\(identifier)-\(index)",
+                identifier: identifier,
+                title: layer.mediaClip.file.displayName,
+                subtitle: status.mediaLabel,
+                progress: status.progress
+            )
+        }
+    }
+
+    private var visibleCurrentCompositionDownloadRows: [CurrentCompositionDownloadRow] {
+        currentCompositionDownloadRows.filter { row in
+            !completedDownloadIdentifiersThisLoad.contains(row.identifier)
+        }
+    }
+
+    private var hasTrackedDownloadsThisLoad: Bool {
+        !visibleCurrentCompositionDownloadRows.isEmpty ||
+        !previouslyVisibleDownloadIdentifiers.isEmpty ||
+        !completedDownloadIdentifiersThisLoad.isEmpty
+    }
+
+    private var shouldShowCurrentCompositionDownloadHUD: Bool {
+        main.activePlayer.isPrimaryCompositionLoadInFlight && hasTrackedDownloadsThisLoad
+    }
+
+    private var currentCompositionDownloadAggregateProgress: Double {
+        if !visibleCurrentCompositionDownloadRows.isEmpty {
+            return visibleCurrentCompositionDownloadRows.map(\.progress).min() ?? 0
+        }
+
+        if shouldShowCurrentCompositionDownloadHUD {
+            return 1
+        }
+
+        return 0
+    }
+
     @ViewBuilder
     private func topRightIndicatorBadge(_ indicator: (text: String, color: Color)) -> some View {
         Text(indicator.text)
-            .font(.system(size: 36, weight: .bold))
+            .font(.system(size: 24, weight: .bold))
             .foregroundStyle(indicator.color)
-            .padding(.vertical, 14)
-            .padding(.leading, 14)
-            .padding(.trailing, 28)
+            .padding(.vertical, 6)
+            .padding(.leading, 10)
+            .padding(.trailing, 6)
+            .frame(height: 34, alignment: .center)
+    }
+
+    @ViewBuilder
+    private func currentCompositionDownloadHUD(progress: Double) -> some View {
+        ProgressView(value: min(max(progress, 0), 1), total: 1)
+            .progressViewStyle(.circular)
+            .controlSize(.regular)
+            .frame(width: 20, height: 20)
+            .padding(3)
+            .background(
+                Circle()
+                    .fill(Color.black.opacity(0.22))
+            )
+        .frame(width: 30, height: 30, alignment: .center)
+        .accessibilityLabel("Apple Photos download progress")
+        .accessibilityValue("\(Int((progress * 100).rounded())) percent")
     }
 
     private var playerControlsContent: some View {
@@ -199,35 +283,37 @@ struct ContentView: View {
 
         }
         .overlay(alignment: .top) {
-            VStack(spacing: 8) {
-                if main.isLiveModeAvailable {
-                    Picker("", selection: Binding(
-                        get: { main.isLiveMode ? 1 : 0 },
-                        set: { newValue in
-                            if (newValue == 1) != main.isLiveMode {
-                                main.toggleLiveMode()
-                            }
+            if main.isLiveModeAvailable {
+                Picker("", selection: Binding(
+                    get: { main.isLiveMode ? 1 : 0 },
+                    set: { newValue in
+                        if (newValue == 1) != main.isLiveMode {
+                            main.toggleLiveMode()
                         }
-                    )) {
-                        Text("Edit").tag(0)
-                        Text("Live").tag(1)
                     }
-                    .pickerStyle(.segmented)
-                    .frame(width: 170)
+                )) {
+                    Text("Edit").tag(0)
+                    Text("Live").tag(1)
                 }
-
-                if let loadStatus = externalLoadHarness.status {
-                    externalLoadStatusBadge(loadStatus)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
+                .pickerStyle(.segmented)
+                .frame(width: 170)
+                .padding(.top, 12)
             }
-            .padding(.top, 12)
-            .animation(.easeInOut(duration: 0.2), value: externalLoadHarness.status)
         }
         .overlay(alignment: .topTrailing) {
-            if let indicator = topRightIndicator {
-                topRightIndicatorBadge(indicator)
+            HStack(alignment: .center, spacing: 4) {
+                if shouldShowCurrentCompositionDownloadHUD {
+                    currentCompositionDownloadHUD(progress: currentCompositionDownloadAggregateProgress)
+                        .transition(.scale(scale: 0.9).combined(with: .opacity))
+                }
+
+                if let indicator = topRightIndicator {
+                    topRightIndicatorBadge(indicator)
+                }
             }
+            .frame(height: 34, alignment: .trailing)
+            .padding(.top, 10)
+            .padding(.trailing, 12)
         }
         .overlay(alignment: .topTrailing) {
             // Right-side panels: Live panel (bottom)
@@ -300,6 +386,9 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: Self.hidePanelsNowNotification)) { _ in
             windowHostService.hidePanelsNow()
         }
+        .onReceive(NotificationCenter.default.publisher(for: Self.showPanelsNowNotification)) { _ in
+            windowHostService.showPanelsNow()
+        }
         .onAppear {
             windows.registerWindow("hypnogramList", defaultVisible: false)
             windows.registerWindow("sourcesWindow", defaultVisible: false)
@@ -307,6 +396,23 @@ struct ContentView: View {
             windows.registerWindow("outputSettingsWindow", defaultVisible: true)
             windows.registerWindow("compositionWindow", defaultVisible: true)
             windows.registerWindow("effectsWindow", defaultVisible: true)
+        }
+        .onChange(of: main.activePlayer.isPrimaryCompositionLoadInFlight) { _, isInFlight in
+            if isInFlight {
+                completedDownloadIdentifiersThisLoad = []
+                previouslyVisibleDownloadIdentifiers = Set(visibleCurrentCompositionDownloadRows.map(\.identifier))
+            } else {
+                completedDownloadIdentifiersThisLoad = []
+                previouslyVisibleDownloadIdentifiers = []
+            }
+        }
+        .onChange(of: visibleCurrentCompositionDownloadRows) { _, rows in
+            let currentIdentifiers = Set(rows.map(\.identifier))
+            let completedIdentifiers = previouslyVisibleDownloadIdentifiers.subtracting(currentIdentifiers)
+            if !completedIdentifiers.isEmpty {
+                completedDownloadIdentifiersThisLoad.formUnion(completedIdentifiers)
+            }
+            previouslyVisibleDownloadIdentifiers = currentIdentifiers
         }
         .sheet(isPresented: $state.showPhotosPicker) {
             PhotosPickerSheet(
@@ -331,37 +437,8 @@ struct ContentView: View {
         hidePanelsNowNotification
     }
 
-    @ViewBuilder
-    private func externalLoadStatusBadge(_ status: ExternalMediaLoadHarness.Status) -> some View {
-        HStack(spacing: 8) {
-            switch status.phase {
-            case .loading:
-                ProgressView()
-                    .controlSize(.small)
-            case .downloading:
-                ProgressView(value: status.progress ?? 0, total: 1)
-                    .frame(width: 86)
-            case .timeout, .failed:
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-            }
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(status.title)
-                    .font(.caption.weight(.semibold))
-                if let detail = status.detail {
-                    Text(detail)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .padding(.vertical, 7)
-        .padding(.horizontal, 10)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(
-            Capsule()
-                .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
-        )
+    static var studioShowPanelsNowNotification: Notification.Name {
+        showPanelsNowNotification
     }
+
 }

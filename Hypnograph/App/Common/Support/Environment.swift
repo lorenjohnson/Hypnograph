@@ -9,14 +9,22 @@ import AppKit
 import Foundation
 
 enum Environment {
-    static let appFolderName = "Hypnograph"
+    static var appFolderName: String {
+        #if DEBUG
+        "Hypnograph-Debug"
+        #else
+        "Hypnograph"
+        #endif
+    }
 
-    /// ~/Library/Application Support/Hypnograph
+    static var appSupportDirectoryURL: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        return base.appendingPathComponent(appFolderName, isDirectory: true)
+    }
+
     static var appSupportDirectory: URL {
         let fm = FileManager.default
-        let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let appDir = base.appendingPathComponent(appFolderName, isDirectory: true)
-
+        let appDir = appSupportDirectoryURL
         if !fm.fileExists(atPath: appDir.path) {
             try? fm.createDirectory(
                 at: appDir,
@@ -27,6 +35,68 @@ enum Environment {
 
         return appDir
     }
+
+    #if DEBUG
+    private static var pendingDebugResetMarkerURL: URL {
+        URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("hypnograph-debug-reset-pending", isDirectory: false)
+    }
+
+    static func performPendingDebugResetIfNeeded() {
+        let fm = FileManager.default
+        let markerURL = pendingDebugResetMarkerURL
+        guard fm.fileExists(atPath: markerURL.path) else { return }
+
+        try? fm.removeItem(at: markerURL)
+        resetPhotosPermissionForDebug()
+        eraseDebugAppSupportDirectory()
+    }
+
+    static func queueDebugResetAndQuit() {
+        let markerURL = pendingDebugResetMarkerURL
+        let fm = FileManager.default
+        let dir = markerURL.deletingLastPathComponent()
+        if !fm.fileExists(atPath: dir.path) {
+            try? fm.createDirectory(at: dir, withIntermediateDirectories: true, attributes: nil)
+        }
+        try? "pending".write(to: markerURL, atomically: true, encoding: .utf8)
+        NSApp.terminate(nil)
+    }
+
+    static func resetPhotosPermissionForDebug() {
+        let bundleID = Bundle.main.bundleIdentifier ?? "lorenjohnson.Hypnograph"
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+        process.arguments = ["reset", "Photos", bundleID]
+        do {
+            try process.run()
+            process.waitUntilExit()
+            if process.terminationStatus != 0 {
+                print("Debug reset: failed to reset Photos permission (exit \(process.terminationStatus))")
+            }
+        } catch {
+            print("Debug reset: failed to reset Photos permission: \(error)")
+        }
+    }
+
+    private static func eraseDebugAppSupportDirectory() {
+        let url = appSupportDirectoryURL
+        let lastPath = url.lastPathComponent
+        guard lastPath.contains("Debug") else {
+            print("Debug reset: refusing to erase non-debug directory \(url.path)")
+            return
+        }
+
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: url.path) else { return }
+
+        do {
+            try fm.removeItem(at: url)
+        } catch {
+            print("Debug reset: failed to erase debug directory \(url.path): \(error)")
+        }
+    }
+    #endif
 
     /// ~/Library/Application Support/Hypnograph/Tools
     static var toolsDirectory: URL {
@@ -129,6 +199,23 @@ enum Environment {
         ensureDefaultStudioSettingsFileExists()
         ensureDefaultAppSettingsFileExists()
         ensureDefaultEffectsComposerSettingsFileExists()
+    }
+
+    static func openApplePhotosPrivacySettings() {
+        let candidates = [
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Photos",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy"
+        ]
+
+        for candidate in candidates {
+            if let url = URL(string: candidate), NSWorkspace.shared.open(url) {
+                return
+            }
+        }
+
+        if let settingsURL = URL(string: "x-apple.systempreferences:") {
+            _ = NSWorkspace.shared.open(settingsURL)
+        }
     }
 
     /// Ensures a valid, decodable settings file exists at the provided URL.

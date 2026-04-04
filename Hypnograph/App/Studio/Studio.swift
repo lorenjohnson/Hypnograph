@@ -67,6 +67,8 @@ final class Studio: ObservableObject {
     @Published var historyIndicatorText: String?
 
     var historyIndicatorClearWorkItem: DispatchWorkItem?
+    var compositionSelectionWorkItem: DispatchWorkItem?
+    var compositionSelectionUpdateToken: UInt64 = 0
 
     // MARK: - History Persistence
 
@@ -254,9 +256,21 @@ final class Studio: ObservableObject {
         }
 
         let player = activePlayer
+        let composition = player.currentComposition
+
+        if currentCompositionRequiresPhotosAccess(composition) && !state.photosAuthorizationStatus.canRead {
+            return AnyView(PhotosAccessRequiredView(state: state, main: self))
+        }
+
+        if currentCompositionHasNoReachableSources(composition) {
+            return AnyView(CompositionSourcesUnavailableView(main: self))
+        }
+
+        if player.currentCompositionLoadFailure?.compositionID == composition.id {
+            return AnyView(CompositionSourcesUnavailableView(main: self))
+        }
 
         // Common view parameters
-        let composition = player.currentComposition
         let aspectRatio = player.config.aspectRatio
         let displayResolution = player.config.playerResolution
         let sourceFraming = state.settings.sourceFraming
@@ -273,6 +287,14 @@ final class Studio: ObservableObject {
             get: { player.currentClipTimeOffset },
             set: { player.currentClipTimeOffset = $0 }
         )
+        let compositionLoadInFlightBinding = Binding(
+            get: { player.isPrimaryCompositionLoadInFlight },
+            set: { player.isPrimaryCompositionLoadInFlight = $0 }
+        )
+        let pendingGeneratedNextCompositionBinding = Binding(
+            get: { player.hasPendingGeneratedNextComposition },
+            set: { player.hasPendingGeneratedNextComposition = $0 }
+        )
         let viewID = "main-preview-\(player.config.viewID)-\(player.playRate)"
 
         return AnyView(
@@ -285,6 +307,12 @@ final class Studio: ObservableObject {
                 onCompositionEnded: onCompositionEnded,
                 currentLayerIndex: currentLayerIndexBinding,
                 currentSourceTime: currentSourceTimeBinding,
+                isPrimaryCompositionLoadInFlight: compositionLoadInFlightBinding,
+                hasPendingGeneratedNextComposition: pendingGeneratedNextCompositionBinding,
+                currentCompositionLoadFailure: Binding(
+                    get: { player.currentCompositionLoadFailure },
+                    set: { player.currentCompositionLoadFailure = $0 }
+                ),
                 isPaused: player.isPaused,
                 effectsChangeCounter: player.effectsChangeCounter,
                 hypnogramRevision: player.hypnogramRevision,
@@ -297,6 +325,28 @@ final class Studio: ObservableObject {
             )
             .id(viewID)
         )
+    }
+
+    private func currentCompositionRequiresPhotosAccess(_ composition: Composition) -> Bool {
+        composition.layers.contains { layer in
+            if case .external = layer.mediaClip.file.source {
+                return true
+            }
+            return false
+        }
+    }
+
+    private func currentCompositionHasNoReachableSources(_ composition: Composition) -> Bool {
+        guard !composition.layers.isEmpty else { return false }
+
+        return !composition.layers.contains { layer in
+            switch layer.mediaClip.file.source {
+            case .url(let url):
+                return FileManager.default.fileExists(atPath: url.path)
+            case .external:
+                return state.photosAuthorizationStatus.canRead
+            }
+        }
     }
 
     /// Build a hypnogram snapshot for display/export (timestamp + effects library snapshot)

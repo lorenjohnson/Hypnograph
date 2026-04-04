@@ -21,6 +21,10 @@ struct HypnographApp: App {
         // Disable macOS window tabbing (must be set before any windows are created)
         NSWindow.allowsAutomaticWindowTabbing = false
 
+        #if DEBUG
+        Environment.performPendingDebugResetIfNeeded()
+        #endif
+
         Environment.ensureDefaultSettingsFilesExist()
 
         let settingsStore = StudioSettingsStore()
