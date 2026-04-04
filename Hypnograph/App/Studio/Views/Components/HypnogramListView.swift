@@ -10,7 +10,7 @@ import SwiftUI
 /// Tab selection for the list
 enum HypnogramListTab: String, CaseIterable {
     case favorites = "Favorites"
-    case recent = "Recent"
+    case recent = "Recently Saved"
 }
 
 /// Panel displaying saved hypnograms

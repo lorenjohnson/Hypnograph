@@ -89,15 +89,18 @@ final class RangeSliderControl: NSControl {
         NSColor.secondaryLabelColor.withAlphaComponent(0.3).setFill()
         trackPath.fill()
 
-        let selectionRect = NSRect(
-            x: lowerCenterX,
-            y: trackRect.minY,
-            width: max(thumbDiameter, upperCenterX - lowerCenterX),
-            height: trackRect.height
-        )
-        let selectionPath = NSBezierPath(roundedRect: selectionRect, xRadius: trackHeight / 2, yRadius: trackHeight / 2)
-        NSColor.controlAccentColor.setFill()
-        selectionPath.fill()
+        let selectedWidth = upperCenterX - lowerCenterX
+        if selectedWidth > 0.5 {
+            let selectionRect = NSRect(
+                x: lowerCenterX,
+                y: trackRect.minY,
+                width: selectedWidth,
+                height: trackRect.height
+            )
+            let selectionPath = NSBezierPath(roundedRect: selectionRect, xRadius: trackHeight / 2, yRadius: trackHeight / 2)
+            NSColor.controlAccentColor.setFill()
+            selectionPath.fill()
+        }
 
         drawThumb(centerX: lowerCenterX, active: activeThumb == .lower)
         drawThumb(centerX: upperCenterX, active: activeThumb == .upper)

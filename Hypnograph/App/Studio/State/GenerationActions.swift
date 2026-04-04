@@ -122,14 +122,6 @@ extension Studio {
     func advanceOrGenerateOnCompositionEnded() -> Bool {
         guard state.settings.playbackEndBehavior == .autoAdvance else { return false }
 
-        if timelinePlaybackDirection < 0 {
-            let previousIndex = player.currentCompositionIndex - 1
-            guard previousIndex >= 0 else { return false }
-            player.currentCompositionIndex = previousIndex
-            applyCompositionSelectionChanged(manual: false)
-            return true
-        }
-
         let nextIndex = player.currentCompositionIndex + 1
         if nextIndex < player.hypnogram.compositions.count {
             player.currentCompositionIndex = nextIndex

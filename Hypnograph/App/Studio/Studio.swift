@@ -319,7 +319,6 @@ final class Studio: ObservableObject {
                 effectManager: player.effectManager,
                 volume: volume,
                 audioDeviceUID: audioDeviceUID,
-                historyPlaybackRate: timelinePlaybackRate,
                 transitionStyle: state.settings.transitionStyle,
                 transitionDuration: state.settings.transitionDuration
             )

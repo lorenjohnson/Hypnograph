@@ -6,10 +6,10 @@ last_reviewed: 2026-04-04
 
 ## Active Projects
 
-- [new-compositions-advanced-source-selection](active/new-compositions-advanced-source-selection.md)
 - [effects-and-effect-chain-ux](active/effects-and-effect-chain-ux/index.md)
-- [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
+- [panel-grid-and-default-layout](backlog/panel-grid-and-default-layout.md)
 - [sequences](active/sequences.md)
+- [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
 - Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause a crash?
 
 ## Backlog Projects
@@ -17,7 +17,7 @@ last_reviewed: 2026-04-04
 - [history-as-editing-surface-spike](backlog/history-as-editing-surface-spike.md)
 - [demo-source-set](backlog/demo-source-set.md)
 - [audio-sources-spike](backlog/audio-sources-spike.md)
-- [panel-grid-and-default-layout](backlog/panel-grid-and-default-layout.md)
+- [new-compositions-advanced-source-selection](backlog/new-compositions-advanced-source-selection.md)
 - [sequence-render-and-export](backlog/sequence-render-and-export.md)
 - [contextual-help](backlog/contextual-help.md)
 - [hypnograms-window-relevance-and-model-clarity](backlog/hypnograms-window-relevance-and-model-clarity.md)

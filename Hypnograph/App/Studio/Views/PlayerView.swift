@@ -34,9 +34,6 @@ struct PlayerView: NSViewRepresentable {
     let volume: Float
     /// Audio output device UID (nil = system default)
     var audioDeviceUID: String? = nil
-    /// Signed history playback rate used for auto-advance timing and direction.
-    /// Positive values move forward, negative values move backward.
-    var historyPlaybackRate: Double = 1.0
     /// Transition style for composition changes
     var transitionStyle: TransitionRenderer.TransitionType = .crossfade
     /// Transition duration in seconds
@@ -81,7 +78,6 @@ struct PlayerView: NSViewRepresentable {
         var lastEffectsCounter: Int?
         var lastSessionRevision: Int?
         var playRate: Float = 0.8
-        var historyPlaybackRate: Double = 1.0
         var lastAppliedPlayRate: Float?
         var transitionDuration: Double = 1.5
         var lastVolume: Float?
@@ -158,7 +154,6 @@ struct PlayerView: NSViewRepresentable {
 
         // Always update playRate so closures use current value
         c.playRate = composition.playRate
-        c.historyPlaybackRate = Self.normalizedHistoryPlaybackRate(historyPlaybackRate)
         c.transitionDuration = transitionDuration
         c.autoAdvanceOnCompositionEnd = autoAdvanceOnCompositionEnd
         c.onCompositionEnded = onCompositionEnded
@@ -580,8 +575,7 @@ struct PlayerView: NSViewRepresentable {
 
         guard c.autoAdvanceOnCompositionEnd, c.lastPauseState != true else { return }
 
-        let speed = max(1.0, abs(c.historyPlaybackRate))
-        let seconds = max(0.05, composition.effectiveDuration.seconds / speed)
+        let seconds = max(0.05, composition.effectiveDuration.seconds)
         c.stillClipTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { _ in
             Task { @MainActor in
                 triggerAutoAdvance(c)
@@ -601,16 +595,8 @@ struct PlayerView: NSViewRepresentable {
         }
     }
 
-    private static func normalizedHistoryPlaybackRate(_ value: Double) -> Double {
-        guard value.isFinite else { return 1.0 }
-        let direction = value < 0 ? -1.0 : 1.0
-        let magnitude = min(max(abs(value), 1.0), 20.0)
-        return direction * magnitude
-    }
-
     private func effectiveVideoPlaybackRate(for coordinator: Coordinator) -> Float {
-        let historySpeed = Float(max(1.0, abs(coordinator.historyPlaybackRate)))
-        return coordinator.playRate * historySpeed
+        coordinator.playRate
     }
 
     // MARK: - Teardown

@@ -121,13 +121,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     /// Duration of transitions in seconds
     var transitionDuration: Double
 
-    // MARK: - Timeline Playback
-
-    /// Signed history playback rate for auto-advance mode.
-    /// Positive values move forward, negative values move backward.
-    /// Composition playback rate remains controlled by each composition's `playRate`.
-    var timelinePlaybackRate: Double
-
     // MARK: - Randomization StudioSettings (Generation Rules)
 
     /// When true, randomly applies a composition effect chain when generating new compositions
@@ -183,7 +176,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         // Transition defaults
         static let transitionStyle: TransitionRenderer.TransitionType = .crossfade
         static let transitionDuration: Double = 1.0
-        static let timelinePlaybackRate: Double = 1.0
         // Randomization defaults
         static let randomGlobalEffect: Bool = true
         static let randomGlobalEffectFrequency: Double = 0.7
@@ -217,7 +209,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             liveModeEnabled: Defaults.liveModeEnabled,
             transitionStyle: Defaults.transitionStyle,
             transitionDuration: Defaults.transitionDuration,
-            timelinePlaybackRate: Defaults.timelinePlaybackRate,
             randomGlobalEffect: Defaults.randomGlobalEffect,
             randomGlobalEffectFrequency: Defaults.randomGlobalEffectFrequency,
             randomLayerEffect: Defaults.randomLayerEffect,
@@ -245,7 +236,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         case effectsListCollapsed
         case liveModeEnabled
         case transitionStyle, transitionDuration
-        case timelinePlaybackRate
         case randomGlobalEffect, randomGlobalEffectFrequency
         case randomLayerEffect, randomLayerEffectFrequency
         case audioDeviceUID, volume
@@ -277,7 +267,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         liveModeEnabled: Bool = Defaults.liveModeEnabled,
         transitionStyle: TransitionRenderer.TransitionType = Defaults.transitionStyle,
         transitionDuration: Double = Defaults.transitionDuration,
-        timelinePlaybackRate: Double = Defaults.timelinePlaybackRate,
         randomGlobalEffect: Bool = Defaults.randomGlobalEffect,
         randomGlobalEffectFrequency: Double = Defaults.randomGlobalEffectFrequency,
         randomLayerEffect: Bool = Defaults.randomLayerEffect,
@@ -306,7 +295,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         self.liveModeEnabled = liveModeEnabled
         self.transitionStyle = transitionStyle
         self.transitionDuration = transitionDuration
-        self.timelinePlaybackRate = timelinePlaybackRate
         self.randomGlobalEffect = randomGlobalEffect
         self.randomGlobalEffectFrequency = randomGlobalEffectFrequency
         self.randomLayerEffect = randomLayerEffect
@@ -374,8 +362,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             ?? Defaults.transitionStyle
         transitionDuration = try c.decodeIfPresent(Double.self, forKey: .transitionDuration)
             ?? Defaults.transitionDuration
-        timelinePlaybackRate = try c.decodeIfPresent(Double.self, forKey: .timelinePlaybackRate)
-            ?? Defaults.timelinePlaybackRate
         randomGlobalEffect = try c.decodeIfPresent(Bool.self, forKey: .randomGlobalEffect)
             ?? Defaults.randomGlobalEffect
         randomGlobalEffectFrequency = try c.decodeIfPresent(Double.self, forKey: .randomGlobalEffectFrequency)
@@ -424,7 +410,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         try c.encode(liveModeEnabled, forKey: .liveModeEnabled)
         try c.encode(transitionStyle, forKey: .transitionStyle)
         try c.encode(transitionDuration, forKey: .transitionDuration)
-        try c.encode(timelinePlaybackRate, forKey: .timelinePlaybackRate)
         try c.encode(randomGlobalEffect, forKey: .randomGlobalEffect)
         try c.encode(randomGlobalEffectFrequency, forKey: .randomGlobalEffectFrequency)
         try c.encode(randomLayerEffect, forKey: .randomLayerEffect)
