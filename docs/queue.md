@@ -6,6 +6,7 @@ last_reviewed: 2026-04-04
 
 ## Active Projects
 
+- [image-playback-duration](active/image-playback-duration.md)
 - [panel-grid-and-default-layout](active/panel-grid-and-default-layout.md)
 - [effects-and-effect-chain-ux](active/effects-and-effect-chain-ux/index.md)
 - [demo-source-set](active/demo-source-set.md)
@@ -16,6 +17,7 @@ last_reviewed: 2026-04-04
 
 ## Backlog Projects
 
+- [effects-chain-ux-refinements](backlog/effects-chain-ux-refinements.md)
 - [audio-sources-spike](backlog/audio-sources-spike.md)
 - [new-compositions-advanced-source-selection](backlog/new-compositions-advanced-source-selection.md)
 - [sequence-render-and-export](backlog/sequence-render-and-export.md)
