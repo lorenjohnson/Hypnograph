@@ -9,14 +9,14 @@ import SwiftUI
 
 /// Tab selection for the list
 enum HypnogramListTab: String, CaseIterable {
-    case favorites = "Favorites"
     case recent = "Recently Saved"
+    case favorites = "Favorites"
 }
 
 /// Panel displaying saved hypnograms
 struct HypnogramListView: View {
     @ObservedObject var store: HypnogramStore
-    @State private var selectedTab: HypnogramListTab = .favorites
+    @State private var selectedTab: HypnogramListTab = .recent
 
     /// Called when user wants to load a hypnogram
     var onLoad: (HypnogramEntry) -> Void
