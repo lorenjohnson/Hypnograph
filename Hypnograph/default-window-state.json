@@ -1,0 +1,59 @@
+{
+  "mainWindowFullScreen" : true,
+  "panelFrames" : {
+    "compositionWindow" : {
+      "height" : 420,
+      "width" : 420,
+      "x" : 761,
+      "y" : 616
+    },
+    "effectsWindow" : {
+      "height" : 420,
+      "width" : 420,
+      "x" : 1295,
+      "y" : 293
+    },
+    "hypnogramList" : {
+      "height" : 320,
+      "width" : 360,
+      "x" : 683,
+      "y" : 728
+    },
+    "newClipsWindow" : {
+      "height" : 469,
+      "width" : 360,
+      "x" : 388,
+      "y" : 565
+    },
+    "outputSettingsWindow" : {
+      "height" : 314,
+      "width" : 360,
+      "x" : 1353,
+      "y" : 728
+    },
+    "playerControlsWindow" : {
+      "height" : 179,
+      "width" : 720,
+      "x" : 468,
+      "y" : 53
+    },
+    "sourcesWindow" : {
+      "height" : 398,
+      "width" : 360,
+      "x" : 13,
+      "y" : 638
+    }
+  },
+  "windowState" : {
+    "isCleanScreen" : false,
+    "windowVisibility" : {
+      "compositionWindow" : true,
+      "effectsWindow" : true,
+      "hypnogramList" : false,
+      "livePreview" : false,
+      "newClipsWindow" : true,
+      "outputSettingsWindow" : true,
+      "sourcesWindow" : true
+    }
+  }
+}

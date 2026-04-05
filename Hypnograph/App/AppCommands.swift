@@ -156,6 +156,21 @@ struct AppCommands: Commands {
                     }
                 ))
                 .keyboardShortcut(.tab, modifiers: [])
+
+                #if DEBUG
+                Divider()
+
+                Button("Save Current Panel Layout as App Default") {
+                    windows.saveToDisk()
+                    do {
+                        try Environment.saveCurrentWindowStateAsBundledDefault()
+                        AppNotifications.show("Saved current panel layout as bundled default", flash: true)
+                    } catch {
+                        AppNotifications.show("Failed to save bundled panel layout", flash: true)
+                        print("Failed to save bundled panel layout: \(error)")
+                    }
+                }
+                #endif
             }
 
             if studio.isLiveModeAvailable {
