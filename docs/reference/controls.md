@@ -25,7 +25,6 @@ Source of truth: `Hypnograph/HypnographApp.swift`, `Hypnograph/Dream/Dream.swift
 | View | Watch | `W` | Disabled while typing |
 | Overlays | Left Sidebar | `[` | Disabled while typing |
 | Overlays | Right Sidebar | `]` | Disabled while typing |
-| Overlays | Effects Editor | `E` | Dream only |
 | Overlays | Hypnogram List | `H` | Dream only |
 | Overlays | Toggle Panels | `Tab` | Toggles Studio panels on or off; auto-hide only controls whether visible panels hide again after inactivity |
 | Live | Live Preview | `L` | Dream only |
@@ -43,8 +42,8 @@ Source of truth: `Hypnograph/HypnographApp.swift`, `Hypnograph/Dream/Dream.swift
 | Cycle Effect Forward | `Cmd+E` | Current layer |
 | Cycle Effect Backward | `Cmd+Shift+E` | Current layer |
 | Add Source | `Shift+N` | Disabled while typing |
-| Next Source | `Right` | Disabled while typing; omitted when Effects Editor is open |
-| Previous Source | `Left` | Disabled while typing; omitted when Effects Editor is open |
+| Next Source | `Right` | Disabled while typing |
+| Previous Source | `Left` | Disabled while typing |
 | Select Source 1-9 | `1-9` | Disabled while typing; **hold** to solo source (see Key Hold Behaviors) |
 | Select Global Layer | `0` | Disabled while typing; **hold** to suspend global effects (see Key Hold Behaviors) |
 | Clear Current Layer Effect | `C` | Disabled while typing |
@@ -89,12 +88,7 @@ Source of truth: `Hypnograph/HypnographApp.swift`, `Hypnograph/Dream/Dream.swift
 
 | Panel | Key | Notes |
 | --- | --- | --- |
-| Effects Editor | `Esc` | Close panel |
 | ModalPanel sheets | `Esc` | Close panel |
-
-Effects Editor navigation:
-- `Up`/`Down` arrows move selection when not in text fields.
-- Left/Right and Tab/Shift-Tab are handled by SwiftUI focus.
 
 ## Key Hold Behaviors (Montage Mode Only)
 
@@ -135,13 +129,6 @@ Source: `Hypnograph/GameControllerManager.swift`.
 - **Start/Menu**: Pause/Play (Dream only)
 - **L3**: Toggle Watch mode
 - **R3**: Send to Live Display (Dream only; requires performance display visible)
-
-### Effects Editor Behaviors
-
-When the Effects Editor is open:
-- D-Pad Up/Down navigates the effect list.
-- D-Pad Left/Right does not change sources (handled by SwiftUI slider focus).
-- Left thumbstick X switches between effects and parameter panels.
 
 ### Quick Reference Card (Xbox Layout)
 
