@@ -260,10 +260,6 @@ struct ContentView: View {
         )
     }
 
-    private var playerControlsLayoutSignature: Int {
-        clipTrimContexts.count
-    }
-
     var body: some View {
         ZStack(alignment: .topLeading) {
             // Solid black backing for the entire window
@@ -273,9 +269,10 @@ struct ContentView: View {
             // Studio display
             main.makeDisplayView()
                 .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    windowHostService.hidePanelsForCanvasInteraction()
+                .overlay {
+                    CanvasPanelToggleHitView {
+                        windowHostService.hidePanelsForCanvasInteraction()
+                    }
                 }
 
             CursorAutoHideView(isEnabled: shouldAutoHideCursor, idleSeconds: 3.0)
@@ -355,7 +352,7 @@ struct ContentView: View {
                     "effectsWindow": windows.panelFrame("effectsWindow"),
                     "playerControlsWindow": windows.panelFrame("playerControlsWindow")
                 ].compactMapValues { $0 },
-                playerControlsLayoutSignature: playerControlsLayoutSignature,
+                panelOrder: windows.panelOrderIDs(),
                 autoHideWindows: appSettingsStore.value.autoHideWindowsEnabled,
                 keyboardAccessibilityOverridesEnabled: appSettingsStore.value.keyboardAccessibilityOverridesEnabled,
                 onPanelVisibilityChanged: { windowID, isVisible in
@@ -363,6 +360,9 @@ struct ContentView: View {
                 },
                 onPanelFrameChanged: { windowID, frame in
                     windows.setPanelFrame(frame, for: windowID)
+                },
+                onPanelOrderChanged: { panelOrder in
+                    windows.setPanelOrder(panelOrder)
                 },
                 onPanelsAutoHiddenChanged: { isHidden in
                     DispatchQueue.main.async {
@@ -454,4 +454,34 @@ struct ContentView: View {
         showPanelsNowNotification
     }
 
+}
+
+private struct CanvasPanelToggleHitView: NSViewRepresentable {
+    let onToggle: () -> Void
+
+    func makeNSView(context: Context) -> CanvasPanelToggleNSView {
+        let view = CanvasPanelToggleNSView()
+        view.onToggle = onToggle
+        return view
+    }
+
+    func updateNSView(_ nsView: CanvasPanelToggleNSView, context: Context) {
+        nsView.onToggle = onToggle
+    }
+}
+
+private final class CanvasPanelToggleNSView: NSView {
+    var onToggle: (() -> Void)?
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        self
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onToggle?()
+    }
 }

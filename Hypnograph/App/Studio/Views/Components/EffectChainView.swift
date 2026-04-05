@@ -14,6 +14,7 @@ struct EffectChainView: View {
     @State private var isExpanded: Bool = true
     @State private var expandedEffectIndices: Set<Int> = []
     @State private var draggingEffectIndex: Int?
+    @SwiftUI.Environment(\.panelLayoutInvalidator) private var panelLayoutInvalidator
 
     private var chain: EffectChain {
         main.activeEffectManager.effectChain(for: layer) ?? EffectChain()
@@ -64,7 +65,6 @@ struct EffectChainView: View {
                                 )
                             }
                         ))
-                        .animation(.easeInOut(duration: 0.15), value: expandedEffectIndices)
                     }
 
                     Menu {
@@ -78,6 +78,15 @@ struct EffectChainView: View {
                 }
                 .padding(.top, 2)
             }
+        }
+        .onChange(of: isExpanded) { _, _ in
+            panelLayoutInvalidator()
+        }
+        .onChange(of: expandedEffectIndices) { _, _ in
+            panelLayoutInvalidator()
+        }
+        .onChange(of: chain.effects.count) { _, _ in
+            panelLayoutInvalidator()
         }
     }
 
@@ -176,12 +185,12 @@ struct EffectChainView: View {
         if !availableLibraryChains.isEmpty {
             Section("Effect Chains") {
                 ForEach(availableLibraryChains, id: \.id) { libraryChain in
-                    Button(templateDisplayName(libraryChain)) {
-                        main.activeEffectManager.applyTemplate(libraryChain, to: layer)
-                        isExpanded = true
-                    }
+                Button(templateDisplayName(libraryChain)) {
+                    main.activeEffectManager.applyTemplate(libraryChain, to: layer)
+                    isExpanded = true
                 }
             }
+        }
         }
 
         Section("FX") {

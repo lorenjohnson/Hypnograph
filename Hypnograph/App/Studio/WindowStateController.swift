@@ -12,6 +12,7 @@ final class WindowStateController: ObservableObject {
     @Published private(set) var mainWindowFullScreen: Bool = true
     @Published private(set) var panelsHidden: Bool = false
     private var panelFrames: [String: CGRect] = [:]
+    private var panelOrder: [String] = []
 
     private struct PersistedPanelFrame: Codable {
         let x: Double
@@ -35,6 +36,8 @@ final class WindowStateController: ObservableObject {
         let windowState: WindowState
         let mainWindowFullScreen: Bool
         let panelFrames: [String: PersistedPanelFrame]?
+        let panelOrder: [String]?
+        let activePanelWindowID: String?
     }
 
     init() {
@@ -82,6 +85,16 @@ final class WindowStateController: ObservableObject {
         panelFrames[windowID]
     }
 
+    func panelOrderIDs() -> [String] {
+        panelOrder
+    }
+
+    func setPanelOrder(_ windowIDs: [String]) {
+        guard panelOrder != windowIDs else { return }
+        panelOrder = windowIDs
+        saveToDisk()
+    }
+
     func setPanelFrame(_ frame: CGRect, for windowID: String) {
         guard panelFrames[windowID] != frame else { return }
         panelFrames[windowID] = frame
@@ -95,7 +108,9 @@ final class WindowStateController: ObservableObject {
             let persisted = PersistedWindowState(
                 windowState: windowState,
                 mainWindowFullScreen: mainWindowFullScreen,
-                panelFrames: panelFrames.mapValues(PersistedPanelFrame.init(rect:))
+                panelFrames: panelFrames.mapValues(PersistedPanelFrame.init(rect:)),
+                panelOrder: panelOrder,
+                activePanelWindowID: nil
             )
             let data = try encoder.encode(persisted)
             try data.write(to: windowStateFileURL)
@@ -123,6 +138,7 @@ final class WindowStateController: ObservableObject {
                 windowState = loadedWindowState
                 mainWindowFullScreen = persisted.mainWindowFullScreen
                 panelFrames = persisted.panelFrames?.mapValues(\.rect) ?? [:]
+                panelOrder = persisted.panelOrder ?? persisted.activePanelWindowID.map { [$0] } ?? []
                 print("WindowStateController: Loaded window state from disk")
                 return
             }
@@ -132,6 +148,7 @@ final class WindowStateController: ObservableObject {
             windowState = loadedWindowState
             mainWindowFullScreen = true
             panelFrames = [:]
+            panelOrder = []
             print("WindowStateController: Loaded legacy window state from disk")
         } catch {
             print("WindowStateController: Failed to load window state: \(error)")

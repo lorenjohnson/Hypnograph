@@ -169,19 +169,17 @@ struct SourcesWindowView: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 16) {
-                Text("Manage the media pool used for random clip generation, and keep source setup out of the menu bar.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        LazyVStack(alignment: .leading, spacing: 16) {
+            Text("Manage the media pool used for random clip generation, and keep source setup out of the menu bar.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
-                sourcesSection
-                mediaTypesSection
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            sourcesSection
+            mediaTypesSection
         }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             Color.black.opacity(0.96)
                 .ignoresSafeArea()

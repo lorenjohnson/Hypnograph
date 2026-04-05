@@ -9,60 +9,58 @@ struct OutputSettingsWindowView: View {
     private var isLiveMode: Bool { main.isLiveMode }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                PanelSectionHeader(title: "Playback")
+        VStack(alignment: .leading, spacing: 16) {
+            PanelSectionHeader(title: "Playback")
 
-                PanelInlineFieldRow(title: "Transition Style") {
-                    Picker("", selection: Binding(
-                        get: { state.settings.transitionStyle },
-                        set: { newValue in
-                            state.settingsStore.update { $0.transitionStyle = newValue }
-                        }
-                    )) {
-                        ForEach(TransitionRenderer.TransitionType.allCases, id: \.self) { style in
-                            Text(style.displayName).tag(style)
-                        }
+            PanelInlineFieldRow(title: "Transition Style") {
+                Picker("", selection: Binding(
+                    get: { state.settings.transitionStyle },
+                    set: { newValue in
+                        state.settingsStore.update { $0.transitionStyle = newValue }
                     }
-                    .pickerStyle(.menu)
-                    .frame(width: 160, alignment: .trailing)
+                )) {
+                    ForEach(TransitionRenderer.TransitionType.allCases, id: \.self) { style in
+                        Text(style.displayName).tag(style)
+                    }
                 }
-
-                PanelFieldRow(
-                    title: "Transition Duration",
-                    valueText: String(format: "%.1fs", state.settings.transitionDuration)
-                ) {
-                    PanelSliderView(
-                        value: Binding(
-                            get: { state.settings.transitionDuration },
-                            set: { newValue in
-                                state.settingsStore.update { $0.transitionDuration = newValue }
-                            }
-                        ),
-                        bounds: 0.1...3.0,
-                        step: 0.1
-                    )
-                }
-
-                GlassDivider()
-                    .padding(.vertical, 4)
-
-                PanelSectionHeader(title: "Display")
-
-                PanelInlineFieldRow(title: "Source Framing") {
-                    sourceFramingButtons
-                }
-
-                PanelInlineFieldRow(title: "Aspect Ratio") {
-                    aspectRatioButtons
-                        .frame(width: 170, alignment: .trailing)
-                        .disabled(isLiveMode)
-                        .opacity(isLiveMode ? 0.55 : 1.0)
-                }
+                .pickerStyle(.menu)
+                .frame(width: 160, alignment: .trailing)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            PanelFieldRow(
+                title: "Transition Duration",
+                valueText: String(format: "%.1fs", state.settings.transitionDuration)
+            ) {
+                PanelSliderView(
+                    value: Binding(
+                        get: { state.settings.transitionDuration },
+                        set: { newValue in
+                            state.settingsStore.update { $0.transitionDuration = newValue }
+                        }
+                    ),
+                    bounds: 0.1...3.0,
+                    step: 0.1
+                )
+            }
+
+            GlassDivider()
+                .padding(.vertical, 4)
+
+            PanelSectionHeader(title: "Display")
+
+            PanelInlineFieldRow(title: "Source Framing") {
+                sourceFramingButtons
+            }
+
+            PanelInlineFieldRow(title: "Aspect Ratio") {
+                aspectRatioButtons
+                    .frame(width: 170, alignment: .trailing)
+                    .disabled(isLiveMode)
+                    .opacity(isLiveMode ? 0.55 : 1.0)
+            }
         }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.black.opacity(0.96).ignoresSafeArea())
     }
 

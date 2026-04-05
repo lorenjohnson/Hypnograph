@@ -11,110 +11,111 @@ struct CompositionWindowView: View {
     @State private var showAddLayerPhotosPicker = false
     @State private var draggedLayerID: UUID?
     @StateObject private var thumbnailStore = LayerThumbnailStore()
+    @SwiftUI.Environment(\.panelLayoutInvalidator) private var panelLayoutInvalidator
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                globalSection
+        VStack(alignment: .leading, spacing: 12) {
+            globalSection
 
-                GlassDivider()
-                    .padding(.vertical, 4)
+            GlassDivider()
+                .padding(.vertical, 4)
 
-                HStack {
-                    Text("Layers")
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
-                    Spacer()
+            HStack {
+                Text("Layers")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Menu {
                     Menu {
-                        Menu {
-                            Button {
-                                main.addSourceFromFilesPanel()
-                            } label: {
-                                Label("From Files...", systemImage: "doc")
-                            }
-
-                            Button {
-                                showAddLayerPhotosPicker = true
-                            } label: {
-                                Label("From Photos...", systemImage: "photo")
-                            }
+                        Button {
+                            main.addSourceFromFilesPanel()
                         } label: {
-                            Label("Select Source...", systemImage: "photo.on.rectangle")
+                            Label("From Files...", systemImage: "doc")
                         }
 
                         Button {
-                            main.addSource()
+                            showAddLayerPhotosPicker = true
                         } label: {
-                            Label("Random Source", systemImage: "dice")
+                            Label("From Photos...", systemImage: "photo")
                         }
                     } label: {
-                        Image(systemName: "plus")
-                            .font(.body.weight(.medium))
+                        Label("Select Source...", systemImage: "photo.on.rectangle")
                     }
-                    .menuStyle(.borderlessButton)
+
+                    Button {
+                        main.addSource()
+                    } label: {
+                        Label("Random Source", systemImage: "dice")
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.body.weight(.medium))
                 }
-                .padding(.horizontal, 4)
+                .menuStyle(.borderlessButton)
+            }
+            .padding(.horizontal, 4)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    let snapshot = main.activePlayer.layers
-                    ForEach(snapshot, id: \.mediaClip.file.id) { snapshotLayer in
-                        let id = snapshotLayer.mediaClip.file.id
-                        let currentIndex = layerIndex(for: id)
+            VStack(alignment: .leading, spacing: 6) {
+                let snapshot = main.activePlayer.layers
+                ForEach(snapshot, id: \.mediaClip.file.id) { snapshotLayer in
+                    let id = snapshotLayer.mediaClip.file.id
+                    let currentIndex = layerIndex(for: id)
 
-                        if let currentIndex {
-                            LayerRowView(
-                                state: state,
-                                main: main,
-                                thumbnailStore: thumbnailStore,
-                                index: currentIndex,
-                                layer: bindingForLayer(id: id, fallback: snapshotLayer),
-                                isSelected: main.activePlayer.currentLayerIndex == currentIndex,
-                                isExpanded: expandedLayerIDs.contains(id),
-                                onSelect: {
-                                    if let idx = layerIndex(for: id) {
-                                        main.activePlayer.selectSource(idx)
-                                    }
-                                },
-                                onToggleExpanded: {
-                                    toggleExpanded(id: id)
-                                },
-                                onDuplicate: {
-                                    if let idx = layerIndex(for: id) {
-                                        main.activePlayer.selectSource(idx)
-                                    }
-                                    main.duplicateCurrentLayer()
-                                },
-                                onDelete: {
-                                    if let idx = layerIndex(for: id) {
-                                        main.activePlayer.selectSource(idx)
-                                    }
-                                    main.removeCurrentLayer()
+                    if let currentIndex {
+                        LayerRowView(
+                            state: state,
+                            main: main,
+                            thumbnailStore: thumbnailStore,
+                            index: currentIndex,
+                            layer: bindingForLayer(id: id, fallback: snapshotLayer),
+                            isSelected: main.activePlayer.currentLayerIndex == currentIndex,
+                            isExpanded: expandedLayerIDs.contains(id),
+                            onSelect: {
+                                if let idx = layerIndex(for: id) {
+                                    main.activePlayer.selectSource(idx)
+                                }
+                            },
+                            onToggleExpanded: {
+                                toggleExpanded(id: id)
+                            },
+                            onDuplicate: {
+                                if let idx = layerIndex(for: id) {
+                                    main.activePlayer.selectSource(idx)
+                                }
+                                main.duplicateCurrentLayer()
+                            },
+                            onDelete: {
+                                if let idx = layerIndex(for: id) {
+                                    main.activePlayer.selectSource(idx)
+                                }
+                                main.removeCurrentLayer()
+                            }
+                        )
+                        .contentShape(Rectangle())
+                        .onDrag {
+                            draggedLayerID = id
+                            return NSItemProvider(object: id.uuidString as NSString)
+                        }
+                        .onDrop(
+                            of: [UTType.text],
+                            delegate: CompositionLayerReorderDropDelegate(
+                                targetID: id,
+                                draggedLayerID: $draggedLayerID,
+                                moveLayer: { sourceID, targetID in
+                                    moveLayer(sourceID: sourceID, targetID: targetID)
                                 }
                             )
-                            .contentShape(Rectangle())
-                            .onDrag {
-                                draggedLayerID = id
-                                return NSItemProvider(object: id.uuidString as NSString)
-                            }
-                            .onDrop(
-                                of: [UTType.text],
-                                delegate: CompositionLayerReorderDropDelegate(
-                                    targetID: id,
-                                    draggedLayerID: $draggedLayerID,
-                                    moveLayer: { sourceID, targetID in
-                                        moveLayer(sourceID: sourceID, targetID: targetID)
-                                    }
-                                )
-                            )
-                            .animation(.easeInOut(duration: 0.2), value: expandedLayerIDs)
-                        }
+                        )
                     }
                 }
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .padding(14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.black.opacity(0.96).ignoresSafeArea())
+        .onChange(of: expandedLayerIDs) { _, _ in
+            panelLayoutInvalidator()
+        }
         .sheet(isPresented: $showAddLayerPhotosPicker) {
             PhotosPickerSheet(
                 isPresented: $showAddLayerPhotosPicker,

@@ -10,73 +10,72 @@ struct NewClipsWindowView: View {
     private var isLiveMode: Bool { main.isLiveMode }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                PanelInlineFieldRow(title: "Max Layers", valueText: "\(player.config.maxLayers)") {
-                    Stepper("", value: $player.config.maxLayers, in: 1...20)
-                        .labelsHidden()
-                        .disabled(isLiveMode)
-                        .opacity(isLiveMode ? 0.55 : 1.0)
-                }
+        VStack(alignment: .leading, spacing: 16) {
+            PanelInlineFieldRow(title: "Max Layers", valueText: "\(player.config.maxLayers)") {
+                Stepper("", value: $player.config.maxLayers, in: 1...20)
+                    .labelsHidden()
+                    .disabled(isLiveMode)
+                    .opacity(isLiveMode ? 0.55 : 1.0)
+            }
 
-                compositionLengthRangeRow()
-                playRateRangeRow()
+            compositionLengthRangeRow()
+            playRateRangeRow()
 
-                randomizationRow(
-                    title: "Randomize Composition Effect",
-                    isOn: Binding(
-                        get: { state.settings.randomGlobalEffect },
-                        set: { newValue in
-                            state.settingsStore.update { $0.randomGlobalEffect = newValue }
-                        }
-                    ),
-                    frequency: Binding(
-                        get: { state.settings.randomGlobalEffectFrequency },
-                        set: { newValue in
-                            state.settingsStore.update { $0.randomGlobalEffectFrequency = newValue }
-                        }
-                    )
+            randomizationRow(
+                title: "Randomize Composition Effect",
+                isOn: Binding(
+                    get: { state.settings.randomGlobalEffect },
+                    set: { newValue in
+                        state.settingsStore.update { $0.randomGlobalEffect = newValue }
+                    }
                 )
-                .disabled(isLiveMode)
-                .opacity(isLiveMode ? 0.55 : 1.0)
-
-                randomizationRow(
-                    title: "Randomize Layer Effects",
-                    isOn: Binding(
-                        get: { state.settings.randomLayerEffect },
-                        set: { newValue in
-                            state.settingsStore.update { $0.randomLayerEffect = newValue }
-                        }
-                    ),
-                    frequency: Binding(
-                        get: { state.settings.randomLayerEffectFrequency },
-                        set: { newValue in
-                            state.settingsStore.update { $0.randomLayerEffectFrequency = newValue }
-                        }
-                    )
+                ,
+                frequency: Binding(
+                    get: { state.settings.randomGlobalEffectFrequency },
+                    set: { newValue in
+                        state.settingsStore.update { $0.randomGlobalEffectFrequency = newValue }
+                    }
                 )
-                .disabled(isLiveMode)
-                .opacity(isLiveMode ? 0.55 : 1.0)
+            )
+            .disabled(isLiveMode)
+            .opacity(isLiveMode ? 0.55 : 1.0)
+
+            randomizationRow(
+                title: "Randomize Layer Effects",
+                isOn: Binding(
+                    get: { state.settings.randomLayerEffect },
+                    set: { newValue in
+                        state.settingsStore.update { $0.randomLayerEffect = newValue }
+                    }
+                ),
+                frequency: Binding(
+                    get: { state.settings.randomLayerEffectFrequency },
+                    set: { newValue in
+                        state.settingsStore.update { $0.randomLayerEffectFrequency = newValue }
+                    }
+                )
+            )
+            .disabled(isLiveMode)
+            .opacity(isLiveMode ? 0.55 : 1.0)
 
 #if DEBUG
-                sectionDivider()
+            sectionDivider()
 
-                PanelSectionHeader(title: "Debug")
+            PanelSectionHeader(title: "Debug")
 
-                PanelInlineFieldRow(title: "Load Scenario") {
-                    Picker("", selection: $externalLoadHarness.scenario) {
-                        ForEach(ExternalMediaLoadHarness.Scenario.allCases) { scenario in
-                            Text(scenario.displayName).tag(scenario)
-                        }
+            PanelInlineFieldRow(title: "Load Scenario") {
+                Picker("", selection: $externalLoadHarness.scenario) {
+                    ForEach(ExternalMediaLoadHarness.Scenario.allCases) { scenario in
+                        Text(scenario.displayName).tag(scenario)
                     }
-                    .pickerStyle(.menu)
-                    .frame(width: 190, alignment: .trailing)
                 }
-#endif
+                .pickerStyle(.menu)
+                .frame(width: 190, alignment: .trailing)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
+#endif
         }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(windowPanelBackground)
     }
 

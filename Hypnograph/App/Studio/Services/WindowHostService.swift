@@ -60,10 +60,10 @@ private enum WindowKind: String {
     var minSize: CGSize {
         switch self {
         case .hypnograms: return CGSize(width: 360, height: 320)
-        case .sources: return CGSize(width: 360, height: 260)
-        case .newClips: return CGSize(width: defaultSize.width, height: 360)
-        case .outputSettings: return CGSize(width: defaultSize.width, height: 260)
-        case .composition: return CGSize(width: defaultSize.width, height: 420)
+        case .sources: return CGSize(width: 360, height: 120)
+        case .newClips: return CGSize(width: defaultSize.width, height: 120)
+        case .outputSettings: return CGSize(width: defaultSize.width, height: 120)
+        case .composition: return CGSize(width: defaultSize.width, height: 120)
         case .effects: return CGSize(width: defaultSize.width, height: 420)
         case .playerControls: return CGSize(width: 720, height: 120)
         }
@@ -84,15 +84,6 @@ private enum WindowKind: String {
             return false
         default:
             return true
-        }
-    }
-
-    var fixedHeightPadding: CGFloat {
-        switch self {
-        case .playerControls:
-            return 0
-        default:
-            return 16
         }
     }
 
@@ -133,16 +124,20 @@ private enum WindowKind: String {
     }
 
     var styleMask: NSWindow.StyleMask {
-        switch self {
-        case .playerControls:
-            return [.titled, .closable, .fullSizeContentView, .utilityWindow]
-        default:
-            return [.titled, .closable, .resizable, .fullSizeContentView, .utilityWindow]
+        var mask: NSWindow.StyleMask = [.titled, .closable, .fullSizeContentView, .utilityWindow]
+        if isResizable {
+            mask.insert(.resizable)
         }
+        return mask
     }
 
     var isResizable: Bool {
-        self != .playerControls
+        switch self {
+        case .hypnograms, .effects:
+            return true
+        default:
+            return false
+        }
     }
 
     var backgroundColor: NSColor {
@@ -192,12 +187,123 @@ private final class ChildWindowPanel: NSPanel {
     }
 }
 
+private final class FlippedDocumentView: NSView {
+    override var isFlipped: Bool { true }
+}
+
+private final class PanelContentController: NSViewController {
+    private let kind: WindowKind
+    private let hostingView = NSHostingView(rootView: AnyView(EmptyView()))
+    private let documentView = FlippedDocumentView()
+    private let scrollView = NSScrollView()
+
+    var onLayoutPass: (() -> Void)?
+    var onLayoutInvalidationRequest: (() -> Void)?
+
+    init(kind: WindowKind, content: AnyView) {
+        self.kind = kind
+        super.init(nibName: nil, bundle: nil)
+        setRootView(content)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func loadView() {
+        let container = NSView()
+        container.wantsLayer = false
+
+        hostingView.appearance = NSAppearance(named: .darkAqua)
+
+        if kind.shouldFitHeightToContent {
+            scrollView.drawsBackground = false
+            scrollView.borderType = .noBorder
+            scrollView.hasVerticalScroller = true
+            scrollView.hasHorizontalScroller = false
+            scrollView.autohidesScrollers = true
+            scrollView.translatesAutoresizingMaskIntoConstraints = false
+            documentView.translatesAutoresizingMaskIntoConstraints = false
+            documentView.addSubview(hostingView)
+            scrollView.documentView = documentView
+            container.addSubview(scrollView)
+            NSLayoutConstraint.activate([
+                scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                scrollView.topAnchor.constraint(equalTo: container.topAnchor),
+                scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+            ])
+        } else {
+            hostingView.translatesAutoresizingMaskIntoConstraints = false
+            container.addSubview(hostingView)
+            NSLayoutConstraint.activate([
+                hostingView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                hostingView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                hostingView.topAnchor.constraint(equalTo: container.topAnchor),
+                hostingView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+            ])
+        }
+
+        view = container
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        updateHostedLayout()
+        onLayoutPass?()
+    }
+
+    func setRootView(_ content: AnyView) {
+        let invalidationAwareContent = AnyView(
+            content.environment(
+                \.panelLayoutInvalidator,
+                 PanelLayoutInvalidator(
+                    invalidate: { [weak self] in
+                        self?.onLayoutInvalidationRequest?()
+                    }
+                 )
+            )
+        )
+        if kind.shouldFitHeightToContent {
+            hostingView.rootView = AnyView(invalidationAwareContent.fixedSize(horizontal: false, vertical: true))
+        } else {
+            hostingView.rootView = invalidationAwareContent
+        }
+        updateHostedLayout()
+    }
+
+    func measuredContentHeight(for width: CGFloat) -> CGFloat {
+        updateHostedLayout(forcedWidth: width)
+        hostingView.layoutSubtreeIfNeeded()
+        return max(hostingView.fittingSize.height, hostingView.frame.height)
+    }
+
+    private func updateHostedLayout(forcedWidth: CGFloat? = nil) {
+        guard kind.shouldFitHeightToContent else { return }
+
+        let targetWidth = max(1, forcedWidth ?? scrollView.contentSize.width)
+        let currentHeight = max(1, hostingView.frame.height)
+        if abs(hostingView.frame.width - targetWidth) > 0.5 {
+            hostingView.frame = NSRect(x: 0, y: 0, width: targetWidth, height: currentHeight)
+        }
+
+        hostingView.layoutSubtreeIfNeeded()
+        let fittingHeight = max(1, hostingView.fittingSize.height)
+        if abs(hostingView.frame.height - fittingHeight) > 0.5 || abs(hostingView.frame.width - targetWidth) > 0.5 {
+            hostingView.frame = NSRect(x: 0, y: 0, width: targetWidth, height: fittingHeight)
+        }
+        if abs(documentView.frame.width - targetWidth) > 0.5 || abs(documentView.frame.height - fittingHeight) > 0.5 {
+            documentView.frame = NSRect(x: 0, y: 0, width: targetWidth, height: fittingHeight)
+        }
+    }
+}
+
 @MainActor
 final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     private struct ManagedPanel {
         let panel: ChildWindowPanel
-        let host: NSHostingController<AnyView>
-        let restoredFrameFromPersistence: Bool
+        let host: PanelContentController
     }
 
     private weak var parentWindow: NSWindow?
@@ -206,9 +312,10 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     private var parentCloseObserver: NSObjectProtocol?
     private var onPanelVisibilityChanged: ((String, Bool) -> Void)?
     private var onPanelFrameChanged: ((String, CGRect) -> Void)?
+    private var onPanelOrderChanged: (([String]) -> Void)?
     private var onPanelsAutoHiddenChanged: ((Bool) -> Void)?
-    private var panelLayoutSignatures: [WindowKind: Int] = [:]
     private var storedPanelFrames: [String: CGRect] = [:]
+    private var panelOrder: [String] = []
     private var autoHideWindowsEnabled = false
     private var keyboardAccessibilityOverridesEnabled = true
     private var autoHideTimer: Timer?
@@ -216,7 +323,6 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     private var lastActivityTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     private var panelsAutoHidden = false
     private var hasInitializedVisiblePanelPresentation = false
-    private var didApplyInitialFrameRestore: Set<WindowKind> = []
 
     private let autoHideIdleSeconds: TimeInterval = 3.0
 
@@ -231,11 +337,12 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         showPlayerControls: Bool,
         expectedParentFullScreen: Bool,
         panelFrames: [String: CGRect],
-        playerControlsLayoutSignature: Int,
+        panelOrder: [String],
         autoHideWindows: Bool,
         keyboardAccessibilityOverridesEnabled: Bool,
         onPanelVisibilityChanged: @escaping (String, Bool) -> Void,
         onPanelFrameChanged: @escaping (String, CGRect) -> Void,
+        onPanelOrderChanged: @escaping ([String]) -> Void,
         onPanelsAutoHiddenChanged: @escaping (Bool) -> Void,
         hypnogramsContent: AnyView,
         sourcesContent: AnyView,
@@ -247,8 +354,10 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     ) {
         self.onPanelVisibilityChanged = onPanelVisibilityChanged
         self.onPanelFrameChanged = onPanelFrameChanged
+        self.onPanelOrderChanged = onPanelOrderChanged
         self.onPanelsAutoHiddenChanged = onPanelsAutoHiddenChanged
         self.storedPanelFrames = panelFrames
+        self.panelOrder = panelOrder
         onPanelsAutoHiddenChanged(panelsAutoHidden)
         let keyboardOverrideJustEnabled = !self.keyboardAccessibilityOverridesEnabled && keyboardAccessibilityOverridesEnabled
         self.keyboardAccessibilityOverridesEnabled = keyboardAccessibilityOverridesEnabled
@@ -337,12 +446,12 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
             visible: showPlayerControls,
             content: playerControlsContent,
             parentWindow: parentWindow,
-            suppressVisibilityActivity: shouldStartAutoHidden,
-            layoutSignature: playerControlsLayoutSignature
+            suppressVisibilityActivity: shouldStartAutoHidden
         )
 
         if anyVisibleRequested {
             hasInitializedVisiblePanelPresentation = true
+            restorePanelOrderIfNeeded()
         }
     }
 
@@ -353,9 +462,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         removeParentCloseObserver()
         panels.values.forEach { $0.panel.close() }
         panels.removeAll()
-        panelLayoutSignatures.removeAll()
         requestedVisibility.removeAll()
-        didApplyInitialFrameRestore.removeAll()
         hasInitializedVisiblePanelPresentation = false
         parentWindow = nil
     }
@@ -365,8 +472,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         visible: Bool,
         content: AnyView,
         parentWindow: NSWindow,
-        suppressVisibilityActivity: Bool,
-        layoutSignature: Int? = nil
+        suppressVisibilityActivity: Bool
     ) {
         let previousVisibility = requestedVisibility[kind] ?? false
         requestedVisibility[kind] = visible
@@ -377,25 +483,8 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
 
         if visible {
             let managed = ensurePanel(kind: kind, parentWindow: parentWindow, content: content)
-            managed.host.rootView = content
-            let shouldApplySizing: Bool
-            if managed.restoredFrameFromPersistence && !didApplyInitialFrameRestore.contains(kind) {
-                didApplyInitialFrameRestore.insert(kind)
-                if let layoutSignature {
-                    panelLayoutSignatures[kind] = layoutSignature
-                }
-                shouldApplySizing = false
-            } else if let layoutSignature {
-                let previousSignature = panelLayoutSignatures[kind]
-                shouldApplySizing = previousSignature != layoutSignature
-                panelLayoutSignatures[kind] = layoutSignature
-            } else {
-                shouldApplySizing = true
-            }
-
-            if shouldApplySizing {
-                applySizing(for: kind, managed: managed)
-            }
+            managed.host.setRootView(content)
+            applySizing(for: kind, managed: managed)
 
             if panelsAutoHidden {
                 if managed.panel.parent === parentWindow {
@@ -412,7 +501,6 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
                 }
             }
         } else if let managed = panels[kind] {
-            panelLayoutSignatures[kind] = nil
             if managed.panel.parent === parentWindow {
                 parentWindow.removeChildWindow(managed.panel)
             }
@@ -463,23 +551,25 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
             self.handleCloseRequest(for: kind, panel: panel)
         }
 
-        let host = NSHostingController(rootView: content)
-        host.view.appearance = NSAppearance(named: .darkAqua)
+        let host = PanelContentController(kind: kind, content: content)
+        host.onLayoutPass = { [weak self, weak panel] in
+            guard let self, let panel, let kind = self.kind(for: panel) else { return }
+            self.handleHostedContentLayout(for: kind)
+        }
+        host.onLayoutInvalidationRequest = { [weak self, weak panel] in
+            guard let self, let panel, let kind = self.kind(for: panel) else { return }
+            self.handleExplicitLayoutInvalidation(for: kind)
+        }
         panel.contentViewController = host
         panel.orderOut(nil)
 
-        let restoredFrameFromPersistence: Bool
         if let savedFrame = storedPanelFrames[kind.windowStateID] {
             panel.setFrame(savedFrame, display: false)
-            restoredFrameFromPersistence = true
-        } else {
-            restoredFrameFromPersistence = false
         }
 
         let managed = ManagedPanel(
             panel: panel,
-            host: host,
-            restoredFrameFromPersistence: restoredFrameFromPersistence
+            host: host
         )
         panels[kind] = managed
         return managed
@@ -524,19 +614,17 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
 
     private func applySizing(for kind: WindowKind, managed: ManagedPanel) {
         let panel = managed.panel
-        let currentContentWidth = max(1, panel.contentLayoutRect.width)
+        let currentContentWidth = max(1, panel.contentRect(forFrameRect: panel.frame).width)
         let clampedWidth = min(max(currentContentWidth, kind.minSize.width), kind.maxWidth)
         let maxInitialHeight = maximumInitialHeight(for: panel)
 
-        panel.contentView?.frame = NSRect(origin: .zero, size: CGSize(width: clampedWidth, height: panel.frame.height))
-        managed.host.view.frame = NSRect(origin: .zero, size: CGSize(width: clampedWidth, height: panel.frame.height))
-        managed.host.view.layoutSubtreeIfNeeded()
-
         if kind.shouldFitHeightToContent {
+            let contentHeight = managed.host.measuredContentHeight(for: clampedWidth)
+            let layoutExclusionHeight = obscuredLayoutHeight(for: panel)
             let measuredHeight = min(
                 max(
                     kind.minSize.height,
-                    managed.host.view.fittingSize.height + kind.fixedHeightPadding
+                    contentHeight + layoutExclusionHeight
                 ),
                 maxInitialHeight
             )
@@ -559,12 +647,12 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
                 maxContentSize: CGSize(width: kind.maxWidth, height: .greatestFiniteMagnitude)
             )
 
-            if abs(panel.contentLayoutRect.width - clampedWidth) > 1 {
+            if abs(panel.contentRect(forFrameRect: panel.frame).width - clampedWidth) > 1 {
                 resizePanel(
                     panel,
                     toContentSize: CGSize(
                         width: clampedWidth,
-                        height: max(kind.minSize.height, panel.contentLayoutRect.height)
+                        height: max(kind.minSize.height, panel.contentRect(forFrameRect: panel.frame).height)
                     ),
                     pinTopEdge: kind != .playerControls
                 )
@@ -592,7 +680,7 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
             let maxFrameSize = panel.frameRect(forContentRect: NSRect(origin: .zero, size: maxContentSize)).size
             panel.maxSize = maxFrameSize
         } else {
-            let referenceContentHeight = max(max(minContentSize.height, panel.contentLayoutRect.height), 1)
+            let referenceContentHeight = max(max(minContentSize.height, panel.contentRect(forFrameRect: panel.frame).height), 1)
             let maxFrameWidth = panel.frameRect(
                 forContentRect: NSRect(
                     origin: .zero,
@@ -609,20 +697,15 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         pinTopEdge: Bool
     ) {
         let startingFrame = panel.frame
-        let currentContentSize = panel.contentLayoutRect.size
-        let sizeChanged =
-            abs(currentContentSize.width - contentSize.width) > 1 ||
-            abs(currentContentSize.height - contentSize.height) > 1
-
-        if sizeChanged {
-            panel.setContentSize(contentSize)
-        }
+        let targetFrameSize = panel.frameRect(
+            forContentRect: NSRect(origin: .zero, size: contentSize)
+        ).size
 
         let targetOrigin: CGPoint
         if pinTopEdge {
             targetOrigin = CGPoint(
                 x: startingFrame.origin.x,
-                y: startingFrame.maxY - panel.frame.height
+                y: startingFrame.maxY - targetFrameSize.height
             )
         } else {
             targetOrigin = CGPoint(
@@ -631,12 +714,15 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
             )
         }
 
-        let originChanged =
-            abs(panel.frame.origin.x - targetOrigin.x) > 1 ||
-            abs(panel.frame.origin.y - targetOrigin.y) > 1
+        let targetFrame = NSRect(origin: targetOrigin, size: targetFrameSize)
+        let frameChanged =
+            abs(startingFrame.origin.x - targetFrame.origin.x) > 1 ||
+            abs(startingFrame.origin.y - targetFrame.origin.y) > 1 ||
+            abs(startingFrame.size.width - targetFrame.size.width) > 1 ||
+            abs(startingFrame.size.height - targetFrame.size.height) > 1
 
-        if originChanged {
-            panel.setFrameOrigin(targetOrigin)
+        if frameChanged {
+            panel.setFrame(targetFrame, display: false)
         }
     }
 
@@ -648,6 +734,13 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
 
         return max(320, visibleHeight - 140)
     }
+
+    private func obscuredLayoutHeight(for panel: NSPanel) -> CGFloat {
+        let contentRectHeight = panel.contentRect(forFrameRect: panel.frame).height
+        let visibleLayoutHeight = panel.contentLayoutRect.height
+        return max(0, contentRectHeight - visibleLayoutHeight)
+    }
+
     private func configureParentWindowForFullScreen(_ window: NSWindow) {
         var behavior = window.collectionBehavior
         if !behavior.contains(.fullScreenPrimary) {
@@ -794,6 +887,10 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
                 managed.panel.orderFront(nil)
             }
         }
+
+        if !hidden {
+            restorePanelOrderIfNeeded()
+        }
     }
 
     private func handleCloseRequest(for kind: WindowKind, panel: NSPanel?) {
@@ -810,6 +907,9 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
             parentWindow.addChildWindow(panel, ordered: .above)
         }
         panel.makeKeyAndOrderFront(nil)
+        if let kind = kind(for: panel) {
+            notePanelBroughtToFront(kind.windowStateID)
+        }
     }
 
     private func kind(for panel: NSWindow) -> WindowKind? {
@@ -858,9 +958,10 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
-        guard keyboardAccessibilityOverridesEnabled else { return }
         guard let window = notification.object as? NSWindow else { return }
-        guard kind(for: window) != nil else { return }
+        guard let kind = kind(for: window) else { return }
+        notePanelBroughtToFront(kind.windowStateID)
+        guard keyboardAccessibilityOverridesEnabled else { return }
         DispatchQueue.main.async {
             window.makeFirstResponder(nil)
         }
@@ -900,5 +1001,60 @@ final class WindowHostService: NSObject, ObservableObject, NSWindowDelegate {
         guard let panel = notification.object as? NSWindow else { return }
         guard let kind = kind(for: panel) else { return }
         onPanelFrameChanged?(kind.windowStateID, panel.frame)
+    }
+
+    private func handleHostedContentLayout(for kind: WindowKind) {
+        guard kind.shouldFitHeightToContent else { return }
+        guard let managed = panels[kind] else { return }
+        applySizing(for: kind, managed: managed)
+    }
+
+    private func handleExplicitLayoutInvalidation(for kind: WindowKind) {
+        guard kind.shouldFitHeightToContent else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let managed = self.panels[kind] else { return }
+            self.applySizing(for: kind, managed: managed)
+        }
+    }
+
+    private func notePanelBroughtToFront(_ windowID: String) {
+        var nextOrder = panelOrder.filter { $0 != windowID }
+        nextOrder.append(windowID)
+        guard nextOrder != panelOrder else { return }
+        panelOrder = nextOrder
+        onPanelOrderChanged?(nextOrder)
+    }
+
+    private func restorePanelOrderIfNeeded() {
+        guard !panelOrder.isEmpty, let parentWindow else {
+            return
+        }
+
+        let visiblePanels: [(windowID: String, panel: ChildWindowPanel)] = panels.compactMap { entry in
+            let (kind, managed) = entry
+            guard requestedVisibility[kind] == true, managed.panel.isVisible else {
+                return nil
+            }
+            return (kind.windowStateID, managed.panel)
+        }
+
+        guard !visiblePanels.isEmpty else { return }
+
+        let rankedPanels = visiblePanels.sorted { lhs, rhs in
+            let lhsRank = panelOrder.firstIndex(of: lhs.windowID) ?? Int.max
+            let rhsRank = panelOrder.firstIndex(of: rhs.windowID) ?? Int.max
+            if lhsRank != rhsRank {
+                return lhsRank < rhsRank
+            }
+            return lhs.windowID < rhs.windowID
+        }
+
+        for managed in rankedPanels {
+            if managed.panel.parent === parentWindow {
+                parentWindow.removeChildWindow(managed.panel)
+                parentWindow.addChildWindow(managed.panel, ordered: .above)
+            }
+            managed.panel.orderFront(nil)
+        }
     }
 }
