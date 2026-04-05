@@ -4,9 +4,9 @@ import HypnoCore
 struct OutputSettingsPanelView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
-    @ObservedObject var player: PlayerState
 
     private var isLiveMode: Bool { main.isLiveMode }
+    private var player: PlayerState { main.activePlayer }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {

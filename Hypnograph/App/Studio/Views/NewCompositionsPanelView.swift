@@ -4,15 +4,22 @@ import HypnoCore
 struct NewCompositionsPanelView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
-    @ObservedObject var player: PlayerState
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
 
     private var isLiveMode: Bool { main.isLiveMode }
+    private var player: PlayerState { main.activePlayer }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             PanelInlineFieldRow(title: "Max Layers", valueText: "\(player.config.maxLayers)") {
-                Stepper("", value: $player.config.maxLayers, in: 1...20)
+                Stepper(
+                    "",
+                    value: Binding(
+                        get: { player.config.maxLayers },
+                        set: { player.config.maxLayers = $0 }
+                    ),
+                    in: 1...20
+                )
                     .labelsHidden()
                     .disabled(isLiveMode)
                     .opacity(isLiveMode ? 0.55 : 1.0)

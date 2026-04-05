@@ -377,16 +377,16 @@ struct ContentView: View {
                     SourcesPanelView(state: state, main: main)
                 ),
                 newCompositionsContent: AnyView(
-                    NewCompositionsPanelView(state: state, main: main, player: main.activePlayer)
+                    NewCompositionsPanelView(state: state, main: main)
                 ),
                 outputSettingsContent: AnyView(
-                    OutputSettingsPanelView(state: state, main: main, player: main.activePlayer)
+                    OutputSettingsPanelView(state: state, main: main)
                 ),
                 compositionContent: AnyView(
                     CompositionPanelView(state: state, main: main)
                 ),
                 effectsContent: AnyView(
-                    EffectsPanelView(state: state, main: main, effectsSession: main.effectsLibrarySession)
+                    EffectsPanelView(state: state, main: main)
                 ),
                 playerControlsContent: AnyView(
                     playerControlsContent

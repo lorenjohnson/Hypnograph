@@ -154,6 +154,15 @@ private enum PanelKind {
     var usesTitlebarChrome: Bool {
         true
     }
+
+    var shouldRefreshRootViewOnSync: Bool {
+        switch self {
+        case .playerControls:
+            return true
+        default:
+            return false
+        }
+    }
 }
 
 private final class ChildPanel: NSPanel {
@@ -486,7 +495,9 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
 
         if visible {
             let managed = ensurePanel(kind: kind, parentWindow: parentWindow, content: content)
-            managed.host.setRootView(content)
+            if kind.shouldRefreshRootViewOnSync {
+                managed.host.setRootView(content)
+            }
             applySizing(for: kind, managed: managed)
 
             if panelsAutoHidden {
