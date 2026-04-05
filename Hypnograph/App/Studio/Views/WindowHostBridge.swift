@@ -14,10 +14,13 @@ struct WindowHostBridge: NSViewRepresentable {
     let showComposition: Bool
     let showEffects: Bool
     let showPlayerControls: Bool
+    let expectedParentFullScreen: Bool
+    let panelFrames: [String: CGRect]
     let playerControlsLayoutSignature: Int
     let autoHideWindows: Bool
     let keyboardAccessibilityOverridesEnabled: Bool
     let onPanelVisibilityChanged: (String, Bool) -> Void
+    let onPanelFrameChanged: (String, CGRect) -> Void
     let onPanelsAutoHiddenChanged: (Bool) -> Void
     let hypnogramsContent: AnyView
     let sourcesContent: AnyView
@@ -54,10 +57,13 @@ struct WindowHostBridge: NSViewRepresentable {
             showComposition: showComposition,
             showEffects: showEffects,
             showPlayerControls: showPlayerControls,
+            expectedParentFullScreen: expectedParentFullScreen,
+            panelFrames: panelFrames,
             playerControlsLayoutSignature: playerControlsLayoutSignature,
             autoHideWindows: autoHideWindows,
             keyboardAccessibilityOverridesEnabled: keyboardAccessibilityOverridesEnabled,
             onPanelVisibilityChanged: onPanelVisibilityChanged,
+            onPanelFrameChanged: onPanelFrameChanged,
             onPanelsAutoHiddenChanged: onPanelsAutoHiddenChanged,
             hypnogramsContent: hypnogramsContent,
             sourcesContent: sourcesContent,

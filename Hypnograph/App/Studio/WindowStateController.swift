@@ -11,10 +11,30 @@ final class WindowStateController: ObservableObject {
     @Published private(set) var windowState = WindowState()
     @Published private(set) var mainWindowFullScreen: Bool = true
     @Published private(set) var panelsHidden: Bool = false
+    private var panelFrames: [String: CGRect] = [:]
+
+    private struct PersistedPanelFrame: Codable {
+        let x: Double
+        let y: Double
+        let width: Double
+        let height: Double
+
+        init(rect: CGRect) {
+            x = rect.origin.x
+            y = rect.origin.y
+            width = rect.size.width
+            height = rect.size.height
+        }
+
+        var rect: CGRect {
+            CGRect(x: x, y: y, width: width, height: height)
+        }
+    }
 
     private struct PersistedWindowState: Codable {
         let windowState: WindowState
         let mainWindowFullScreen: Bool
+        let panelFrames: [String: PersistedPanelFrame]?
     }
 
     init() {
@@ -58,13 +78,24 @@ final class WindowStateController: ObservableObject {
         panelsHidden = hidden
     }
 
+    func panelFrame(_ windowID: String) -> CGRect? {
+        panelFrames[windowID]
+    }
+
+    func setPanelFrame(_ frame: CGRect, for windowID: String) {
+        guard panelFrames[windowID] != frame else { return }
+        panelFrames[windowID] = frame
+        saveToDisk()
+    }
+
     func saveToDisk() {
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let persisted = PersistedWindowState(
                 windowState: windowState,
-                mainWindowFullScreen: mainWindowFullScreen
+                mainWindowFullScreen: mainWindowFullScreen,
+                panelFrames: panelFrames.mapValues(PersistedPanelFrame.init(rect:))
             )
             let data = try encoder.encode(persisted)
             try data.write(to: windowStateFileURL)
@@ -91,6 +122,7 @@ final class WindowStateController: ObservableObject {
                 loadedWindowState.isCleanScreen = false
                 windowState = loadedWindowState
                 mainWindowFullScreen = persisted.mainWindowFullScreen
+                panelFrames = persisted.panelFrames?.mapValues(\.rect) ?? [:]
                 print("WindowStateController: Loaded window state from disk")
                 return
             }
@@ -99,6 +131,7 @@ final class WindowStateController: ObservableObject {
             loadedWindowState.isCleanScreen = false
             windowState = loadedWindowState
             mainWindowFullScreen = true
+            panelFrames = [:]
             print("WindowStateController: Loaded legacy window state from disk")
         } catch {
             print("WindowStateController: Failed to load window state: \(error)")

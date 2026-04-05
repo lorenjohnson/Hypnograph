@@ -345,11 +345,24 @@ struct ContentView: View {
                 showComposition: windows.isWindowVisible("compositionWindow"),
                 showEffects: windows.isWindowVisible("effectsWindow"),
                 showPlayerControls: true,
+                expectedParentFullScreen: windows.mainWindowFullScreen,
+                panelFrames: [
+                    "hypnogramList": windows.panelFrame("hypnogramList"),
+                    "sourcesWindow": windows.panelFrame("sourcesWindow"),
+                    "newClipsWindow": windows.panelFrame("newClipsWindow"),
+                    "outputSettingsWindow": windows.panelFrame("outputSettingsWindow"),
+                    "compositionWindow": windows.panelFrame("compositionWindow"),
+                    "effectsWindow": windows.panelFrame("effectsWindow"),
+                    "playerControlsWindow": windows.panelFrame("playerControlsWindow")
+                ].compactMapValues { $0 },
                 playerControlsLayoutSignature: playerControlsLayoutSignature,
                 autoHideWindows: appSettingsStore.value.autoHideWindowsEnabled,
                 keyboardAccessibilityOverridesEnabled: appSettingsStore.value.keyboardAccessibilityOverridesEnabled,
                 onPanelVisibilityChanged: { windowID, isVisible in
                     windows.setWindowVisible(windowID, visible: isVisible)
+                },
+                onPanelFrameChanged: { windowID, frame in
+                    windows.setPanelFrame(frame, for: windowID)
                 },
                 onPanelsAutoHiddenChanged: { isHidden in
                     DispatchQueue.main.async {
