@@ -480,6 +480,7 @@ private struct EffectDefinitionSessionRow: View {
                         EffectParameterRowView(
                             name: key,
                             value: value,
+                            effectType: effect.type,
                             spec: spec,
                             onChange: { newValue in
                                 session.updateParameter(chainIndex: chainIndex, effectIndex: effectIndex, key: key, value: newValue)

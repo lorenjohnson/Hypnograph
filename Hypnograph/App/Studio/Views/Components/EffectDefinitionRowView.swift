@@ -99,27 +99,34 @@ struct EffectDefinitionRowView: View {
     }
 
     private var paramsEditor: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            let specs = EffectRegistry.parameterSpecs(for: effect.type)
-            let keys = EffectRegistry.parameterNames(for: effect.type).filter { $0 != "_enabled" }
+        let specs = EffectRegistry.parameterSpecs(for: effect.type)
+        let parameterRows = EffectRegistry.parameterNames(for: effect.type)
+            .filter { $0 != "_enabled" }
+            .map { key in
+                (
+                    key: key,
+                    spec: specs[key],
+                    value: effect.params?[key] ?? specs[key]?.defaultValue ?? .double(0)
+                )
+            }
 
-            if keys.isEmpty {
+        return VStack(alignment: .leading, spacing: 5) {
+            if parameterRows.isEmpty {
                 Text("No parameters")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(keys, id: \.self) { key in
-                    let spec = specs[key]
-                    let value = effect.params?[key] ?? spec?.defaultValue ?? .double(0)
+                ForEach(parameterRows, id: \.key) { row in
                     EffectParameterRowView(
-                        name: key,
-                        value: value,
-                        spec: spec,
+                        name: row.key,
+                        value: row.value,
+                        effectType: effect.type,
+                        spec: row.spec,
                         onChange: { newValue in
                             main.activeEffectManager.updateEffectParameter(
                                 for: layer,
                                 effectDefIndex: effectIndex,
-                                key: key,
+                                key: row.key,
                                 value: newValue
                             )
                         }

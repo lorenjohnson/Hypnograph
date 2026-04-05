@@ -150,7 +150,11 @@ struct ParameterSliderRow: View {
             // Set lastExternalValue BEFORE sliderValue to prevent spurious onChange triggers
             lastExternalValue = Double(i)
             sliderValue = Double(i)
-            textValue = "\(i)"
+            if shouldTreatIntAsDouble {
+                textValue = String(format: "%.2f", Double(i))
+            } else {
+                textValue = "\(i)"
+            }
         case .string(let s):
             // Only initialize if not currently focused (preserve typing)
             if !isTextFieldFocused {
@@ -420,14 +424,19 @@ struct ParameterSliderRow: View {
         return step
     }
 
-    /// Check if an int value should be treated as a double based on registry range
-    /// (e.g., contrast: 1 should be treated as 1.0 with decimal range 0.5-2.0)
+    /// Some float parameters round-trip through JSON as `.int` when the stored
+    /// number is whole (for example `-1`). Respect the declared schema type
+    /// rather than inferring intent from the raw stored numeric case.
     private var shouldTreatIntAsDouble: Bool {
-        guard let type = effectType,
-              let range = EffectRegistry.range(for: type, param: name) else {
+        guard let spec else {
             return false
         }
-        // If registry has non-integer bounds, treat as double
-        return range.min != floor(range.min) || range.max != floor(range.max) || range.step == nil
+
+        switch spec {
+        case .double, .float:
+            return true
+        default:
+            return false
+        }
     }
 }
