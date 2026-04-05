@@ -1,7 +1,7 @@
 import SwiftUI
 import HypnoCore
 
-struct OutputSettingsWindowView: View {
+struct OutputSettingsPanelView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
     @ObservedObject var player: PlayerState

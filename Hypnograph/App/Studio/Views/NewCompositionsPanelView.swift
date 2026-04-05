@@ -1,7 +1,7 @@
 import SwiftUI
 import HypnoCore
 
-struct NewClipsWindowView: View {
+struct NewCompositionsPanelView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
     @ObservedObject var player: PlayerState

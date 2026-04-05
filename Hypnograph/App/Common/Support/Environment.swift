@@ -136,8 +136,13 @@ enum Environment {
         appSupportDirectory.appendingPathComponent("effects-studio-settings.json")
     }
 
-    /// ~/Library/Application Support/Hypnograph/window-state.json
-    static var defaultWindowStateURL: URL {
+    /// ~/Library/Application Support/Hypnograph/panel-state.json
+    static var defaultPanelStateURL: URL {
+        appSupportDirectory.appendingPathComponent("panel-state.json")
+    }
+
+    /// Legacy panel-state filename kept for one-way migration reads.
+    static var legacyDefaultPanelStateURL: URL {
         appSupportDirectory.appendingPathComponent("window-state.json")
     }
 
@@ -200,13 +205,14 @@ enum Environment {
         writeCodableSettings(EffectsComposerSettings.defaultValue, to: url, label: "effects composer settings")
     }
 
-    static func ensureDefaultWindowStateFileExists() {
+    static func ensureDefaultPanelStateFileExists() {
         let fm = FileManager.default
-        let url = defaultWindowStateURL
+        let url = defaultPanelStateURL
         guard !fm.fileExists(atPath: url.path) else { return }
+        guard !fm.fileExists(atPath: legacyDefaultPanelStateURL.path) else { return }
 
         let bundledURL = Bundle.main.url(
-            forResource: "default-window-state",
+            forResource: "default-panel-state",
             withExtension: "json"
         )
 
@@ -219,9 +225,9 @@ enum Environment {
 
         do {
             try fm.copyItem(at: bundledURL, to: url)
-            print("Copied bundled default window state to \(url.path)")
+            print("Copied bundled default panel state to \(url.path)")
         } catch {
-            print("Failed to copy default window state to \(url.path): \(error)")
+            print("Failed to copy default panel state to \(url.path): \(error)")
         }
     }
 
@@ -229,29 +235,29 @@ enum Environment {
         ensureDefaultStudioSettingsFileExists()
         ensureDefaultAppSettingsFileExists()
         ensureDefaultEffectsComposerSettingsFileExists()
-        ensureDefaultWindowStateFileExists()
+        ensureDefaultPanelStateFileExists()
     }
 
     #if DEBUG
-    private static var sourceControlledDefaultWindowStateURL: URL {
+    private static var sourceControlledDefaultPanelStateURL: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("default-window-state.json")
+            .appendingPathComponent("default-panel-state.json")
     }
 
-    static func saveCurrentWindowStateAsBundledDefault() throws {
+    static func saveCurrentPanelStateAsBundledDefault() throws {
         let fm = FileManager.default
-        let sourceURL = defaultWindowStateURL
-        let destinationURL = sourceControlledDefaultWindowStateURL
+        let sourceURL = fm.fileExists(atPath: defaultPanelStateURL.path) ? defaultPanelStateURL : legacyDefaultPanelStateURL
+        let destinationURL = sourceControlledDefaultPanelStateURL
 
         guard fm.fileExists(atPath: sourceURL.path) else {
             throw NSError(
                 domain: "Hypnograph.Environment",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "No current window-state.json was found in Application Support."]
+                userInfo: [NSLocalizedDescriptionKey: "No current panel-state.json was found in Application Support."]
             )
         }
 

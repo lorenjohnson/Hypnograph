@@ -20,7 +20,7 @@ struct AppCommands: Commands {
     @SwiftUI.Environment(\.openWindow) private var openWindow
     @ObservedObject private var state: HypnographState
     @ObservedObject private var studio: Studio
-    @ObservedObject private var windows: WindowStateController
+    @ObservedObject private var panels: PanelStateController
     @ObservedObject private var appSettingsStore: AppSettingsStore
 
     /// Whether a text field is currently being edited
@@ -35,7 +35,7 @@ struct AppCommands: Commands {
     ) {
         _state = ObservedObject(initialValue: state)
         _studio = ObservedObject(initialValue: studio)
-        _windows = ObservedObject(initialValue: studio.windows)
+        _panels = ObservedObject(initialValue: studio.panels)
         _appSettingsStore = ObservedObject(initialValue: state.appSettingsStore)
     }
 
@@ -98,43 +98,43 @@ struct AppCommands: Commands {
         CommandGroup(replacing: .sidebar) {
             Section("Studio Panels") {
                 Toggle("Composition", isOn: Binding(
-                    get: { windows.isWindowVisible("compositionWindow") },
-                    set: { _ in windows.toggleWindow("compositionWindow") }
+                    get: { panels.isPanelVisible("compositionPanel") },
+                    set: { _ in panels.togglePanel("compositionPanel") }
                 ))
                 .keyboardShortcut("1", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("Output Settings", isOn: Binding(
-                    get: { windows.isWindowVisible("outputSettingsWindow") },
-                    set: { _ in windows.toggleWindow("outputSettingsWindow") }
+                    get: { panels.isPanelVisible("outputSettingsPanel") },
+                    set: { _ in panels.togglePanel("outputSettingsPanel") }
                 ))
                 .keyboardShortcut("2", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("New Compositions", isOn: Binding(
-                    get: { windows.isWindowVisible("newClipsWindow") },
-                    set: { _ in windows.toggleWindow("newClipsWindow") }
+                    get: { panels.isPanelVisible("newCompositionsPanel") },
+                    set: { _ in panels.togglePanel("newCompositionsPanel") }
                 ))
                 .keyboardShortcut("3", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("Sources", isOn: Binding(
-                    get: { windows.isWindowVisible("sourcesWindow") },
-                    set: { _ in windows.toggleWindow("sourcesWindow") }
+                    get: { panels.isPanelVisible("sourcesPanel") },
+                    set: { _ in panels.togglePanel("sourcesPanel") }
                 ))
                 .keyboardShortcut("4", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("Effect Chains", isOn: Binding(
-                    get: { windows.isWindowVisible("effectsWindow") },
-                    set: { _ in windows.toggleWindow("effectsWindow") }
+                    get: { panels.isPanelVisible("effectsPanel") },
+                    set: { _ in panels.togglePanel("effectsPanel") }
                 ))
                 .keyboardShortcut("5", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("Hypnograms", isOn: Binding(
-                    get: { windows.isWindowVisible("hypnogramList") },
-                    set: { _ in windows.toggleWindow("hypnogramList") }
+                    get: { panels.isPanelVisible("hypnogramsPanel") },
+                    set: { _ in panels.togglePanel("hypnogramsPanel") }
                 ))
                 .keyboardShortcut("6", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
@@ -142,16 +142,16 @@ struct AppCommands: Commands {
                 Divider()
 
                 Toggle("Auto-Hide Panels", isOn: Binding(
-                    get: { appSettingsStore.value.autoHideWindowsEnabled },
+                    get: { appSettingsStore.value.autoHidePanelsEnabled },
                     set: { newValue in
-                        appSettingsStore.update { $0.autoHideWindowsEnabled = newValue }
+                        appSettingsStore.update { $0.autoHidePanelsEnabled = newValue }
                     }
                 ))
 
                 Toggle("Hide Panels", isOn: Binding(
-                    get: { windows.panelsHidden },
+                    get: { panels.panelsHidden },
                     set: { newValue in
-                        guard windows.panelsHidden != newValue else { return }
+                        guard panels.panelsHidden != newValue else { return }
                         hidePanelsNowForActiveWindow()
                     }
                 ))
@@ -161,9 +161,9 @@ struct AppCommands: Commands {
                 Divider()
 
                 Button("Save Current Panel Layout as App Default") {
-                    windows.saveToDisk()
+                    panels.saveToDisk()
                     do {
-                        try Environment.saveCurrentWindowStateAsBundledDefault()
+                        try Environment.saveCurrentPanelStateAsBundledDefault()
                         AppNotifications.show("Saved current panel layout as bundled default", flash: true)
                     } catch {
                         AppNotifications.show("Failed to save bundled panel layout", flash: true)
@@ -178,8 +178,8 @@ struct AppCommands: Commands {
 
                 Section("Live Display") {
                     Toggle("Live Preview", isOn: Binding(
-                        get: { windows.isWindowVisible("livePreview") },
-                        set: { _ in windows.toggleWindow("livePreview") }
+                        get: { panels.isPanelVisible("livePreviewPanel") },
+                        set: { _ in panels.togglePanel("livePreviewPanel") }
                     ))
                     .keyboardShortcut("w", modifiers: [])
                     .disabled(isTyping || !isStudioWindowShortcutContext)

@@ -1,12 +1,12 @@
 //
-//  EffectsComposerPanelWindows.swift
+//  ComposerPanelHostBridge.swift
 //  Hypnograph
 //
 
 import SwiftUI
 
-struct EffectsComposerPanelHostBridge: NSViewRepresentable {
-    @ObservedObject var hostService: EffectsComposerPanelHostService
+struct ComposerPanelHostBridge: NSViewRepresentable {
+    @ObservedObject var hostService: ComposerPanelHostService
     let showCodePanel: Bool
     let showInspectorPanel: Bool
     let showManifestPanel: Bool
@@ -18,9 +18,9 @@ struct EffectsComposerPanelHostBridge: NSViewRepresentable {
     let liveControlsContent: AnyView
 
     final class Coordinator {
-        var hostService: EffectsComposerPanelHostService
+        var hostService: ComposerPanelHostService
 
-        init(hostService: EffectsComposerPanelHostService) {
+        init(hostService: ComposerPanelHostService) {
             self.hostService = hostService
         }
     }

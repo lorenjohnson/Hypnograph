@@ -9,10 +9,10 @@ import HypnoUI
 struct ContentView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
-    @ObservedObject private var windows: WindowStateController
+    @ObservedObject private var panels: PanelStateController
     @ObservedObject private var appSettingsStore: AppSettingsStore
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
-    @StateObject private var windowHostService = WindowHostService()
+    @StateObject private var panelHostService = PanelHostService()
     @State private var panelsCurrentlyAutoHidden = false
     @State private var completedDownloadIdentifiersThisLoad: Set<String> = []
     @State private var previouslyVisibleDownloadIdentifiers: Set<String> = []
@@ -23,7 +23,7 @@ struct ContentView: View {
     init(state: HypnographState, main: Studio) {
         self.state = state
         self.main = main
-        _windows = ObservedObject(initialValue: main.windows)
+        _panels = ObservedObject(initialValue: main.panels)
         _appSettingsStore = ObservedObject(initialValue: state.appSettingsStore)
     }
 
@@ -271,7 +271,7 @@ struct ContentView: View {
                 .ignoresSafeArea()
                 .overlay {
                     CanvasPanelToggleHitView {
-                        windowHostService.hidePanelsForCanvasInteraction()
+                        panelHostService.hidePanelsForCanvasInteraction()
                     }
                 }
 
@@ -317,11 +317,11 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
 
-                if main.isLiveModeAvailable && windows.isWindowVisible("livePreview") {
+                if main.isLiveModeAvailable && panels.isPanelVisible("livePreviewPanel") {
                     LivePreviewPanel(
                         livePlayer: main.livePlayer,
                         onClose: {
-                            windows.setWindowVisible("livePreview", visible: false)
+                            panels.setPanelVisible("livePreviewPanel", visible: false)
                         }
                     )
                     .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -330,63 +330,63 @@ struct ContentView: View {
             .padding(.top, 12)
             .padding(.trailing, 12)
             .padding(.bottom, 12)
-            .animation(.easeInOut(duration: 0.2), value: windows.isWindowVisible("livePreview"))
+            .animation(.easeInOut(duration: 0.2), value: panels.isPanelVisible("livePreviewPanel"))
         }
         .background(
-            WindowHostBridge(
-                hostService: windowHostService,
-                showHypnograms: windows.isWindowVisible("hypnogramList"),
-                showSources: windows.isWindowVisible("sourcesWindow"),
-                showNewClips: windows.isWindowVisible("newClipsWindow"),
-                showOutputSettings: windows.isWindowVisible("outputSettingsWindow"),
-                showComposition: windows.isWindowVisible("compositionWindow"),
-                showEffects: windows.isWindowVisible("effectsWindow"),
+            PanelHostBridge(
+                hostService: panelHostService,
+                showHypnograms: panels.isPanelVisible("hypnogramsPanel"),
+                showSources: panels.isPanelVisible("sourcesPanel"),
+                showNewCompositions: panels.isPanelVisible("newCompositionsPanel"),
+                showOutputSettings: panels.isPanelVisible("outputSettingsPanel"),
+                showComposition: panels.isPanelVisible("compositionPanel"),
+                showEffects: panels.isPanelVisible("effectsPanel"),
                 showPlayerControls: true,
-                expectedParentFullScreen: windows.mainWindowFullScreen,
+                expectedParentFullScreen: panels.mainWindowFullScreen,
                 panelFrames: [
-                    "hypnogramList": windows.panelFrame("hypnogramList"),
-                    "sourcesWindow": windows.panelFrame("sourcesWindow"),
-                    "newClipsWindow": windows.panelFrame("newClipsWindow"),
-                    "outputSettingsWindow": windows.panelFrame("outputSettingsWindow"),
-                    "compositionWindow": windows.panelFrame("compositionWindow"),
-                    "effectsWindow": windows.panelFrame("effectsWindow"),
-                    "playerControlsWindow": windows.panelFrame("playerControlsWindow")
+                    "hypnogramsPanel": panels.panelFrame("hypnogramsPanel"),
+                    "sourcesPanel": panels.panelFrame("sourcesPanel"),
+                    "newCompositionsPanel": panels.panelFrame("newCompositionsPanel"),
+                    "outputSettingsPanel": panels.panelFrame("outputSettingsPanel"),
+                    "compositionPanel": panels.panelFrame("compositionPanel"),
+                    "effectsPanel": panels.panelFrame("effectsPanel"),
+                    "playerControlsPanel": panels.panelFrame("playerControlsPanel")
                 ].compactMapValues { $0 },
-                panelOrder: windows.panelOrderIDs(),
-                autoHideWindows: appSettingsStore.value.autoHideWindowsEnabled,
+                panelOrder: panels.panelOrderIDs(),
+                autoHidePanels: appSettingsStore.value.autoHidePanelsEnabled,
                 keyboardAccessibilityOverridesEnabled: appSettingsStore.value.keyboardAccessibilityOverridesEnabled,
-                onPanelVisibilityChanged: { windowID, isVisible in
-                    windows.setWindowVisible(windowID, visible: isVisible)
+                onPanelVisibilityChanged: { panelID, isVisible in
+                    panels.setPanelVisible(panelID, visible: isVisible)
                 },
-                onPanelFrameChanged: { windowID, frame in
-                    windows.setPanelFrame(frame, for: windowID)
+                onPanelFrameChanged: { panelID, frame in
+                    panels.setPanelFrame(frame, for: panelID)
                 },
                 onPanelOrderChanged: { panelOrder in
-                    windows.setPanelOrder(panelOrder)
+                    panels.setPanelOrder(panelOrder)
                 },
                 onPanelsAutoHiddenChanged: { isHidden in
                     DispatchQueue.main.async {
                         panelsCurrentlyAutoHidden = isHidden
-                        windows.setPanelsHidden(isHidden)
+                        panels.setPanelsHidden(isHidden)
                     }
                 },
                 hypnogramsContent: AnyView(
                     hypnogramsContent
                 ),
                 sourcesContent: AnyView(
-                    SourcesWindowView(state: state, main: main)
+                    SourcesPanelView(state: state, main: main)
                 ),
-                newClipsContent: AnyView(
-                    NewClipsWindowView(state: state, main: main, player: main.activePlayer)
+                newCompositionsContent: AnyView(
+                    NewCompositionsPanelView(state: state, main: main, player: main.activePlayer)
                 ),
                 outputSettingsContent: AnyView(
-                    OutputSettingsWindowView(state: state, main: main, player: main.activePlayer)
+                    OutputSettingsPanelView(state: state, main: main, player: main.activePlayer)
                 ),
                 compositionContent: AnyView(
-                    CompositionWindowView(state: state, main: main)
+                    CompositionPanelView(state: state, main: main)
                 ),
                 effectsContent: AnyView(
-                    EffectsWindowView(state: state, main: main, effectsSession: main.effectsLibrarySession)
+                    EffectsPanelView(state: state, main: main, effectsSession: main.effectsLibrarySession)
                 ),
                 playerControlsContent: AnyView(
                     playerControlsContent
@@ -397,18 +397,18 @@ struct ContentView: View {
         .appNotifications()
         .background(Color.black)
         .onReceive(NotificationCenter.default.publisher(for: Self.hidePanelsNowNotification)) { _ in
-            windowHostService.hidePanelsNow()
+            panelHostService.hidePanelsNow()
         }
         .onReceive(NotificationCenter.default.publisher(for: Self.showPanelsNowNotification)) { _ in
-            windowHostService.showPanelsNow()
+            panelHostService.showPanelsNow()
         }
         .onAppear {
-            windows.registerWindow("hypnogramList", defaultVisible: false)
-            windows.registerWindow("sourcesWindow", defaultVisible: false)
-            windows.registerWindow("newClipsWindow", defaultVisible: true)
-            windows.registerWindow("outputSettingsWindow", defaultVisible: true)
-            windows.registerWindow("compositionWindow", defaultVisible: true)
-            windows.registerWindow("effectsWindow", defaultVisible: true)
+            panels.registerPanel("hypnogramsPanel", defaultVisible: false)
+            panels.registerPanel("sourcesPanel", defaultVisible: false)
+            panels.registerPanel("newCompositionsPanel", defaultVisible: true)
+            panels.registerPanel("outputSettingsPanel", defaultVisible: true)
+            panels.registerPanel("compositionPanel", defaultVisible: true)
+            panels.registerPanel("effectsPanel", defaultVisible: true)
         }
         .onChange(of: main.activePlayer.isPrimaryCompositionLoadInFlight) { _, isInFlight in
             if isInFlight {

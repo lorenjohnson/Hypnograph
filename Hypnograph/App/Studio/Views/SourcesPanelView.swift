@@ -1,7 +1,7 @@
 import SwiftUI
 import HypnoCore
 
-struct SourcesWindowView: View {
+struct SourcesPanelView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
 
@@ -433,7 +433,7 @@ private struct ApplePhotosSourcePickerSheet: View {
     let onRequestAccess: () -> Void
     let onOpenSystemSettings: () -> Void
 
-    @State private var mode: SourcesWindowView.ApplePhotosAddMode = .allItems
+    @State private var mode: SourcesPanelView.ApplePhotosAddMode = .allItems
     @State private var selectedKeys: Set<String> = []
 
     var body: some View {
@@ -449,7 +449,7 @@ private struct ApplePhotosSourcePickerSheet: View {
                             .foregroundStyle(.secondary)
 
                         Picker("Selection", selection: $mode) {
-                            ForEach(SourcesWindowView.ApplePhotosAddMode.allCases) { mode in
+                            ForEach(SourcesPanelView.ApplePhotosAddMode.allCases) { mode in
                                 Text(mode.title).tag(mode)
                             }
                         }

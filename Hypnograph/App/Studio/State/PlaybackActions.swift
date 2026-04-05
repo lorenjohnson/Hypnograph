@@ -34,7 +34,7 @@ extension Studio {
     }
 
     func toggleHUD() {
-        _ = windows.toggleWindow("hud")
+        _ = panels.togglePanel("hudPanel")
     }
 
     func togglePause() {

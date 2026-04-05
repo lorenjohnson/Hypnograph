@@ -25,8 +25,8 @@ extension Studio {
     }
 
     func revealSourcesWindow() {
-        windows.setPanelsHidden(false)
+        panels.setPanelsHidden(false)
         NotificationCenter.default.post(name: ContentView.studioShowPanelsNowNotification, object: nil)
-        windows.setWindowVisible("sourcesWindow", visible: true)
+        panels.setPanelVisible("sourcesPanel", visible: true)
     }
 }

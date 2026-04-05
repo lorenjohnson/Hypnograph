@@ -1,15 +1,15 @@
 //
-//  WindowHostBridge.swift
+//  PanelHostBridge.swift
 //  Hypnograph
 //
 
 import SwiftUI
 
-struct WindowHostBridge: NSViewRepresentable {
-    @ObservedObject var hostService: WindowHostService
+struct PanelHostBridge: NSViewRepresentable {
+    @ObservedObject var hostService: PanelHostService
     let showHypnograms: Bool
     let showSources: Bool
-    let showNewClips: Bool
+    let showNewCompositions: Bool
     let showOutputSettings: Bool
     let showComposition: Bool
     let showEffects: Bool
@@ -17,7 +17,7 @@ struct WindowHostBridge: NSViewRepresentable {
     let expectedParentFullScreen: Bool
     let panelFrames: [String: CGRect]
     let panelOrder: [String]
-    let autoHideWindows: Bool
+    let autoHidePanels: Bool
     let keyboardAccessibilityOverridesEnabled: Bool
     let onPanelVisibilityChanged: (String, Bool) -> Void
     let onPanelFrameChanged: (String, CGRect) -> Void
@@ -25,16 +25,16 @@ struct WindowHostBridge: NSViewRepresentable {
     let onPanelsAutoHiddenChanged: (Bool) -> Void
     let hypnogramsContent: AnyView
     let sourcesContent: AnyView
-    let newClipsContent: AnyView
+    let newCompositionsContent: AnyView
     let outputSettingsContent: AnyView
     let compositionContent: AnyView
     let effectsContent: AnyView
     let playerControlsContent: AnyView
 
     final class Coordinator {
-        var hostService: WindowHostService
+        var hostService: PanelHostService
 
-        init(hostService: WindowHostService) {
+        init(hostService: PanelHostService) {
             self.hostService = hostService
         }
     }
@@ -53,7 +53,7 @@ struct WindowHostBridge: NSViewRepresentable {
             parentWindow: nsView.window,
             showHypnograms: showHypnograms,
             showSources: showSources,
-            showNewClips: showNewClips,
+            showNewCompositions: showNewCompositions,
             showOutputSettings: showOutputSettings,
             showComposition: showComposition,
             showEffects: showEffects,
@@ -61,7 +61,7 @@ struct WindowHostBridge: NSViewRepresentable {
             expectedParentFullScreen: expectedParentFullScreen,
             panelFrames: panelFrames,
             panelOrder: panelOrder,
-            autoHideWindows: autoHideWindows,
+            autoHidePanels: autoHidePanels,
             keyboardAccessibilityOverridesEnabled: keyboardAccessibilityOverridesEnabled,
             onPanelVisibilityChanged: onPanelVisibilityChanged,
             onPanelFrameChanged: onPanelFrameChanged,
@@ -69,7 +69,7 @@ struct WindowHostBridge: NSViewRepresentable {
             onPanelsAutoHiddenChanged: onPanelsAutoHiddenChanged,
             hypnogramsContent: hypnogramsContent,
             sourcesContent: sourcesContent,
-            newClipsContent: newClipsContent,
+            newCompositionsContent: newCompositionsContent,
             outputSettingsContent: outputSettingsContent,
             compositionContent: compositionContent,
             effectsContent: effectsContent,

@@ -3,7 +3,7 @@ import CoreMedia
 import UniformTypeIdentifiers
 import HypnoCore
 
-struct CompositionWindowView: View {
+struct CompositionPanelView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
 
