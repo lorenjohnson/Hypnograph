@@ -5,7 +5,7 @@ import CoreMedia
 import HypnoCore
 
 @MainActor
-final class LayerThumbnailStore: ObservableObject {
+final class TimelineThumbnailStore: ObservableObject {
     private var cache: [UUID: NSImage] = [:]
     private var inFlight: Set<UUID> = []
 

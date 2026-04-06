@@ -249,6 +249,13 @@ struct ContentView: View {
     private var hypnogramsContent: some View {
         HypnogramsPanel(
             store: HypnogramStore.shared,
+            historyEntries: main.activePlayer.hypnogram.compositions.enumerated().map { index, composition in
+                HistoryCompositionEntry(
+                    index: index,
+                    composition: composition,
+                    isCurrent: index == main.activePlayer.currentCompositionIndex
+                )
+            },
             onLoad: { entry in
                 guard let hypnogram = HypnogramStore.shared.loadHypnogram(from: entry) else {
                     AppNotifications.show("Failed to load hypnogram", flash: true)
@@ -256,6 +263,9 @@ struct ContentView: View {
                 }
                 main.appendHypnogramToHistory(hypnogram, sourceURL: entry.sessionURL)
                 AppNotifications.show("Loaded: \(entry.name)", flash: true)
+            },
+            onJumpToHistory: { index in
+                main.jumpToComposition(at: index)
             }
         )
     }

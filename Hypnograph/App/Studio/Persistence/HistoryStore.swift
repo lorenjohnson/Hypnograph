@@ -2,27 +2,31 @@
 //  HistoryStore.swift
 //  Hypnograph
 //
-//  Persistence store for composition history materialized compositions + selection index.
+//  Persistence store for history using the shared Hypnogram document schema.
 //
 
 import Foundation
+import HypnoCore
 
 enum HistoryStore {
-    static func load(url: URL, historyLimit: Int) -> HistoryFile? {
+    static func loadCanonical(url: URL, historyLimit: Int) -> HistoryLoadResult? {
         let fm = FileManager.default
         guard fm.fileExists(atPath: url.path) else { return nil }
 
-        do {
-            let data = try Data(contentsOf: url)
-            let decoded = try JSONDecoder().decode(HistoryFile.self, from: data)
-            return sanitize(decoded, historyLimit: historyLimit)
-        } catch {
-            backupCorruptFile(at: url)
+        guard
+            let data = try? Data(contentsOf: url),
+            let decoded = try? JSONDecoder().decode(Hypnogram.self, from: data)
+        else {
             return nil
         }
+
+        return HistoryLoadResult(
+            hypnogram: sanitize(decoded, historyLimit: historyLimit),
+            legacySelectedCompositionIndex: nil
+        )
     }
 
-    static func save(_ history: HistoryFile, url: URL, historyLimit: Int) throws {
+    static func save(_ history: Hypnogram, url: URL, historyLimit: Int) throws {
         let sanitized = sanitize(history, historyLimit: historyLimit)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -30,33 +34,36 @@ enum HistoryStore {
         try data.write(to: url, options: .atomic)
     }
 
-    private static func sanitize(_ history: HistoryFile, historyLimit: Int) -> HistoryFile {
+    static func sanitize(_ history: Hypnogram, historyLimit: Int) -> Hypnogram {
         var compositions = history.compositions
-        var index = history.currentCompositionIndex
+        var currentCompositionIndex = history.currentCompositionIndex
 
         let limit = max(1, historyLimit)
         if compositions.count > limit {
-            let overflow = compositions.count - limit
-            compositions.removeFirst(overflow)
-            index = max(0, index - overflow)
+            let removedCount = compositions.count - limit
+            compositions.removeFirst(removedCount)
+            if let index = currentCompositionIndex {
+                currentCompositionIndex = max(0, index - removedCount)
+            }
         }
 
-        guard !compositions.isEmpty else {
-            return HistoryFile(
-                compositions: [],
-                currentCompositionIndex: 0
-            )
+        if let index = currentCompositionIndex {
+            if compositions.isEmpty {
+                currentCompositionIndex = nil
+            } else {
+                currentCompositionIndex = max(0, min(index, compositions.count - 1))
+            }
         }
 
-        index = max(0, min(index, compositions.count - 1))
-
-        return HistoryFile(
+        return Hypnogram(
             compositions: compositions,
-            currentCompositionIndex: index
+            currentCompositionIndex: currentCompositionIndex,
+            snapshot: nil,
+            createdAt: history.createdAt
         )
     }
 
-    private static func backupCorruptFile(at url: URL) {
+    static func backupCorruptFile(at url: URL) {
         let fm = FileManager.default
         let timestamp = ISO8601DateFormatter().string(from: Date())
             .replacingOccurrences(of: ":", with: "-")

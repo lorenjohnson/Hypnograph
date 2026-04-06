@@ -19,13 +19,6 @@ enum HypnogramFileStore {
     /// All supported file extensions
     static let fileExtensions = ["hypno", "hypnogram"]
 
-    /// Snapshot resolution (1080p)
-    static let snapshotWidth: CGFloat = 1920
-    static let snapshotHeight: CGFloat = 1080
-
-    /// JPEG compression quality for snapshots
-    static let snapshotJPEGQuality: CGFloat = 0.85
-
     /// Directory for saved hypnograms (kept as "recipes" on disk for backwards compatibility)
     static var hypnogramsDirectory: URL {
         let url = Environment.appSupportDirectory.appendingPathComponent("recipes", isDirectory: true)
@@ -56,22 +49,30 @@ enum HypnogramFileStore {
     /// - Returns: URL of the saved file, or nil if save failed
     @discardableResult
     static func save(_ hypnogram: Hypnogram, snapshot: CGImage, to url: URL) -> URL? {
-        // Encode the snapshot as base64 JPEG
-        guard let snapshotBase64 = encodeSnapshot(snapshot) else {
-            print("❌ HypnogramFileStore: Failed to encode snapshot")
+        guard let previewImages = CompositionPreviewImageCodec.makePreviewImages(from: snapshot) else {
+            print("❌ HypnogramFileStore: Failed to encode composition previews")
             return nil
         }
 
-        // Create a hypnogram payload with the embedded snapshot
-        var hypnogramWithSnapshot = hypnogram
-        hypnogramWithSnapshot.snapshot = snapshotBase64
+        var hypnogramWithPreview = hypnogram
+        if !hypnogramWithPreview.compositions.isEmpty {
+            if hypnogramWithPreview.compositions[0].snapshot == nil {
+                hypnogramWithPreview.compositions[0].snapshot = previewImages.snapshotBase64
+            }
+            if hypnogramWithPreview.compositions[0].thumbnail == nil {
+                hypnogramWithPreview.compositions[0].thumbnail = previewImages.thumbnailBase64
+            }
+        }
+
+        // Preserve the existing document-level poster image for saved files for now.
+        hypnogramWithPreview.snapshot = previewImages.snapshotBase64
 
         // Encode to JSON
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
 
         do {
-            let data = try encoder.encode(hypnogramWithSnapshot)
+            let data = try encoder.encode(hypnogramWithPreview)
             try data.write(to: url, options: .atomic)
             print("✅ HypnogramFileStore: Saved hypnogram to \(url.lastPathComponent) (\(data.count / 1024) KB)")
             return url
@@ -132,7 +133,7 @@ enum HypnogramFileStore {
     /// - Returns: The snapshot as NSImage, or nil if not available
     static func loadThumbnail(from url: URL) -> NSImage? {
         guard let hypnogram = load(from: url),
-              let base64 = hypnogram.snapshot,
+              let base64 = hypnogram.thumbnail,
               let data = Data(base64Encoded: base64),
               let image = NSImage(data: data) else {
             return nil
@@ -169,62 +170,5 @@ enum HypnogramFileStore {
         try? FileManager.default.removeItem(at: url)
         print("🗑️ HypnogramFileStore: Deleted \(url.lastPathComponent)")
     }
-
-    // MARK: - Snapshot Encoding
-
-    /// Encode a CGImage as base64 JPEG, resized to 1080p
-    /// - Parameter image: The source CGImage
-    /// - Returns: Base64-encoded JPEG string, or nil if encoding failed
-    private static func encodeSnapshot(_ image: CGImage) -> String? {
-        // Calculate target size maintaining aspect ratio, fitting within 1080p
-        let sourceWidth = CGFloat(image.width)
-        let sourceHeight = CGFloat(image.height)
-
-        let widthRatio = snapshotWidth / sourceWidth
-        let heightRatio = snapshotHeight / sourceHeight
-        let scale = min(widthRatio, heightRatio, 1.0) // Don't upscale
-
-        let targetWidth = Int(sourceWidth * scale)
-        let targetHeight = Int(sourceHeight * scale)
-
-        // Create scaled image using Core Graphics
-        guard let colorSpace = image.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB),
-              let context = CGContext(
-                  data: nil,
-                  width: targetWidth,
-                  height: targetHeight,
-                  bitsPerComponent: 8,
-                  bytesPerRow: 0,
-                  space: colorSpace,
-                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-              ) else {
-            print("⚠️ HypnogramFileStore: Failed to create graphics context for snapshot")
-            return nil
-        }
-
-        context.interpolationQuality = .high
-        context.draw(image, in: CGRect(x: 0, y: 0, width: targetWidth, height: targetHeight))
-
-        guard let scaledImage = context.makeImage() else {
-            print("⚠️ HypnogramFileStore: Failed to create scaled image")
-            return nil
-        }
-
-        // Convert to JPEG data
-        let nsImage = NSImage(cgImage: scaledImage, size: NSSize(width: targetWidth, height: targetHeight))
-        guard let tiffData = nsImage.tiffRepresentation,
-              let bitmapRep = NSBitmapImageRep(data: tiffData),
-              let jpegData = bitmapRep.representation(
-                  using: .jpeg,
-                  properties: [.compressionFactor: snapshotJPEGQuality]
-              ) else {
-            print("⚠️ HypnogramFileStore: Failed to encode snapshot as JPEG")
-            return nil
-        }
-
-        print("📷 HypnogramFileStore: Encoded \(targetWidth)×\(targetHeight) snapshot (\(jpegData.count / 1024) KB)")
-        return jpegData.base64EncodedString()
-    }
-
     // Compatibility rewrite logic lives in `Hypnograph/LegacyHypnogramMigration.swift`.
 }

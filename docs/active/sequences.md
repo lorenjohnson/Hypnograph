@@ -16,7 +16,7 @@ There are still significant open questions inside this project. The most importa
 
 Export has now been split out as follow-on work. This project stays focused on sequence definition and control inside Hypnograph. Rendering authored ranges and NLE handoff are tracked separately in [sequence-render-and-export.md](/Users/lorenjohnson/dev/Hypnograph/docs/backlog/sequence-render-and-export.md) and [sequence-fcpxml-export.md](/Users/lorenjohnson/dev/Hypnograph/docs/backlog/sequence-fcpxml-export.md).
 
-The first active implementation slice is now lower-level than the visible sequence strip. Before the sequence UI grows much further, history persistence should stop using its own near-duplicate file schema and instead validate as the same multi-composition `Hypnogram` document shape used for saved `.hypno` files. That means moving selection restore state such as `currentCompositionIndex` out of the history payload and into app restore state, while also establishing composition-level preview images that future sequence UI can rely on.
+The first active implementation slice is now lower-level than the visible sequence strip. Before the sequence UI grows much further, history persistence should stop using its own near-duplicate file schema and instead validate as the same multi-composition `Hypnogram` document shape used for saved `.hypno` files. That means establishing composition-level preview images that future sequence UI can rely on, and treating `currentCompositionIndex` as optional document state on the multi-composition hypnogram itself rather than as a separate history-only side channel.
 
 ## Rules
 
@@ -26,7 +26,7 @@ The first active implementation slice is now lower-level than the visible sequen
 - MUST let history range selection snap to whole-hypnogram boundaries rather than arbitrary sub-clip positions.
 - MUST make the history strip capable of dealing with large histories rather than assuming only a handful of visible items.
 - MUST treat history persistence convergence with the saved `Hypnogram` document format as in scope for this project rather than as unrelated cleanup.
-- MUST move `currentCompositionIndex`-style selection restore state out of the persisted history document and into app restore state.
+- MUST treat `currentCompositionIndex` as optional multi-composition document state on `Hypnogram`, not as a history-only sidecar format.
 - MUST establish composition-level preview image fields so sequence and history UI can render composition thumbnails without inventing a history-only image model.
 - SHOULD treat show or hide behavior for the history timeline and the existing hypnogram timeline as one coordinated UX decision.
 - MUST clarify what `Play` does when the operator is parked on an older history item and loop mode is off.
@@ -38,8 +38,8 @@ The first active implementation slice is now lower-level than the visible sequen
 
 ## Plan
 
-- Smallest meaningful next slice: make history persistence validate as a `Hypnogram`-shaped multi-composition document, move current selection restore state out of that document, and add composition-level `snapshot` and `thumbnail` fields generated off the playback-critical path.
-- Immediate acceptance check: the app can persist and restore history using the shared hypnogram schema, composition previews exist at the composition level, and the current history position still restores correctly from app state.
+- Smallest meaningful next slice: make history persistence validate as a `Hypnogram`-shaped multi-composition document, store the current selected composition index canonically on that document, and add composition-level `snapshot` and `thumbnail` fields generated off the playback-critical path.
+- Immediate acceptance check: the app can persist and restore history using the shared hypnogram schema, composition previews exist at the composition level, and the current history position still restores correctly from the hypnogram document itself.
 - Follow-on slice: define the first history timeline strip in plain language, including its visible segments, range handles, snap behavior, and how it behaves when history becomes too dense to show at full detail.
 - Later follow-on slice: clarify transport semantics from within that selected range, especially `Play`, `New`, and whether beginning/end buttons should target the full history or the active selected range.
 
@@ -56,7 +56,7 @@ The first active implementation slice is now lower-level than the visible sequen
 ## Current Direction
 
 - History should converge toward the same schema as a saved multi-composition `Hypnogram`, rather than preserving a separate `HistoryFile` structure with mostly duplicated fields.
-- The current meaningful difference between history persistence and saved hypnograms is selection restore state. That should live in app state, not inside the persisted history document.
+- The current meaningful difference between history persistence and saved hypnograms is shrinking further. Selection restore state should be allowed to live on the multi-composition `Hypnogram` itself as optional `currentCompositionIndex` document state.
 - Composition previews should become composition-owned data. The current top-level hypnogram snapshot is document-level today, but sequence UI needs thumbnail and snapshot data per composition.
 - Preview generation should happen when a composition becomes a history item or a saved document element, and it should happen off the playback-critical path so live playback is not slowed down.
-- Existing source-media timeline thumbnail systems such as `LayerThumbnailStore` remain separate. They solve layer and scrubbing UI problems, not composition-history preview problems.
+- Existing source-media timeline thumbnail systems such as `TimelineThumbnailStore` remain separate. They solve layer and scrubbing UI problems, not composition-history preview problems.

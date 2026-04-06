@@ -7,7 +7,7 @@ import AppKit
 struct LayerRowView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
-    @ObservedObject var thumbnailStore: LayerThumbnailStore
+    @ObservedObject var thumbnailStore: TimelineThumbnailStore
 
     let index: Int
     @Binding var layer: Layer

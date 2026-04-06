@@ -8,7 +8,6 @@
 
 import Foundation
 import Combine
-import CoreImage
 import AppKit
 import UniformTypeIdentifiers
 import HypnoCore
@@ -20,20 +19,19 @@ struct HypnogramEntry: Identifiable, Codable {
     var createdAt: Date
     var favoritedAt: Date?
     let sessionURL: URL
-    var thumbnailBase64: String?
     var isFavorite: Bool
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, createdAt, favoritedAt, sessionURL, thumbnailBase64, isFavorite
+        case id, name, createdAt, favoritedAt, sessionURL, isFavorite
 
         // Backward-compatible decode key from older store schema.
         case recipeURL
+        case thumbnailBase64
     }
 
     init(
         name: String,
         sessionURL: URL,
-        thumbnailBase64: String? = nil,
         isFavorite: Bool = false,
         favoritedAt: Date? = nil
     ) {
@@ -42,7 +40,6 @@ struct HypnogramEntry: Identifiable, Codable {
         self.createdAt = Date()
         self.favoritedAt = favoritedAt ?? (isFavorite ? Date() : nil)
         self.sessionURL = sessionURL
-        self.thumbnailBase64 = thumbnailBase64
         self.isFavorite = isFavorite
     }
 
@@ -52,8 +49,8 @@ struct HypnogramEntry: Identifiable, Codable {
         name = try container.decode(String.self, forKey: .name)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         favoritedAt = try container.decodeIfPresent(Date.self, forKey: .favoritedAt)
-        thumbnailBase64 = try container.decodeIfPresent(String.self, forKey: .thumbnailBase64)
         isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        _ = try container.decodeIfPresent(String.self, forKey: .thumbnailBase64)
 
         if let url = try container.decodeIfPresent(URL.self, forKey: .sessionURL) {
             sessionURL = url
@@ -70,18 +67,33 @@ struct HypnogramEntry: Identifiable, Codable {
         try container.encode(createdAt, forKey: .createdAt)
         try container.encodeIfPresent(favoritedAt, forKey: .favoritedAt)
         try container.encode(sessionURL, forKey: .sessionURL)
-        try container.encodeIfPresent(thumbnailBase64, forKey: .thumbnailBase64)
         try container.encode(isFavorite, forKey: .isFavorite)
     }
 
-    /// Decode thumbnail from base64 to NSImage
     var thumbnailImage: NSImage? {
-        guard let base64 = thumbnailBase64,
-              let data = Data(base64Encoded: base64),
-              let image = NSImage(data: data) else {
+        HypnogramEntryThumbnailCache.image(for: sessionURL)
+    }
+}
+
+private enum HypnogramEntryThumbnailCache {
+    private static let cache = NSCache<NSString, NSImage>()
+
+    static func image(for url: URL) -> NSImage? {
+        let key = url.standardizedFileURL.path as NSString
+        if let cached = cache.object(forKey: key) {
+            return cached
+        }
+
+        guard let image = HypnogramFileStore.loadThumbnail(from: url) else {
             return nil
         }
+
+        cache.setObject(image, forKey: key)
         return image
+    }
+
+    static func invalidate(_ url: URL) {
+        cache.removeObject(forKey: url.standardizedFileURL.path as NSString)
     }
 }
 
@@ -126,19 +138,18 @@ final class HypnogramStore: ObservableObject {
         guard let sessionURL = HypnogramFileStore.save(hypnogram, snapshot: snapshot) else {
             return nil
         }
-
-        // The .hypno/.hypnogram file IS the thumbnail now - encode a smaller version for quick loading in list
-        let thumbnailBase64 = Self.encodeThumbnail(CIImage(cgImage: snapshot))
+        HypnogramEntryThumbnailCache.invalidate(sessionURL)
 
         let displayName = name ?? "Hypnogram \(DateFormatter.shortDateTime.string(from: Date()))"
         let entry = HypnogramEntry(
             name: displayName,
             sessionURL: sessionURL,
-            thumbnailBase64: thumbnailBase64,
             isFavorite: isFavorite
         )
 
-        entries.append(entry)
+        var updatedEntries = entries
+        updatedEntries.append(entry)
+        entries = updatedEntries
         save()
 
         return entry
@@ -150,11 +161,12 @@ final class HypnogramStore: ObservableObject {
         let entry = HypnogramEntry(
             name: displayName,
             sessionURL: url,
-            thumbnailBase64: nil,
             isFavorite: isFavorite
         )
 
-        entries.append(entry)
+        var updatedEntries = entries
+        updatedEntries.append(entry)
+        entries = updatedEntries
         save()
 
         return entry
@@ -167,16 +179,17 @@ final class HypnogramStore: ObservableObject {
         name: String? = nil,
         isFavorite: Bool = false
     ) -> HypnogramEntry {
-        let thumbnailBase64 = Self.encodeThumbnail(CIImage(cgImage: snapshot))
+        HypnogramEntryThumbnailCache.invalidate(sessionURL)
 
         if let index = entries.firstIndex(where: { $0.sessionURL.standardizedFileURL == sessionURL.standardizedFileURL }) {
-            entries[index].name = name ?? entries[index].name
-            entries[index].createdAt = Date()
-            entries[index].thumbnailBase64 = thumbnailBase64
-            entries[index].isFavorite = entries[index].isFavorite || isFavorite
-            if entries[index].isFavorite {
-                entries[index].favoritedAt = entries[index].favoritedAt ?? Date()
+            var updatedEntries = entries
+            updatedEntries[index].name = name ?? updatedEntries[index].name
+            updatedEntries[index].createdAt = Date()
+            updatedEntries[index].isFavorite = updatedEntries[index].isFavorite || isFavorite
+            if updatedEntries[index].isFavorite {
+                updatedEntries[index].favoritedAt = updatedEntries[index].favoritedAt ?? Date()
             }
+            entries = updatedEntries
             save()
             return entries[index]
         }
@@ -185,17 +198,19 @@ final class HypnogramStore: ObservableObject {
         let entry = HypnogramEntry(
             name: displayName,
             sessionURL: sessionURL,
-            thumbnailBase64: thumbnailBase64,
             isFavorite: isFavorite
         )
-        entries.append(entry)
+        var updatedEntries = entries
+        updatedEntries.append(entry)
+        entries = updatedEntries
         save()
         return entry
     }
 
     /// Remove an entry
     func remove(_ entry: HypnogramEntry) {
-        entries.removeAll { $0.id == entry.id }
+        entries = entries.filter { $0.id != entry.id }
+        HypnogramEntryThumbnailCache.invalidate(entry.sessionURL)
         // Optionally delete the recipe file
         // HypnogramFileStore.delete(at: entry.sessionURL)
         save()
@@ -204,8 +219,10 @@ final class HypnogramStore: ObservableObject {
     /// Toggle favorite status
     func toggleFavorite(_ entry: HypnogramEntry) {
         guard let index = entries.firstIndex(where: { $0.id == entry.id }) else { return }
-        entries[index].isFavorite.toggle()
-        entries[index].favoritedAt = entries[index].isFavorite ? Date() : nil
+        var updatedEntries = entries
+        updatedEntries[index].isFavorite.toggle()
+        updatedEntries[index].favoritedAt = updatedEntries[index].isFavorite ? Date() : nil
+        entries = updatedEntries
         save()
     }
 
@@ -237,39 +254,6 @@ final class HypnogramStore: ObservableObject {
         } catch {
             print("⚠️ HypnogramStore: Failed to save: \(error)")
         }
-    }
-
-    // MARK: - Thumbnail Encoding
-
-    /// Thumbnail size (square, small for base64 efficiency)
-    private static let thumbnailSize: CGFloat = 120
-
-    /// Encode a CIImage to base64 JPEG string (resized to thumbnail size)
-    static func encodeThumbnail(_ image: CIImage) -> String? {
-        let context = CIContext(options: [.workingColorSpace: CGColorSpaceCreateDeviceRGB()])
-
-        // Scale down to thumbnail size
-        let extent = image.extent
-        let scale = thumbnailSize / max(extent.width, extent.height)
-        let scaledImage = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        let scaledExtent = scaledImage.extent
-
-        // Create CGImage
-        guard let cgImage = context.createCGImage(scaledImage, from: scaledExtent) else {
-            print("⚠️ HypnogramStore: Failed to create CGImage for thumbnail")
-            return nil
-        }
-
-        // Convert to JPEG data
-        let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: scaledExtent.width, height: scaledExtent.height))
-        guard let tiffData = nsImage.tiffRepresentation,
-              let bitmapRep = NSBitmapImageRep(data: tiffData),
-              let jpegData = bitmapRep.representation(using: .jpeg, properties: [.compressionFactor: 0.7]) else {
-            print("⚠️ HypnogramStore: Failed to encode thumbnail as JPEG")
-            return nil
-        }
-
-        return jpegData.base64EncodedString()
     }
 }
 

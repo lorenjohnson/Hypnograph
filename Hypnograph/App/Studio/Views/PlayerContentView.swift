@@ -143,6 +143,7 @@ final class PlayerContentView: NSView {
         duration: TimeInterval = 1.5,
         playRate: Float? = nil,
         incomingEffectManager: EffectManager? = nil,
+        onIncomingFramePresented: (() -> Void)? = nil,
         completion: (() -> Void)? = nil
     ) {
         transitionToken &+= 1
@@ -182,6 +183,8 @@ final class PlayerContentView: NSView {
             playerView.cancelTransition()
             playerView.primarySource = nextSource
             activeSlot = nextSlot
+            playerView.onNextFramePresented = onIncomingFramePresented
+            playerView.onFirstTransitionFramePresented = nil
             applyAudioMix(progress: nil)
             notifyMirrors()
             print("🎬 PlayerContentView: Instant cut (no transition)")
@@ -194,6 +197,8 @@ final class PlayerContentView: NSView {
             // No current source - just set as primary
             playerView.primarySource = nextSource
             activeSlot = nextSlot
+            playerView.onNextFramePresented = onIncomingFramePresented
+            playerView.onFirstTransitionFramePresented = nil
             applyAudioMix(progress: nil)
             completion?()
             return
@@ -201,6 +206,8 @@ final class PlayerContentView: NSView {
 
         outgoingSlotDuringTransition = outgoingSlot
         activeSlot = nextSlot
+        playerView.onNextFramePresented = nil
+        playerView.onFirstTransitionFramePresented = onIncomingFramePresented
 
         // Audio: fade out outgoing while fading in incoming.
         var didNotifyMirrorsForTransitionStart = false
@@ -250,6 +257,11 @@ final class PlayerContentView: NSView {
     func freezeActiveSlotEffects(using manager: EffectManager) {
         setEffectManager(manager, for: activeSlot)
         applyEffectManager(manager, to: activeAVPlayer?.currentItem)
+    }
+
+    /// Run a one-shot callback after the next non-empty frame is presented.
+    func notifyOnNextPresentedFrame(_ callback: (() -> Void)?) {
+        playerView.onNextFramePresented = callback
     }
 
     private func applyEffectManager(_ manager: EffectManager, to playerItem: AVPlayerItem?) {

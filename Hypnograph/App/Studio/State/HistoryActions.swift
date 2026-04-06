@@ -20,6 +20,7 @@ extension Studio {
             MainActor.assumeIsolated {
                 self?.saveHistory(synchronous: true)
                 self?.state.settingsStore.save(synchronous: true)
+                self?.state.appSettingsStore.save(synchronous: true)
             }
         }
 
@@ -34,6 +35,7 @@ extension Studio {
             .dropFirst()
             .sink { [weak self] _ in
                 self?.scheduleHistorySave()
+                self?.syncCurrentCompositionIndexIntoHypnogram()
             }
             .store(in: &historySaveCancellables)
     }
@@ -48,10 +50,9 @@ extension Studio {
     }
 
     func saveHistory(synchronous: Bool) {
-        let history = HistoryFile(
-            compositions: player.hypnogram.compositions,
-            currentCompositionIndex: player.currentCompositionIndex
-        )
+        var history = player.hypnogram
+        history.currentCompositionIndex = clampedCurrentCompositionIndex
+        history.snapshot = nil
         historyPersistenceService.save(
             history,
             url: Environment.historyURL,
@@ -65,15 +66,19 @@ extension Studio {
             url: Environment.historyURL,
             historyLimit: state.settings.historyLimit
         ),
-           !history.compositions.isEmpty {
-            let hypnogram = Hypnogram(compositions: history.compositions)
-            player.hypnogram = hypnogram
-            player.currentCompositionIndex = history.currentCompositionIndex
+           !history.hypnogram.compositions.isEmpty {
+            player.hypnogram = history.hypnogram
+            let restoredIndex =
+                history.hypnogram.currentCompositionIndex
+                ?? history.legacySelectedCompositionIndex
+                ?? 0
+            player.currentCompositionIndex = max(0, min(restoredIndex, history.hypnogram.compositions.count - 1))
+            syncCurrentCompositionIndexIntoHypnogram()
             player.notifyHypnogramMutated()
             player.currentLayerIndex = -1
             player.effectManager.clearFrameBuffer()
             player.notifyHypnogramChanged()
-            print("📼 Restored composition history (\(history.compositions.count) compositions)")
+            print("📼 Restored composition history (\(history.hypnogram.compositions.count) compositions)")
             return
         }
 
@@ -139,6 +144,7 @@ extension Studio {
 
     func previousComposition() {
         guard player.currentCompositionIndex > 0 else { return }
+        persistCurrentCompositionPreviewIfNeeded()
         player.hasPendingGeneratedNextComposition = false
         player.currentCompositionLoadFailure = nil
         player.currentCompositionIndex -= 1
@@ -148,6 +154,7 @@ extension Studio {
     func nextComposition() {
         let nextIndex = player.currentCompositionIndex + 1
         if nextIndex < player.hypnogram.compositions.count {
+            persistCurrentCompositionPreviewIfNeeded()
             player.hasPendingGeneratedNextComposition = false
             player.currentCompositionLoadFailure = nil
             player.currentCompositionIndex = nextIndex
@@ -157,6 +164,19 @@ extension Studio {
             player.hasPendingGeneratedNextComposition = true
             appendNewCompositionAndSelect(manual: false)
         }
+    }
+
+    func jumpToComposition(at index: Int) {
+        guard !player.hypnogram.compositions.isEmpty else { return }
+
+        let clampedIndex = max(0, min(index, player.hypnogram.compositions.count - 1))
+        guard clampedIndex != player.currentCompositionIndex else { return }
+
+        persistCurrentCompositionPreviewIfNeeded()
+        player.hasPendingGeneratedNextComposition = false
+        player.currentCompositionLoadFailure = nil
+        player.currentCompositionIndex = clampedIndex
+        applyCompositionSelectionChanged(manual: true)
     }
 
     func deleteCurrentComposition() {
@@ -183,6 +203,39 @@ extension Studio {
         player.currentCompositionIndex = 0
         player.notifyHypnogramMutated()
         applyCompositionSelectionChanged(manual: true)
+    }
+
+    private var clampedCurrentCompositionIndex: Int {
+        max(0, min(player.currentCompositionIndex, max(0, player.hypnogram.compositions.count - 1)))
+    }
+
+    private func syncCurrentCompositionIndexIntoHypnogram() {
+        player.hypnogram.currentCompositionIndex = clampedCurrentCompositionIndex
+    }
+
+    func persistCurrentCompositionPreviewIfNeeded() {
+        let composition = player.currentComposition
+        let compositionIndex = clampedCurrentCompositionIndex
+        guard player.currentCompositionPreviewNeedsRefresh else { return }
+        guard player.currentRenderedCompositionID == composition.id else { return }
+        guard let frameSnapshot = currentFrameSnapshot() else { return }
+
+        let compositionID = composition.id
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self,
+                  let previewImages = CompositionPreviewImageCodec.makePreviewImages(from: frameSnapshot) else { return }
+
+            Task { @MainActor in
+                guard compositionIndex < self.player.hypnogram.compositions.count else { return }
+                guard self.player.hypnogram.compositions[compositionIndex].id == compositionID else { return }
+
+                self.player.hypnogram.compositions[compositionIndex].snapshot = previewImages.snapshotBase64
+                self.player.hypnogram.compositions[compositionIndex].thumbnail = previewImages.thumbnailBase64
+                self.player.currentCompositionPreviewNeedsRefresh = false
+                self.player.suppressNextPreviewInvalidation = true
+                self.player.notifyHypnogramMutated()
+            }
+        }
     }
 
     private func flashHistoryIndicator() {

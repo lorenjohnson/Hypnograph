@@ -59,6 +59,13 @@ final class PlayerState: ObservableObject {
     /// Set when the current composition failed to resolve any playable sources.
     @Published var currentCompositionLoadFailure: CompositionLoadFailure?
 
+    /// The composition that most recently presented a frame in the main preview.
+    var currentRenderedCompositionID: UUID?
+    /// Whether the current composition needs a fresh persisted preview after its next real render.
+    var currentCompositionPreviewNeedsRefresh: Bool = true
+    /// Used to ignore the immediate preview invalidation caused by writing preview metadata itself.
+    var suppressNextPreviewInvalidation: Bool = false
+
     // MARK: - Player Configuration
 
     /// Per-player settings (aspect ratio, resolution, generation settings)
@@ -190,7 +197,10 @@ final class PlayerState: ObservableObject {
             normalizedSession.compositions[index].syncTargetDurationToLayers()
         }
         hypnogram = normalizedSession
-        currentCompositionIndex = 0
+        currentCompositionIndex = max(0, min(normalizedSession.currentCompositionIndex ?? 0, max(0, normalizedSession.compositions.count - 1)))
+        currentRenderedCompositionID = nil
+        currentCompositionPreviewNeedsRefresh = true
+        suppressNextPreviewInvalidation = false
         hypnogramRevision &+= 1
     }
 

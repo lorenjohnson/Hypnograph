@@ -4,30 +4,15 @@
 //
 
 import Foundation
+import HypnoCore
 
 struct HistoryPersistenceService {
-    func load(url: URL, historyLimit: Int) -> HistoryFile? {
-        if let current = HistoryStore.load(url: url, historyLimit: historyLimit) {
-            return current
-        }
-
-        guard url == Environment.historyURL else { return nil }
-
-        let legacyURL = Environment.legacyClipHistoryURL
-        guard legacyURL != url else { return nil }
-        guard let legacy = HistoryStore.load(url: legacyURL, historyLimit: historyLimit) else { return nil }
-
-        do {
-            try HistoryStore.save(legacy, url: url, historyLimit: historyLimit)
-        } catch {
-            print("⚠️ Studio: Failed to migrate legacy history to new path: \(error)")
-        }
-
-        return legacy
+    func load(url: URL, historyLimit: Int) -> HistoryLoadResult? {
+        HistoryMigration.load(url: url, historyLimit: historyLimit)
     }
 
     func save(
-        _ history: HistoryFile,
+        _ history: Hypnogram,
         url: URL,
         historyLimit: Int,
         synchronous: Bool

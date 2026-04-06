@@ -108,6 +108,7 @@ extension Studio {
     }
 
     func appendNewCompositionAndSelect(manual: Bool) {
+        persistCurrentCompositionPreviewIfNeeded()
         let composition = makeRandomComposition(preservingGlobalEffectFrom: player.currentComposition)
         player.hypnogram.compositions.append(composition)
         player.currentCompositionIndex = player.hypnogram.compositions.count - 1
@@ -122,6 +123,7 @@ extension Studio {
     func advanceOrGenerateOnCompositionEnded() -> Bool {
         guard state.settings.playbackEndBehavior == .autoAdvance else { return false }
 
+        persistCurrentCompositionPreviewIfNeeded()
         let nextIndex = player.currentCompositionIndex + 1
         if nextIndex < player.hypnogram.compositions.count {
             player.currentCompositionIndex = nextIndex

@@ -10,7 +10,7 @@ struct CompositionPanel: View {
     @State private var expandedLayerIDs: Set<UUID> = []
     @State private var showAddLayerPhotosPicker = false
     @State private var draggedLayerID: UUID?
-    @StateObject private var thumbnailStore = LayerThumbnailStore()
+    @StateObject private var thumbnailStore = TimelineThumbnailStore()
     @SwiftUI.Environment(\.panelLayoutInvalidator) private var panelLayoutInvalidator
 
     var body: some View {

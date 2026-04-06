@@ -320,7 +320,25 @@ final class Studio: ObservableObject {
                 volume: volume,
                 audioDeviceUID: audioDeviceUID,
                 transitionStyle: state.settings.transitionStyle,
-                transitionDuration: state.settings.transitionDuration
+                transitionDuration: state.settings.transitionDuration,
+                onCompositionFramePresented: { [weak self, weak player] compositionID in
+                    guard let player else { return }
+
+                    if compositionID == nil {
+                        if player.suppressNextPreviewInvalidation {
+                            player.suppressNextPreviewInvalidation = false
+                            return
+                        }
+
+                        player.currentRenderedCompositionID = nil
+                        player.currentCompositionPreviewNeedsRefresh = true
+                        return
+                    }
+
+                    player.currentRenderedCompositionID = compositionID
+                    guard player.currentCompositionPreviewNeedsRefresh else { return }
+                    self?.persistCurrentCompositionPreviewIfNeeded()
+                }
             )
             .id(viewID)
         )

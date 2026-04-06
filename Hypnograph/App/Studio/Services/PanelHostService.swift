@@ -166,7 +166,7 @@ private enum PanelKind {
 
     var shouldRefreshRootViewOnSync: Bool {
         switch self {
-        case .playerControls:
+        case .hypnograms, .playerControls:
             return true
         default:
             return false

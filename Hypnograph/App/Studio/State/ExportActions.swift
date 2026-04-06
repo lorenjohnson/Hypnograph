@@ -12,7 +12,7 @@ import HypnoUI
 
 @MainActor
 extension Studio {
-    private func currentFrameSnapshot() -> CGImage? {
+    func currentFrameSnapshot() -> CGImage? {
         guard let currentFrame = activePlayer.effectManager.currentFrame else {
             return nil
         }

@@ -38,6 +38,8 @@ struct PlayerView: NSViewRepresentable {
     var transitionStyle: TransitionRenderer.TransitionType = .crossfade
     /// Transition duration in seconds
     var transitionDuration: Double = 1.5
+    /// Called when the incoming composition has actually presented a frame.
+    var onCompositionFramePresented: ((UUID?) -> Void)? = nil
 
     // MARK: - Coordinator
     //
@@ -170,6 +172,7 @@ struct PlayerView: NSViewRepresentable {
             c.currentTask?.cancel()
             c.currentTask = nil
             c.compositionID = nil
+            onCompositionFramePresented?(nil)
             deferCompositionLoadInFlight(false, coordinator: c, token: bindingUpdateToken)
             hasPendingGeneratedNextComposition = false
             if currentSourceTime != nil {
@@ -197,6 +200,7 @@ struct PlayerView: NSViewRepresentable {
             c.currentTask?.cancel()
             c.compositionID = newID
             c.didRequestPreEndAdvance = false
+            onCompositionFramePresented?(nil)
             deferCompositionLoadInFlight(true, coordinator: c, token: bindingUpdateToken)
             deferCompositionLoadFailure(nil, coordinator: c, token: bindingUpdateToken)
 
@@ -284,7 +288,10 @@ struct PlayerView: NSViewRepresentable {
                         transitionType: effectiveTransition,
                         duration: self.transitionDuration,
                         playRate: playRate,
-                        incomingEffectManager: self.effectManager
+                        incomingEffectManager: self.effectManager,
+                        onIncomingFramePresented: {
+                            self.onCompositionFramePresented?(composition.id)
+                        }
                     ) {
                         Task { @MainActor in
                             c.isAutoAdvanceInFlight = false
@@ -364,6 +371,10 @@ struct PlayerView: NSViewRepresentable {
 
             if didEffectsChange || didSessionMutate {
                 if let content = c.contentView {
+                    self.onCompositionFramePresented?(nil)
+                    content.notifyOnNextPresentedFrame {
+                        self.onCompositionFramePresented?(composition.id)
+                    }
                     if c.isAllStillImages {
                         // Force redraw of still frame at t=0
                         content.refreshActiveFrame(at: .zero)
