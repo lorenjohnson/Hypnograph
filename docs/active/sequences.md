@@ -95,3 +95,23 @@ This session is intentionally pausing here. The next clean architectural step is
 - The likely next document-level fields are optional hypnogram values such as aspect ratio, player or output resolution, source framing, and transition style or duration. These are restore hints for the open hypnogram, not authoritative authored content.
 - The older app-global persistence locations for those fields should be removed rather than migrated. If older app installs lose those specific values once, that is acceptable.
 - `playRate` remains where it is now as an attribute of each composition, because it affects the authored behavior of that composition rather than only the document viewing context.
+
+
+---
+
+MISC ADDENDUM:
+
+After we move Hypnogram up to Studio state:
+
+- Can't seem to change output resolution
+
+- Snapshot saving I think is causing pauses in transitions at the end of clips. It is crucial we don't interrupt playback.
+
+- UX issue (old): There is a weird broken / mismatch pattern between the effects (chains) on Composition and Layer mostly in terms of the menus, but ultimately related to underlying out-of-date functionality in the Layer effect chain cycling.
+
+- Rename the Playback menu to Sequence, also the History tab in Hypnograms panel should be renamed to "Sequence" or simply "Current"
+
+- The ability to re-order items in the Sequence by drag-and-drop within the Hypnogram > Sequence (assuming the code can be re-used as we move to a Timeline view) would be a big win
+- 
+- The delineation between History and a currently open Hypnogram file needs to be possible first, and then clear on how to switch between them.  The endpoint of the bulk of non-timeline UI sequences will be getting to thise point of having sort of clear UX for switching between History "mode" and the current Hypnogram file.  How those relate and interact...
+
