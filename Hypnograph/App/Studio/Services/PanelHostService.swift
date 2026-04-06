@@ -60,6 +60,15 @@ private enum PanelKind {
         }
     }
 
+    var fixedContentWidth: CGFloat? {
+        switch self {
+        case .composition:
+            return defaultSize.width
+        default:
+            return nil
+        }
+    }
+
     var minSize: CGSize {
         switch self {
         case .hypnograms: return CGSize(width: 360, height: 320)
@@ -629,7 +638,11 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
     private func applySizing(for kind: PanelKind, managed: ManagedPanel) {
         let panel = managed.panel
         let currentContentWidth = max(1, panel.contentRect(forFrameRect: panel.frame).width)
-        let clampedWidth = min(max(currentContentWidth, kind.minSize.width), kind.maxWidth)
+        let clampedWidth = if let fixedContentWidth = kind.fixedContentWidth {
+            fixedContentWidth
+        } else {
+            min(max(currentContentWidth, kind.minSize.width), kind.maxWidth)
+        }
         let maxInitialHeight = maximumInitialHeight(for: panel)
 
         if kind.shouldFitHeightToContent {

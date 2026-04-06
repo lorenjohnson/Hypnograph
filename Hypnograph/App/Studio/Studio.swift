@@ -274,7 +274,7 @@ final class Studio: ObservableObject {
         let aspectRatio = player.config.aspectRatio
         let displayResolution = player.config.playerResolution
         let sourceFraming = state.settings.sourceFraming
-        let shouldAdvanceOnClipEnd = state.settings.playbackEndBehavior == .autoAdvance
+        let shouldAdvanceOnCompositionEnd = state.settings.playbackEndBehavior == .autoAdvance
         let onCompositionEnded: (() -> Bool)? = { [weak self] in
             guard let self else { return false }
             return self.advanceOrGenerateOnCompositionEnded()
@@ -284,8 +284,8 @@ final class Studio: ObservableObject {
             set: { player.currentLayerIndex = $0 }
         )
         let currentSourceTimeBinding = Binding(
-            get: { player.currentClipTimeOffset },
-            set: { player.currentClipTimeOffset = $0 }
+            get: { player.currentLayerTimeOffset },
+            set: { player.currentLayerTimeOffset = $0 }
         )
         let compositionLoadInFlightBinding = Binding(
             get: { player.isPrimaryCompositionLoadInFlight },
@@ -303,7 +303,7 @@ final class Studio: ObservableObject {
                 aspectRatio: aspectRatio,
                 displayResolution: displayResolution,
                 sourceFraming: sourceFraming,
-                autoAdvanceOnCompositionEnd: shouldAdvanceOnClipEnd,
+                autoAdvanceOnCompositionEnd: shouldAdvanceOnCompositionEnd,
                 onCompositionEnded: onCompositionEnded,
                 currentLayerIndex: currentLayerIndexBinding,
                 currentSourceTime: currentSourceTimeBinding,

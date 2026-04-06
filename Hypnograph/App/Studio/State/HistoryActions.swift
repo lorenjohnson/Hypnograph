@@ -123,7 +123,7 @@ extension Studio {
 
             self.player.currentCompositionLoadFailure = nil
             self.player.clampCurrentSourceIndex()
-            self.player.currentClipTimeOffset = nil
+            self.player.currentLayerTimeOffset = nil
             self.player.effectManager.clearFrameBuffer()
             self.player.effectManager.invalidateBlendAnalysis()
             self.player.notifyHypnogramChanged()

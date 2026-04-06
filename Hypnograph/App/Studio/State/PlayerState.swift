@@ -38,7 +38,7 @@ final class PlayerState: ObservableObject {
     @Published var currentLayerIndex: Int = -1
 
     /// Optional playhead offset for scrubbing
-    @Published var currentClipTimeOffset: CMTime?
+    @Published var currentLayerTimeOffset: CMTime?
 
     /// Pause/play state
     @Published var isPaused: Bool = false
@@ -290,7 +290,7 @@ final class PlayerState: ObservableObject {
             composition.effectChain = EffectChain()
         }
         currentLayerIndex = -1  // Reset to composition-level effect chain
-        currentClipTimeOffset = nil
+        currentLayerTimeOffset = nil
 
         // Restore effect chain (it will lazily re-instantiate effects when apply() is called)
         if preserveGlobalEffect, let chain = savedEffectChain {

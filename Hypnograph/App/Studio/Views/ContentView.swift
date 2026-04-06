@@ -27,11 +27,11 @@ struct ContentView: View {
         _appSettingsStore = ObservedObject(initialValue: state.appSettingsStore)
     }
 
-    private var clipTrimContexts: [ClipTrimContext] {
+    private var layerTrimContexts: [LayerTrimContext] {
         let layers = main.activePlayer.layers
         guard !layers.isEmpty else { return [] }
 
-        func makeContext(layer: Layer, index: Int) -> ClipTrimContext? {
+        func makeContext(layer: Layer, index: Int) -> LayerTrimContext? {
             guard layer.mediaClip.file.mediaKind == .video else { return nil }
 
             let total = max(0.1, layer.mediaClip.file.duration.seconds)
@@ -40,7 +40,7 @@ struct ContentView: View {
             let selectedDuration = min(layer.mediaClip.duration.seconds, maxSelection, total - start)
             let end = max(start + 0.1, min(start + selectedDuration, total))
 
-            return ClipTrimContext(
+            return LayerTrimContext(
                 layerIndex: index,
                 fileID: layer.mediaClip.file.id,
                 source: layer.mediaClip.file.source,
@@ -218,12 +218,12 @@ struct ContentView: View {
     }
 
     private var playerControlsContent: some View {
-        PlayerControlsBar(
+        PlayerControlsPanel(
             isPaused: main.activePlayer.isPaused,
             isLoopCurrentCompositionEnabled: main.isLoopCurrentCompositionEnabled,
             currentCompositionText: main.currentCompositionIndicatorText,
             compositionLengthSeconds: main.activePlayer.targetDuration.seconds,
-            clipTrimContexts: clipTrimContexts,
+            layerTrimContexts: layerTrimContexts,
             volume: Binding(
                 get: { Double(main.volume) },
                 set: { main.volume = Float($0) }
@@ -235,8 +235,8 @@ struct ContentView: View {
             onSnapshotCurrent: { main.saveSnapshotImage() },
             onSaveCurrent: { main.save() },
             onRenderCurrent: { main.renderAndSaveVideo() },
-            onCommitClipTrimRange: { layerIndex, range in
-                main.setLayerClipRange(
+            onCommitLayerTrimRange: { layerIndex, range in
+                main.setLayerRange(
                     sourceIndex: layerIndex,
                     startSeconds: range.lowerBound,
                     endSeconds: range.upperBound
@@ -247,7 +247,7 @@ struct ContentView: View {
     }
 
     private var hypnogramsContent: some View {
-        HypnogramListView(
+        HypnogramsPanel(
             store: HypnogramStore.shared,
             onLoad: { entry in
                 guard let hypnogram = HypnogramStore.shared.loadHypnogram(from: entry) else {
@@ -374,19 +374,19 @@ struct ContentView: View {
                     hypnogramsContent
                 ),
                 sourcesContent: AnyView(
-                    SourcesPanelView(state: state, main: main)
+                    SourcesPanel(state: state, main: main)
                 ),
                 newCompositionsContent: AnyView(
-                    NewCompositionsPanelView(state: state, main: main)
+                    NewCompositionsPanel(state: state, main: main)
                 ),
                 outputSettingsContent: AnyView(
-                    OutputSettingsPanelView(state: state, main: main)
+                    OutputSettingsPanel(state: state, main: main)
                 ),
                 compositionContent: AnyView(
-                    CompositionPanelView(state: state, main: main)
+                    CompositionPanel(state: state, main: main)
                 ),
                 effectsContent: AnyView(
-                    EffectsPanelView(state: state, main: main)
+                    EffectsPanel(state: state, main: main)
                 ),
                 playerControlsContent: AnyView(
                     playerControlsContent

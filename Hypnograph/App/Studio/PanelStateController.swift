@@ -16,18 +16,6 @@ final class PanelStateController: ObservableObject {
     private var panelFrames: [String: CGRect] = [:]
     private var panelOrder: [String] = []
 
-    private static let panelIDAliases: [String: String] = [
-        "hypnogramList": "hypnogramsPanel",
-        "sourcesWindow": "sourcesPanel",
-        "newClipsWindow": "newCompositionsPanel",
-        "outputSettingsWindow": "outputSettingsPanel",
-        "compositionWindow": "compositionPanel",
-        "effectsWindow": "effectsPanel",
-        "playerControlsWindow": "playerControlsPanel",
-        "livePreview": "livePreviewPanel",
-        "hud": "hudPanel"
-    ]
-
     private struct PersistedPanelFrame: Codable {
         let x: Double
         let y: Double
@@ -241,11 +229,6 @@ final class PanelStateController: ObservableObject {
             migratedState.register(panelID, defaultVisible: false)
             if loadedState.isVisible(panelID) {
                 migratedState.set(panelID, visible: true)
-                continue
-            }
-            if let legacyID = Self.panelIDAliases.first(where: { $0.value == panelID })?.key,
-               loadedState.isVisible(legacyID) {
-                migratedState.set(panelID, visible: true)
             }
         }
 
@@ -254,12 +237,10 @@ final class PanelStateController: ObservableObject {
     }
 
     private func migratePanelFrameKeys(_ frames: [String: CGRect]) -> [String: CGRect] {
-        Dictionary(uniqueKeysWithValues: frames.map { key, value in
-            (Self.panelIDAliases[key] ?? key, value)
-        })
+        frames
     }
 
     private func migratePanelOrderIDs(_ ids: [String]) -> [String] {
-        ids.map { Self.panelIDAliases[$0] ?? $0 }
+        ids
     }
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 import HypnoCore
 
-struct NewCompositionsPanelView: View {
+struct NewCompositionsPanel: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
@@ -11,7 +11,7 @@ struct NewCompositionsPanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            PanelInlineFieldRow(title: "Max Layers", valueText: "\(player.config.maxLayers)") {
+            PanelInlineFieldRowView(title: "Max Layers", valueText: "\(player.config.maxLayers)") {
                 Stepper(
                     "",
                     value: Binding(
@@ -68,9 +68,9 @@ struct NewCompositionsPanelView: View {
 #if DEBUG
             sectionDivider()
 
-            PanelSectionHeader(title: "Debug")
+            PanelSectionHeaderView(title: "Debug")
 
-            PanelInlineFieldRow(title: "Load Scenario") {
+            PanelInlineFieldRowView(title: "Load Scenario") {
                 Picker("", selection: $externalLoadHarness.scenario) {
                     ForEach(ExternalMediaLoadHarness.Scenario.allCases) { scenario in
                         Text(scenario.displayName).tag(scenario)
@@ -88,7 +88,7 @@ struct NewCompositionsPanelView: View {
 
     @ViewBuilder
     private func sectionDivider() -> some View {
-        GlassDivider()
+        PanelGlassDividerView()
             .padding(.vertical, 4)
     }
 
@@ -117,7 +117,7 @@ struct NewCompositionsPanelView: View {
             }
         )
 
-        PanelFieldRow(
+        PanelFieldRowView(
             title: "Composition Length (Range)",
             valueText: "\(Int(range.wrappedValue.lowerBound))–\(Int(range.wrappedValue.upperBound))s"
         ) {
@@ -153,7 +153,7 @@ struct NewCompositionsPanelView: View {
         let upperPercent = Int((range.wrappedValue.upperBound * 100).rounded())
         let valueText = lowerPercent == upperPercent ? "\(lowerPercent)%" : "\(lowerPercent)–\(upperPercent)%"
 
-        PanelFieldRow(title: "Play Rate (Range)", valueText: valueText) {
+        PanelFieldRowView(title: "Play Rate (Range)", valueText: valueText) {
             RangeSliderView(range: range, bounds: bounds, step: 0.1, minimumDistance: 0)
                 .disabled(isLiveMode)
                 .opacity(isLiveMode ? 0.55 : 1.0)
@@ -167,12 +167,12 @@ struct NewCompositionsPanelView: View {
         frequency: Binding<Double>
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            PanelInlineFieldRow(title: title) {
+            PanelInlineFieldRowView(title: title) {
                 PanelToggleView(isOn: isOn)
                     .fixedSize()
             }
 
-            PanelFieldRow(
+            PanelFieldRowView(
                 title: "Frequency",
                 valueText: "\(Int((frequency.wrappedValue * 100).rounded()))%"
             ) {

@@ -1,7 +1,7 @@
 import SwiftUI
 import HypnoCore
 
-struct EffectsPanelView: View {
+struct EffectsPanel: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
 

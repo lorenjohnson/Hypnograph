@@ -38,3 +38,23 @@ Once those fundamentals are solid, this project can continue into stronger snapp
 - Should default layout capture preserve literal positions only, or also preserve enough sizing assumptions that it remains meaningful across different screen sizes?
 - Does the right user model eventually include both `restore app default layout` and `save my current layout as default`, or is one of those enough?
 - Once restore correctness and default layout hooks exist, does stronger snapping still feel necessary or does the problem mostly recede?
+
+## Known Issue
+
+- `Composition` still has a small but visible polish bug when expanding or collapsing the global effect chain, nested effect rows, or layer rows: the panel content can briefly jump before settling, even though the final panel size and contents are functionally correct.
+- This is not currently release-critical from a correctness standpoint. It is primarily a visual/jank issue in the resize-and-reflow sequence inside the `Composition` panel.
+
+## Findings
+
+- The panel host sizing math appears to be basically correct at this point. The panel usually lands on the right final height.
+- The unresolved issue looks more like sequencing than measurement: inner composition content reflows first, then the outer panel resize catches up.
+- The visual artifact survived a wide range of experiments, including:
+  - host-side invalidation timing changes
+  - top-pinned scroll and clip-view variants
+  - non-scroll fit-to-content host variants
+  - conditional scroll-host experiments
+  - more AppKit-owned disclosure containers
+  - a much more AppKit-owned `Composition` implementation
+- The stronger-than-expected result from the AppKit experiments is that simply “moving more of it to AppKit” was not an immediate cure. The same broad sequencing pattern still showed up, just in different forms.
+- The most useful current architectural takeaway is that this appears to be a seam around simultaneous inner content reflow plus outer floating-panel auto-sizing, not just a simple SwiftUI disclosure-transition bug.
+- If this returns to priority later, the next work should start from that premise instead of restarting with generic host sizing tweaks.

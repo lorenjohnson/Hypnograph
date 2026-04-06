@@ -3,7 +3,7 @@ import CoreMedia
 import UniformTypeIdentifiers
 import HypnoCore
 
-struct CompositionPanelView: View {
+struct CompositionPanel: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
 
@@ -17,7 +17,7 @@ struct CompositionPanelView: View {
         VStack(alignment: .leading, spacing: 12) {
             globalSection
 
-            GlassDivider()
+            PanelGlassDividerView()
                 .padding(.vertical, 4)
 
             HStack {
@@ -159,7 +159,7 @@ struct CompositionPanelView: View {
             .disabled(main.isLiveMode)
             .opacity(main.isLiveMode ? 0.55 : 1.0)
 
-            EffectChainView(
+            EffectChainSectionView(
                 state: state,
                 main: main,
                 layer: -1,

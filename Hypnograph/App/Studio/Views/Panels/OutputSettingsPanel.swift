@@ -1,7 +1,7 @@
 import SwiftUI
 import HypnoCore
 
-struct OutputSettingsPanelView: View {
+struct OutputSettingsPanel: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
 
@@ -10,9 +10,9 @@ struct OutputSettingsPanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            PanelSectionHeader(title: "Playback")
+            PanelSectionHeaderView(title: "Playback")
 
-            PanelInlineFieldRow(title: "Transition Style") {
+            PanelInlineFieldRowView(title: "Transition Style") {
                 Picker("", selection: Binding(
                     get: { state.settings.transitionStyle },
                     set: { newValue in
@@ -27,7 +27,7 @@ struct OutputSettingsPanelView: View {
                 .frame(width: 160, alignment: .trailing)
             }
 
-            PanelFieldRow(
+            PanelFieldRowView(
                 title: "Transition Duration",
                 valueText: String(format: "%.1fs", state.settings.transitionDuration)
             ) {
@@ -43,16 +43,16 @@ struct OutputSettingsPanelView: View {
                 )
             }
 
-            GlassDivider()
+            PanelGlassDividerView()
                 .padding(.vertical, 4)
 
-            PanelSectionHeader(title: "Display")
+            PanelSectionHeaderView(title: "Display")
 
-            PanelInlineFieldRow(title: "Source Framing") {
+            PanelInlineFieldRowView(title: "Source Framing") {
                 sourceFramingButtons
             }
 
-            PanelInlineFieldRow(title: "Aspect Ratio") {
+            PanelInlineFieldRowView(title: "Aspect Ratio") {
                 aspectRatioButtons
                     .frame(width: 170, alignment: .trailing)
                     .disabled(isLiveMode)

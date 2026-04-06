@@ -272,7 +272,7 @@ extension Studio {
         }
     }
 
-    func setLayerClipRange(
+    func setLayerRange(
         sourceIndex: Int,
         startSeconds: Double,
         endSeconds: Double,
@@ -312,15 +312,15 @@ extension Studio {
 
         layers[sourceIndex] = layer
         activePlayer.layers = layers
-        activePlayer.currentClipTimeOffset = nil
+        activePlayer.currentLayerTimeOffset = nil
     }
 
-    func setCurrentLayerClipRange(
+    func setCurrentLayerRange(
         startSeconds: Double,
         endSeconds: Double,
         maxDurationSeconds: Double? = nil
     ) {
-        setLayerClipRange(
+        setLayerRange(
             sourceIndex: activePlayer.currentLayerIndex,
             startSeconds: startSeconds,
             endSeconds: endSeconds,

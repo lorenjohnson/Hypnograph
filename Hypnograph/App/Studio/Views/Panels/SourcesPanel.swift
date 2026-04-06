@@ -1,7 +1,7 @@
 import SwiftUI
 import HypnoCore
 
-struct SourcesPanelView: View {
+struct SourcesPanel: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
 
@@ -227,9 +227,9 @@ struct SourcesPanelView: View {
     private var mediaTypesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionDivider()
-            PanelSectionHeader(title: "Media Types")
+            PanelSectionHeaderView(title: "Media Types")
 
-            PanelInlineFieldRow(title: "Videos") {
+            PanelInlineFieldRowView(title: "Videos") {
                 PanelToggleView(isOn: Binding(
                     get: { state.isMediaTypeActive(.videos) },
                     set: { _ in state.toggleMediaType(.videos) }
@@ -237,7 +237,7 @@ struct SourcesPanelView: View {
                 .fixedSize()
             }
 
-            PanelInlineFieldRow(title: "Images") {
+            PanelInlineFieldRowView(title: "Images") {
                 PanelToggleView(isOn: Binding(
                     get: { state.isMediaTypeActive(.images) },
                     set: { _ in state.toggleMediaType(.images) }
@@ -250,7 +250,7 @@ struct SourcesPanelView: View {
     private var sourcesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionDivider()
-            PanelInlineFieldRow(title: "Eligible Sources: \(state.library.assetCount)") {
+            PanelInlineFieldRowView(title: "Eligible Sources: \(state.library.assetCount)") {
                 Menu {
                     Button("Files or Folders…") {
                         main.addSourceLibrariesFromPanel()
@@ -399,7 +399,7 @@ struct SourcesPanelView: View {
 
     @ViewBuilder
     private func sectionDivider() -> some View {
-        GlassDivider()
+        PanelGlassDividerView()
             .padding(.vertical, 4)
     }
 
@@ -433,7 +433,7 @@ private struct ApplePhotosSourcePickerSheet: View {
     let onRequestAccess: () -> Void
     let onOpenSystemSettings: () -> Void
 
-    @State private var mode: SourcesPanelView.ApplePhotosAddMode = .allItems
+    @State private var mode: SourcesPanel.ApplePhotosAddMode = .allItems
     @State private var selectedKeys: Set<String> = []
 
     var body: some View {
@@ -449,7 +449,7 @@ private struct ApplePhotosSourcePickerSheet: View {
                             .foregroundStyle(.secondary)
 
                         Picker("Selection", selection: $mode) {
-                            ForEach(SourcesPanelView.ApplePhotosAddMode.allCases) { mode in
+                            ForEach(SourcesPanel.ApplePhotosAddMode.allCases) { mode in
                                 Text(mode.title).tag(mode)
                             }
                         }
