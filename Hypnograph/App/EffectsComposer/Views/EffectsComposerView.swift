@@ -31,7 +31,7 @@ struct EffectsComposerView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var settingsStore: EffectsComposerSettingsStore
     @StateObject private var model: EffectsComposerViewModel
-    @StateObject private var panelHostService: EffectsComposerPanelHostService
+    @StateObject private var panelHostService: ComposerPanelHostService
     @StateObject private var tabMonitor: EffectsComposerTabKeyMonitorService
 
     @State private var showPhotosPicker = false
@@ -143,7 +143,7 @@ struct EffectsComposerView: View {
             _ = model.compileCode()
         }
         .background(
-            EffectsComposerPanelHostBridge(
+            ComposerPanelHostBridge(
                 hostService: panelHostService,
                 showCodePanel: showCodePanel,
                 showInspectorPanel: showInspectorPanel,

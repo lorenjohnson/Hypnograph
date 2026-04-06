@@ -1,5 +1,5 @@
 //
-//  PanelHostService.swift
+//  ComposerPanelHostService.swift
 //  Hypnograph
 //
 
@@ -108,7 +108,7 @@ private final class EffectsComposerChildPanel: NSPanel {
 }
 
 @MainActor
-final class EffectsComposerPanelHostService: ObservableObject {
+final class ComposerPanelHostService: ObservableObject {
     private struct ManagedPanel {
         let panel: EffectsComposerChildPanel
         let host: NSHostingController<AnyView>

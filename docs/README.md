@@ -1,4 +1,4 @@
-# Hypnograph Docs
+# Docs
 
 Use this file as the stable entrypoint for project docs.
 

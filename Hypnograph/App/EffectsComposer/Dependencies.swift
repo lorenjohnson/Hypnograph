@@ -9,7 +9,7 @@ struct EffectsComposerDependencies {
     var runtimeEffectsService: RuntimeEffectsService
     var metalRenderService: MetalRenderService
     var sourcePlaybackService: SourcePlaybackService
-    var makePanelHostService: @MainActor () -> EffectsComposerPanelHostService
+    var makePanelHostService: @MainActor () -> ComposerPanelHostService
     var makeTabKeyMonitorService: @MainActor () -> EffectsComposerTabKeyMonitorService
 
     @MainActor
@@ -26,7 +26,7 @@ struct EffectsComposerDependencies {
         runtimeEffectsService: .live,
         metalRenderService: .live,
         sourcePlaybackService: .live,
-        makePanelHostService: { EffectsComposerPanelHostService() },
+        makePanelHostService: { ComposerPanelHostService() },
         makeTabKeyMonitorService: { EffectsComposerTabKeyMonitorService() }
     )
 }

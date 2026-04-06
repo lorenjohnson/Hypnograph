@@ -1,7 +1,7 @@
 import SwiftUI
 import HypnoCore
 
-struct SourcesWindowView: View {
+struct SourcesPanel: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
 
@@ -169,19 +169,17 @@ struct SourcesWindowView: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 16) {
-                Text("Manage the media pool used for random clip generation, and keep source setup out of the menu bar.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        LazyVStack(alignment: .leading, spacing: 16) {
+            Text("Manage the media pool used for random clip generation, and keep source setup out of the menu bar.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
-                sourcesSection
-                mediaTypesSection
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            sourcesSection
+            mediaTypesSection
         }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             Color.black.opacity(0.96)
                 .ignoresSafeArea()
@@ -229,9 +227,9 @@ struct SourcesWindowView: View {
     private var mediaTypesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionDivider()
-            PanelSectionHeader(title: "Media Types")
+            PanelSectionHeaderView(title: "Media Types")
 
-            PanelInlineFieldRow(title: "Videos") {
+            PanelInlineFieldRowView(title: "Videos") {
                 PanelToggleView(isOn: Binding(
                     get: { state.isMediaTypeActive(.videos) },
                     set: { _ in state.toggleMediaType(.videos) }
@@ -239,7 +237,7 @@ struct SourcesWindowView: View {
                 .fixedSize()
             }
 
-            PanelInlineFieldRow(title: "Images") {
+            PanelInlineFieldRowView(title: "Images") {
                 PanelToggleView(isOn: Binding(
                     get: { state.isMediaTypeActive(.images) },
                     set: { _ in state.toggleMediaType(.images) }
@@ -252,7 +250,7 @@ struct SourcesWindowView: View {
     private var sourcesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionDivider()
-            PanelInlineFieldRow(title: "Eligible Sources: \(state.library.assetCount)") {
+            PanelInlineFieldRowView(title: "Eligible Sources: \(state.library.assetCount)") {
                 Menu {
                     Button("Files or Folders…") {
                         main.addSourceLibrariesFromPanel()
@@ -401,7 +399,7 @@ struct SourcesWindowView: View {
 
     @ViewBuilder
     private func sectionDivider() -> some View {
-        GlassDivider()
+        PanelGlassDividerView()
             .padding(.vertical, 4)
     }
 
@@ -435,7 +433,7 @@ private struct ApplePhotosSourcePickerSheet: View {
     let onRequestAccess: () -> Void
     let onOpenSystemSettings: () -> Void
 
-    @State private var mode: SourcesWindowView.ApplePhotosAddMode = .allItems
+    @State private var mode: SourcesPanel.ApplePhotosAddMode = .allItems
     @State private var selectedKeys: Set<String> = []
 
     var body: some View {
@@ -451,7 +449,7 @@ private struct ApplePhotosSourcePickerSheet: View {
                             .foregroundStyle(.secondary)
 
                         Picker("Selection", selection: $mode) {
-                            ForEach(SourcesWindowView.ApplePhotosAddMode.allCases) { mode in
+                            ForEach(SourcesPanel.ApplePhotosAddMode.allCases) { mode in
                                 Text(mode.title).tag(mode)
                             }
                         }

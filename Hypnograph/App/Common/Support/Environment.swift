@@ -136,6 +136,16 @@ enum Environment {
         appSupportDirectory.appendingPathComponent("effects-studio-settings.json")
     }
 
+    /// ~/Library/Application Support/Hypnograph/panel-state.json
+    static var defaultPanelStateURL: URL {
+        appSupportDirectory.appendingPathComponent("panel-state.json")
+    }
+
+    /// Legacy panel-state filename kept for one-way migration reads.
+    static var legacyDefaultPanelStateURL: URL {
+        appSupportDirectory.appendingPathComponent("window-state.json")
+    }
+
     /// ~/Library/Application Support/Hypnograph/history.json
     static var historyURL: URL {
         appSupportDirectory.appendingPathComponent("history.json")
@@ -195,11 +205,74 @@ enum Environment {
         writeCodableSettings(EffectsComposerSettings.defaultValue, to: url, label: "effects composer settings")
     }
 
+    static func ensureDefaultPanelStateFileExists() {
+        let fm = FileManager.default
+        let url = defaultPanelStateURL
+        guard !fm.fileExists(atPath: url.path) else { return }
+        guard !fm.fileExists(atPath: legacyDefaultPanelStateURL.path) else { return }
+
+        let bundledURL = Bundle.main.url(
+            forResource: "default-panel-state",
+            withExtension: "json"
+        )
+
+        guard let bundledURL else { return }
+
+        let dir = url.deletingLastPathComponent()
+        if !fm.fileExists(atPath: dir.path) {
+            try? fm.createDirectory(at: dir, withIntermediateDirectories: true, attributes: nil)
+        }
+
+        do {
+            try fm.copyItem(at: bundledURL, to: url)
+            print("Copied bundled default panel state to \(url.path)")
+        } catch {
+            print("Failed to copy default panel state to \(url.path): \(error)")
+        }
+    }
+
     static func ensureDefaultSettingsFilesExist() {
         ensureDefaultStudioSettingsFileExists()
         ensureDefaultAppSettingsFileExists()
         ensureDefaultEffectsComposerSettingsFileExists()
+        ensureDefaultPanelStateFileExists()
     }
+
+    #if DEBUG
+    private static var sourceControlledDefaultPanelStateURL: URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("default-panel-state.json")
+    }
+
+    static func saveCurrentPanelStateAsBundledDefault() throws {
+        let fm = FileManager.default
+        let sourceURL = fm.fileExists(atPath: defaultPanelStateURL.path) ? defaultPanelStateURL : legacyDefaultPanelStateURL
+        let destinationURL = sourceControlledDefaultPanelStateURL
+
+        guard fm.fileExists(atPath: sourceURL.path) else {
+            throw NSError(
+                domain: "Hypnograph.Environment",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "No current panel-state.json was found in Application Support."]
+            )
+        }
+
+        let destinationDir = destinationURL.deletingLastPathComponent()
+        if !fm.fileExists(atPath: destinationDir.path) {
+            try fm.createDirectory(at: destinationDir, withIntermediateDirectories: true)
+        }
+
+        if fm.fileExists(atPath: destinationURL.path) {
+            try fm.removeItem(at: destinationURL)
+        }
+
+        try fm.copyItem(at: sourceURL, to: destinationURL)
+    }
+    #endif
 
     static func openApplePhotosPrivacySettings() {
         let candidates = [

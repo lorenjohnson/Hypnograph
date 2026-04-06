@@ -3,7 +3,7 @@ import AVFoundation
 import AppKit
 import HypnoCore
 
-struct ClipTrimContext: Equatable {
+struct LayerTrimContext: Equatable {
     let layerIndex: Int
     let fileID: UUID
     let source: MediaSource
@@ -17,15 +17,15 @@ struct ClipTrimContext: Equatable {
     }
 }
 
-struct ClipTrimPanelView: View {
-    let contexts: [ClipTrimContext]
+struct LayerTrimView: View {
+    let contexts: [LayerTrimContext]
     let onCommit: (Int, ClosedRange<Double>) -> Void
 
     var body: some View {
         if !contexts.isEmpty {
             VStack(spacing: 6) {
                 ForEach(contexts, id: \.stableID) { context in
-                    ClipTrimRangeStrip(
+                    LayerTrimRangeStrip(
                         context: context,
                         onCommit: { range in
                             onCommit(context.layerIndex, range)
@@ -40,11 +40,11 @@ struct ClipTrimPanelView: View {
     }
 }
 
-private struct ClipTrimRangeStrip: View {
-    let context: ClipTrimContext
+private struct LayerTrimRangeStrip: View {
+    let context: LayerTrimContext
     let onCommit: (ClosedRange<Double>) -> Void
 
-    @StateObject private var thumbnailStore = ClipTrimThumbnailStripStore()
+    @StateObject private var thumbnailStore = LayerTrimThumbnailStripStore()
     @State private var draftRange: ClosedRange<Double>
 
     private let trackHeight: CGFloat = 38
@@ -52,7 +52,7 @@ private struct ClipTrimRangeStrip: View {
     private let minimumDurationSeconds: Double = 0.1
 
     init(
-        context: ClipTrimContext,
+        context: LayerTrimContext,
         onCommit: @escaping (ClosedRange<Double>) -> Void
     ) {
         self.context = context
@@ -118,7 +118,7 @@ private struct ClipTrimRangeStrip: View {
                     trimHandle
                         .offset(x: endX - (handleWidth * 0.5), y: 1)
 
-                    ClipTrimInteractionOverlay(
+                    LayerTrimInteractionOverlay(
                         range: $draftRange,
                         totalDurationSeconds: safeTotalSeconds,
                         maxSelectionDurationSeconds: maxWindowSeconds,
@@ -297,15 +297,15 @@ private struct ClipTrimRangeStrip: View {
     }
 }
 
-private struct ClipTrimInteractionOverlay: NSViewRepresentable {
+private struct LayerTrimInteractionOverlay: NSViewRepresentable {
     @Binding var range: ClosedRange<Double>
     let totalDurationSeconds: Double
     let maxSelectionDurationSeconds: Double
     let minimumDurationSeconds: Double
     let onCommit: (ClosedRange<Double>) -> Void
 
-    func makeNSView(context: Context) -> ClipTrimInteractionView {
-        let view = ClipTrimInteractionView()
+    func makeNSView(context: Context) -> LayerTrimInteractionView {
+        let view = LayerTrimInteractionView()
         view.onRangeChanged = { newRange in
             range = newRange
         }
@@ -315,7 +315,7 @@ private struct ClipTrimInteractionOverlay: NSViewRepresentable {
         return view
     }
 
-    func updateNSView(_ nsView: ClipTrimInteractionView, context: Context) {
+    func updateNSView(_ nsView: LayerTrimInteractionView, context: Context) {
         nsView.totalDurationSeconds = totalDurationSeconds
         nsView.maxSelectionDurationSeconds = maxSelectionDurationSeconds
         nsView.minimumDurationSeconds = minimumDurationSeconds
@@ -329,7 +329,7 @@ private struct ClipTrimInteractionOverlay: NSViewRepresentable {
     }
 }
 
-private final class ClipTrimInteractionView: NSView {
+private final class LayerTrimInteractionView: NSView {
     private enum DragMode {
         case leadingHandle
         case trailingHandle
@@ -493,7 +493,7 @@ private final class ClipTrimInteractionView: NSView {
     }
 }
 
-private final class ClipTrimThumbnailStripStore: ObservableObject {
+private final class LayerTrimThumbnailStripStore: ObservableObject {
     @Published private(set) var thumbnails: [NSImage] = []
 
     private static var cache: [UUID: [NSImage]] = [:]
@@ -503,7 +503,7 @@ private final class ClipTrimThumbnailStripStore: ObservableObject {
     private var currentFileID: UUID?
     private var loadTask: Task<Void, Never>?
 
-    func loadIfNeeded(context: ClipTrimContext) {
+    func loadIfNeeded(context: LayerTrimContext) {
         if currentFileID == context.fileID, !thumbnails.isEmpty {
             return
         }

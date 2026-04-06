@@ -1,11 +1,11 @@
 import SwiftUI
 
-struct PlayerControlsBar: View {
+struct PlayerControlsPanel: View {
     let isPaused: Bool
     let isLoopCurrentCompositionEnabled: Bool
     let currentCompositionText: String
     let compositionLengthSeconds: Double
-    let clipTrimContexts: [ClipTrimContext]
+    let layerTrimContexts: [LayerTrimContext]
     @Binding var volume: Double
     let onPrevious: () -> Void
     let onPlayPause: () -> Void
@@ -14,7 +14,7 @@ struct PlayerControlsBar: View {
     let onSnapshotCurrent: () -> Void
     let onSaveCurrent: () -> Void
     let onRenderCurrent: () -> Void
-    let onCommitClipTrimRange: (Int, ClosedRange<Double>) -> Void
+    let onCommitLayerTrimRange: (Int, ClosedRange<Double>) -> Void
 
     @State private var pendingTooltipWorkItem: DispatchWorkItem?
     @State private var visibleTooltipControlID: String?
@@ -25,9 +25,9 @@ struct PlayerControlsBar: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            ClipTrimPanelView(
-                contexts: clipTrimContexts,
-                onCommit: onCommitClipTrimRange
+            LayerTrimView(
+                contexts: layerTrimContexts,
+                onCommit: onCommitLayerTrimRange
             )
 
             controlsRow

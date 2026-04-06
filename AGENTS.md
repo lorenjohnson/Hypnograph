@@ -14,8 +14,7 @@
 5. shared product-context-manager workflow: `../product-context-manager/workflow.md`
 6. shared product-context-manager personality: `../product-context-manager/personality.md`
 7. `docs/product.md`
-8. `docs/features.md`
-9. `docs/queue.md` and linked project docs as needed
+8. `docs/queue.md` and linked project docs as needed
 
 ## Rules
 

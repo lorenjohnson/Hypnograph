@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct PanelSectionHeader: View {
+struct PanelSectionHeaderView: View {
     let title: String
 
     var body: some View {
@@ -14,7 +14,7 @@ struct PanelSectionHeader: View {
     }
 }
 
-struct PanelInlineFieldRow<Trailing: View>: View {
+struct PanelInlineFieldRowView<Trailing: View>: View {
     let title: String
     var valueText: String?
     @ViewBuilder let trailing: Trailing
@@ -50,7 +50,7 @@ struct PanelInlineFieldRow<Trailing: View>: View {
     }
 }
 
-struct PanelFieldRow<Control: View>: View {
+struct PanelFieldRowView<Control: View>: View {
     let title: String
     var valueText: String?
     @ViewBuilder let control: Control

@@ -114,8 +114,10 @@ metatypes and provides:
   - `effects-library.json`
 
 ## Integration Points
-- `EffectsEditorView` edits `EffectsSession` and uses `EffectManager` to apply
-  changes to the active recipe.
+- `EffectsPanelView` hosts `EffectChainLibraryView`, which edits `EffectsSession`
+  and applies saved chains to the active composition or layer through `EffectManager`.
+- `EffectChainView` in the Composition panel applies, saves, clears, and randomizes
+  the currently active composition or layer chain.
 - The internal compositor reads the recipe and applies chains each frame.
 
 ## Runtime Effect Identity + Version Policy

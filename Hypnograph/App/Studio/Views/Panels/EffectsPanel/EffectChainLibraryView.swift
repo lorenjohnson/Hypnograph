@@ -45,7 +45,7 @@ struct EffectChainLibraryView: View {
                     let snapshot = session.chains
                     ForEach(snapshot, id: \.id) { chain in
                         if let chainIndex = session.chainIndex(id: chain.id) {
-                            EffectChainLibraryRow(
+                    EffectChainLibraryRowView(
                                 main: main,
                                 session: session,
                                 chainIndex: chainIndex,
@@ -161,7 +161,7 @@ private struct EffectChainReorderDropDelegate: DropDelegate {
     }
 }
 
-private struct EffectChainLibraryRow: View {
+private struct EffectChainLibraryRowView: View {
     @ObservedObject var main: Studio
     @ObservedObject var session: EffectsSession
 
@@ -345,10 +345,7 @@ private struct EffectChainLibraryRow: View {
     private var expandedContent: some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(Array(chain.effects.enumerated()), id: \.offset) { index, effect in
-                EffectDefinitionSessionRow(
-                    session: session,
-                    chainIndex: chainIndex,
-                    effectIndex: index,
+                EffectRowView(
                     effect: effect,
                     isExpanded: expandedEffectIndices.contains(index),
                     onToggleExpanded: {
@@ -357,7 +354,20 @@ private struct EffectChainLibraryRow: View {
                         } else {
                             expandedEffectIndices.insert(index)
                         }
-                    }
+                    },
+                    onSetEnabled: { enabled in
+                        session.setEffectEnabled(chainIndex: chainIndex, effectIndex: index, enabled: enabled)
+                    },
+                    onRemove: {
+                        session.removeEffectFromChain(chainIndex: chainIndex, effectIndex: index)
+                    },
+                    onUpdateParameter: { key, newValue in
+                        session.updateParameter(chainIndex: chainIndex, effectIndex: index, key: key, value: newValue)
+                    },
+                    horizontalPadding: 8,
+                    verticalPadding: 4,
+                    parameterLeadingPadding: 16,
+                    backgroundFill: Color.white.opacity(0.08)
                 )
                 .animation(.easeInOut(duration: 0.15), value: expandedEffectIndices)
             }
@@ -417,85 +427,5 @@ private struct EffectChainLibraryRow: View {
         .help(help)
         .disabled(isDisabled)
         .onTapGesture { }
-    }
-}
-
-private struct EffectDefinitionSessionRow: View {
-    @ObservedObject var session: EffectsSession
-
-    let chainIndex: Int
-    let effectIndex: Int
-    let effect: EffectDefinition
-
-    let isExpanded: Bool
-    let onToggleExpanded: () -> Void
-
-    private var displayName: String {
-        EffectRegistry.formatEffectTypeName(effect.type)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Button(action: onToggleExpanded) {
-                    HStack(spacing: 4) {
-                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                        Text(displayName)
-                            .font(.callout)
-                            .foregroundStyle(effect.isEnabled ? .primary : .secondary)
-                            .lineLimit(1)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-
-                PanelToggleView(isOn: Binding(
-                    get: { effect.isEnabled },
-                    set: { enabled in
-                        session.setEffectEnabled(chainIndex: chainIndex, effectIndex: effectIndex, enabled: enabled)
-                    }
-                ))
-                .fixedSize()
-
-                Button(role: .destructive) {
-                    session.removeEffectFromChain(chainIndex: chainIndex, effectIndex: effectIndex)
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.tertiary)
-                }
-                .buttonStyle(.borderless)
-            }
-
-            if isExpanded {
-                VStack(alignment: .leading, spacing: 6) {
-                    let specs = EffectRegistry.parameterSpecs(for: effect.type)
-                    let keys = EffectRegistry.parameterNames(for: effect.type).filter { $0 != "_enabled" }
-
-                    ForEach(keys, id: \.self) { key in
-                        let spec = specs[key]
-                        let value = effect.params?[key] ?? spec?.defaultValue ?? .double(0)
-                        EffectParameterRowView(
-                            name: key,
-                            value: value,
-                            spec: spec,
-                            onChange: { newValue in
-                                session.updateParameter(chainIndex: chainIndex, effectIndex: effectIndex, key: key, value: newValue)
-                            }
-                        )
-                    }
-                }
-                .padding(.leading, 16)
-                .opacity(effect.isEnabled ? 1.0 : 0.5)
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(.quaternary)
-        )
     }
 }

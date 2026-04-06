@@ -15,13 +15,6 @@ import HypnoUI
 
 extension Studio {
 
-    // MARK: - HUD (deprecated - returns empty)
-
-    func hudItems() -> [HUDItem] {
-        // HUD removed in menu cleanup - this stub prevents compile errors
-        return []
-    }
-
     // MARK: - Menus
 
     /// Whether a text field is being edited - disables single-key shortcuts

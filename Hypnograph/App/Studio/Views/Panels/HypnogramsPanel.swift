@@ -1,5 +1,5 @@
 //
-//  HypnogramListView.swift
+//  HypnogramsPanel.swift
 //  Hypnograph
 //
 //  Panel showing favorited hypnograms, clickable to load.
@@ -8,15 +8,15 @@
 import SwiftUI
 
 /// Tab selection for the list
-enum HypnogramListTab: String, CaseIterable {
-    case favorites = "Favorites"
+enum HypnogramsPanelTab: String, CaseIterable {
     case recent = "Recently Saved"
+    case favorites = "Favorites"
 }
 
 /// Panel displaying saved hypnograms
-struct HypnogramListView: View {
+struct HypnogramsPanel: View {
     @ObservedObject var store: HypnogramStore
-    @State private var selectedTab: HypnogramListTab = .favorites
+    @State private var selectedTab: HypnogramsPanelTab = .recent
 
     /// Called when user wants to load a hypnogram
     var onLoad: (HypnogramEntry) -> Void
@@ -24,7 +24,7 @@ struct HypnogramListView: View {
     var body: some View {
         VStack(spacing: 0) {
             Picker("", selection: $selectedTab) {
-                ForEach(HypnogramListTab.allCases, id: \.self) { tab in
+                ForEach(HypnogramsPanelTab.allCases, id: \.self) { tab in
                     Text(tab.rawValue)
                         .foregroundColor(.white)
                         .tag(tab)

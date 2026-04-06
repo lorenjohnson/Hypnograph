@@ -162,8 +162,8 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Callback to save window state (injected by app)
-    var saveWindowState: (() -> Void)?
+    /// Callback to save panel state (injected by app)
+    var savePanelState: (() -> Void)?
     /// Callback to persist whether the main app window is fullscreen.
     var setMainWindowFullScreenState: ((Bool) -> Void)?
     /// Callback to read whether fullscreen should be restored on launch.
@@ -440,8 +440,8 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        // Save window state before terminating.
-        saveWindowState?()
+        // Save panel state before terminating.
+        savePanelState?()
 
         // Check for active render jobs
         guard let queue = renderQueue else {

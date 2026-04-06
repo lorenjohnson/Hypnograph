@@ -1,88 +1,94 @@
 import SwiftUI
 import HypnoCore
 
-struct NewClipsWindowView: View {
+struct NewCompositionsPanel: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
-    @ObservedObject var player: PlayerState
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
 
     private var isLiveMode: Bool { main.isLiveMode }
+    private var player: PlayerState { main.activePlayer }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                PanelInlineFieldRow(title: "Max Layers", valueText: "\(player.config.maxLayers)") {
-                    Stepper("", value: $player.config.maxLayers, in: 1...20)
-                        .labelsHidden()
-                        .disabled(isLiveMode)
-                        .opacity(isLiveMode ? 0.55 : 1.0)
-                }
-
-                compositionLengthRangeRow()
-                playRateRangeRow()
-
-                randomizationRow(
-                    title: "Randomize Composition Effect",
-                    isOn: Binding(
-                        get: { state.settings.randomGlobalEffect },
-                        set: { newValue in
-                            state.settingsStore.update { $0.randomGlobalEffect = newValue }
-                        }
+        VStack(alignment: .leading, spacing: 16) {
+            PanelInlineFieldRowView(title: "Max Layers", valueText: "\(player.config.maxLayers)") {
+                Stepper(
+                    "",
+                    value: Binding(
+                        get: { player.config.maxLayers },
+                        set: { player.config.maxLayers = $0 }
                     ),
-                    frequency: Binding(
-                        get: { state.settings.randomGlobalEffectFrequency },
-                        set: { newValue in
-                            state.settingsStore.update { $0.randomGlobalEffectFrequency = newValue }
-                        }
-                    )
+                    in: 1...20
                 )
-                .disabled(isLiveMode)
-                .opacity(isLiveMode ? 0.55 : 1.0)
+                    .labelsHidden()
+                    .disabled(isLiveMode)
+                    .opacity(isLiveMode ? 0.55 : 1.0)
+            }
 
-                randomizationRow(
-                    title: "Randomize Layer Effects",
-                    isOn: Binding(
-                        get: { state.settings.randomLayerEffect },
-                        set: { newValue in
-                            state.settingsStore.update { $0.randomLayerEffect = newValue }
-                        }
-                    ),
-                    frequency: Binding(
-                        get: { state.settings.randomLayerEffectFrequency },
-                        set: { newValue in
-                            state.settingsStore.update { $0.randomLayerEffectFrequency = newValue }
-                        }
-                    )
+            compositionLengthRangeRow()
+            playRateRangeRow()
+
+            randomizationRow(
+                title: "Randomize Composition Effect",
+                isOn: Binding(
+                    get: { state.settings.randomGlobalEffect },
+                    set: { newValue in
+                        state.settingsStore.update { $0.randomGlobalEffect = newValue }
+                    }
                 )
-                .disabled(isLiveMode)
-                .opacity(isLiveMode ? 0.55 : 1.0)
+                ,
+                frequency: Binding(
+                    get: { state.settings.randomGlobalEffectFrequency },
+                    set: { newValue in
+                        state.settingsStore.update { $0.randomGlobalEffectFrequency = newValue }
+                    }
+                )
+            )
+            .disabled(isLiveMode)
+            .opacity(isLiveMode ? 0.55 : 1.0)
+
+            randomizationRow(
+                title: "Randomize Layer Effects",
+                isOn: Binding(
+                    get: { state.settings.randomLayerEffect },
+                    set: { newValue in
+                        state.settingsStore.update { $0.randomLayerEffect = newValue }
+                    }
+                ),
+                frequency: Binding(
+                    get: { state.settings.randomLayerEffectFrequency },
+                    set: { newValue in
+                        state.settingsStore.update { $0.randomLayerEffectFrequency = newValue }
+                    }
+                )
+            )
+            .disabled(isLiveMode)
+            .opacity(isLiveMode ? 0.55 : 1.0)
 
 #if DEBUG
-                sectionDivider()
+            sectionDivider()
 
-                PanelSectionHeader(title: "Debug")
+            PanelSectionHeaderView(title: "Debug")
 
-                PanelInlineFieldRow(title: "Load Scenario") {
-                    Picker("", selection: $externalLoadHarness.scenario) {
-                        ForEach(ExternalMediaLoadHarness.Scenario.allCases) { scenario in
-                            Text(scenario.displayName).tag(scenario)
-                        }
+            PanelInlineFieldRowView(title: "Load Scenario") {
+                Picker("", selection: $externalLoadHarness.scenario) {
+                    ForEach(ExternalMediaLoadHarness.Scenario.allCases) { scenario in
+                        Text(scenario.displayName).tag(scenario)
                     }
-                    .pickerStyle(.menu)
-                    .frame(width: 190, alignment: .trailing)
                 }
-#endif
+                .pickerStyle(.menu)
+                .frame(width: 190, alignment: .trailing)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
+#endif
         }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(windowPanelBackground)
     }
 
     @ViewBuilder
     private func sectionDivider() -> some View {
-        GlassDivider()
+        PanelGlassDividerView()
             .padding(.vertical, 4)
     }
 
@@ -111,7 +117,7 @@ struct NewClipsWindowView: View {
             }
         )
 
-        PanelFieldRow(
+        PanelFieldRowView(
             title: "Composition Length (Range)",
             valueText: "\(Int(range.wrappedValue.lowerBound))–\(Int(range.wrappedValue.upperBound))s"
         ) {
@@ -147,7 +153,7 @@ struct NewClipsWindowView: View {
         let upperPercent = Int((range.wrappedValue.upperBound * 100).rounded())
         let valueText = lowerPercent == upperPercent ? "\(lowerPercent)%" : "\(lowerPercent)–\(upperPercent)%"
 
-        PanelFieldRow(title: "Play Rate (Range)", valueText: valueText) {
+        PanelFieldRowView(title: "Play Rate (Range)", valueText: valueText) {
             RangeSliderView(range: range, bounds: bounds, step: 0.1, minimumDistance: 0)
                 .disabled(isLiveMode)
                 .opacity(isLiveMode ? 0.55 : 1.0)
@@ -161,12 +167,12 @@ struct NewClipsWindowView: View {
         frequency: Binding<Double>
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            PanelInlineFieldRow(title: title) {
+            PanelInlineFieldRowView(title: title) {
                 PanelToggleView(isOn: isOn)
                     .fixedSize()
             }
 
-            PanelFieldRow(
+            PanelFieldRowView(
                 title: "Frequency",
                 valueText: "\(Int((frequency.wrappedValue * 100).rounded()))%"
             ) {

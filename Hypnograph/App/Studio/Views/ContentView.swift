@@ -9,10 +9,10 @@ import HypnoUI
 struct ContentView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
-    @ObservedObject private var windows: WindowStateController
+    @ObservedObject private var panels: PanelStateController
     @ObservedObject private var appSettingsStore: AppSettingsStore
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
-    @StateObject private var windowHostService = WindowHostService()
+    @StateObject private var panelHostService = PanelHostService()
     @State private var panelsCurrentlyAutoHidden = false
     @State private var completedDownloadIdentifiersThisLoad: Set<String> = []
     @State private var previouslyVisibleDownloadIdentifiers: Set<String> = []
@@ -23,15 +23,15 @@ struct ContentView: View {
     init(state: HypnographState, main: Studio) {
         self.state = state
         self.main = main
-        _windows = ObservedObject(initialValue: main.windows)
+        _panels = ObservedObject(initialValue: main.panels)
         _appSettingsStore = ObservedObject(initialValue: state.appSettingsStore)
     }
 
-    private var clipTrimContexts: [ClipTrimContext] {
+    private var layerTrimContexts: [LayerTrimContext] {
         let layers = main.activePlayer.layers
         guard !layers.isEmpty else { return [] }
 
-        func makeContext(layer: Layer, index: Int) -> ClipTrimContext? {
+        func makeContext(layer: Layer, index: Int) -> LayerTrimContext? {
             guard layer.mediaClip.file.mediaKind == .video else { return nil }
 
             let total = max(0.1, layer.mediaClip.file.duration.seconds)
@@ -40,7 +40,7 @@ struct ContentView: View {
             let selectedDuration = min(layer.mediaClip.duration.seconds, maxSelection, total - start)
             let end = max(start + 0.1, min(start + selectedDuration, total))
 
-            return ClipTrimContext(
+            return LayerTrimContext(
                 layerIndex: index,
                 fileID: layer.mediaClip.file.id,
                 source: layer.mediaClip.file.source,
@@ -218,12 +218,12 @@ struct ContentView: View {
     }
 
     private var playerControlsContent: some View {
-        PlayerControlsBar(
+        PlayerControlsPanel(
             isPaused: main.activePlayer.isPaused,
             isLoopCurrentCompositionEnabled: main.isLoopCurrentCompositionEnabled,
             currentCompositionText: main.currentCompositionIndicatorText,
             compositionLengthSeconds: main.activePlayer.targetDuration.seconds,
-            clipTrimContexts: clipTrimContexts,
+            layerTrimContexts: layerTrimContexts,
             volume: Binding(
                 get: { Double(main.volume) },
                 set: { main.volume = Float($0) }
@@ -235,8 +235,8 @@ struct ContentView: View {
             onSnapshotCurrent: { main.saveSnapshotImage() },
             onSaveCurrent: { main.save() },
             onRenderCurrent: { main.renderAndSaveVideo() },
-            onCommitClipTrimRange: { layerIndex, range in
-                main.setLayerClipRange(
+            onCommitLayerTrimRange: { layerIndex, range in
+                main.setLayerRange(
                     sourceIndex: layerIndex,
                     startSeconds: range.lowerBound,
                     endSeconds: range.upperBound
@@ -247,7 +247,7 @@ struct ContentView: View {
     }
 
     private var hypnogramsContent: some View {
-        HypnogramListView(
+        HypnogramsPanel(
             store: HypnogramStore.shared,
             onLoad: { entry in
                 guard let hypnogram = HypnogramStore.shared.loadHypnogram(from: entry) else {
@@ -260,10 +260,6 @@ struct ContentView: View {
         )
     }
 
-    private var playerControlsLayoutSignature: Int {
-        clipTrimContexts.count
-    }
-
     var body: some View {
         ZStack(alignment: .topLeading) {
             // Solid black backing for the entire window
@@ -273,9 +269,10 @@ struct ContentView: View {
             // Studio display
             main.makeDisplayView()
                 .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    windowHostService.hidePanelsForCanvasInteraction()
+                .overlay {
+                    CanvasPanelToggleHitView {
+                        panelHostService.hidePanelsForCanvasInteraction()
+                    }
                 }
 
             CursorAutoHideView(isEnabled: shouldAutoHideCursor, idleSeconds: 3.0)
@@ -320,11 +317,11 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
 
-                if main.isLiveModeAvailable && windows.isWindowVisible("livePreview") {
+                if main.isLiveModeAvailable && panels.isPanelVisible("livePreviewPanel") {
                     LivePreviewPanel(
                         livePlayer: main.livePlayer,
                         onClose: {
-                            windows.setWindowVisible("livePreview", visible: false)
+                            panels.setPanelVisible("livePreviewPanel", visible: false)
                         }
                     )
                     .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -333,47 +330,63 @@ struct ContentView: View {
             .padding(.top, 12)
             .padding(.trailing, 12)
             .padding(.bottom, 12)
-            .animation(.easeInOut(duration: 0.2), value: windows.isWindowVisible("livePreview"))
+            .animation(.easeInOut(duration: 0.2), value: panels.isPanelVisible("livePreviewPanel"))
         }
         .background(
-            WindowHostBridge(
-                hostService: windowHostService,
-                showHypnograms: windows.isWindowVisible("hypnogramList"),
-                showSources: windows.isWindowVisible("sourcesWindow"),
-                showNewClips: windows.isWindowVisible("newClipsWindow"),
-                showOutputSettings: windows.isWindowVisible("outputSettingsWindow"),
-                showComposition: windows.isWindowVisible("compositionWindow"),
-                showEffects: windows.isWindowVisible("effectsWindow"),
+            PanelHostBridge(
+                hostService: panelHostService,
+                showHypnograms: panels.isPanelVisible("hypnogramsPanel"),
+                showSources: panels.isPanelVisible("sourcesPanel"),
+                showNewCompositions: panels.isPanelVisible("newCompositionsPanel"),
+                showOutputSettings: panels.isPanelVisible("outputSettingsPanel"),
+                showComposition: panels.isPanelVisible("compositionPanel"),
+                showEffects: panels.isPanelVisible("effectsPanel"),
                 showPlayerControls: true,
-                playerControlsLayoutSignature: playerControlsLayoutSignature,
-                autoHideWindows: appSettingsStore.value.autoHideWindowsEnabled,
+                expectedParentFullScreen: panels.mainWindowFullScreen,
+                panelFrames: [
+                    "hypnogramsPanel": panels.panelFrame("hypnogramsPanel"),
+                    "sourcesPanel": panels.panelFrame("sourcesPanel"),
+                    "newCompositionsPanel": panels.panelFrame("newCompositionsPanel"),
+                    "outputSettingsPanel": panels.panelFrame("outputSettingsPanel"),
+                    "compositionPanel": panels.panelFrame("compositionPanel"),
+                    "effectsPanel": panels.panelFrame("effectsPanel"),
+                    "playerControlsPanel": panels.panelFrame("playerControlsPanel")
+                ].compactMapValues { $0 },
+                panelOrder: panels.panelOrderIDs(),
+                autoHidePanels: appSettingsStore.value.autoHidePanelsEnabled,
                 keyboardAccessibilityOverridesEnabled: appSettingsStore.value.keyboardAccessibilityOverridesEnabled,
-                onPanelVisibilityChanged: { windowID, isVisible in
-                    windows.setWindowVisible(windowID, visible: isVisible)
+                onPanelVisibilityChanged: { panelID, isVisible in
+                    panels.setPanelVisible(panelID, visible: isVisible)
+                },
+                onPanelFrameChanged: { panelID, frame in
+                    panels.setPanelFrame(frame, for: panelID)
+                },
+                onPanelOrderChanged: { panelOrder in
+                    panels.setPanelOrder(panelOrder)
                 },
                 onPanelsAutoHiddenChanged: { isHidden in
                     DispatchQueue.main.async {
                         panelsCurrentlyAutoHidden = isHidden
-                        windows.setPanelsHidden(isHidden)
+                        panels.setPanelsHidden(isHidden)
                     }
                 },
                 hypnogramsContent: AnyView(
                     hypnogramsContent
                 ),
                 sourcesContent: AnyView(
-                    SourcesWindowView(state: state, main: main)
+                    SourcesPanel(state: state, main: main)
                 ),
-                newClipsContent: AnyView(
-                    NewClipsWindowView(state: state, main: main, player: main.activePlayer)
+                newCompositionsContent: AnyView(
+                    NewCompositionsPanel(state: state, main: main)
                 ),
                 outputSettingsContent: AnyView(
-                    OutputSettingsWindowView(state: state, main: main, player: main.activePlayer)
+                    OutputSettingsPanel(state: state, main: main)
                 ),
                 compositionContent: AnyView(
-                    CompositionWindowView(state: state, main: main)
+                    CompositionPanel(state: state, main: main)
                 ),
                 effectsContent: AnyView(
-                    EffectsWindowView(state: state, main: main, effectsSession: main.effectsLibrarySession)
+                    EffectsPanel(state: state, main: main)
                 ),
                 playerControlsContent: AnyView(
                     playerControlsContent
@@ -384,18 +397,18 @@ struct ContentView: View {
         .appNotifications()
         .background(Color.black)
         .onReceive(NotificationCenter.default.publisher(for: Self.hidePanelsNowNotification)) { _ in
-            windowHostService.hidePanelsNow()
+            panelHostService.hidePanelsNow()
         }
         .onReceive(NotificationCenter.default.publisher(for: Self.showPanelsNowNotification)) { _ in
-            windowHostService.showPanelsNow()
+            panelHostService.showPanelsNow()
         }
         .onAppear {
-            windows.registerWindow("hypnogramList", defaultVisible: false)
-            windows.registerWindow("sourcesWindow", defaultVisible: false)
-            windows.registerWindow("newClipsWindow", defaultVisible: true)
-            windows.registerWindow("outputSettingsWindow", defaultVisible: true)
-            windows.registerWindow("compositionWindow", defaultVisible: true)
-            windows.registerWindow("effectsWindow", defaultVisible: true)
+            panels.registerPanel("hypnogramsPanel", defaultVisible: false)
+            panels.registerPanel("sourcesPanel", defaultVisible: false)
+            panels.registerPanel("newCompositionsPanel", defaultVisible: true)
+            panels.registerPanel("outputSettingsPanel", defaultVisible: true)
+            panels.registerPanel("compositionPanel", defaultVisible: true)
+            panels.registerPanel("effectsPanel", defaultVisible: true)
         }
         .onChange(of: main.activePlayer.isPrimaryCompositionLoadInFlight) { _, isInFlight in
             if isInFlight {
@@ -441,4 +454,34 @@ struct ContentView: View {
         showPanelsNowNotification
     }
 
+}
+
+private struct CanvasPanelToggleHitView: NSViewRepresentable {
+    let onToggle: () -> Void
+
+    func makeNSView(context: Context) -> CanvasPanelToggleNSView {
+        let view = CanvasPanelToggleNSView()
+        view.onToggle = onToggle
+        return view
+    }
+
+    func updateNSView(_ nsView: CanvasPanelToggleNSView, context: Context) {
+        nsView.onToggle = onToggle
+    }
+}
+
+private final class CanvasPanelToggleNSView: NSView {
+    var onToggle: (() -> Void)?
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        self
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onToggle?()
+    }
 }

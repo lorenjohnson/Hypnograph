@@ -2,7 +2,7 @@ import SwiftUI
 import HypnoCore
 import HypnoUI
 
-struct EffectChainView: View {
+struct EffectChainSectionView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
 
@@ -14,6 +14,7 @@ struct EffectChainView: View {
     @State private var isExpanded: Bool = true
     @State private var expandedEffectIndices: Set<Int> = []
     @State private var draggingEffectIndex: Int?
+    @SwiftUI.Environment(\.panelLayoutInvalidator) private var panelLayoutInvalidator
 
     private var chain: EffectChain {
         main.activeEffectManager.effectChain(for: layer) ?? EffectChain()
@@ -38,14 +39,31 @@ struct EffectChainView: View {
             if isExpanded, !chain.effects.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(Array(chain.effects.enumerated()), id: \.offset) { index, effect in
-                        EffectDefinitionRowView(
-                            main: main,
-                            layer: layer,
-                            effectIndex: index,
+                        EffectRowView(
                             effect: effect,
                             isExpanded: expandedEffectIndices.contains(index),
                             onToggleExpanded: {
                                 toggleEffectExpanded(index)
+                            },
+                            onSetEnabled: { enabled in
+                                main.activeEffectManager.setEffectEnabled(for: layer, effectDefIndex: index, enabled: enabled)
+                            },
+                            onRemove: {
+                                main.activeEffectManager.removeEffectFromChain(for: layer, effectDefIndex: index)
+                            },
+                            onUpdateParameter: { key, newValue in
+                                main.activeEffectManager.updateEffectParameter(
+                                    for: layer,
+                                    effectDefIndex: index,
+                                    key: key,
+                                    value: newValue
+                                )
+                            },
+                            onResetDefaults: {
+                                resetEffectToDefaults(index)
+                            },
+                            onRandomizeParameters: {
+                                randomizeEffectParameters(index)
                             }
                         )
                         .opacity(draggingEffectIndex == index ? 0.5 : 1.0)
@@ -64,7 +82,6 @@ struct EffectChainView: View {
                                 )
                             }
                         ))
-                        .animation(.easeInOut(duration: 0.15), value: expandedEffectIndices)
                     }
 
                     Menu {
@@ -78,6 +95,15 @@ struct EffectChainView: View {
                 }
                 .padding(.top, 2)
             }
+        }
+        .onChange(of: isExpanded) { _, _ in
+            panelLayoutInvalidator()
+        }
+        .onChange(of: expandedEffectIndices) { _, _ in
+            panelLayoutInvalidator()
+        }
+        .onChange(of: chain.effects.count) { _, _ in
+            panelLayoutInvalidator()
         }
     }
 
@@ -176,12 +202,12 @@ struct EffectChainView: View {
         if !availableLibraryChains.isEmpty {
             Section("Effect Chains") {
                 ForEach(availableLibraryChains, id: \.id) { libraryChain in
-                    Button(templateDisplayName(libraryChain)) {
-                        main.activeEffectManager.applyTemplate(libraryChain, to: layer)
-                        isExpanded = true
-                    }
+                Button(templateDisplayName(libraryChain)) {
+                    main.activeEffectManager.applyTemplate(libraryChain, to: layer)
+                    isExpanded = true
                 }
             }
+        }
         }
 
         Section("FX") {
@@ -236,6 +262,36 @@ struct EffectChainView: View {
                     value: spec.randomValue()
                 )
             }
+        }
+    }
+
+    private func resetEffectToDefaults(_ effectIndex: Int) {
+        guard effectIndex >= 0, effectIndex < chain.effects.count else { return }
+        let effect = chain.effects[effectIndex]
+        let specs = EffectRegistry.parameterSpecs(for: effect.type)
+        for (key, spec) in specs {
+            guard key != "_enabled" else { continue }
+            main.activeEffectManager.updateEffectParameter(
+                for: layer,
+                effectDefIndex: effectIndex,
+                key: key,
+                value: spec.defaultValue
+            )
+        }
+    }
+
+    private func randomizeEffectParameters(_ effectIndex: Int) {
+        guard effectIndex >= 0, effectIndex < chain.effects.count else { return }
+        let effect = chain.effects[effectIndex]
+        let specs = EffectRegistry.parameterSpecs(for: effect.type)
+        for (key, spec) in specs {
+            guard key != "_enabled", key.lowercased() != "opacity" else { continue }
+            main.activeEffectManager.updateEffectParameter(
+                for: layer,
+                effectDefIndex: effectIndex,
+                key: key,
+                value: spec.randomValue()
+            )
         }
     }
 }

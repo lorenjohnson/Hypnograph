@@ -107,9 +107,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     /// Which media types to include in sources: "photos", "videos", or both
     var sourceMediaTypes: Set<MediaType>
 
-    /// Whether the effects list column is collapsed in the Effects Editor
-    var effectsListCollapsed: Bool
-
     /// Feature flag for live display workflows (live panel, external monitor, live mode)
     var liveModeEnabled: Bool
 
@@ -171,7 +168,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         static let maxLayers = 1
         static let sourceFraming: SourceFraming = .fill
         static let sourceMediaTypes: Set<MediaType> = [.videos]
-        static let effectsListCollapsed: Bool = false
         static let liveModeEnabled: Bool = false
         // Transition defaults
         static let transitionStyle: TransitionRenderer.TransitionType = .crossfade
@@ -205,7 +201,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             renderVideoSaveDestination: Defaults.renderVideoSaveDestination,
             sourceFraming: Defaults.sourceFraming,
             sourceMediaTypes: Defaults.sourceMediaTypes,
-            effectsListCollapsed: Defaults.effectsListCollapsed,
             liveModeEnabled: Defaults.liveModeEnabled,
             transitionStyle: Defaults.transitionStyle,
             transitionDuration: Defaults.transitionDuration,
@@ -233,7 +228,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         case historyLimit
         case activeLibraries
         case outputResolution, renderVideoSaveDestination, sourceFraming, sourceMediaTypes
-        case effectsListCollapsed
         case liveModeEnabled
         case transitionStyle, transitionDuration
         case randomGlobalEffect, randomGlobalEffectFrequency
@@ -263,7 +257,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         renderVideoSaveDestination: RenderVideoSaveDestination = Defaults.renderVideoSaveDestination,
         sourceFraming: SourceFraming = Defaults.sourceFraming,
         sourceMediaTypes: Set<MediaType> = Defaults.sourceMediaTypes,
-        effectsListCollapsed: Bool = Defaults.effectsListCollapsed,
         liveModeEnabled: Bool = Defaults.liveModeEnabled,
         transitionStyle: TransitionRenderer.TransitionType = Defaults.transitionStyle,
         transitionDuration: Double = Defaults.transitionDuration,
@@ -291,7 +284,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         self.renderVideoSaveDestination = renderVideoSaveDestination
         self.sourceFraming = sourceFraming
         self.sourceMediaTypes = sourceMediaTypes
-        self.effectsListCollapsed = effectsListCollapsed
         self.liveModeEnabled = liveModeEnabled
         self.transitionStyle = transitionStyle
         self.transitionDuration = transitionDuration
@@ -354,8 +346,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         } else {
             sourceMediaTypes = Defaults.sourceMediaTypes
         }
-        effectsListCollapsed = try c.decodeIfPresent(Bool.self, forKey: .effectsListCollapsed)
-            ?? Defaults.effectsListCollapsed
         liveModeEnabled = try c.decodeIfPresent(Bool.self, forKey: .liveModeEnabled)
             ?? Defaults.liveModeEnabled
         transitionStyle = try c.decodeIfPresent(TransitionRenderer.TransitionType.self, forKey: .transitionStyle)
@@ -406,7 +396,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         try c.encode(renderVideoSaveDestination, forKey: .renderVideoSaveDestination)
         try c.encode(sourceFraming, forKey: .sourceFraming)
         try c.encode(Array(sourceMediaTypes), forKey: .sourceMediaTypes)
-        try c.encode(effectsListCollapsed, forKey: .effectsListCollapsed)
         try c.encode(liveModeEnabled, forKey: .liveModeEnabled)
         try c.encode(transitionStyle, forKey: .transitionStyle)
         try c.encode(transitionDuration, forKey: .transitionDuration)

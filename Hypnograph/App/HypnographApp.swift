@@ -107,15 +107,15 @@ struct HypnographApp: App {
                     state?.appSettings.keyboardAccessibilityOverridesEnabled ?? true
                 }
 
-                // Wire up window state persistence
-                appDelegate.saveWindowState = { [weak studio] in
-                    studio?.windows.saveToDisk()
+                // Wire up panel state persistence
+                appDelegate.savePanelState = { [weak studio] in
+                    studio?.panels.saveToDisk()
                 }
                 appDelegate.setMainWindowFullScreenState = { [weak studio] isFullScreen in
-                    studio?.windows.setMainWindowFullScreen(isFullScreen)
+                    studio?.panels.setMainWindowFullScreen(isFullScreen)
                 }
                 appDelegate.shouldRestoreMainWindowFullScreenState = { [weak studio] in
-                    studio?.windows.mainWindowFullScreen ?? true
+                    studio?.panels.mainWindowFullScreen ?? true
                 }
                 appDelegate.applyStoredMainWindowFullscreenPreferenceIfNeeded()
 

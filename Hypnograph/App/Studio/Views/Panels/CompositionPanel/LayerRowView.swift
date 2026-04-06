@@ -267,7 +267,7 @@ struct LayerRowView: View {
                 )
             }
 
-            EffectChainView(
+            EffectChainSectionView(
                 state: state,
                 main: main,
                 layer: index,

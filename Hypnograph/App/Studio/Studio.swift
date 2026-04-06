@@ -19,7 +19,7 @@ import HypnoUI
 @MainActor
 final class Studio: ObservableObject {
     let state: HypnographState
-    let windows: WindowStateController
+    let panels: PanelStateController
     let renderQueue: RenderEngine.ExportQueue
     let dependencies: StudioDependencies
     let panelHostService: FilePanelService
@@ -137,7 +137,7 @@ final class Studio: ObservableObject {
         dependencies: StudioDependencies = .live
     ) {
         self.state = state
-        self.windows = WindowStateController()
+        self.panels = PanelStateController()
         self.renderQueue = renderQueue
         self.dependencies = dependencies
         self.panelHostService = dependencies.makePanelHostService()
@@ -183,7 +183,7 @@ final class Studio: ObservableObject {
                 if self.liveMode == .live {
                     self.liveMode = .edit
                 }
-                self.windows.setWindowVisible("livePreview", visible: false)
+                self.panels.setPanelVisible("livePreviewPanel", visible: false)
                 if self.livePlayer.isVisible {
                     self.livePlayer.hide()
                 }
@@ -274,7 +274,7 @@ final class Studio: ObservableObject {
         let aspectRatio = player.config.aspectRatio
         let displayResolution = player.config.playerResolution
         let sourceFraming = state.settings.sourceFraming
-        let shouldAdvanceOnClipEnd = state.settings.playbackEndBehavior == .autoAdvance
+        let shouldAdvanceOnCompositionEnd = state.settings.playbackEndBehavior == .autoAdvance
         let onCompositionEnded: (() -> Bool)? = { [weak self] in
             guard let self else { return false }
             return self.advanceOrGenerateOnCompositionEnded()
@@ -284,8 +284,8 @@ final class Studio: ObservableObject {
             set: { player.currentLayerIndex = $0 }
         )
         let currentSourceTimeBinding = Binding(
-            get: { player.currentClipTimeOffset },
-            set: { player.currentClipTimeOffset = $0 }
+            get: { player.currentLayerTimeOffset },
+            set: { player.currentLayerTimeOffset = $0 }
         )
         let compositionLoadInFlightBinding = Binding(
             get: { player.isPrimaryCompositionLoadInFlight },
@@ -303,7 +303,7 @@ final class Studio: ObservableObject {
                 aspectRatio: aspectRatio,
                 displayResolution: displayResolution,
                 sourceFraming: sourceFraming,
-                autoAdvanceOnCompositionEnd: shouldAdvanceOnClipEnd,
+                autoAdvanceOnCompositionEnd: shouldAdvanceOnCompositionEnd,
                 onCompositionEnded: onCompositionEnded,
                 currentLayerIndex: currentLayerIndexBinding,
                 currentSourceTime: currentSourceTimeBinding,
