@@ -14,9 +14,9 @@ struct OutputSettingsPanel: View {
 
             PanelInlineFieldRowView(title: "Transition Style") {
                 Picker("", selection: Binding(
-                    get: { state.settings.transitionStyle },
+                    get: { main.currentDocumentTransitionStyle },
                     set: { newValue in
-                        state.settingsStore.update { $0.transitionStyle = newValue }
+                        main.setTransitionStyle(newValue)
                     }
                 )) {
                     ForEach(TransitionRenderer.TransitionType.allCases, id: \.self) { style in
@@ -29,13 +29,13 @@ struct OutputSettingsPanel: View {
 
             PanelFieldRowView(
                 title: "Transition Duration",
-                valueText: String(format: "%.1fs", state.settings.transitionDuration)
+                valueText: String(format: "%.1fs", main.currentDocumentTransitionDuration)
             ) {
                 PanelSliderView(
                     value: Binding(
-                        get: { state.settings.transitionDuration },
+                        get: { main.currentDocumentTransitionDuration },
                         set: { newValue in
-                            state.settingsStore.update { $0.transitionDuration = newValue }
+                            main.setTransitionDuration(newValue)
                         }
                     ),
                     bounds: 0.1...3.0,
@@ -60,6 +60,7 @@ struct OutputSettingsPanel: View {
             }
         }
         .padding(14)
+        .padding(.bottom, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.black.opacity(0.96).ignoresSafeArea())
     }
@@ -68,9 +69,9 @@ struct OutputSettingsPanel: View {
     private var sourceFramingButtons: some View {
         HStack(spacing: 5) {
             ForEach(SourceFraming.allCases, id: \.self) { framing in
-                let isSelected = state.settings.sourceFraming == framing
+                let isSelected = main.currentDocumentSourceFraming == framing
                 Button {
-                    state.settingsStore.update { $0.sourceFraming = framing }
+                    main.setSourceFraming(framing)
                 } label: {
                     Text(shortFramingLabel(for: framing))
                         .font(.caption2.weight(.semibold))
@@ -89,14 +90,14 @@ struct OutputSettingsPanel: View {
 
     @ViewBuilder
     private var aspectRatioButtons: some View {
-        let selectedRatio = isLiveMode ? main.livePlayer.config.aspectRatio : player.config.aspectRatio
+        let selectedRatio = isLiveMode ? main.livePlayer.config.aspectRatio : main.currentDocumentAspectRatio
 
         HStack(spacing: 4) {
             ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
                 let isSelected = selectedRatio == ratio
                 Button {
                     guard !isLiveMode else { return }
-                    player.config.aspectRatio = ratio
+                    main.setAspectRatio(ratio)
                 } label: {
                     Text(shortAspectRatioLabel(for: ratio))
                         .font(.caption2.weight(.semibold))

@@ -8,7 +8,6 @@ struct CompositionPanel: View {
     @ObservedObject var main: Studio
 
     @State private var expandedLayerIDs: Set<UUID> = []
-    @State private var showAddLayerPhotosPicker = false
     @State private var draggedLayerID: UUID?
     @StateObject private var thumbnailStore = TimelineThumbnailStore()
     @SwiftUI.Environment(\.panelLayoutInvalidator) private var panelLayoutInvalidator
@@ -26,24 +25,21 @@ struct CompositionPanel: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Menu {
-                    Menu {
-                        Button {
-                            main.addSourceFromFilesPanel()
-                        } label: {
-                            Label("From Files...", systemImage: "doc")
-                        }
-
-                        Button {
-                            showAddLayerPhotosPicker = true
-                        } label: {
-                            Label("From Photos...", systemImage: "photo")
-                        }
+                    Button {
+                        main.addSourceFromFilesPanel()
                     } label: {
-                        Label("Select Source...", systemImage: "photo.on.rectangle")
+                        Label("From Files...", systemImage: "doc")
                     }
 
                     Button {
-                        main.addSource()
+                        main.addSourceFromPhotosPicker()
+                    } label: {
+                        Label("From Photos...", systemImage: "photo")
+                    }
+                    .disabled(!state.photosAuthorizationStatus.canRead)
+
+                    Button {
+                        main.addSourceFromRandom()
                     } label: {
                         Label("Random Source", systemImage: "dice")
                     }
@@ -115,17 +111,6 @@ struct CompositionPanel: View {
         .background(Color.black.opacity(0.96).ignoresSafeArea())
         .onChange(of: expandedLayerIDs) { _, _ in
             panelLayoutInvalidator()
-        }
-        .sheet(isPresented: $showAddLayerPhotosPicker) {
-            PhotosPickerSheet(
-                isPresented: $showAddLayerPhotosPicker,
-                preselectedIdentifiers: [],
-                selectionLimit: 1,
-                onSelection: { identifiers in
-                    guard let selectedIdentifier = identifiers.first else { return }
-                    _ = main.addSource(fromPhotosAssetIdentifier: selectedIdentifier)
-                }
-            )
         }
     }
 

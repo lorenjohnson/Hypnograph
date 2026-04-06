@@ -11,30 +11,6 @@ import CoreMedia
 
 // SourceLibraryInfo and MediaSourcesParam are now provided by HypnoCore
 
-// MARK: - Output Resolution
-
-/// Standard video resolutions (720p, 1080p, 4K)
-/// The raw value is the vertical resolution for landscape video.
-enum OutputResolution: Int, Codable, CaseIterable {
-    case p720 = 720
-    case p1080 = 1080
-    case p4K = 2160
-
-    /// Display name for menus
-    var displayName: String {
-        switch self {
-        case .p720: return "720p"
-        case .p1080: return "1080p"
-        case .p4K: return "4K"
-        }
-    }
-
-    /// The constraining dimension for renderSize()
-    /// For landscape: this is the height (e.g., 1080 for 1080p → 1920×1080)
-    /// For portrait: this is the width
-    var maxDimension: Int { rawValue }
-}
-
 enum PlaybackEndBehavior: String, Codable, CaseIterable {
     case autoAdvance
     case loopCurrentComposition
@@ -92,31 +68,17 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     /// Active source libraries (folder keys or Photos library keys)
     var activeLibraries: [String]
 
-    /// Output resolution for disk rendering
-    var outputResolution: OutputResolution
-
     /// Where rendered video outputs should be persisted after export succeeds.
     var renderVideoSaveDestination: RenderVideoSaveDestination
 
-    /// Global source framing behavior (Fill vs Fit)
-    var sourceFraming: SourceFraming
-
-    /// Player configuration for the primary in-app deck
-    var playerConfig: PlayerConfiguration
+    /// Max number of simultaneously generated layers in new compositions.
+    var maxLayers: Int
 
     /// Which media types to include in sources: "photos", "videos", or both
     var sourceMediaTypes: Set<MediaType>
 
     /// Feature flag for live display workflows (live panel, external monitor, live mode)
     var liveModeEnabled: Bool
-
-    // MARK: - Transition StudioSettings
-
-    /// Transition style for playback (shared by in-app and Live)
-    var transitionStyle: TransitionRenderer.TransitionType
-
-    /// Duration of transitions in seconds
-    var transitionDuration: Double
 
     // MARK: - Randomization StudioSettings (Generation Rules)
 
@@ -161,17 +123,10 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             "From Finder Helper": []
         ])
         static let activeLibraries: [String] = []
-        static let aspectRatio: AspectRatio = .ratio16x9
-        static let outputResolution: OutputResolution = .p1080
         static let renderVideoSaveDestination: RenderVideoSaveDestination = .diskAndPhotosIfAvailable
-        static let playerResolution: OutputResolution = .p1080
-        static let maxLayers = 1
-        static let sourceFraming: SourceFraming = .fill
+        static let maxLayers = PlayerConfiguration.defaultMaxLayers
         static let sourceMediaTypes: Set<MediaType> = [.videos]
         static let liveModeEnabled: Bool = false
-        // Transition defaults
-        static let transitionStyle: TransitionRenderer.TransitionType = .crossfade
-        static let transitionDuration: Double = 1.0
         // Randomization defaults
         static let randomGlobalEffect: Bool = true
         static let randomGlobalEffectFrequency: Double = 0.7
@@ -197,13 +152,10 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             compositionPlayRateMax: Defaults.compositionPlayRateMax,
             historyLimit: Defaults.historyLimit,
             activeLibraries: Defaults.activeLibraries,
-            outputResolution: Defaults.outputResolution,
             renderVideoSaveDestination: Defaults.renderVideoSaveDestination,
-            sourceFraming: Defaults.sourceFraming,
+            maxLayers: Defaults.maxLayers,
             sourceMediaTypes: Defaults.sourceMediaTypes,
             liveModeEnabled: Defaults.liveModeEnabled,
-            transitionStyle: Defaults.transitionStyle,
-            transitionDuration: Defaults.transitionDuration,
             randomGlobalEffect: Defaults.randomGlobalEffect,
             randomGlobalEffectFrequency: Defaults.randomGlobalEffectFrequency,
             randomLayerEffect: Defaults.randomLayerEffect,
@@ -211,12 +163,7 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             audioDeviceUID: Defaults.audioDeviceUID,
             volume: Defaults.volume,
             liveAudioDeviceUID: Defaults.liveAudioDeviceUID,
-            liveVolume: Defaults.liveVolume,
-            playerConfig: PlayerConfiguration(
-                aspectRatio: Defaults.aspectRatio,
-                playerResolution: Defaults.playerResolution,
-                maxLayers: Defaults.maxLayers
-            )
+            liveVolume: Defaults.liveVolume
         )
     }
 
@@ -227,16 +174,13 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         case compositionPlayRateMin, compositionPlayRateMax
         case historyLimit
         case activeLibraries
-        case outputResolution, renderVideoSaveDestination, sourceFraming, sourceMediaTypes
+        case renderVideoSaveDestination, sourceMediaTypes
+        case maxLayers
         case liveModeEnabled
-        case transitionStyle, transitionDuration
         case randomGlobalEffect, randomGlobalEffectFrequency
         case randomLayerEffect, randomLayerEffectFrequency
         case audioDeviceUID, volume
         case liveAudioDeviceUID, liveVolume
-        case playerConfig
-        // Backward-compatible decode keys from pre-unified player config.
-        case montagePlayerConfig, sequencePlayerConfig
         // Backward-compatible decode keys from pre-composition terminology.
         case clipLengthMinSeconds, clipLengthMaxSeconds
         case clipPlayRateMin, clipPlayRateMax
@@ -253,13 +197,10 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         compositionPlayRateMax: Double = Defaults.compositionPlayRateMax,
         historyLimit: Int = Defaults.historyLimit,
         activeLibraries: [String] = Defaults.activeLibraries,
-        outputResolution: OutputResolution = Defaults.outputResolution,
         renderVideoSaveDestination: RenderVideoSaveDestination = Defaults.renderVideoSaveDestination,
-        sourceFraming: SourceFraming = Defaults.sourceFraming,
+        maxLayers: Int = Defaults.maxLayers,
         sourceMediaTypes: Set<MediaType> = Defaults.sourceMediaTypes,
         liveModeEnabled: Bool = Defaults.liveModeEnabled,
-        transitionStyle: TransitionRenderer.TransitionType = Defaults.transitionStyle,
-        transitionDuration: Double = Defaults.transitionDuration,
         randomGlobalEffect: Bool = Defaults.randomGlobalEffect,
         randomGlobalEffectFrequency: Double = Defaults.randomGlobalEffectFrequency,
         randomLayerEffect: Bool = Defaults.randomLayerEffect,
@@ -267,8 +208,7 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         audioDeviceUID: String? = Defaults.audioDeviceUID,
         volume: Float = Defaults.volume,
         liveAudioDeviceUID: String? = Defaults.liveAudioDeviceUID,
-        liveVolume: Float = Defaults.liveVolume,
-        playerConfig: PlayerConfiguration? = nil
+        liveVolume: Float = Defaults.liveVolume
     ) {
         self.outputFolder = outputFolder
         self.sources = sources
@@ -280,13 +220,10 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         self.compositionPlayRateMax = compositionPlayRateMax
         self.historyLimit = historyLimit
         self.activeLibraries = activeLibraries
-        self.outputResolution = outputResolution
         self.renderVideoSaveDestination = renderVideoSaveDestination
-        self.sourceFraming = sourceFraming
+        self.maxLayers = max(1, maxLayers)
         self.sourceMediaTypes = sourceMediaTypes
         self.liveModeEnabled = liveModeEnabled
-        self.transitionStyle = transitionStyle
-        self.transitionDuration = transitionDuration
         self.randomGlobalEffect = randomGlobalEffect
         self.randomGlobalEffectFrequency = randomGlobalEffectFrequency
         self.randomLayerEffect = randomLayerEffect
@@ -295,13 +232,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         self.volume = volume
         self.liveAudioDeviceUID = liveAudioDeviceUID
         self.liveVolume = liveVolume
-
-        // Use provided config or create defaults
-        self.playerConfig = playerConfig ?? PlayerConfiguration(
-            aspectRatio: Defaults.aspectRatio,
-            playerResolution: Defaults.playerResolution,
-            maxLayers: Defaults.maxLayers
-        )
     }
 
     init(from decoder: Decoder) throws {
@@ -335,12 +265,9 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             ?? Defaults.historyLimit
         activeLibraries = try c.decodeIfPresent([String].self, forKey: .activeLibraries)
             ?? Defaults.activeLibraries
-        outputResolution = try c.decodeIfPresent(OutputResolution.self, forKey: .outputResolution)
-            ?? Defaults.outputResolution
         renderVideoSaveDestination = try c.decodeIfPresent(RenderVideoSaveDestination.self, forKey: .renderVideoSaveDestination)
             ?? Defaults.renderVideoSaveDestination
-        sourceFraming = try c.decodeIfPresent(SourceFraming.self, forKey: .sourceFraming)
-            ?? Defaults.sourceFraming
+        maxLayers = max(1, try c.decodeIfPresent(Int.self, forKey: .maxLayers) ?? Defaults.maxLayers)
         if let types = try c.decodeIfPresent([MediaType].self, forKey: .sourceMediaTypes) {
             sourceMediaTypes = Set(types)
         } else {
@@ -348,10 +275,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         }
         liveModeEnabled = try c.decodeIfPresent(Bool.self, forKey: .liveModeEnabled)
             ?? Defaults.liveModeEnabled
-        transitionStyle = try c.decodeIfPresent(TransitionRenderer.TransitionType.self, forKey: .transitionStyle)
-            ?? Defaults.transitionStyle
-        transitionDuration = try c.decodeIfPresent(Double.self, forKey: .transitionDuration)
-            ?? Defaults.transitionDuration
         randomGlobalEffect = try c.decodeIfPresent(Bool.self, forKey: .randomGlobalEffect)
             ?? Defaults.randomGlobalEffect
         randomGlobalEffectFrequency = try c.decodeIfPresent(Double.self, forKey: .randomGlobalEffectFrequency)
@@ -368,16 +291,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             ?? Defaults.liveAudioDeviceUID
         liveVolume = try c.decodeIfPresent(Float.self, forKey: .liveVolume)
             ?? Defaults.liveVolume
-
-        // Load player config (or create defaults)
-        playerConfig = try c.decodeIfPresent(PlayerConfiguration.self, forKey: .playerConfig)
-            ?? c.decodeIfPresent(PlayerConfiguration.self, forKey: .montagePlayerConfig)
-            ?? c.decodeIfPresent(PlayerConfiguration.self, forKey: .sequencePlayerConfig)
-            ?? PlayerConfiguration(
-                aspectRatio: Defaults.aspectRatio,
-                playerResolution: Defaults.playerResolution,
-                maxLayers: Defaults.maxLayers
-            )
     }
 
     func encode(to encoder: Encoder) throws {
@@ -392,13 +305,10 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         try c.encode(compositionPlayRateMax, forKey: .compositionPlayRateMax)
         try c.encode(historyLimit, forKey: .historyLimit)
         try c.encode(activeLibraries, forKey: .activeLibraries)
-        try c.encode(outputResolution, forKey: .outputResolution)
         try c.encode(renderVideoSaveDestination, forKey: .renderVideoSaveDestination)
-        try c.encode(sourceFraming, forKey: .sourceFraming)
+        try c.encode(maxLayers, forKey: .maxLayers)
         try c.encode(Array(sourceMediaTypes), forKey: .sourceMediaTypes)
         try c.encode(liveModeEnabled, forKey: .liveModeEnabled)
-        try c.encode(transitionStyle, forKey: .transitionStyle)
-        try c.encode(transitionDuration, forKey: .transitionDuration)
         try c.encode(randomGlobalEffect, forKey: .randomGlobalEffect)
         try c.encode(randomGlobalEffectFrequency, forKey: .randomGlobalEffectFrequency)
         try c.encode(randomLayerEffect, forKey: .randomLayerEffect)
@@ -407,7 +317,6 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         try c.encode(volume, forKey: .volume)
         try c.encodeIfPresent(liveAudioDeviceUID, forKey: .liveAudioDeviceUID)
         try c.encode(liveVolume, forKey: .liveVolume)
-        try c.encode(playerConfig, forKey: .playerConfig)
     }
 
     // MARK: - Derived values

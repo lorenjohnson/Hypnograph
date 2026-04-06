@@ -30,6 +30,10 @@ final class LivePlayer: ObservableObject {
     /// Global source framing behavior (Fill vs Fit)
     private var sourceFraming: SourceFraming
 
+    var currentSourceFraming: SourceFraming {
+        sourceFraming
+    }
+
 
 
     // MARK: - State
@@ -115,11 +119,17 @@ final class LivePlayer: ObservableObject {
 
     // MARK: - Init
 
-    init(settings: StudioSettings, effectsSession: EffectsSession) {
-        self.config = PlayerConfiguration(from: settings)
-        self.sourceFraming = settings.sourceFraming
-        self.crossfadeDuration = settings.transitionDuration
-        self.transitionType = settings.transitionStyle
+    init(
+        config: PlayerConfiguration,
+        sourceFraming: SourceFraming,
+        transitionStyle: TransitionRenderer.TransitionType,
+        transitionDuration: Double,
+        effectsSession: EffectsSession
+    ) {
+        self.config = config
+        self.sourceFraming = sourceFraming
+        self.crossfadeDuration = transitionDuration
+        self.transitionType = transitionStyle
         self.effectsSession = effectsSession
         setupEffectManager()
         setupEffectsSession()

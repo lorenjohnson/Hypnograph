@@ -50,6 +50,7 @@ extension Studio {
     }
 
     func saveHistory(synchronous: Bool) {
+        syncCurrentHypnogramDocumentContextFromRuntime()
         var history = player.hypnogram
         history.currentCompositionIndex = clampedCurrentCompositionIndex
         history.snapshot = nil
@@ -68,6 +69,7 @@ extension Studio {
         ),
            !history.hypnogram.compositions.isEmpty {
             player.hypnogram = history.hypnogram
+            applyCurrentHypnogramDocumentContextToRuntime()
             let restoredIndex =
                 history.hypnogram.currentCompositionIndex
                 ?? history.legacySelectedCompositionIndex
@@ -210,7 +212,10 @@ extension Studio {
 
     func clearHistory() {
         let composition = player.currentComposition
-        player.hypnogram = Hypnogram(compositions: [composition])
+        player.hypnogram = makeHypnogramWithCurrentDocumentContext(
+            compositions: [composition],
+            currentCompositionIndex: 0
+        )
         player.currentCompositionIndex = 0
         player.notifyHypnogramMutated()
         applyCompositionSelectionChanged(manual: true)

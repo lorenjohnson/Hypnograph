@@ -11,13 +11,17 @@ import HypnoUI
 
 @MainActor
 extension Studio {
-    func addSource() {
+    func addSourceFromRandom() {
         addSourceToPlayer(activePlayer)
     }
 
     func addSourceFromFilesPanel() {
         guard let selectedURL = panelHostService.chooseSingleMediaFile() else { return }
         _ = addSource(fromFileURL: selectedURL)
+    }
+
+    func addSourceFromPhotosPicker() {
+        state.showPhotosPickerForAddLayer = true
     }
 
     /// Create a new composition and add each incoming file as a layer.
@@ -240,6 +244,7 @@ extension Studio {
 
     /// Build a clip from a Photos asset identifier (image or video).
     func makeClip(forPhotosAssetIdentifier identifier: String, preferredLength: Double) -> MediaClip? {
+        ApplePhotos.shared.refreshStatus()
         guard ApplePhotos.shared.status.canRead else { return nil }
         guard let asset = ApplePhotos.shared.fetchAsset(localIdentifier: identifier) else { return nil }
 
@@ -362,12 +367,38 @@ extension Studio {
 
     func setAspectRatio(_ ratio: AspectRatio) {
         activePlayer.config.aspectRatio = ratio
+        livePlayer.config.aspectRatio = ratio
+        syncCurrentHypnogramDocumentContextFromRuntime()
+        activePlayer.notifyHypnogramMutated()
         objectWillChange.send()
     }
 
     func setOutputResolution(_ resolution: OutputResolution) {
-        activePlayer.config.playerResolution = resolution
-        state.settingsStore.update { $0.outputResolution = resolution }
+        outputResolution = resolution
+        syncCurrentHypnogramDocumentContextFromRuntime()
+        activePlayer.notifyHypnogramMutated()
+        objectWillChange.send()
+    }
+
+    func setSourceFraming(_ framing: SourceFraming) {
+        livePlayer.setSourceFraming(framing)
+        syncCurrentHypnogramDocumentContextFromRuntime()
+        activePlayer.notifyHypnogramMutated()
+        objectWillChange.send()
+    }
+
+    func setTransitionStyle(_ style: TransitionRenderer.TransitionType) {
+        livePlayer.transitionType = style
+        syncCurrentHypnogramDocumentContextFromRuntime()
+        activePlayer.notifyHypnogramMutated()
+        objectWillChange.send()
+    }
+
+    func setTransitionDuration(_ duration: Double) {
+        let clampedDuration = min(max(duration, 0.1), 3.0)
+        livePlayer.crossfadeDuration = clampedDuration
+        syncCurrentHypnogramDocumentContextFromRuntime()
+        activePlayer.notifyHypnogramMutated()
         objectWillChange.send()
     }
 

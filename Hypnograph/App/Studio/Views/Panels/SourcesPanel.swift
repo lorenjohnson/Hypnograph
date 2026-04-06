@@ -169,16 +169,12 @@ struct SourcesPanel: View {
     }
 
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: 16) {
-            Text("Manage the media pool used for random clip generation, and keep source setup out of the menu bar.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
+        VStack(alignment: .leading, spacing: 16) {
             sourcesSection
             mediaTypesSection
         }
         .padding(14)
+        .padding(.vertical, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             Color.black.opacity(0.96)
@@ -212,7 +208,7 @@ struct SourcesPanel: View {
                     }
                 },
                 onChooseCustomSelection: {
-                    state.showPhotosPicker = true
+                    state.showPhotosPickerForSource = true
                 },
                 onRequestAccess: {
                     requestPhotosAccess()
@@ -249,7 +245,6 @@ struct SourcesPanel: View {
 
     private var sourcesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionDivider()
             PanelInlineFieldRowView(title: "Eligible Sources: \(state.library.assetCount)") {
                 Menu {
                     Button("Files or Folders…") {
@@ -266,6 +261,11 @@ struct SourcesPanel: View {
                 .buttonStyle(.borderless)
                 .help("Add source selection")
             }
+
+            Text("Manage the media pool used for random clip generation, and keep source setup out of the menu bar.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             if sourceRows.isEmpty {
                 emptyState("No source selections configured yet.")
@@ -318,7 +318,7 @@ struct SourcesPanel: View {
             HStack(spacing: 10) {
                 if row.canEditSelection {
                     Button {
-                        state.showPhotosPicker = true
+                        state.showPhotosPickerForSource = true
                     } label: {
                         Image(systemName: "slider.horizontal.3")
                     }

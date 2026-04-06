@@ -16,6 +16,17 @@ import HypnoCore
 ///
 /// Note: `targetDuration` and `playRate` live on the recipe, not here.
 struct PlayerConfiguration: Codable {
+    static let defaultAspectRatio: AspectRatio = .ratio16x9
+    static let defaultPlayerResolution: OutputResolution = .p1080
+    static let defaultMaxLayers: Int = 1
+
+    static func defaultValue(maxLayers: Int = defaultMaxLayers) -> PlayerConfiguration {
+        PlayerConfiguration(
+            aspectRatio: defaultAspectRatio,
+            playerResolution: defaultPlayerResolution,
+            maxLayers: maxLayers
+        )
+    }
 
     // MARK: - Display StudioSettings
 
@@ -31,11 +42,6 @@ struct PlayerConfiguration: Codable {
     var maxLayers: Int
 
     // MARK: - Initialization
-
-    /// Initialize with global defaults from StudioSettings
-    init(from settings: StudioSettings) {
-        self = settings.playerConfig
-    }
 
     /// Initialize with explicit values
     init(

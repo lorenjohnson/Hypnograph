@@ -57,6 +57,7 @@ final class Studio: ObservableObject {
     }
 
     @Published var liveMode: LiveMode = .edit
+    @Published var outputResolution: OutputResolution = PlayerConfiguration.defaultPlayerResolution
 
     var isLiveMode: Bool { liveMode == .live }
     var isLiveModeAvailable: Bool { state.settings.liveModeEnabled }
@@ -149,8 +150,15 @@ final class Studio: ObservableObject {
         self.recentEffectsStore = RecentEffectChainsStore()
 
         // Create the preview player state (single deck) + live display
-        self.player = PlayerState(config: state.settings.playerConfig, effectsSession: effectsLibrarySession)
-        self.livePlayer = LivePlayer(settings: state.settings, effectsSession: effectsLibrarySession)
+        let initialPlayerConfig = PlayerConfiguration.defaultValue(maxLayers: state.settings.maxLayers)
+        self.player = PlayerState(config: initialPlayerConfig, effectsSession: effectsLibrarySession)
+        self.livePlayer = LivePlayer(
+            config: initialPlayerConfig,
+            sourceFraming: .fill,
+            transitionStyle: .crossfade,
+            transitionDuration: 1.0,
+            effectsSession: effectsLibrarySession
+        )
 
         // Wire RECENT store into all effect managers
         player.effectManager.recentStore = recentEffectsStore
@@ -190,37 +198,14 @@ final class Studio: ObservableObject {
             }
             .store(in: &playerSubscriptions)
 
-        state.settingsStore.$value
-            .map(\.sourceFraming)
-            .removeDuplicates()
-            .sink { [weak self] framing in
-                self?.livePlayer.setSourceFraming(framing)
-            }
-            .store(in: &playerSubscriptions)
-
-        // Wire transition settings to LivePlayer
-        state.settingsStore.$value
-            .map(\.transitionStyle)
-            .removeDuplicates()
-            .sink { [weak self] style in
-                self?.livePlayer.transitionType = style
-            }
-            .store(in: &playerSubscriptions)
-
-        state.settingsStore.$value
-            .map(\.transitionDuration)
-            .removeDuplicates()
-            .sink { [weak self] duration in
-                self?.livePlayer.crossfadeDuration = duration
-            }
-            .store(in: &playerSubscriptions)
-
-        // Sync player config changes back to settings
+        // Persist only the generation-related portion of player config.
         player.$config
-            .dropFirst() // Skip initial value
-            .sink { [weak self] config in
+            .map(\.maxLayers)
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] maxLayers in
                 guard let self = self else { return }
-                self.state.settingsStore.update { $0.playerConfig = config }
+                self.state.settingsStore.update { $0.maxLayers = maxLayers }
             }
             .store(in: &playerSubscriptions)
 
@@ -271,9 +256,9 @@ final class Studio: ObservableObject {
         }
 
         // Common view parameters
-        let aspectRatio = player.config.aspectRatio
-        let displayResolution = player.config.playerResolution
-        let sourceFraming = state.settings.sourceFraming
+        let aspectRatio = currentDocumentAspectRatio
+        let displayResolution = currentDocumentPlayerResolution
+        let sourceFraming = currentDocumentSourceFraming
         let shouldAdvanceOnCompositionEnd = state.settings.playbackEndBehavior == .autoAdvance
         let onCompositionEnded: (() -> Bool)? = { [weak self] in
             guard let self else { return false }
@@ -319,8 +304,8 @@ final class Studio: ObservableObject {
                 effectManager: player.effectManager,
                 volume: volume,
                 audioDeviceUID: audioDeviceUID,
-                transitionStyle: state.settings.transitionStyle,
-                transitionDuration: state.settings.transitionDuration,
+                transitionStyle: currentDocumentTransitionStyle,
+                transitionDuration: currentDocumentTransitionDuration,
                 onCompositionFramePresented: { [weak self, weak player] compositionID in
                     guard let player else { return }
 
@@ -371,7 +356,135 @@ final class Studio: ObservableObject {
         let createdAt = Date()
         var composition = activePlayer.currentComposition
         composition.createdAt = createdAt
-        return Hypnogram(compositions: [composition], createdAt: createdAt)
+        return makeHypnogramWithCurrentDocumentContext(
+            compositions: [composition],
+            currentCompositionIndex: 0,
+            createdAt: createdAt
+        )
+    }
+
+    func makeHypnogramWithCurrentDocumentContext(
+        compositions: [Composition],
+        currentCompositionIndex: Int?,
+        snapshot: String? = nil,
+        createdAt: Date = Date()
+    ) -> Hypnogram {
+        Hypnogram(
+            compositions: compositions,
+            currentCompositionIndex: currentCompositionIndex,
+            aspectRatio: currentDocumentAspectRatio,
+            playerResolution: currentDocumentPlayerResolution,
+            outputResolution: currentDocumentOutputResolution,
+            sourceFraming: currentDocumentSourceFraming,
+            transitionStyle: currentDocumentTransitionStyle,
+            transitionDuration: currentDocumentTransitionDuration,
+            snapshot: snapshot,
+            createdAt: createdAt
+        )
+    }
+
+    var currentDocumentAspectRatio: AspectRatio {
+        activePlayer.config.aspectRatio
+    }
+
+    var currentDocumentPlayerResolution: OutputResolution {
+        activePlayer.config.playerResolution
+    }
+
+    var currentDocumentOutputResolution: OutputResolution {
+        outputResolution
+    }
+
+    var currentDocumentSourceFraming: SourceFraming {
+        livePlayer.currentSourceFraming
+    }
+
+    var currentDocumentTransitionStyle: TransitionRenderer.TransitionType {
+        livePlayer.transitionType
+    }
+
+    var currentDocumentTransitionDuration: Double {
+        livePlayer.crossfadeDuration
+    }
+
+    private func resolvedAspectRatio(for hypnogram: Hypnogram) -> AspectRatio {
+        hypnogram.aspectRatio ?? PlayerConfiguration.defaultAspectRatio
+    }
+
+    private func resolvedPlayerResolution(for hypnogram: Hypnogram) -> OutputResolution {
+        hypnogram.playerResolution
+            ?? hypnogram.outputResolution
+            ?? PlayerConfiguration.defaultPlayerResolution
+    }
+
+    private func resolvedOutputResolution(for hypnogram: Hypnogram) -> OutputResolution {
+        hypnogram.outputResolution
+            ?? hypnogram.playerResolution
+            ?? PlayerConfiguration.defaultPlayerResolution
+    }
+
+    private func resolvedSourceFraming(for hypnogram: Hypnogram) -> SourceFraming {
+        hypnogram.sourceFraming ?? .fill
+    }
+
+    private func resolvedTransitionStyle(for hypnogram: Hypnogram) -> TransitionRenderer.TransitionType {
+        hypnogram.transitionStyle ?? .crossfade
+    }
+
+    private func resolvedTransitionDuration(for hypnogram: Hypnogram) -> Double {
+        hypnogram.transitionDuration ?? 1.0
+    }
+
+    func copyDocumentContext(from hypnogram: Hypnogram) {
+        player.hypnogram.aspectRatio = resolvedAspectRatio(for: hypnogram)
+        player.hypnogram.playerResolution = resolvedPlayerResolution(for: hypnogram)
+        player.hypnogram.outputResolution = resolvedOutputResolution(for: hypnogram)
+        player.hypnogram.sourceFraming = resolvedSourceFraming(for: hypnogram)
+        player.hypnogram.transitionStyle = resolvedTransitionStyle(for: hypnogram)
+        player.hypnogram.transitionDuration = resolvedTransitionDuration(for: hypnogram)
+    }
+
+    func syncCurrentHypnogramDocumentContextFromRuntime() {
+        player.hypnogram.aspectRatio = currentDocumentAspectRatio
+        player.hypnogram.playerResolution = currentDocumentPlayerResolution
+        player.hypnogram.outputResolution = currentDocumentOutputResolution
+        player.hypnogram.sourceFraming = currentDocumentSourceFraming
+        player.hypnogram.transitionStyle = currentDocumentTransitionStyle
+        player.hypnogram.transitionDuration = currentDocumentTransitionDuration
+    }
+
+    func applyCurrentHypnogramDocumentContextToRuntime() {
+        let aspectRatio = resolvedAspectRatio(for: player.hypnogram)
+        let playerResolution = resolvedPlayerResolution(for: player.hypnogram)
+        let outputResolution = resolvedOutputResolution(for: player.hypnogram)
+        let sourceFraming = resolvedSourceFraming(for: player.hypnogram)
+        let transitionStyle = resolvedTransitionStyle(for: player.hypnogram)
+        let transitionDuration = resolvedTransitionDuration(for: player.hypnogram)
+
+        player.hypnogram.aspectRatio = aspectRatio
+        player.hypnogram.playerResolution = playerResolution
+        player.hypnogram.outputResolution = outputResolution
+        player.hypnogram.sourceFraming = sourceFraming
+        player.hypnogram.transitionStyle = transitionStyle
+        player.hypnogram.transitionDuration = transitionDuration
+        self.outputResolution = outputResolution
+
+        if player.config.aspectRatio != aspectRatio {
+            player.config.aspectRatio = aspectRatio
+        }
+        if player.config.playerResolution != playerResolution {
+            player.config.playerResolution = playerResolution
+        }
+        if livePlayer.config.aspectRatio != aspectRatio {
+            livePlayer.config.aspectRatio = aspectRatio
+        }
+        if livePlayer.config.playerResolution != playerResolution {
+            livePlayer.config.playerResolution = playerResolution
+        }
+
+        livePlayer.setSourceFraming(sourceFraming)
+        livePlayer.transitionType = transitionStyle
+        livePlayer.crossfadeDuration = transitionDuration
     }
 
     var currentSaveTargetURL: URL? {

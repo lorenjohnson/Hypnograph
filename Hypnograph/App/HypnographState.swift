@@ -284,8 +284,11 @@ final class HypnographState: ObservableObject {
 
     // MARK: - Custom Photo Selection
 
-    /// Flag to trigger PhotosPicker presentation
-    @Published var showPhotosPicker = false
+    /// Flag to trigger the custom Photos source picker presentation
+    @Published var showPhotosPickerForSource = false
+
+    /// Flag to trigger the add-layer Photos picker presentation
+    @Published var showPhotosPickerForAddLayer = false
 
     /// Storage for custom-selected Photos asset identifiers (per-module)
     @Published private(set) var customPhotosAssetIds: [String] = []

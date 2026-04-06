@@ -58,6 +58,12 @@ enum HistoryStore {
         return Hypnogram(
             compositions: compositions,
             currentCompositionIndex: currentCompositionIndex,
+            aspectRatio: history.aspectRatio,
+            playerResolution: history.playerResolution,
+            outputResolution: history.outputResolution,
+            sourceFraming: history.sourceFraming,
+            transitionStyle: history.transitionStyle,
+            transitionDuration: history.transitionDuration,
             snapshot: nil,
             createdAt: history.createdAt
         )

@@ -42,6 +42,8 @@ extension Studio {
 
         EffectChainLibraryActions.importChainsFromSession(mutableHypnogram, into: effectsSession)
         appendLoadedCompositions(loadedCompositions)
+        copyDocumentContext(from: mutableHypnogram)
+        applyCurrentHypnogramDocumentContextToRuntime()
         assignSaveTargetIfUnambiguous(sourceURL, for: loadedCompositions)
         pruneSaveTargetsToCurrentHistory()
         state.setLoopCurrentCompositionMode(true)

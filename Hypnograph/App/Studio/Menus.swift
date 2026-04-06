@@ -31,19 +31,6 @@ extension Studio {
 
     @ViewBuilder
     func playbackMenu() -> some View {
-        Toggle("Loop Current Composition", isOn: Binding(
-            get: { [self] in isLoopCurrentCompositionEnabled },
-            set: { [self] in
-                if $0 != isLoopCurrentCompositionEnabled {
-                    toggleLoopCurrentCompositionMode()
-                }
-            }
-        ))
-        .keyboardShortcut("l", modifiers: [])
-        .disabled(disableMainWindowShortcuts)
-
-        Divider()
-
         Button("Next") { [self] in
             nextComposition()
         }
@@ -55,29 +42,17 @@ extension Studio {
         }
         .keyboardShortcut(.leftArrow, modifiers: [])
         .disabled(disableMainWindowShortcuts)
-    }
 
-    @ViewBuilder
-    func compositionMenu() -> some View {
-        Button("Clear All Effects") { [self] in
-            clearAllEffects()
-        }
-        .keyboardShortcut("c", modifiers: [.control, .shift])
+        Toggle("Loop Current Composition", isOn: Binding(
+            get: { [self] in isLoopCurrentCompositionEnabled },
+            set: { [self] in
+                if $0 != isLoopCurrentCompositionEnabled {
+                    toggleLoopCurrentCompositionMode()
+                }
+            }
+        ))
+        .keyboardShortcut("l", modifiers: [])
         .disabled(disableMainWindowShortcuts)
-
-        Divider()
-
-        Button("Cycle Effect Forward") { [self] in
-            cycleEffect(direction: 1)
-        }
-        .keyboardShortcut("e", modifiers: [.command])
-
-        Button("Cycle Effect Backward") { [self] in
-            cycleEffect(direction: -1)
-        }
-        .keyboardShortcut("e", modifiers: [.command, .shift])
-
-        Divider()
 
         // Aspect Ratio
         Section("Aspect Ratio") {
@@ -93,74 +68,108 @@ extension Studio {
         Section("Output Resolution") {
             ForEach(OutputResolution.allCases, id: \.self) { resolution in
                 Toggle(resolution.displayName, isOn: Binding(
-                    get: { [self] in activePlayer.config.playerResolution == resolution },
+                    get: { [self] in currentDocumentOutputResolution == resolution },
                     set: { [self] in if $0 { setOutputResolution(resolution) } }
                 ))
             }
         }
+    }
 
-        Divider()
-
+    @ViewBuilder
+    func compositionMenu() -> some View {
         Button("Save as Favorite") { [self] in
             favoriteCurrentHypnogram()
         }
         .keyboardShortcut("f", modifiers: [.command])
         .disabled(disableMainWindowShortcuts)
 
-        Divider()
-
         Button("Delete") { [self] in
             deleteCurrentComposition()
         }
         .keyboardShortcut(.delete, modifiers: [.command])
         .disabled(disableMainWindowShortcuts)
+
+        Divider()
+
+        Section("Add Layer") {
+            Button("From Files...") { [self] in
+                addSourceFromFilesPanel()
+            }
+
+            Button("From Photos...") { [self] in
+                addSourceFromPhotosPicker()
+            }
+            .disabled(!state.photosAuthorizationStatus.canRead)
+
+            Button("Random Source") { [self] in
+                addSourceFromRandom()
+            }
+            .keyboardShortcut("n", modifiers: [.shift])
+            .disabled(disableMainWindowShortcuts)
+        }
+
+        Divider()
+
+        Section("Effects") {
+            Button("Next") { [self] in
+                cycleEffect(direction: 1)
+            }
+            .keyboardShortcut("e", modifiers: [.command])
+
+            Button("Previous") { [self] in
+                cycleEffect(direction: -1)
+            }
+            .keyboardShortcut("e", modifiers: [.command, .shift])
+
+            Button("Clear") { [self] in
+                activeEffectManager.clearEffect(for: -1)
+            }
+
+            Button("Clear for All Layers") { [self] in
+                clearAllEffects()
+            }
+            .keyboardShortcut("c", modifiers: [.control, .shift])
+            .disabled(disableMainWindowShortcuts)
+        }
     }
 
     @ViewBuilder
     func sourceMenu() -> some View {
-        Button("Add") { [self] in
-            addSource()
+        Button("Clear Effect") { [self] in
+            clearCurrentLayerEffect()
         }
-        .keyboardShortcut("n", modifiers: [.shift])
-        .disabled(disableMainWindowShortcuts)
+        .keyboardShortcut("c", modifiers: [])
+        .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
 
-        Section("Current") {
-            Button("Clear Effect") { [self] in
-                clearCurrentLayerEffect()
-            }
-            .keyboardShortcut("c", modifiers: [])
-            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
-
-            Button("Cycle Blend Mode") { [self] in
-                cycleBlendMode()
-            }
-            .keyboardShortcut("m", modifiers: [])
-            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
-
-            Button("Remove") { [self] in
-                removeCurrentLayer()
-            }
-            .keyboardShortcut(.delete, modifiers: [])
-            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
-
-            Button("New Random Source") { [self] in
-                randomizeCurrentSource()
-            }
-            .keyboardShortcut(".", modifiers: [])
-            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
-
-            Button("Favorite Source") { [self] in
-                favoriteCurrentSource()
-            }
-            .keyboardShortcut("f", modifiers: [.shift])
-            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
-
-            Button("Exclude Source") { [self] in
-                excludeCurrentSource()
-            }
-            .keyboardShortcut("x", modifiers: [.shift])
-            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+        Button("Cycle Blend Mode") { [self] in
+            cycleBlendMode()
         }
+        .keyboardShortcut("m", modifiers: [])
+        .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+
+        Button("Remove") { [self] in
+            removeCurrentLayer()
+        }
+        .keyboardShortcut(.delete, modifiers: [])
+        .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+
+        Button("New Random Source") { [self] in
+            randomizeCurrentSource()
+        }
+        .keyboardShortcut(".", modifiers: [])
+        .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+
+        Button("Favorite Source") { [self] in
+            favoriteCurrentSource()
+        }
+        .keyboardShortcut("f", modifiers: [.shift])
+        .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+
+        Button("Exclude Source") { [self] in
+            excludeCurrentSource()
+        }
+        .keyboardShortcut("x", modifiers: [.shift])
+        .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
 
         Divider()
 

@@ -136,13 +136,6 @@ struct AppCommands: Commands {
 
                 Divider()
 
-                Toggle("Auto-Hide Panels", isOn: Binding(
-                    get: { appSettingsStore.value.autoHidePanelsEnabled },
-                    set: { newValue in
-                        appSettingsStore.update { $0.autoHidePanelsEnabled = newValue }
-                    }
-                ))
-
                 Toggle("Hide Panels", isOn: Binding(
                     get: { panels.panelsHidden },
                     set: { newValue in
@@ -151,6 +144,13 @@ struct AppCommands: Commands {
                     }
                 ))
                 .keyboardShortcut(.tab, modifiers: [])
+
+                Toggle("Auto-Hide Panels", isOn: Binding(
+                    get: { appSettingsStore.value.autoHidePanelsEnabled },
+                    set: { newValue in
+                        appSettingsStore.update { $0.autoHidePanelsEnabled = newValue }
+                    }
+                ))
 
                 #if DEBUG
                 Divider()

@@ -445,9 +445,9 @@ struct ContentView: View {
             }
             previouslyVisibleDownloadIdentifiers = currentIdentifiers
         }
-        .sheet(isPresented: $state.showPhotosPicker) {
+        .sheet(isPresented: $state.showPhotosPickerForSource) {
             PhotosPickerSheet(
-                isPresented: $state.showPhotosPicker,
+                isPresented: $state.showPhotosPickerForSource,
                 preselectedIdentifiers: state.customPhotosAssetIds,
                 onSelection: { identifiers in
                     state.setCustomPhotosAssets(identifiers)
@@ -459,6 +459,17 @@ struct ContentView: View {
                         }
                         AppNotifications.shared.show("Custom Selection: \(identifiers.count) items", flash: true)
                     }
+                }
+            )
+        }
+        .sheet(isPresented: $state.showPhotosPickerForAddLayer) {
+            PhotosPickerSheet(
+                isPresented: $state.showPhotosPickerForAddLayer,
+                preselectedIdentifiers: [],
+                selectionLimit: 1,
+                onSelection: { identifiers in
+                    guard let selectedIdentifier = identifiers.first else { return }
+                    _ = main.addSource(fromPhotosAssetIdentifier: selectedIdentifier)
                 }
             )
         }

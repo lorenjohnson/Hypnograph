@@ -89,10 +89,14 @@ extension Studio {
 
     func replaceHistoryWithNewComposition() {
         let composition = makeRandomComposition(preservingGlobalEffectFrom: nil)
-        player.hypnogram = Hypnogram(compositions: [composition])
+        player.hypnogram = makeHypnogramWithCurrentDocumentContext(
+            compositions: [composition],
+            currentCompositionIndex: 0,
+        )
         player.currentCompositionIndex = 0
         player.currentLayerIndex = -1
         pruneSaveTargetsToCurrentHistory()
+        applyCurrentHypnogramDocumentContextToRuntime()
         player.notifyHypnogramMutated()
         applyCompositionSelectionChanged(manual: false)
     }
