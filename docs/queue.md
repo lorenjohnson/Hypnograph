@@ -7,7 +7,6 @@ last_reviewed: 2026-04-04
 ## Active Projects
 
 - [image-playback-duration](active/image-playback-duration.md)
-- [panel-grid-and-default-layout](active/panel-grid-and-default-layout.md)
 - [effects-and-effect-chain-ux](active/effects-and-effect-chain-ux/index.md)
 - [demo-source-set](active/demo-source-set.md)
 - [history-as-editing-surface-spike](active/history-as-editing-surface-spike.md)

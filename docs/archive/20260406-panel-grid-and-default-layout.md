@@ -1,16 +1,16 @@
 ---
-doc-status: in-progress
+doc-status: completed
 ---
 
 # Panel Grid and Default Layout
 
 ## Overview
 
-This project is about making the floating studio panels restore and behave reliably enough that the current system can be trusted during long working sessions. The earlier framing around snapping and a stronger grid is still relevant, but the immediate issues are more basic: panel positions do not always restore against the final window state, the play bar can come back in the wrong place, and some panels are not sizing tightly enough to their actual content.
+This project was about making the floating studio panels restore and behave reliably enough that the current system could be trusted during long working sessions. The earlier framing around snapping and a stronger grid is still relevant, but the immediate issues were more basic: panel positions did not always restore against the final window state, the play bar could come back in the wrong place, and some panels were not sizing tightly enough to their actual content.
 
-The first need is therefore not more layout cleverness. It is correctness and reliability. Panels need to restore in the right place after window and fullscreen restoration, panels whose content changes height need to trim and expand correctly, and the app needs explicit hooks for capturing and restoring meaningful default layouts.
+The first need was therefore not more layout cleverness. It was correctness and reliability. Panels needed to restore in the right place after window and fullscreen restoration, panels whose content changed height needed to trim and expand correctly, and the app needed explicit hooks for capturing and restoring meaningful default layouts.
 
-Once those fundamentals are solid, this project can continue into stronger snapping behavior and, only if it still seems warranted, possibly a more locked or slot-like panel model. That later direction remains in scope as a possibility, but it is explicitly not the first slice of work.
+This project is now complete enough to archive. The panel model is on a much firmer footing, the panel naming and structure cleanup has been folded into the same pass, and the remaining `Composition` resize bug is better understood even though it remains unresolved. Stronger snapping behavior and any later slot-like model can return as a separate follow-on project if they still feel necessary.
 
 ## Rules
 
