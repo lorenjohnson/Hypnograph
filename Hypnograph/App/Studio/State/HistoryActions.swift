@@ -180,6 +180,10 @@ extension Studio {
     }
 
     func deleteCurrentComposition() {
+        deleteComposition(at: player.currentCompositionIndex)
+    }
+
+    func deleteComposition(at index: Int) {
         guard !player.hypnogram.compositions.isEmpty else { return }
 
         if player.hypnogram.compositions.count == 1 {
@@ -188,11 +192,18 @@ extension Studio {
             return
         }
 
-        let index = player.currentCompositionIndex
-        player.hypnogram.compositions.remove(at: index)
-        if player.currentCompositionIndex >= player.hypnogram.compositions.count {
-            player.currentCompositionIndex = max(0, player.hypnogram.compositions.count - 1)
+        let clampedIndex = max(0, min(index, player.hypnogram.compositions.count - 1))
+        player.hypnogram.compositions.remove(at: clampedIndex)
+
+        if clampedIndex < player.currentCompositionIndex {
+            player.currentCompositionIndex -= 1
+        } else if clampedIndex == player.currentCompositionIndex {
+            player.currentCompositionIndex = min(
+                clampedIndex,
+                max(0, player.hypnogram.compositions.count - 1)
+            )
         }
+
         player.notifyHypnogramMutated()
         applyCompositionSelectionChanged(manual: true)
     }

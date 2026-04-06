@@ -11,6 +11,7 @@ struct ContentView: View {
     @ObservedObject var main: Studio
     @ObservedObject private var panels: PanelStateController
     @ObservedObject private var appSettingsStore: AppSettingsStore
+    @ObservedObject private var hypnogramStore: HypnogramStore
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
     @StateObject private var panelHostService = PanelHostService()
     @State private var panelsCurrentlyAutoHidden = false
@@ -25,6 +26,7 @@ struct ContentView: View {
         self.main = main
         _panels = ObservedObject(initialValue: main.panels)
         _appSettingsStore = ObservedObject(initialValue: state.appSettingsStore)
+        _hypnogramStore = ObservedObject(initialValue: HypnogramStore.shared)
     }
 
     private var layerTrimContexts: [LayerTrimContext] {
@@ -221,7 +223,6 @@ struct ContentView: View {
         PlayerControlsPanel(
             isPaused: main.activePlayer.isPaused,
             isLoopCurrentCompositionEnabled: main.isLoopCurrentCompositionEnabled,
-            currentCompositionText: main.currentCompositionIndicatorText,
             compositionLengthSeconds: main.activePlayer.targetDuration.seconds,
             layerTrimContexts: layerTrimContexts,
             volume: Binding(
@@ -248,7 +249,6 @@ struct ContentView: View {
 
     private var hypnogramsContent: some View {
         HypnogramsPanel(
-            store: HypnogramStore.shared,
             historyEntries: main.activePlayer.hypnogram.compositions.enumerated().map { index, composition in
                 HistoryCompositionEntry(
                     index: index,
@@ -256,16 +256,24 @@ struct ContentView: View {
                     isCurrent: index == main.activePlayer.currentCompositionIndex
                 )
             },
+            recentEntries: hypnogramStore.recent,
+            favoriteEntries: hypnogramStore.favorites,
             onLoad: { entry in
-                guard let hypnogram = HypnogramStore.shared.loadHypnogram(from: entry) else {
+                guard let hypnogram = hypnogramStore.loadHypnogram(from: entry) else {
                     AppNotifications.show("Failed to load hypnogram", flash: true)
                     return
                 }
                 main.appendHypnogramToHistory(hypnogram, sourceURL: entry.sessionURL)
                 AppNotifications.show("Loaded: \(entry.name)", flash: true)
             },
+            onToggleFavorite: { entry in
+                hypnogramStore.toggleFavorite(entry)
+            },
             onJumpToHistory: { index in
                 main.jumpToComposition(at: index)
+            },
+            onDeleteHistoryEntry: { index in
+                main.deleteComposition(at: index)
             }
         )
     }

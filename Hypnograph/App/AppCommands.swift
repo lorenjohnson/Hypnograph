@@ -88,11 +88,6 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("s", modifiers: [.option, .command])
 
-            Button("Favorite Current Hypnogram") {
-                studio.favoriteCurrentHypnogram()
-            }
-            .keyboardShortcut("f", modifiers: [.command])
-
         }
 
         CommandGroup(replacing: .sidebar) {
@@ -219,7 +214,7 @@ struct AppCommands: Commands {
             studio.compositionMenu()
         }
 
-        CommandMenu("Layer") {
+        CommandMenu("Layers") {
             studio.sourceMenu()
         }
 

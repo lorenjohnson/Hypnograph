@@ -244,12 +244,24 @@ final class PlayerState: ObservableObject {
 
     func nextSource() {
         guard !layers.isEmpty else { return }
-        currentLayerIndex = (currentLayerIndex + 1) % layers.count
+        if currentLayerIndex == -1 {
+            currentLayerIndex = 0
+        } else if currentLayerIndex >= layers.count - 1 {
+            currentLayerIndex = -1
+        } else {
+            currentLayerIndex += 1
+        }
     }
 
     func previousSource() {
         guard !layers.isEmpty else { return }
-        currentLayerIndex = currentLayerIndex > 0 ? currentLayerIndex - 1 : layers.count - 1
+        if currentLayerIndex == -1 {
+            currentLayerIndex = layers.count - 1
+        } else if currentLayerIndex == 0 {
+            currentLayerIndex = -1
+        } else {
+            currentLayerIndex -= 1
+        }
     }
 
     func selectSource(_ index: Int) {

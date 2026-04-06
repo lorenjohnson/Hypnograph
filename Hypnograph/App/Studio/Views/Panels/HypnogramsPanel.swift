@@ -29,17 +29,32 @@ struct HistoryCompositionEntry: Identifiable {
 
 /// Panel displaying saved hypnograms
 struct HypnogramsPanel: View {
-    @ObservedObject var store: HypnogramStore
     let historyEntries: [HistoryCompositionEntry]
-    @State private var selectedTab: HypnogramsPanelTab = .recent
+    let recentEntries: [HypnogramEntry]
+    let favoriteEntries: [HypnogramEntry]
+    @AppStorage("studio.hypnogramsPanel.selectedTab")
+    private var selectedTabRawValue: String = HypnogramsPanelTab.history.rawValue
 
     /// Called when user wants to load a hypnogram
     var onLoad: (HypnogramEntry) -> Void
+    var onToggleFavorite: (HypnogramEntry) -> Void
     var onJumpToHistory: (Int) -> Void
+    var onDeleteHistoryEntry: (Int) -> Void
+
+    private var selectedTab: Binding<HypnogramsPanelTab> {
+        Binding(
+            get: { HypnogramsPanelTab(rawValue: selectedTabRawValue) ?? .history },
+            set: { selectedTabRawValue = $0.rawValue }
+        )
+    }
+
+    private var currentSelectedTab: HypnogramsPanelTab {
+        HypnogramsPanelTab(rawValue: selectedTabRawValue) ?? .history
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("", selection: $selectedTab) {
+            Picker("", selection: selectedTab) {
                 ForEach(HypnogramsPanelTab.allCases, id: \.self) { tab in
                     Text(tab.rawValue)
                         .foregroundColor(.white)
@@ -52,30 +67,37 @@ struct HypnogramsPanel: View {
 
             ScrollView {
                 LazyVStack(spacing: 6) {
-                    switch selectedTab {
+                    switch currentSelectedTab {
                     case .history:
                         if historyEntries.isEmpty {
                             emptyStateText("No history yet")
                         } else {
-                            ForEach(historyEntries) { entry in
+                            ForEach(Array(historyEntries.reversed())) { entry in
                                 HistoryCompositionRowView(
                                     entry: entry,
                                     onJump: {
                                         onJumpToHistory(entry.index)
+                                    },
+                                    onDelete: {
+                                        onDeleteHistoryEntry(entry.index)
                                     }
                                 )
                             }
                         }
                     case .recent, .favorites:
-                        let entries = selectedTab == .favorites ? store.favorites : store.recent
+                        let entries = currentSelectedTab == .favorites ? favoriteEntries : recentEntries
 
                         if entries.isEmpty {
-                            emptyStateText(selectedTab == .favorites ? "No favorites yet" : "No saved hypnograms")
+                            emptyStateText(currentSelectedTab == .favorites ? "No favorites yet" : "No saved hypnograms")
                         } else {
                             ForEach(entries) { entry in
-                                HypnogramRowView(entry: entry, onLoad: onLoad, onToggleFavorite: {
-                                    store.toggleFavorite(entry)
-                                })
+                                HypnogramRowView(
+                                    entry: entry,
+                                    onLoad: onLoad,
+                                    onToggleFavorite: {
+                                        onToggleFavorite(entry)
+                                    }
+                                )
                             }
                         }
                     }
@@ -107,12 +129,10 @@ struct HypnogramRowView: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            // Thumbnail - fixed size, clipped to bounds
             ThumbnailView(image: entry.thumbnailImage)
                 .frame(width: thumbnailSize, height: thumbnailSize)
                 .clipped()
 
-            // Name and date
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.name)
                     .font(.system(.body, design: .monospaced))
@@ -126,13 +146,12 @@ struct HypnogramRowView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Favorite button
             Button(action: onToggleFavorite) {
                 Image(systemName: entry.isFavorite ? "star.fill" : "star")
                     .foregroundColor(entry.isFavorite ? .yellow : .white.opacity(0.5))
                     .font(.system(size: 18))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderless)
             .frame(width: 30)
         }
         .padding(.horizontal, 12)
@@ -171,6 +190,7 @@ struct ThumbnailView: View {
 struct HistoryCompositionRowView: View {
     let entry: HistoryCompositionEntry
     let onJump: () -> Void
+    let onDelete: () -> Void
 
     private var layerCountText: String {
         let count = entry.composition.layers.count
@@ -193,18 +213,9 @@ struct HistoryCompositionRowView: View {
                 .clipped()
 
             VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text("Composition \(entry.index + 1)")
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundColor(.white)
-
-                    if entry.isCurrent {
-                        Text("CURRENT")
-                            .font(.system(.caption2, design: .monospaced))
-                            .fontWeight(.bold)
-                            .foregroundColor(.blue)
-                    }
-                }
+                Text("Composition \(entry.index + 1)")
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(.white)
 
                 Text("\(layerCountText) • \(durationText)")
                     .font(.system(.caption, design: .monospaced))
@@ -215,11 +226,6 @@ struct HistoryCompositionRowView: View {
                     .foregroundColor(.white.opacity(0.5))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-
-            Image(systemName: "arrow.turn.down.right")
-                .foregroundColor(.white.opacity(0.5))
-                .font(.system(size: 16, weight: .semibold))
-                .frame(width: 24)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -228,6 +234,11 @@ struct HistoryCompositionRowView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             onJump()
+        }
+        .contextMenu {
+            Button(role: .destructive, action: onDelete) {
+                Label("Delete Composition", systemImage: "trash")
+            }
         }
     }
 }

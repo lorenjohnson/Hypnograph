@@ -3,7 +3,6 @@ import SwiftUI
 struct PlayerControlsPanel: View {
     let isPaused: Bool
     let isLoopCurrentCompositionEnabled: Bool
-    let currentCompositionText: String
     let compositionLengthSeconds: Double
     let layerTrimContexts: [LayerTrimContext]
     @Binding var volume: Double
@@ -73,13 +72,6 @@ struct PlayerControlsPanel: View {
                 activeBackground: isLoopCurrentCompositionEnabled ? .blue : nil,
                 action: onToggleLoopCurrentCompositionMode
             )
-
-            Text("\(currentCompositionText.uppercased()) (\(formattedCompositionLength))")
-                .font(.system(.callout, design: .monospaced))
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .padding(.trailing, 2)
 
             Spacer(minLength: 6)
 
@@ -158,16 +150,6 @@ struct PlayerControlsPanel: View {
         previousVolumeBeforeMute = volume
         volume = 0
     }
-
-    private var formattedCompositionLength: String {
-        let seconds = max(0.1, compositionLengthSeconds)
-        let rounded = (seconds * 10).rounded() / 10
-        if abs(rounded - rounded.rounded()) < 0.05 {
-            return "\(Int(rounded.rounded()))s"
-        }
-        return String(format: "%.1fs", rounded)
-    }
-
     private var playPauseSystemName: String {
         isPaused ? "play.fill" : "pause.fill"
     }

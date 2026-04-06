@@ -25,6 +25,9 @@ extension Studio {
     fileprivate var disableMainWindowShortcuts: Bool {
         isTyping || !isMainWindowShortcutContext
     }
+    fileprivate var hasSelectedActualLayer: Bool {
+        activePlayer.currentLayerIndex >= 0 && activePlayer.currentLayerIndex < activePlayer.layers.count
+    }
 
     @ViewBuilder
     func playbackMenu() -> some View {
@@ -41,13 +44,13 @@ extension Studio {
 
         Divider()
 
-        Button("> Next") { [self] in
+        Button("Next") { [self] in
             nextComposition()
         }
         .keyboardShortcut(.rightArrow, modifiers: [])
         .disabled(disableMainWindowShortcuts)
 
-        Button("< Previous") { [self] in
+        Button("Previous") { [self] in
             previousComposition()
         }
         .keyboardShortcut(.leftArrow, modifiers: [])
@@ -98,6 +101,14 @@ extension Studio {
 
         Divider()
 
+        Button("Save as Favorite") { [self] in
+            favoriteCurrentHypnogram()
+        }
+        .keyboardShortcut("f", modifiers: [.command])
+        .disabled(disableMainWindowShortcuts)
+
+        Divider()
+
         Button("Delete") { [self] in
             deleteCurrentComposition()
         }
@@ -107,76 +118,78 @@ extension Studio {
 
     @ViewBuilder
     func sourceMenu() -> some View {
-        Button("> Next") { [self] in
-            nextSource()
-        }
-        .keyboardShortcut(.rightArrow, modifiers: [.option])
-        .disabled(disableMainWindowShortcuts)
-
-        Button("< Previous") { [self] in
-            previousSource()
-        }
-        .keyboardShortcut(.leftArrow, modifiers: [.option])
-        .disabled(disableMainWindowShortcuts)
-
         Button("Add") { [self] in
             addSource()
         }
         .keyboardShortcut("n", modifiers: [.shift])
         .disabled(disableMainWindowShortcuts)
 
-        Button("Remove") { [self] in
-            removeCurrentLayer()
-        }
-        .keyboardShortcut(.delete, modifiers: [])
-        .disabled(disableMainWindowShortcuts)
-
-        Button("Random Source") { [self] in
-            randomizeCurrentSource()
-        }
-        .keyboardShortcut(".", modifiers: [])
-        .disabled(disableMainWindowShortcuts)
-
-        Button("Clear Effect") { [self] in
-            clearCurrentLayerEffect()
-        }
-        .keyboardShortcut("c", modifiers: [])
-        .disabled(disableMainWindowShortcuts)
-
-        Button("Cycle Blend Mode") { [self] in
-            cycleBlendMode()
-        }
-        .keyboardShortcut("m", modifiers: [])
-        .disabled(disableMainWindowShortcuts)
-
-        Divider()
-
-        Button("Add to Favorites") { [self] in
-            favoriteCurrentSource()
-        }
-        .keyboardShortcut("f", modifiers: [.shift])
-        .disabled(disableMainWindowShortcuts)
-
-        Button("Add to Excluded") { [self] in
-            excludeCurrentSource()
-        }
-        .keyboardShortcut("x", modifiers: [.shift])
-        .disabled(disableMainWindowShortcuts)
-
-        Divider()
-
-        Button("Select Composition") { [self] in
-            activePlayer.selectGlobalLayer()
-        }
-        .keyboardShortcut("`", modifiers: [])
-        .disabled(disableMainWindowShortcuts)
-
-        ForEach(0..<9, id: \.self) { [self] idx in
-            Button("Select \(idx + 1)") { [self] in
-                self.selectSource(index: idx)
+        Section("Current") {
+            Button("Clear Effect") { [self] in
+                clearCurrentLayerEffect()
             }
-            .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
+            .keyboardShortcut("c", modifiers: [])
+            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+
+            Button("Cycle Blend Mode") { [self] in
+                cycleBlendMode()
+            }
+            .keyboardShortcut("m", modifiers: [])
+            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+
+            Button("Remove") { [self] in
+                removeCurrentLayer()
+            }
+            .keyboardShortcut(.delete, modifiers: [])
+            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+
+            Button("New Random Source") { [self] in
+                randomizeCurrentSource()
+            }
+            .keyboardShortcut(".", modifiers: [])
+            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+
+            Button("Favorite Source") { [self] in
+                favoriteCurrentSource()
+            }
+            .keyboardShortcut("f", modifiers: [.shift])
+            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+
+            Button("Exclude Source") { [self] in
+                excludeCurrentSource()
+            }
+            .keyboardShortcut("x", modifiers: [.shift])
+            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+        }
+
+        Divider()
+
+        Section("Select") {
+            Button("Next") { [self] in
+                nextSource()
+            }
+            .keyboardShortcut(.rightArrow, modifiers: [.option])
             .disabled(disableMainWindowShortcuts)
+
+            Button("Previous") { [self] in
+                previousSource()
+            }
+            .keyboardShortcut(.leftArrow, modifiers: [.option])
+            .disabled(disableMainWindowShortcuts)
+
+            Button("Composition") { [self] in
+                activePlayer.selectGlobalLayer()
+            }
+            .keyboardShortcut("`", modifiers: [])
+            .disabled(disableMainWindowShortcuts)
+
+            ForEach(0..<9, id: \.self) { [self] idx in
+                Button("Select \(idx + 1)") { [self] in
+                    self.selectSource(index: idx)
+                }
+                .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
+                .disabled(disableMainWindowShortcuts)
+            }
         }
     }
 
