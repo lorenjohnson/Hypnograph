@@ -21,7 +21,7 @@ enum PlaybackEndBehavior: String, Codable, CaseIterable {
         switch rawValue {
         case "autoAdvance":
             self = .autoAdvance
-        case "loopCurrentComposition", "loopCurrentClip":
+        case "loopCurrentComposition":
             self = .loopCurrentComposition
         default:
             throw DecodingError.dataCorruptedError(
