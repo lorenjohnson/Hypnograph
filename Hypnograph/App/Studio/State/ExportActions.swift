@@ -39,7 +39,7 @@ extension Studio {
     }
 
     @discardableResult
-    private func saveWorkingHypnogram(to url: URL, showSuccessNotification: Bool = true) -> Bool {
+    func saveWorkingHypnogram(to url: URL, showSuccessNotification: Bool = true) -> Bool {
         guard let cgImage = currentFrameSnapshot() else {
             print("Studio: no current frame available for sequence save")
             AppNotifications.show("Failed to save sequence", flash: true)
