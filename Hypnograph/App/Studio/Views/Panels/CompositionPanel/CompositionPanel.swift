@@ -14,7 +14,7 @@ struct CompositionPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            globalSection
+            compositionSection
 
             PanelGlassDividerView()
                 .padding(.vertical, 4)
@@ -114,7 +114,7 @@ struct CompositionPanel: View {
         }
     }
 
-    private var globalSection: some View {
+    private var compositionSection: some View {
         let isSelected = main.activePlayer.currentLayerIndex == -1
 
         return VStack(alignment: .leading, spacing: 10) {
