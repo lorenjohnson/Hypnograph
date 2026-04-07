@@ -66,24 +66,24 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(replacing: .saveItem) {
-            Button("Open Hypnogram…") {
+            Button("Open…") {
                 studio.openHypnogram()
             }
             .keyboardShortcut("o", modifiers: [.command])
 
             Divider()
 
-            Button("Save Current") {
+            Button("Save") {
                 studio.save()
             }
             .keyboardShortcut("s", modifiers: [.command])
 
-            Button("Save Current As…") {
+            Button("Save As…") {
                 studio.saveAs()
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
 
-            Button("Save & Render Current") {
+            Button("Save & Render") {
                 studio.renderAndSaveVideo()
             }
             .keyboardShortcut("s", modifiers: [.option, .command])
