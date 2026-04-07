@@ -11,29 +11,15 @@ import CoreMedia
 
 // SourceLibraryInfo and MediaSourcesParam are now provided by HypnoCore
 
-enum PlaybackEndBehavior: String, Codable, CaseIterable {
-    case autoAdvance
-    case loopCurrentComposition
+enum PlaybackLoopMode: String, Codable, CaseIterable {
+    case off
+    case composition
+    case sequence
 
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        let rawValue = try container.decode(String.self)
-        switch rawValue {
-        case "autoAdvance":
-            self = .autoAdvance
-        case "loopCurrentComposition":
-            self = .loopCurrentComposition
-        default:
-            throw DecodingError.dataCorruptedError(
-                in: container,
-                debugDescription: "Unknown PlaybackEndBehavior raw value: \(rawValue)"
-            )
-        }
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        try container.encode(rawValue)
+        let rawValue = (try? container.decode(String.self)) ?? ""
+        self = PlaybackLoopMode(rawValue: rawValue) ?? .off
     }
 }
 
@@ -51,7 +37,8 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     var sources: MediaSourcesParam
 
     // Optional in JSON (but non-optional in code)
-    var playbackEndBehavior: PlaybackEndBehavior
+    var playbackLoopMode: PlaybackLoopMode
+    var generateAtEnd: Bool
     var snapshotsFolder: String
 
     /// Default composition length range (seconds) for newly generated compositions
@@ -110,7 +97,8 @@ struct StudioSettings: Codable, MediaLibrarySettings {
 
     // Single source of truth for defaults
     private enum Defaults {
-        static let playbackEndBehavior: PlaybackEndBehavior = .autoAdvance
+        static let playbackLoopMode: PlaybackLoopMode = .off
+        static let generateAtEnd: Bool = true
         static let outputFolder = "~/Movies/Hypnograph/renders"
         static let snapshotsFolder = "~/Movies/Hypnograph/snapshots"
         static let compositionLengthMinSeconds: Double = 5.0
@@ -144,7 +132,8 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         StudioSettings(
             outputFolder: Defaults.outputFolder,
             sources: Defaults.sources,
-            playbackEndBehavior: Defaults.playbackEndBehavior,
+            playbackLoopMode: Defaults.playbackLoopMode,
+            generateAtEnd: Defaults.generateAtEnd,
             snapshotsFolder: Defaults.snapshotsFolder,
             compositionLengthMinSeconds: Defaults.compositionLengthMinSeconds,
             compositionLengthMaxSeconds: Defaults.compositionLengthMaxSeconds,
@@ -169,7 +158,7 @@ struct StudioSettings: Codable, MediaLibrarySettings {
 
     private enum CodingKeys: String, CodingKey {
         case outputFolder, sources
-        case playbackEndBehavior, snapshotsFolder
+        case playbackLoopMode, generateAtEnd, snapshotsFolder
         case compositionLengthMinSeconds, compositionLengthMaxSeconds
         case compositionPlayRateMin, compositionPlayRateMax
         case historyLimit
@@ -189,7 +178,8 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     init(
         outputFolder: String,
         sources: MediaSourcesParam,
-        playbackEndBehavior: PlaybackEndBehavior = Defaults.playbackEndBehavior,
+        playbackLoopMode: PlaybackLoopMode = Defaults.playbackLoopMode,
+        generateAtEnd: Bool = Defaults.generateAtEnd,
         snapshotsFolder: String = Defaults.snapshotsFolder,
         compositionLengthMinSeconds: Double = Defaults.compositionLengthMinSeconds,
         compositionLengthMaxSeconds: Double = Defaults.compositionLengthMaxSeconds,
@@ -212,7 +202,8 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     ) {
         self.outputFolder = outputFolder
         self.sources = sources
-        self.playbackEndBehavior = playbackEndBehavior
+        self.playbackLoopMode = playbackLoopMode
+        self.generateAtEnd = generateAtEnd
         self.snapshotsFolder = snapshotsFolder
         self.compositionLengthMinSeconds = compositionLengthMinSeconds
         self.compositionLengthMaxSeconds = compositionLengthMaxSeconds
@@ -241,8 +232,10 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             ?? Defaults.outputFolder
         sources = try c.decodeIfPresent(MediaSourcesParam.self, forKey: .sources)
             ?? Defaults.sources
-        playbackEndBehavior = try c.decodeIfPresent(PlaybackEndBehavior.self, forKey: .playbackEndBehavior)
-            ?? Defaults.playbackEndBehavior
+        playbackLoopMode = try c.decodeIfPresent(PlaybackLoopMode.self, forKey: .playbackLoopMode)
+            ?? Defaults.playbackLoopMode
+        generateAtEnd = try c.decodeIfPresent(Bool.self, forKey: .generateAtEnd)
+            ?? Defaults.generateAtEnd
         snapshotsFolder = try c.decodeIfPresent(String.self, forKey: .snapshotsFolder)
             ?? Defaults.snapshotsFolder
         compositionLengthMinSeconds =
@@ -297,7 +290,8 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(outputFolder, forKey: .outputFolder)
         try c.encode(sources, forKey: .sources)
-        try c.encode(playbackEndBehavior, forKey: .playbackEndBehavior)
+        try c.encode(playbackLoopMode, forKey: .playbackLoopMode)
+        try c.encode(generateAtEnd, forKey: .generateAtEnd)
         try c.encode(snapshotsFolder, forKey: .snapshotsFolder)
         try c.encode(compositionLengthMinSeconds, forKey: .compositionLengthMinSeconds)
         try c.encode(compositionLengthMaxSeconds, forKey: .compositionLengthMaxSeconds)

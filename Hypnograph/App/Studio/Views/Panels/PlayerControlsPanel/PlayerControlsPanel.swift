@@ -2,14 +2,15 @@ import SwiftUI
 
 struct PlayerControlsPanel: View {
     let isPaused: Bool
-    let isLoopCurrentCompositionEnabled: Bool
+    let isLoopCompositionEnabled: Bool
+    let isLoopSequenceEnabled: Bool
     let compositionLengthSeconds: Double
     let layerTrimContexts: [LayerTrimContext]
     @Binding var volume: Double
     let onPrevious: () -> Void
     let onPlayPause: () -> Void
     let onNext: () -> Void
-    let onToggleLoopCurrentCompositionMode: () -> Void
+    let onCyclePlaybackLoopMode: () -> Void
     let onSnapshotCurrent: () -> Void
     let onSaveCurrent: () -> Void
     let onRenderCurrent: () -> Void
@@ -66,11 +67,11 @@ struct PlayerControlsPanel: View {
 
             deckButton(
                 id: "loop",
-                systemName: "arrow.counterclockwise",
-                tooltip: isLoopCurrentCompositionEnabled ? "Loop Current Composition (L)" : "Auto-Advance Compositions (L)",
+                label: { loopButtonLabel },
+                tooltip: loopTooltip,
                 tint: .white,
-                activeBackground: isLoopCurrentCompositionEnabled ? .blue : nil,
-                action: onToggleLoopCurrentCompositionMode
+                activeBackground: (isLoopCompositionEnabled || isLoopSequenceEnabled) ? .blue : nil,
+                action: onCyclePlaybackLoopMode
             )
 
             Spacer(minLength: 6)
@@ -154,21 +155,51 @@ struct PlayerControlsPanel: View {
         isPaused ? "play.fill" : "pause.fill"
     }
 
-    private func deckButton(
+    private var loopTooltip: String {
+        if isLoopCompositionEnabled {
+            return "Loop Composition (L)"
+        }
+        if isLoopSequenceEnabled {
+            return "Loop Sequence (SHIFT+L)"
+        }
+        return "Loop Off"
+    }
+
+    private var loopButtonLabel: some View {
+        ZStack(alignment: .topTrailing) {
+            Image(systemName: "arrow.counterclockwise")
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+
+            if isLoopCompositionEnabled {
+                Text("1")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color.black.opacity(0.65))
+                    )
+                    .offset(x: 6, y: -4)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+    }
+
+    private func deckButton<Label: View>(
         id: String,
-        systemName: String,
+        @ViewBuilder label: () -> Label,
         tooltip: String,
         tint: Color = .white,
         activeBackground: Color? = nil,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 24, weight: .semibold))
+            label()
                 .foregroundStyle(tint)
-                .frame(width: 28, height: 28)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 9)
         }
         .buttonStyle(DeckBarButtonStyle(activeBackground: activeBackground))
         .help(tooltip)
@@ -183,6 +214,30 @@ struct PlayerControlsPanel: View {
                     .transition(.opacity)
             }
         }
+    }
+
+    private func deckButton(
+        id: String,
+        systemName: String,
+        tooltip: String,
+        tint: Color = .white,
+        activeBackground: Color? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        deckButton(
+            id: id,
+            label: {
+                Image(systemName: systemName)
+                    .font(.system(size: 24, weight: .semibold))
+                    .frame(width: 28, height: 28)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+            },
+            tooltip: tooltip,
+            tint: tint,
+            activeBackground: activeBackground,
+            action: action
+        )
     }
 
     private func handleTooltipHover(isHovering: Bool, controlID: String, tooltip: String) {

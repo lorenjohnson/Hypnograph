@@ -43,15 +43,34 @@ extension Studio {
         .keyboardShortcut(.leftArrow, modifiers: [])
         .disabled(disableMainWindowShortcuts)
 
-        Toggle("Loop Current Composition", isOn: Binding(
-            get: { [self] in isLoopCurrentCompositionEnabled },
+        Toggle("Loop Composition", isOn: Binding(
+            get: { [self] in isLoopCompositionEnabled },
             set: { [self] in
-                if $0 != isLoopCurrentCompositionEnabled {
-                    toggleLoopCurrentCompositionMode()
-                }
+                setPlaybackLoopMode($0 ? .composition : .off)
             }
         ))
         .keyboardShortcut("l", modifiers: [])
+        .disabled(disableMainWindowShortcuts)
+
+        Toggle("Loop Sequence", isOn: Binding(
+            get: { [self] in isLoopSequenceEnabled },
+            set: { [self] in
+                setPlaybackLoopMode($0 ? .sequence : .off)
+            }
+        ))
+        .keyboardShortcut("l", modifiers: [.shift])
+        .disabled(disableMainWindowShortcuts)
+
+        Divider()
+
+        Toggle("Generate at End", isOn: Binding(
+            get: { [self] in isGenerateAtEndEnabled },
+            set: { [self] in
+                if $0 != isGenerateAtEndEnabled {
+                    toggleGenerateAtEnd()
+                }
+            }
+        ))
         .disabled(disableMainWindowShortcuts)
 
         // Aspect Ratio

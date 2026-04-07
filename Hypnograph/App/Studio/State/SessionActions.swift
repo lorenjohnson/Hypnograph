@@ -52,7 +52,6 @@ extension Studio {
         }
         player.effectManager.clearFrameBuffer()
         player.notifyHypnogramChanged()
-        state.setLoopCurrentCompositionMode(true)
     }
 
     func confirmReplacingWorkingHypnogramIfNeeded(actionDescription: String) -> Bool {

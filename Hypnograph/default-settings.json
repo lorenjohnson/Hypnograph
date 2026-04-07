@@ -1,5 +1,6 @@
 {
-  "playbackEndBehavior": "autoAdvance",
+  "playbackLoopMode": "off",
+  "generateAtEnd": true,
   "sources": {
     "default": ["~/Movies/Hypnograph/sources"],
     "From Finder Helper": []

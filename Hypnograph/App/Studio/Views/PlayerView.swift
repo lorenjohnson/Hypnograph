@@ -15,11 +15,11 @@ import HypnoCore
 /// Studio player view for layered playback.
 /// Uses PlayerContentView for GPU-accelerated frame display with shader transitions.
 struct PlayerView: NSViewRepresentable {
+    let playbackEndBehavior: Studio.PlaybackEndBehavior
     let composition: Composition
     let aspectRatio: AspectRatio
     let displayResolution: OutputResolution
     let sourceFraming: SourceFraming
-    let autoAdvanceOnCompositionEnd: Bool
     let onCompositionEnded: (() -> Bool)?
     @Binding var currentLayerIndex: Int
     @Binding var currentSourceTime: CMTime?
@@ -83,7 +83,7 @@ struct PlayerView: NSViewRepresentable {
         var lastAppliedPlayRate: Float?
         var transitionDuration: Double = 1.5
         var lastVolume: Float?
-        var autoAdvanceOnCompositionEnd: Bool = false
+        var playbackEndBehavior: Studio.PlaybackEndBehavior = .advanceAcrossCompositions(loopAtSequenceEnd: false)
         var onCompositionEnded: (() -> Bool)?
         var isAllStillImages: Bool = false
         var lastRenderedComposition: Composition?
@@ -157,10 +157,10 @@ struct PlayerView: NSViewRepresentable {
         // Always update playRate so closures use current value
         c.playRate = composition.playRate
         c.transitionDuration = transitionDuration
-        c.autoAdvanceOnCompositionEnd = autoAdvanceOnCompositionEnd
+        c.playbackEndBehavior = playbackEndBehavior
         c.onCompositionEnded = onCompositionEnded
         c.isAllStillImages = composition.layers.allSatisfy { $0.mediaClip.file.mediaKind == .image }
-        if !autoAdvanceOnCompositionEnd || isPaused {
+        if isPaused || !isAdvanceAcrossCompositions(playbackEndBehavior) {
             c.isAutoAdvanceInFlight = false
             c.didRequestPreEndAdvance = false
         }
@@ -471,7 +471,8 @@ struct PlayerView: NSViewRepresentable {
                         return
                     }
 
-                    if c.autoAdvanceOnCompositionEnd {
+                    switch c.playbackEndBehavior {
+                    case .advanceAcrossCompositions:
                         // Auto-advance: only advance when the ACTIVE player ends
                         // (not when the outgoing transition player loops)
                         if player === c.contentView?.activeAVPlayer {
@@ -484,9 +485,11 @@ struct PlayerView: NSViewRepresentable {
                             // Outgoing player during transition - just loop it
                             seekToStartAndPlayIfNeeded()
                         }
-                    } else {
+                    case .loopComposition:
                         // Loop mode: seek to beginning and continue
                         seekToStartAndPlayIfNeeded()
+                    case .stopAtEnd:
+                        player.pause()
                     }
                 }
             }
@@ -502,7 +505,7 @@ struct PlayerView: NSViewRepresentable {
             let token = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak c, weak player] _ in
                 Task { @MainActor [weak c, weak player] in
                     guard let c, let player, let contentView = c.contentView else { return }
-                    guard c.autoAdvanceOnCompositionEnd else { return }
+                    guard isAdvanceAcrossCompositions(c.playbackEndBehavior) else { return }
                     guard c.lastPauseState != true else { return }
                     guard !c.didRequestPreEndAdvance else { return }
                     guard !c.isAutoAdvanceInFlight else { return }
@@ -584,7 +587,8 @@ struct PlayerView: NSViewRepresentable {
         c.stillClipTimer?.invalidate()
         c.stillClipTimer = nil
 
-        guard c.autoAdvanceOnCompositionEnd, c.lastPauseState != true else { return }
+        guard c.lastPauseState != true else { return }
+        guard isAdvanceAcrossCompositions(c.playbackEndBehavior) else { return }
 
         let seconds = max(0.05, composition.effectiveDuration.seconds)
         c.stillClipTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { _ in
@@ -608,6 +612,13 @@ struct PlayerView: NSViewRepresentable {
 
     private func effectiveVideoPlaybackRate(for coordinator: Coordinator) -> Float {
         coordinator.playRate
+    }
+
+    private func isAdvanceAcrossCompositions(_ behavior: Studio.PlaybackEndBehavior) -> Bool {
+        if case .advanceAcrossCompositions = behavior {
+            return true
+        }
+        return false
     }
 
     // MARK: - Teardown

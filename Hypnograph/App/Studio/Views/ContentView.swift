@@ -222,7 +222,8 @@ struct ContentView: View {
     private var playerControlsContent: some View {
         PlayerControlsPanel(
             isPaused: main.activePlayer.isPaused,
-            isLoopCurrentCompositionEnabled: main.isLoopCurrentCompositionEnabled,
+            isLoopCompositionEnabled: main.isLoopCompositionEnabled,
+            isLoopSequenceEnabled: main.isLoopSequenceEnabled,
             compositionLengthSeconds: main.activePlayer.targetDuration.seconds,
             layerTrimContexts: layerTrimContexts,
             volume: Binding(
@@ -232,7 +233,7 @@ struct ContentView: View {
             onPrevious: { main.previousComposition() },
             onPlayPause: { main.togglePause() },
             onNext: { main.nextComposition() },
-            onToggleLoopCurrentCompositionMode: { main.toggleLoopCurrentCompositionMode() },
+            onCyclePlaybackLoopMode: { main.cyclePlaybackLoopMode() },
             onSnapshotCurrent: { main.saveSnapshotImage() },
             onSaveCurrent: { main.saveComposition() },
             onRenderCurrent: { main.renderAndSaveVideo() },

@@ -18,6 +18,12 @@ import HypnoUI
 
 @MainActor
 final class Studio: ObservableObject {
+    enum PlaybackEndBehavior {
+        case stopAtEnd
+        case loopComposition
+        case advanceAcrossCompositions(loopAtSequenceEnd: Bool)
+    }
+
     let state: HypnographState
     let panels: PanelStateController
     let renderQueue: RenderEngine.ExportQueue
@@ -263,10 +269,25 @@ final class Studio: ObservableObject {
         let aspectRatio = currentDocumentAspectRatio
         let displayResolution = currentDocumentPlayerResolution
         let sourceFraming = currentDocumentSourceFraming
-        let shouldAdvanceOnCompositionEnd = state.settings.playbackEndBehavior == .autoAdvance
+        let playbackEndBehavior: PlaybackEndBehavior
+        switch state.settings.playbackLoopMode {
+        case .composition:
+            playbackEndBehavior = .loopComposition
+        case .sequence:
+            playbackEndBehavior = .advanceAcrossCompositions(loopAtSequenceEnd: true)
+        case .off:
+            playbackEndBehavior = state.settings.generateAtEnd
+                ? .advanceAcrossCompositions(loopAtSequenceEnd: false)
+                : .stopAtEnd
+        }
         let onCompositionEnded: (() -> Bool)? = { [weak self] in
             guard let self else { return false }
-            return self.advanceOrGenerateOnCompositionEnded()
+            switch playbackEndBehavior {
+            case .stopAtEnd, .loopComposition:
+                return false
+            case .advanceAcrossCompositions(let loopAtSequenceEnd):
+                return self.advanceOrGenerateOnCompositionEnded(loopSequenceAtEnd: loopAtSequenceEnd)
+            }
         }
         let currentLayerIndexBinding = Binding(
             get: { player.currentLayerIndex },
@@ -288,11 +309,11 @@ final class Studio: ObservableObject {
 
         return AnyView(
             PlayerView(
+                playbackEndBehavior: playbackEndBehavior,
                 composition: composition,
                 aspectRatio: aspectRatio,
                 displayResolution: displayResolution,
                 sourceFraming: sourceFraming,
-                autoAdvanceOnCompositionEnd: shouldAdvanceOnCompositionEnd,
                 onCompositionEnded: onCompositionEnded,
                 currentLayerIndex: currentLayerIndexBinding,
                 currentSourceTime: currentSourceTimeBinding,

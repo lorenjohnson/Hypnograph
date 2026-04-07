@@ -5,11 +5,24 @@
 
 import Foundation
 import HypnoCore
+import HypnoUI
 
 @MainActor
 extension Studio {
-    var isLoopCurrentCompositionEnabled: Bool {
-        state.settings.playbackEndBehavior == .loopCurrentComposition
+    var playbackLoopMode: PlaybackLoopMode {
+        state.settings.playbackLoopMode
+    }
+
+    var isLoopCompositionEnabled: Bool {
+        playbackLoopMode == .composition
+    }
+
+    var isLoopSequenceEnabled: Bool {
+        playbackLoopMode == .sequence
+    }
+
+    var isGenerateAtEndEnabled: Bool {
+        state.settings.generateAtEnd
     }
 
     private func prepareForManualGenerationAction() {
@@ -52,8 +65,45 @@ extension Studio {
         activePlayer.togglePause()
     }
 
-    func toggleLoopCurrentCompositionMode() {
-        state.toggleLoopCurrentCompositionMode()
+    func setPlaybackLoopMode(_ mode: PlaybackLoopMode) {
+        state.setPlaybackLoopMode(mode)
+        let message: String
+        switch mode {
+        case .off:
+            message = "Loop Off"
+        case .composition:
+            message = "Loop Composition"
+        case .sequence:
+            message = "Loop Sequence"
+        }
+        AppNotifications.show(message, flash: true, duration: 1.25)
+    }
+
+    func cyclePlaybackLoopMode() {
+        let nextMode: PlaybackLoopMode
+        switch playbackLoopMode {
+        case .off:
+            nextMode = .composition
+        case .composition:
+            nextMode = .sequence
+        case .sequence:
+            nextMode = .off
+        }
+        setPlaybackLoopMode(nextMode)
+    }
+
+    func toggleLoopCompositionMode() {
+        setPlaybackLoopMode(isLoopCompositionEnabled ? .off : .composition)
+    }
+
+    func toggleLoopSequenceMode() {
+        setPlaybackLoopMode(isLoopSequenceEnabled ? .off : .sequence)
+    }
+
+    func toggleGenerateAtEnd() {
+        let newValue = !isGenerateAtEndEnabled
+        state.setGenerateAtEnd(newValue)
+        AppNotifications.show(newValue ? "Generate at End" : "Stop at End", flash: true, duration: 1.25)
     }
 
     func nextSource() {

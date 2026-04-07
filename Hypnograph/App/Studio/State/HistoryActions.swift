@@ -143,6 +143,18 @@ extension Studio {
     }
 
     func previousComposition() {
+        if isLoopSequenceEnabled {
+            guard !player.hypnogram.compositions.isEmpty else { return }
+            persistCurrentCompositionPreviewIfNeeded()
+            player.hasPendingGeneratedNextComposition = false
+            player.currentCompositionLoadFailure = nil
+            player.currentCompositionIndex = player.currentCompositionIndex > 0
+                ? (player.currentCompositionIndex - 1)
+                : (player.hypnogram.compositions.count - 1)
+            applyCompositionSelectionChanged(manual: true)
+            return
+        }
+
         guard player.currentCompositionIndex > 0 else { return }
         persistCurrentCompositionPreviewIfNeeded()
         player.hasPendingGeneratedNextComposition = false
@@ -152,6 +164,17 @@ extension Studio {
     }
 
     func nextComposition() {
+        if isLoopSequenceEnabled {
+            guard !player.hypnogram.compositions.isEmpty else { return }
+            persistCurrentCompositionPreviewIfNeeded()
+            player.hasPendingGeneratedNextComposition = false
+            player.currentCompositionLoadFailure = nil
+            let nextIndex = player.currentCompositionIndex + 1
+            player.currentCompositionIndex = nextIndex < player.hypnogram.compositions.count ? nextIndex : 0
+            applyCompositionSelectionChanged(manual: true)
+            return
+        }
+
         let nextIndex = player.currentCompositionIndex + 1
         if nextIndex < player.hypnogram.compositions.count {
             persistCurrentCompositionPreviewIfNeeded()
