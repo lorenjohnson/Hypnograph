@@ -127,7 +127,7 @@ extension Studio {
     }
 
     @discardableResult
-    func advanceOrGenerateOnCompositionEnded(loopSequenceAtEnd: Bool) -> Bool {
+    func advanceOrGenerateOnCompositionEnded(loopSequenceAtEnd: Bool, generateAtEnd: Bool) -> Bool {
         persistCurrentCompositionPreviewIfNeeded()
         let nextIndex = player.currentCompositionIndex + 1
         if nextIndex < player.hypnogram.compositions.count {
@@ -136,8 +136,10 @@ extension Studio {
         } else if loopSequenceAtEnd, !player.hypnogram.compositions.isEmpty {
             player.currentCompositionIndex = 0
             applyCompositionSelectionChanged(manual: false)
-        } else {
+        } else if generateAtEnd {
             insertNewCompositionAfterCurrentAndSelect(manual: false)
+        } else {
+            return false
         }
         return true
     }

@@ -21,7 +21,7 @@ final class Studio: ObservableObject {
     enum PlaybackEndBehavior {
         case stopAtEnd
         case loopComposition
-        case advanceAcrossCompositions(loopAtSequenceEnd: Bool)
+        case advanceAcrossCompositions(loopAtSequenceEnd: Bool, generateAtSequenceEnd: Bool)
     }
 
     let state: HypnographState
@@ -270,23 +270,29 @@ final class Studio: ObservableObject {
         let displayResolution = currentDocumentPlayerResolution
         let sourceFraming = currentDocumentSourceFraming
         let playbackEndBehavior: PlaybackEndBehavior
+        let isLastCompositionInSequence =
+            player.currentCompositionIndex >= max(0, player.hypnogram.compositions.count - 1)
         switch state.settings.playbackLoopMode {
         case .composition:
             playbackEndBehavior = .loopComposition
         case .sequence:
-            playbackEndBehavior = .advanceAcrossCompositions(loopAtSequenceEnd: true)
+            playbackEndBehavior = .advanceAcrossCompositions(loopAtSequenceEnd: true, generateAtSequenceEnd: false)
         case .off:
-            playbackEndBehavior = state.settings.generateAtEnd
-                ? .advanceAcrossCompositions(loopAtSequenceEnd: false)
-                : .stopAtEnd
+            playbackEndBehavior = .advanceAcrossCompositions(
+                loopAtSequenceEnd: false,
+                generateAtSequenceEnd: state.settings.generateAtEnd
+            )
         }
         let onCompositionEnded: (() -> Bool)? = { [weak self] in
             guard let self else { return false }
             switch playbackEndBehavior {
             case .stopAtEnd, .loopComposition:
                 return false
-            case .advanceAcrossCompositions(let loopAtSequenceEnd):
-                return self.advanceOrGenerateOnCompositionEnded(loopSequenceAtEnd: loopAtSequenceEnd)
+            case .advanceAcrossCompositions(let loopAtSequenceEnd, let generateAtSequenceEnd):
+                return self.advanceOrGenerateOnCompositionEnded(
+                    loopSequenceAtEnd: loopAtSequenceEnd,
+                    generateAtEnd: generateAtSequenceEnd
+                )
             }
         }
         let currentLayerIndexBinding = Binding(
@@ -310,6 +316,7 @@ final class Studio: ObservableObject {
         return AnyView(
             PlayerView(
                 playbackEndBehavior: playbackEndBehavior,
+                isLastCompositionInSequence: isLastCompositionInSequence,
                 composition: composition,
                 aspectRatio: aspectRatio,
                 displayResolution: displayResolution,

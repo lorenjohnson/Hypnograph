@@ -16,6 +16,7 @@ import HypnoCore
 /// Uses PlayerContentView for GPU-accelerated frame display with shader transitions.
 struct PlayerView: NSViewRepresentable {
     let playbackEndBehavior: Studio.PlaybackEndBehavior
+    let isLastCompositionInSequence: Bool
     let composition: Composition
     let aspectRatio: AspectRatio
     let displayResolution: OutputResolution
@@ -83,7 +84,7 @@ struct PlayerView: NSViewRepresentable {
         var lastAppliedPlayRate: Float?
         var transitionDuration: Double = 1.5
         var lastVolume: Float?
-        var playbackEndBehavior: Studio.PlaybackEndBehavior = .advanceAcrossCompositions(loopAtSequenceEnd: false)
+        var playbackEndBehavior: Studio.PlaybackEndBehavior = .advanceAcrossCompositions(loopAtSequenceEnd: false, generateAtSequenceEnd: true)
         var onCompositionEnded: (() -> Bool)?
         var isAllStillImages: Bool = false
         var lastRenderedComposition: Composition?
@@ -160,7 +161,7 @@ struct PlayerView: NSViewRepresentable {
         c.playbackEndBehavior = playbackEndBehavior
         c.onCompositionEnded = onCompositionEnded
         c.isAllStillImages = composition.layers.allSatisfy { $0.mediaClip.file.mediaKind == .image }
-        if isPaused || !isAdvanceAcrossCompositions(playbackEndBehavior) {
+        if isPaused || !canAdvanceCurrentComposition(playbackEndBehavior, isLastCompositionInSequence: isLastCompositionInSequence) {
             c.isAutoAdvanceInFlight = false
             c.didRequestPreEndAdvance = false
         }
@@ -476,6 +477,13 @@ struct PlayerView: NSViewRepresentable {
                         // Auto-advance: only advance when the ACTIVE player ends
                         // (not when the outgoing transition player loops)
                         if player === c.contentView?.activeAVPlayer {
+                            guard canAdvanceCurrentComposition(
+                                c.playbackEndBehavior,
+                                isLastCompositionInSequence: self.isLastCompositionInSequence
+                            ) else {
+                                player.pause()
+                                return
+                            }
                             if c.isAutoAdvanceInFlight {
                                 seekToStartAndPlayIfNeeded()
                                 return
@@ -505,7 +513,10 @@ struct PlayerView: NSViewRepresentable {
             let token = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak c, weak player] _ in
                 Task { @MainActor [weak c, weak player] in
                     guard let c, let player, let contentView = c.contentView else { return }
-                    guard isAdvanceAcrossCompositions(c.playbackEndBehavior) else { return }
+                    guard canAdvanceCurrentComposition(
+                        c.playbackEndBehavior,
+                        isLastCompositionInSequence: self.isLastCompositionInSequence
+                    ) else { return }
                     guard c.lastPauseState != true else { return }
                     guard !c.didRequestPreEndAdvance else { return }
                     guard !c.isAutoAdvanceInFlight else { return }
@@ -588,7 +599,10 @@ struct PlayerView: NSViewRepresentable {
         c.stillClipTimer = nil
 
         guard c.lastPauseState != true else { return }
-        guard isAdvanceAcrossCompositions(c.playbackEndBehavior) else { return }
+        guard canAdvanceCurrentComposition(
+            c.playbackEndBehavior,
+            isLastCompositionInSequence: isLastCompositionInSequence
+        ) else { return }
 
         let seconds = max(0.05, composition.effectiveDuration.seconds)
         c.stillClipTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { _ in
@@ -619,6 +633,21 @@ struct PlayerView: NSViewRepresentable {
             return true
         }
         return false
+    }
+
+    private func canAdvanceCurrentComposition(
+        _ behavior: Studio.PlaybackEndBehavior,
+        isLastCompositionInSequence: Bool
+    ) -> Bool {
+        switch behavior {
+        case .loopComposition, .stopAtEnd:
+            return false
+        case .advanceAcrossCompositions(let loopAtSequenceEnd, let generateAtSequenceEnd):
+            if !isLastCompositionInSequence {
+                return true
+            }
+            return loopAtSequenceEnd || generateAtSequenceEnd
+        }
     }
 
     // MARK: - Teardown
