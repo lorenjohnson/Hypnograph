@@ -41,7 +41,7 @@ This project is now complete enough to archive. The panel model is on a much fir
 
 ## Known Issue
 
-- `Composition` still has a small but visible polish bug when expanding or collapsing the global effect chain, nested effect rows, or layer rows: the panel content can briefly jump before settling, even though the final panel size and contents are functionally correct.
+- `Composition` still has a small but visible polish bug when expanding or collapsing the composition effect chain, nested effect rows, or layer rows: the panel content can briefly jump before settling, even though the final panel size and contents are functionally correct.
 - This is not currently release-critical from a correctness standpoint. It is primarily a visual/jank issue in the resize-and-reflow sequence inside the `Composition` panel.
 
 ## Findings

@@ -187,7 +187,7 @@ extension Studio {
             .disabled(disableMainWindowShortcuts)
 
             Button("Composition") { [self] in
-                activePlayer.selectGlobalLayer()
+                activePlayer.selectCompositionLayer()
             }
             .keyboardShortcut("`", modifiers: [])
             .disabled(disableMainWindowShortcuts)

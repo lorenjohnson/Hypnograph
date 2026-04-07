@@ -158,18 +158,18 @@ enum EffectChainLibraryActions {
 
     // MARK: - Private Helpers
 
-    /// Extract effect chains from a session (per-hypnogram global + per-hypnogram per-layer)
+    /// Extract effect chains from a session (per-hypnogram composition + per-hypnogram per-layer)
     private static func extractEffectChains(from hypnographSession: Hypnogram) -> [EffectChain] {
         var chains: [EffectChain] = []
 
         for (hypnogramIndex, hypnogram) in hypnographSession.compositions.enumerated() {
-            // Add per-hypnogram global effect chain if it has effects
+            // Add per-hypnogram composition effect chain if it has effects
             if !hypnogram.effectChain.effects.isEmpty {
-                let globalChain = hypnogram.effectChain.clone()
-                if globalChain.name == nil || globalChain.name?.isEmpty == true {
-                    globalChain.name = "Hypnogram \(hypnogramIndex + 1) Global (imported)"
+                let compositionChain = hypnogram.effectChain.clone()
+                if compositionChain.name == nil || compositionChain.name?.isEmpty == true {
+                    compositionChain.name = "Hypnogram \(hypnogramIndex + 1) Global (imported)"
                 }
-                chains.append(globalChain)
+                chains.append(compositionChain)
             }
 
             // Add per-layer effect chains that have effects

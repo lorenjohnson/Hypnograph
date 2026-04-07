@@ -119,11 +119,11 @@ struct HypnographApp: App {
                 }
                 appDelegate.applyStoredMainWindowFullscreenPreferenceIfNeeded()
 
-                // Wire up global effect suspend (` key hold)
-                appDelegate.setGlobalEffectSuspended = { [weak studio] suspended in
+                // Wire up composition effect chain suspend (` key hold)
+                appDelegate.setCompositionEffectSuspended = { [weak studio] suspended in
                     guard let studio, !studio.isLiveMode else { return }
-                    studio.player.isGlobalEffectSuspended = suspended
-                    studio.player.effectManager.isGlobalEffectSuspended = suspended
+                    studio.player.isCompositionEffectSuspended = suspended
+                    studio.player.effectManager.isCompositionEffectSuspended = suspended
                 }
 
                 // Wire up flash solo (1-9 key hold)
@@ -143,9 +143,9 @@ struct HypnographApp: App {
                     guard index >= 0, index < studio.player.layers.count else { return }
                     studio.player.selectSource(index)
                 }
-                appDelegate.selectGlobalLayer = { [weak studio] in
+                appDelegate.selectCompositionLayer = { [weak studio] in
                     guard let studio, !studio.isLiveMode else { return }
-                    studio.player.selectGlobalLayer()
+                    studio.player.selectCompositionLayer()
                 }
 
                 // Wire up external file opening (hypnogram documents + media sources)

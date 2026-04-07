@@ -36,11 +36,11 @@ One state model (clip tape + clips) replaces two modes and two decks. Preview an
 
 Clip Set / Transport (sequencing + generation defaults)
 - clipCount (N/∞), history size, navigation, delete clip, clear history, render
-- defaults for new clips: clip length policy, layers policy, blend policy, randomize global effect toggle
+- defaults for new clips: clip length policy, layers policy, blend policy, randomize composition effect chain toggle
 
 Clip Editor (authoring the current clip)
 - per-clip duration and play rate
-- add/remove layers, swap sources, transforms, blend modes, per-layer effects, per-clip global effect
+- add/remove layers, swap sources, transforms, blend modes, per-layer effects, per-clip composition effect chain
 
 Output (global)
 - aspect ratio, resolution, audio device + volume
@@ -72,7 +72,7 @@ Per-player / generation
 
 Per-source / content
 - `HypnogramClip.sources[]` (files, clip start/duration, transforms, blend modes, per-source effect chains)
-- `HypnogramClip.effectChain` (global effects)
+- `HypnogramClip.effectChain` (composition effect chains)
 
 Display / routing
 - `PlayerConfiguration.aspectRatio`
@@ -80,7 +80,7 @@ Display / routing
 - `Dream.liveMode` (preview vs live target)
 - Preview audio device + volume
 - Pause/navigation: `currentSourceIndex`, `currentClipTimeOffset`, `isPaused`, `currentClipIndex`
-- Temporary preview overrides: global effect suspend, flash solo
+- Temporary preview overrides: composition effect chain suspend, flash solo
 
 ### Render-affecting parameters (today)
 

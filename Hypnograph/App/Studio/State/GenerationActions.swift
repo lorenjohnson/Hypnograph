@@ -43,12 +43,12 @@ extension Studio {
             return EffectChain(duplicating: template, sourceTemplateId: template.id)
         }
 
-        var globalEffectChain = previous?.effectChain.clone()
+        var compositionEffectChain = previous?.effectChain.clone()
         if shouldApplyRandomizedEffect(
             enabled: state.settings.randomGlobalEffect,
             frequency: state.settings.randomGlobalEffectFrequency
         ) {
-            globalEffectChain = randomTemplateChain() ?? globalEffectChain
+            compositionEffectChain = randomTemplateChain() ?? compositionEffectChain
         }
 
         var layers: [Layer] = []
@@ -80,7 +80,7 @@ extension Studio {
             layers: layers,
             targetDuration: targetDuration,
             playRate: selectedPlayRate,
-            effectChain: globalEffectChain,
+            effectChain: compositionEffectChain,
             createdAt: Date()
         )
         composition.syncTargetDurationToLayers()

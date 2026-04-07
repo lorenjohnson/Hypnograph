@@ -156,10 +156,10 @@ final class LivePlayer: ObservableObject {
             self?.currentComposition
         }
 
-        // Wire up global effect chain setter
-        effectManager.globalEffectChainSetter = { [weak self] chain in
+        // Wire up composition effect chain setter
+        effectManager.compositionEffectChainSetter = { [weak self] chain in
             guard let self = self, var composition = self.currentComposition else { return }
-            print("🎬 LivePlayer: globalEffectChainSetter - setting chain: \(chain.name ?? "unnamed")")
+            print("🎬 LivePlayer: compositionEffectChainSetter - setting chain: \(chain.name ?? "unnamed")")
             composition.effectChain = chain
             self.currentComposition = composition
         }

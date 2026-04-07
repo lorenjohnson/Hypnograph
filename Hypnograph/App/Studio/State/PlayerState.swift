@@ -46,8 +46,8 @@ final class PlayerState: ObservableObject {
     /// Incremented when effects change - triggers re-render when paused
     @Published var effectsChangeCounter: Int = 0
 
-    /// When true, global effect chain is temporarily bypassed (e.g., while holding 0 key)
-    @Published var isGlobalEffectSuspended: Bool = false
+    /// When true, composition effect chain is temporarily bypassed (e.g., while holding 0 key)
+    @Published var isCompositionEffectSuspended: Bool = false
 
     /// True while the primary player is building/loading the current composition.
     @Published var isPrimaryCompositionLoadInFlight: Bool = false
@@ -158,7 +158,7 @@ final class PlayerState: ObservableObject {
         }
 
         // Global effect chain setter
-        effectManager.globalEffectChainSetter = { [weak self] chain in
+        effectManager.compositionEffectChainSetter = { [weak self] chain in
             self?.updateCurrentComposition { $0.effectChain = chain }
         }
 
@@ -269,13 +269,13 @@ final class PlayerState: ObservableObject {
         currentLayerIndex = index
     }
 
-    /// Whether we're on the global layer (-1) vs a specific source
+    /// Whether we're on the composition layer (-1) vs a specific source
     var isOnGlobalLayer: Bool {
         currentLayerIndex == -1
     }
 
-    /// Move to global layer
-    func selectGlobalLayer() {
+    /// Move to composition layer
+    func selectCompositionLayer() {
         currentLayerIndex = -1
     }
 

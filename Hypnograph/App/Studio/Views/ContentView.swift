@@ -98,14 +98,14 @@ struct ContentView: View {
             return (clipText, .blue)
         }
 
-        // Layer indicators: show during flash solo (1-9 hold) or global hold (`) while global effects are suspended.
+        // Layer indicators: show during flash solo (1-9 hold) or composition hold (`) while composition effect chains are suspended.
         guard !main.activePlayer.layers.isEmpty else { return nil }
 
         if main.activePlayer.effectManager.flashSoloIndex != nil {
             return ("\(main.activePlayer.currentLayerIndex + 1)/\(main.activePlayer.layers.count)", .red)
         }
 
-        if main.activePlayer.isGlobalEffectSuspended {
+        if main.activePlayer.isCompositionEffectSuspended {
             return ("GLOBAL/\(main.activePlayer.layers.count)", .red)
         }
 

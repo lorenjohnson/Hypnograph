@@ -162,7 +162,7 @@ struct CompositionPanel: View {
                 .stroke(isSelected ? Color.accentColor.opacity(0.55) : Color.white.opacity(0.08), lineWidth: isSelected ? 1.0 : 0.5)
         )
         .onTapGesture {
-            main.activePlayer.selectGlobalLayer()
+            main.activePlayer.selectCompositionLayer()
         }
     }
 

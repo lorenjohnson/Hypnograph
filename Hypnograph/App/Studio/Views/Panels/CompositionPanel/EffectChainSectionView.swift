@@ -6,7 +6,7 @@ struct EffectChainSectionView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
 
-    /// -1 = global, 0+ = layer index
+    /// -1 = composition, 0+ = layer index
     let layer: Int
     let title: String
     var isCollapsible: Bool = true
@@ -29,7 +29,7 @@ struct EffectChainSectionView: View {
     }
 
     private var isTemporarilyGlobalSuspended: Bool {
-        layer == -1 && main.player.isGlobalEffectSuspended
+        layer == -1 && main.player.isCompositionEffectSuspended
     }
 
     var body: some View {

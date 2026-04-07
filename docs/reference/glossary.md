@@ -10,7 +10,7 @@ This is a working glossary for Hypnograph's core model. It is intentionally high
 The top-level saved unit. A Hypnogram is the file or document you save, reopen, and organize. A Hypnogram contains one or more Compositions in sequence, along with file-level metadata such as a snapshot thumbnail and creation date.
 
 **Composition**  
-One playable item inside a Hypnogram. A Composition is what plays as a unit before the app advances to another Composition. A Composition contains one or more Layers, along with composition-level settings such as duration, play rate, and global Effects.
+One playable item inside a Hypnogram. A Composition is what plays as a unit before the app advances to another Composition. A Composition contains one or more Layers, along with composition-level settings such as duration, play rate, and effect chain.
 
 **Layer**  
 One visual layer inside a Composition. A Layer points to the underlying media source being used, includes the relevant playback window for that media such as the selected time range for video or display length for still images, and carries layer-level settings such as transforms, blend mode, opacity, mute state, and any per-Layer Effect Chain.

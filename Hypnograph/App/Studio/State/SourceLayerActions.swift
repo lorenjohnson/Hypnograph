@@ -50,7 +50,7 @@ extension Studio {
             return false
         }
 
-        let globalEffect = activePlayer.hypnogram.compositions.isEmpty
+        let compositionEffect = activePlayer.hypnogram.compositions.isEmpty
             ? EffectChain()
             : activePlayer.currentComposition.effectChain.clone()
 
@@ -58,7 +58,7 @@ extension Studio {
             layers: layers,
             targetDuration: activePlayer.targetDuration,
             playRate: activePlayer.playRate,
-            effectChain: globalEffect,
+            effectChain: compositionEffect,
             createdAt: Date()
         )
         importedComposition.syncTargetDurationToLayers()

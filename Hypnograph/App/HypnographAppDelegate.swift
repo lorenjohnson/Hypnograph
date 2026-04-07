@@ -172,8 +172,8 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     private var mainWindowFullscreenObservers: [NSObjectProtocol] = []
     private var didApplyMainWindowFullscreenRestore = false
 
-    /// Callback to suspend/resume global effects (injected by app)
-    var setGlobalEffectSuspended: ((Bool) -> Void)?
+    /// Callback to suspend/resume composition effect chains (injected by app)
+    var setCompositionEffectSuspended: ((Bool) -> Void)?
 
     /// Callback to set flash solo (injected by app). Pass source index or nil to clear.
     /// Returns true if the source exists (or nil was passed), false if source index is out of range.
@@ -183,8 +183,8 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// relying on menu key equivalents (which can enter menu tracking and stall playback).
     var selectSourceIndex: ((Int) -> Void)?
 
-    /// Callback to select the composition/global layer (used by ` key hold).
-    var selectGlobalLayer: (() -> Void)?
+    /// Callback to select the composition layer (used by ` key hold).
+    var selectCompositionLayer: (() -> Void)?
 
     /// Event monitor for Tab key panel toggle (workaround for SwiftUI menu shortcut not registering until menu opened)
     private var panelToggleKeyMonitor: Any?
@@ -195,7 +195,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
     /// Event monitor for S key (save snapshot image)
     private var snapshotKeyMonitor: Any?
 
-    /// Event monitor for ` key hold to suspend global effects
+    /// Event monitor for ` key hold to suspend composition effect chains
     private var globalKeyMonitor: Any?
 
     /// Event monitor for 1-9 keys hold to suspend source effects
@@ -310,7 +310,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
             return nil
         }
 
-        // Install ` key monitor for hold-to-suspend global effects
+        // Install ` key monitor for hold-to-suspend composition effect chains
         globalKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
             // Only handle ` key with no modifiers
             guard event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
@@ -322,14 +322,14 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
                 return event
             }
             // Suspend on keyDown, resume on keyUp
-            self.setGlobalEffectSuspended?(event.type == .keyDown)
+            self.setCompositionEffectSuspended?(event.type == .keyDown)
             if event.type == .keyDown, !event.isARepeat {
-                self.selectGlobalLayer?()
+                self.selectCompositionLayer?()
             }
             return nil
         }
 
-        // Install 1-9 key monitor for hold-to-solo source (bypasses global effects, keeps source effect)
+        // Install 1-9 key monitor for hold-to-solo source (bypasses composition effect chains, keeps source effect)
         // Double-tap to latch solo mode; any subsequent 1-9 key clears latch
         // keyCodes: 18=1, 19=2, 20=3, 21=4, 23=5, 22=6, 26=7, 28=8, 25=9
         let sourceKeyCodes: [UInt16: Int] = [18: 0, 19: 1, 20: 2, 21: 3, 23: 4, 22: 5, 26: 6, 28: 7, 25: 8]
@@ -365,25 +365,25 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
                     if self.isSoloLatched {
                         // Latch on: keep solo active (only if source exists)
                         if self.setFlashSolo?(sourceIndex) == true {
-                            self.setGlobalEffectSuspended?(true)
+                            self.setCompositionEffectSuspended?(true)
                         } else {
                             self.isSoloLatched = false  // Source doesn't exist, cancel latch
                         }
                     } else {
                         // Latch off: clear solo
                         _ = self.setFlashSolo?(nil)
-                        self.setGlobalEffectSuspended?(false)
+                        self.setCompositionEffectSuspended?(false)
                     }
                 } else {
                     // Single tap or different key - if latched, any key clears latch
                     if self.isSoloLatched {
                         self.isSoloLatched = false
                         _ = self.setFlashSolo?(nil)
-                        self.setGlobalEffectSuspended?(false)
+                        self.setCompositionEffectSuspended?(false)
                     } else {
                         // Normal hold behavior (only if source exists)
                         if self.setFlashSolo?(sourceIndex) == true {
-                            self.setGlobalEffectSuspended?(true)
+                            self.setCompositionEffectSuspended?(true)
                         }
                     }
                 }
@@ -394,7 +394,7 @@ final class HypnographAppDelegate: NSObject, NSApplicationDelegate {
                 // keyUp: only clear if not latched
                 if !self.isSoloLatched {
                     _ = self.setFlashSolo?(nil)
-                    self.setGlobalEffectSuspended?(false)
+                    self.setCompositionEffectSuspended?(false)
                 }
             }
             // Consume to prevent menu key equivalents (Select Layer 1-9) from entering menu tracking,

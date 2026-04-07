@@ -78,7 +78,7 @@ Review and update command menus to ensure they make sense. Some existential ques
 
 ### Special Keyboard Handling (NSEvent)
 - Tab — Toggle Clean Screen
-- Backtick hold — Suspend global effects temporarily
+- Backtick hold — Suspend composition effect chains temporarily
 - 1-9 hold — Solo mode for source (double-tap to latch)
 
 ## Questions to Answer

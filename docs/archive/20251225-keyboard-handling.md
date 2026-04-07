@@ -199,7 +199,7 @@ Search pattern: `keyboardShortcut.*modifiers: \[\]`
 **Dream.compositionMenu():**
 - ❌ ` (toggle mode) - MISSING
 - ❌ 1-9 (select source) - MISSING
-- ❌ 0 (global layer) - MISSING
+- ❌ 0 (composition layer) - MISSING
 - ❌ c (clear effect) - MISSING
 - ❌ n (new hypnogram) - MISSING
 - ❌ arrow keys (when editor closed) - OK (conditional)

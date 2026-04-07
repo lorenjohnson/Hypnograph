@@ -85,7 +85,7 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     /// When true, randomly applies a composition effect chain when generating new compositions
     var randomGlobalEffect: Bool
 
-    /// Chance (0.0 - 1.0) of randomizing global effect on generation
+    /// Chance (0.0 - 1.0) of randomizing composition effect chain on generation
     var randomGlobalEffectFrequency: Double
 
     /// When true, randomly applies per-layer effect chains when generating new compositions

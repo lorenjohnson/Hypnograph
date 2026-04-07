@@ -91,7 +91,7 @@ struct LayersTabMockup: View {
     ]
 
     // Global effect chain
-    @State private var globalEffectChain = EffectChainMockup(
+    @State private var compositionEffectChain = EffectChainMockup(
         name: "Vintage Look",
         effects: [
             EffectDefinitionMockup(type: "ChromaticAberrationEffect", params: [
@@ -135,8 +135,8 @@ struct LayersTabMockup: View {
                     }
                     .padding(.horizontal, 4)
 
-                    GlobalEffectChainRowMockup(
-                        chain: $globalEffectChain,
+                    CompositionEffectChainRowMockup(
+                        chain: $compositionEffectChain,
                         isExpanded: $globalExpanded
                     )
                 }
@@ -541,7 +541,7 @@ struct EffectChainSectionMockup: View {
 
 /// Wrapper for Global section that adds the card background.
 /// Global doesn't have selection state - it's always accessible.
-struct GlobalEffectChainRowMockup: View {
+struct CompositionEffectChainRowMockup: View {
     @Binding var chain: EffectChainMockup
     @Binding var isExpanded: Bool
 

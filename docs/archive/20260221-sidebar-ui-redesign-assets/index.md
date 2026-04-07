@@ -56,7 +56,7 @@ Sidebars use **fixed widths** (Left: 280pt, Right: 300pt) rather than percentage
 
 ### Settings vs. State Separation
 - **Settings (left sidebar)** = Rules for generating NEW hypnograms
-  - Randomize global effect: on/off + frequency %
+  - Randomize composition effect chain: on/off + frequency %
   - Randomize layer effects: on/off + frequency %
   - Max layers, clip lengths, transitions, etc.
 - **Layers (right sidebar)** = Current hypnograph state
@@ -76,7 +76,7 @@ Sidebars use **fixed widths** (Left: 280pt, Right: 300pt) rather than percentage
 
 ### Effect Chains in Composition Tab
 
-- **Global section**: Shows current global effect chain name, expandable to edit effects
+- **Global section**: Shows current composition effect chain name, expandable to edit effects
 - **Per-layer**: Each layer can have its own effect chain, expandable when layer is expanded
 - **Shared component**: `EffectChainSectionMockup` handles both cases
 
@@ -196,7 +196,7 @@ Located in `docs/hypnograph/archive/20260221-sidebar-ui-redesign-assets/`:
 
 - `Dream.activePlayer.layers: [HypnogramLayer]`
 - `HypnogramLayer.effectChain: EffectChain?`
-- `Dream.activePlayer.globalEffectChain: EffectChain`
+- `Dream.activePlayer.compositionEffectChain: EffectChain`
 
 **Files to Create**:
 

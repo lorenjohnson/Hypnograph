@@ -44,7 +44,7 @@ Users can export rendered video from the current Composition and capture frame s
 
 ## Effects and Effect Chain Library
 
-Effects can be applied globally or per layer. Chains can be edited, saved, overwritten, and reused from a global library. Individual effects are parameterized and can be treated as part of chain workflows.
+Effects can be applied over a whole composition or per layer. Chains can be edited, saved, overwritten, and reused from a global library. Individual effects are parameterized and can be treated as part of chain workflows.
 
 ## Favorites, Exclude, and Delete
 

@@ -45,7 +45,7 @@ Source of truth: `Hypnograph/HypnographApp.swift`, `Hypnograph/Dream/Dream.swift
 | Next Source | `Right` | Disabled while typing |
 | Previous Source | `Left` | Disabled while typing |
 | Select Source 1-9 | `1-9` | Disabled while typing; **hold** to solo source (see Key Hold Behaviors) |
-| Select Global Layer | `0` | Disabled while typing; **hold** to suspend global effects (see Key Hold Behaviors) |
+| Select Global Layer | `0` | Disabled while typing; **hold** to suspend composition effect chains (see Key Hold Behaviors) |
 | Clear Current Layer Effect | `C` | Disabled while typing |
 | Clear All Effects | `Ctrl+Shift+C` | Not disabled |
 | New Hypnogram | `N` | Disabled while typing |
@@ -97,12 +97,12 @@ events for true hold detection (not key repeat).
 
 | Key | Hold Behavior | Notes |
 | --- | --- | --- |
-| `0` | Suspend global effects | Shows all layers with their source effects but bypasses the global effect chain |
-| `1-9` | Solo source + suspend global effects | Shows only that source with its effect applied, bypasses global effects for effect preview |
+| `0` | Suspend composition effect chains | Shows all layers with their source effects but bypasses the composition effect chain |
+| `1-9` | Solo source + suspend composition effect chains | Shows only that source with its effect applied, bypasses composition effect chains for effect preview |
 | `1-9` (double-tap) | Latch solo mode | Solo stays active until any number key is pressed again |
 
 **Use case**: When applying effects to individual sources, hold the source number key to
-preview just that layer with its effect, without the global effect chain interfering.
+preview just that layer with its effect, without the composition effect chain interfering.
 Double-tap to lock the solo so you can work hands-free. Any subsequent 1-9 key press clears the latch.
 
 ## HUD Notes

@@ -26,7 +26,7 @@ This project should stay focused on interaction and model clarity plus the shape
 
 - MUST treat shipped base-effect and effect-chain curation as the first slice of this project.
 - MUST clarify the distinction between bundled defaults and the local installed working library.
-- MUST review the UX of applying, replacing, and editing effect chains in both global and layer contexts.
+- MUST review the UX of applying, replacing, and editing effect chains in both composition and layer contexts.
 - MUST review how imported effect chains are handled when they are not already present in the library.
 - SHOULD eventually support documentation for what each base effect does, when to use it, and what other effects it pairs well with.
 - SHOULD consider whether preview thumbnails belong in the effect-chain browsing and apply flow, but only after the higher-priority mechanics are clearer.
