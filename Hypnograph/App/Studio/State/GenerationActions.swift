@@ -113,11 +113,12 @@ extension Studio {
         applyCompositionSelectionChanged(manual: manual)
     }
 
-    func appendNewCompositionAndSelect(manual: Bool) {
+    func insertNewCompositionAfterCurrentAndSelect(manual: Bool) {
         persistCurrentCompositionPreviewIfNeeded()
         let composition = makeRandomComposition(preservingGlobalEffectFrom: player.currentComposition)
-        player.hypnogram.compositions.append(composition)
-        player.currentCompositionIndex = player.hypnogram.compositions.count - 1
+        let insertIndex = min(player.currentCompositionIndex + 1, player.hypnogram.compositions.count)
+        player.hypnogram.compositions.insert(composition, at: insertIndex)
+        player.currentCompositionIndex = insertIndex
         player.currentLayerIndex = -1
         pruneSaveTargetsToCurrentHypnogram()
         player.notifyHypnogramMutated()
@@ -135,7 +136,7 @@ extension Studio {
             player.currentCompositionIndex = nextIndex
             applyCompositionSelectionChanged(manual: false)
         } else {
-            appendNewCompositionAndSelect(manual: false)
+            insertNewCompositionAfterCurrentAndSelect(manual: false)
         }
         return true
     }

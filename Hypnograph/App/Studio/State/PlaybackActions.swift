@@ -12,7 +12,7 @@ extension Studio {
         state.settings.playbackEndBehavior == .loopCurrentComposition
     }
 
-    func new() {
+    private func prepareForManualGenerationAction() {
         // Clear frame buffer to prevent memory bloat from stored CIImages
         activePlayer.effectManager.clearFrameBuffer()
 
@@ -21,8 +21,19 @@ extension Studio {
         if cacheSize.ciImages > 30 || cacheSize.cgImages > 30 {
             StillImageCache.clear()
         }
+    }
 
-        appendNewCompositionAndSelect(manual: true)
+    func new() {
+        guard confirmReplacingWorkingHypnogramIfNeeded(
+            actionDescription: "creating a new sequence"
+        ) else { return }
+        prepareForManualGenerationAction()
+        replaceHistoryWithNewComposition()
+    }
+
+    func newComposition() {
+        prepareForManualGenerationAction()
+        insertNewCompositionAfterCurrentAndSelect(manual: true)
     }
 
     /// Send current hypnogram to live display

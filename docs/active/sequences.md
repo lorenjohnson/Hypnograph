@@ -51,6 +51,7 @@ The next visible milestone is a sequence strip or timeline that makes the compos
 - Is moving or reordering compositions within the sequence in scope for this first project, or only something to leave open while the basic range-selection model settles?
 - Before this project is done, revisit the `history` naming in both code and UI so it more honestly describes the unnamed scratch session or default working document rather than implying a separate model.
 - That same pass should resolve scratch-session edge cases, such as what should happen after explicitly saving the scratch session as a file-backed hypnogram and whether the default scratch session should immediately reset to a fresh working document afterward.
+- The project will also need an easy way to import or merge one hypnogram into another and to move compositions around within the current sequence once that authoring surface exists.
 
 ## Architecture Direction
 
@@ -72,6 +73,7 @@ That means:
 - The default `history.json` now effectively behaves as the unnamed fallback working hypnogram and is only autosaved while it remains the active document.
 - `Save` and `Save As` now save the full current working hypnogram, while `Save Composition` and `Save Composition As` explicitly save only the current composition as a single-composition `.hypno`.
 - File-open replacement now prompts to save only when the current active working document is a dirty file-backed hypnogram. The unnamed default history document is simply autosaved and replaced.
+- `New` now starts a fresh working hypnogram, while `New Composition` inserts a new composition immediately after the current one in the active sequence.
 - The current implementation of those moved settings is still transitional. The data shape is correct, but runtime ownership is still split across `Studio`, `PlayerState`, `LivePlayer`, and player configuration in a way that is more mirrored than the desired end state.
 
 ## Next Refactor

@@ -23,7 +23,9 @@ extension Studio {
 
     @discardableResult
     func openHypnogramAsWorkingDocument(_ hypnogram: Hypnogram, sourceURL: URL) -> Bool {
-        guard confirmReplacingWorkingHypnogramIfNeeded() else { return false }
+        guard confirmReplacingWorkingHypnogramIfNeeded(
+            actionDescription: "opening another hypnogram"
+        ) else { return false }
         activateWorkingHypnogram(hypnogram, sourceURL: sourceURL)
         AppNotifications.show("Loaded \(sourceURL.lastPathComponent)", flash: true)
         return true
@@ -53,7 +55,7 @@ extension Studio {
         state.setLoopCurrentCompositionMode(true)
     }
 
-    private func confirmReplacingWorkingHypnogramIfNeeded() -> Bool {
+    func confirmReplacingWorkingHypnogramIfNeeded(actionDescription: String) -> Bool {
         guard !isUsingDefaultWorkingHypnogram else {
             saveHistory(synchronous: true)
             return true
@@ -63,7 +65,7 @@ extension Studio {
 
         let alert = NSAlert()
         alert.messageText = "Save Sequence Changes?"
-        alert.informativeText = "The current sequence has unsaved changes. Save them before opening another hypnogram?"
+        alert.informativeText = "The current sequence has unsaved changes. Save them before \(actionDescription)?"
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Save")
         alert.addButton(withTitle: "Don't Save")

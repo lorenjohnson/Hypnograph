@@ -63,6 +63,11 @@ struct AppCommands: Commands {
                 studio.new()
             }
             .keyboardShortcut("n", modifiers: [.command])
+
+            Button("New Composition") {
+                studio.newComposition()
+            }
+            .keyboardShortcut("n", modifiers: [.command, .shift])
         }
 
         CommandGroup(replacing: .saveItem) {

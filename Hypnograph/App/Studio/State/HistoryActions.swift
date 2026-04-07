@@ -162,7 +162,7 @@ extension Studio {
         } else {
             guard !player.hasPendingGeneratedNextComposition else { return }
             player.hasPendingGeneratedNextComposition = true
-            appendNewCompositionAndSelect(manual: false)
+            insertNewCompositionAfterCurrentAndSelect(manual: false)
         }
     }
 
