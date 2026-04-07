@@ -28,6 +28,7 @@ extension Studio {
             .dropFirst()
             .sink { [weak self] _ in
                 self?.scheduleHistorySave()
+                self?.markWorkingHypnogramDirtyIfNeeded()
             }
             .store(in: &historySaveCancellables)
 
@@ -50,6 +51,7 @@ extension Studio {
     }
 
     func saveHistory(synchronous: Bool) {
+        guard isUsingDefaultWorkingHypnogram else { return }
         syncCurrentHypnogramDocumentContextFromRuntime()
         var history = player.hypnogram
         history.currentCompositionIndex = clampedCurrentCompositionIndex
@@ -68,18 +70,13 @@ extension Studio {
             historyLimit: state.settings.historyLimit
         ),
            !history.hypnogram.compositions.isEmpty {
-            player.hypnogram = history.hypnogram
-            applyCurrentHypnogramDocumentContextToRuntime()
             let restoredIndex =
                 history.hypnogram.currentCompositionIndex
                 ?? history.legacySelectedCompositionIndex
                 ?? 0
-            player.currentCompositionIndex = max(0, min(restoredIndex, history.hypnogram.compositions.count - 1))
-            syncCurrentCompositionIndexIntoHypnogram()
-            player.notifyHypnogramMutated()
-            player.currentLayerIndex = -1
-            player.effectManager.clearFrameBuffer()
-            player.notifyHypnogramChanged()
+            var restoredHypnogram = history.hypnogram
+            restoredHypnogram.currentCompositionIndex = max(0, min(restoredIndex, history.hypnogram.compositions.count - 1))
+            activateWorkingHypnogram(restoredHypnogram, sourceURL: nil)
             print("📼 Restored composition history (\(history.hypnogram.compositions.count) compositions)")
             return
         }
@@ -108,6 +105,7 @@ extension Studio {
     }
 
     func enforceHistoryLimit() {
+        guard isUsingDefaultWorkingHypnogram else { return }
         let limit = max(1, state.settings.historyLimit)
         let overflow = max(0, player.hypnogram.compositions.count - limit)
         guard overflow > 0 else { return }
@@ -189,7 +187,11 @@ extension Studio {
         guard !player.hypnogram.compositions.isEmpty else { return }
 
         if player.hypnogram.compositions.count == 1 {
-            replaceHistoryWithNewComposition()
+            if isUsingDefaultWorkingHypnogram {
+                replaceHistoryWithNewComposition()
+            } else {
+                replaceCurrentCompositionWithNewComposition(manual: true)
+            }
             applyCompositionSelectionChanged(manual: true)
             return
         }
@@ -249,7 +251,9 @@ extension Studio {
                 self.player.hypnogram.compositions[compositionIndex].thumbnail = previewImages.thumbnailBase64
                 self.player.currentCompositionPreviewNeedsRefresh = false
                 self.player.suppressNextPreviewInvalidation = true
-                self.player.notifyHypnogramMutated()
+                self.performWithoutMarkingWorkingHypnogramDirty {
+                    self.player.notifyHypnogramMutated()
+                }
             }
         }
     }

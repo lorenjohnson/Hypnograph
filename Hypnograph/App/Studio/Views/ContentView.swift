@@ -234,7 +234,7 @@ struct ContentView: View {
             onNext: { main.nextComposition() },
             onToggleLoopCurrentCompositionMode: { main.toggleLoopCurrentCompositionMode() },
             onSnapshotCurrent: { main.saveSnapshotImage() },
-            onSaveCurrent: { main.save() },
+            onSaveCurrent: { main.saveComposition() },
             onRenderCurrent: { main.renderAndSaveVideo() },
             onCommitLayerTrimRange: { layerIndex, range in
                 main.setLayerRange(
@@ -263,8 +263,7 @@ struct ContentView: View {
                     AppNotifications.show("Failed to load hypnogram", flash: true)
                     return
                 }
-                main.appendHypnogramToHistory(hypnogram, sourceURL: entry.sessionURL)
-                AppNotifications.show("Loaded: \(entry.name)", flash: true)
+                _ = main.openHypnogramAsWorkingDocument(hypnogram, sourceURL: entry.sessionURL)
             },
             onToggleFavorite: { entry in
                 hypnogramStore.toggleFavorite(entry)

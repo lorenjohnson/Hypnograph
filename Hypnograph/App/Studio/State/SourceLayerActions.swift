@@ -68,6 +68,7 @@ extension Studio {
         activePlayer.currentLayerIndex = layers.count - 1
         activePlayer.notifyHypnogramMutated()
         enforceHistoryLimit()
+        pruneSaveTargetsToCurrentHypnogram()
         applyCompositionSelectionChanged(manual: true)
 
         let importedCount = layers.count

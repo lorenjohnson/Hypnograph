@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import AppKit
 import HypnoCore
 import HypnoUI
 
@@ -12,8 +13,7 @@ extension Studio {
     func openHypnogram() {
         HypnogramFileActions.openHypnogram(
             onLoaded: { [weak self] hypnogram, url in
-                self?.appendHypnogramToHistory(hypnogram, sourceURL: url)
-                AppNotifications.show("Hypnogram loaded", flash: true)
+                _ = self?.openHypnogramAsWorkingDocument(hypnogram, sourceURL: url)
             },
             onFailure: {
                 AppNotifications.show("Failed to load hypnogram", flash: true)
@@ -21,31 +21,61 @@ extension Studio {
         )
     }
 
-    private func appendLoadedCompositions(_ compositions: [Composition]) {
-        let oldCount = activePlayer.hypnogram.compositions.count
-        activePlayer.hypnogram.compositions.append(contentsOf: compositions)
-        activePlayer.currentCompositionIndex = oldCount
-        activePlayer.currentLayerIndex = -1
-        activePlayer.notifyHypnogramMutated()
-        enforceHistoryLimit()
-        applyCompositionSelectionChanged(manual: true)
+    @discardableResult
+    func openHypnogramAsWorkingDocument(_ hypnogram: Hypnogram, sourceURL: URL) -> Bool {
+        guard confirmReplacingWorkingHypnogramIfNeeded() else { return false }
+        activateWorkingHypnogram(hypnogram, sourceURL: sourceURL)
+        AppNotifications.show("Loaded \(sourceURL.lastPathComponent)", flash: true)
+        return true
     }
 
-    func appendHypnogramToHistory(_ hypnogram: Hypnogram, sourceURL: URL? = nil) {
+    func activateWorkingHypnogram(_ hypnogram: Hypnogram, sourceURL: URL?) {
         var mutableHypnogram = hypnogram
         mutableHypnogram.ensureEffectChainNames()
 
         liveMode = .edit
 
-        let loadedCompositions = mutableHypnogram.compositions
-        guard !loadedCompositions.isEmpty else { return }
+        guard !mutableHypnogram.compositions.isEmpty else { return }
 
         EffectChainLibraryActions.importChainsFromSession(mutableHypnogram, into: effectsSession)
-        appendLoadedCompositions(loadedCompositions)
-        copyDocumentContext(from: mutableHypnogram)
-        applyCurrentHypnogramDocumentContextToRuntime()
-        assignSaveTargetIfUnambiguous(sourceURL, for: loadedCompositions)
-        pruneSaveTargetsToCurrentHistory()
+        performWithoutMarkingWorkingHypnogramDirty {
+            player.setHypnogram(mutableHypnogram)
+            setActiveWorkingHypnogramURL(sourceURL)
+            clearUnsavedWorkingHypnogramChanges()
+            clearAllSaveTargets()
+            applyCurrentHypnogramDocumentContextToRuntime()
+            player.currentLayerIndex = -1
+            player.currentCompositionLoadFailure = nil
+            player.hasPendingGeneratedNextComposition = false
+        }
+        player.effectManager.clearFrameBuffer()
+        player.notifyHypnogramChanged()
         state.setLoopCurrentCompositionMode(true)
+    }
+
+    private func confirmReplacingWorkingHypnogramIfNeeded() -> Bool {
+        guard !isUsingDefaultWorkingHypnogram else {
+            saveHistory(synchronous: true)
+            return true
+        }
+        guard hasUnsavedWorkingHypnogramChanges else { return true }
+        guard let currentURL = activeWorkingHypnogramURL else { return true }
+
+        let alert = NSAlert()
+        alert.messageText = "Save Sequence Changes?"
+        alert.informativeText = "The current sequence has unsaved changes. Save them before opening another hypnogram?"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Don't Save")
+        alert.addButton(withTitle: "Cancel")
+
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            return saveWorkingHypnogram(to: currentURL, showSuccessNotification: false)
+        case .alertSecondButtonReturn:
+            return true
+        default:
+            return false
+        }
     }
 }

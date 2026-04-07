@@ -83,10 +83,24 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
 
+            Divider()
+
+            Button("Save Composition") {
+                studio.saveComposition()
+            }
+            .keyboardShortcut("s", modifiers: [.command, .option])
+
+            Button("Save Composition As…") {
+                studio.saveCompositionAs()
+            }
+            .keyboardShortcut("s", modifiers: [.command, .option, .shift])
+
+            Divider()
+
             Button("Save & Render") {
                 studio.renderAndSaveVideo()
             }
-            .keyboardShortcut("s", modifiers: [.option, .command])
+            .keyboardShortcut("s", modifiers: [.control, .command])
 
         }
 

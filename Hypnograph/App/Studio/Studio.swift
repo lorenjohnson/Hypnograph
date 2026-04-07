@@ -43,9 +43,12 @@ final class Studio: ObservableObject {
     /// Subscriptions to forward player state changes to Studio's objectWillChange
     private var playerSubscriptions: Set<AnyCancellable> = []
 
-    /// Working file target for each composition currently present in Studio history.
+    /// Working file target for each composition currently present in Studio's current hypnogram.
     /// This stays app-local rather than becoming part of the persisted model.
     private var saveTargetsByCompositionID: [UUID: URL] = [:]
+    @Published private(set) var activeWorkingHypnogramURL: URL?
+    @Published private(set) var hasUnsavedWorkingHypnogramChanges = false
+    private var suppressWorkingHypnogramDirtyTracking = false
 
     /// The active preview player (always the preview deck)
     var activePlayer: PlayerState { player }
@@ -61,6 +64,7 @@ final class Studio: ObservableObject {
 
     var isLiveMode: Bool { liveMode == .live }
     var isLiveModeAvailable: Bool { state.settings.liveModeEnabled }
+    var isUsingDefaultWorkingHypnogram: Bool { activeWorkingHypnogramURL == nil }
 
     // MARK: - History HUD
 
@@ -508,9 +512,37 @@ final class Studio: ObservableObject {
         saveTargetsByCompositionID.removeValue(forKey: compositionID)
     }
 
-    func pruneSaveTargetsToCurrentHistory() {
+    func clearAllSaveTargets() {
+        saveTargetsByCompositionID.removeAll()
+    }
+
+    func pruneSaveTargetsToCurrentHypnogram() {
         let validIDs = Set(activePlayer.hypnogram.compositions.map(\.id))
         saveTargetsByCompositionID = saveTargetsByCompositionID.filter { validIDs.contains($0.key) }
+    }
+
+    func setActiveWorkingHypnogramURL(_ url: URL?) {
+        activeWorkingHypnogramURL = url
+        if url == nil {
+            hasUnsavedWorkingHypnogramChanges = false
+        }
+    }
+
+    func clearUnsavedWorkingHypnogramChanges() {
+        hasUnsavedWorkingHypnogramChanges = false
+    }
+
+    func markWorkingHypnogramDirtyIfNeeded() {
+        guard !suppressWorkingHypnogramDirtyTracking else { return }
+        guard activeWorkingHypnogramURL != nil else { return }
+        hasUnsavedWorkingHypnogramChanges = true
+    }
+
+    func performWithoutMarkingWorkingHypnogramDirty(_ work: () -> Void) {
+        let wasSuppressed = suppressWorkingHypnogramDirtyTracking
+        suppressWorkingHypnogramDirtyTracking = true
+        work()
+        suppressWorkingHypnogramDirtyTracking = wasSuppressed
     }
 
 }

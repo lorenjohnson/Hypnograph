@@ -163,8 +163,9 @@ struct HypnographApp: App {
                             AppNotifications.show("Failed to load hypnogram", flash: true)
                             return
                         }
-                        studio?.appendHypnogramToHistory(hypnogram, sourceURL: url)
-                        AppNotifications.show("Loaded \(url.lastPathComponent)", flash: true)
+                        guard studio?.openHypnogramAsWorkingDocument(hypnogram, sourceURL: url) != false else {
+                            return
+                        }
                     }
 
                     let mediaURLs = urls.filter { !HypnogramFileStore.isSupportedExtension($0.pathExtension) }

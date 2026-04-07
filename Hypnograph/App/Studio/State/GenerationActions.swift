@@ -93,9 +93,11 @@ extension Studio {
             compositions: [composition],
             currentCompositionIndex: 0,
         )
+        setActiveWorkingHypnogramURL(nil)
+        clearUnsavedWorkingHypnogramChanges()
         player.currentCompositionIndex = 0
         player.currentLayerIndex = -1
-        pruneSaveTargetsToCurrentHistory()
+        clearAllSaveTargets()
         applyCurrentHypnogramDocumentContextToRuntime()
         player.notifyHypnogramMutated()
         applyCompositionSelectionChanged(manual: false)
@@ -107,7 +109,7 @@ extension Studio {
         player.currentComposition = composition
         player.currentLayerIndex = -1
         clearSaveTarget(for: replacedCompositionID)
-        pruneSaveTargetsToCurrentHistory()
+        pruneSaveTargetsToCurrentHypnogram()
         applyCompositionSelectionChanged(manual: manual)
     }
 
@@ -117,7 +119,7 @@ extension Studio {
         player.hypnogram.compositions.append(composition)
         player.currentCompositionIndex = player.hypnogram.compositions.count - 1
         player.currentLayerIndex = -1
-        pruneSaveTargetsToCurrentHistory()
+        pruneSaveTargetsToCurrentHypnogram()
         player.notifyHypnogramMutated()
         enforceHistoryLimit()
         applyCompositionSelectionChanged(manual: manual)

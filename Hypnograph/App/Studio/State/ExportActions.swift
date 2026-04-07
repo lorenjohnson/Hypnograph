@@ -30,6 +30,40 @@ extension Studio {
         )
     }
 
+    private func makeWorkingHypnogram() -> Hypnogram {
+        syncCurrentHypnogramDocumentContextFromRuntime()
+        var hypnogram = activePlayer.hypnogram
+        let currentCompositionIndex = max(0, min(activePlayer.currentCompositionIndex, max(0, hypnogram.compositions.count - 1)))
+        hypnogram.currentCompositionIndex = currentCompositionIndex
+        return hypnogram
+    }
+
+    @discardableResult
+    private func saveWorkingHypnogram(to url: URL, showSuccessNotification: Bool = true) -> Bool {
+        guard let cgImage = currentFrameSnapshot() else {
+            print("Studio: no current frame available for sequence save")
+            AppNotifications.show("Failed to save sequence", flash: true)
+            return false
+        }
+
+        let hypnogram = makeWorkingHypnogram().copyForExport()
+        guard let savedURL = HypnogramFileStore.save(hypnogram, snapshot: cgImage, to: url) else {
+            print("Studio: failed to save sequence")
+            AppNotifications.show("Failed to save sequence", flash: true)
+            return false
+        }
+
+        setActiveWorkingHypnogramURL(savedURL)
+        clearUnsavedWorkingHypnogramChanges()
+        _ = HypnogramStore.shared.upsertSavedSession(at: savedURL, snapshot: cgImage)
+
+        if showSuccessNotification {
+            AppNotifications.show("Saved sequence \(savedURL.lastPathComponent)", flash: true)
+        }
+
+        return true
+    }
+
     func saveSnapshotImage() {
         guard let cgImage = currentFrameSnapshot() else {
             print("Studio: no current frame available for snapshot")
@@ -75,7 +109,7 @@ extension Studio {
         }
     }
 
-    func save() {
+    func saveComposition() {
         guard let cgImage = currentFrameSnapshot() else {
             print("Studio: no current frame available for save")
             return
@@ -185,7 +219,7 @@ extension Studio {
         }
     }
 
-    func saveAs() {
+    func saveCompositionAs() {
         guard let cgImage = currentFrameSnapshot() else {
             print("Studio: no current frame available for save")
             return
@@ -202,6 +236,36 @@ extension Studio {
             self.setSaveTargetURL(savedURL, for: compositionID)
             _ = HypnogramStore.shared.upsertSavedSession(at: savedURL, snapshot: cgImage)
             AppNotifications.show("Saved \(savedURL.lastPathComponent)", flash: true)
+        }
+    }
+
+    func save() {
+        if let url = activeWorkingHypnogramURL {
+            _ = saveWorkingHypnogram(to: url)
+            return
+        }
+
+        saveAs()
+    }
+
+    func saveAs() {
+        guard let cgImage = currentFrameSnapshot() else {
+            print("Studio: no current frame available for sequence save")
+            AppNotifications.show("Failed to save sequence", flash: true)
+            return
+        }
+
+        let hypnogram = makeWorkingHypnogram().copyForExport()
+        HypnogramFileActions.saveAs(
+            hypnogram: hypnogram,
+            snapshot: cgImage,
+            existingURL: activeWorkingHypnogramURL
+        ) { [weak self] savedURL in
+            guard let self else { return }
+            self.setActiveWorkingHypnogramURL(savedURL)
+            self.clearUnsavedWorkingHypnogramChanges()
+            _ = HypnogramStore.shared.upsertSavedSession(at: savedURL, snapshot: cgImage)
+            AppNotifications.show("Saved sequence \(savedURL.lastPathComponent)", flash: true)
         }
     }
 
