@@ -52,7 +52,7 @@ struct CompositionPanel: View {
             .padding(.horizontal, 4)
 
             VStack(alignment: .leading, spacing: 6) {
-                let snapshot = main.activePlayer.layers
+                let snapshot = main.currentLayers
                 ForEach(snapshot, id: \.mediaClip.file.id) { snapshotLayer in
                     let id = snapshotLayer.mediaClip.file.id
                     let currentIndex = layerIndex(for: id)
@@ -68,7 +68,7 @@ struct CompositionPanel: View {
                             isExpanded: expandedLayerIDs.contains(id),
                             onSelect: {
                                 if let idx = layerIndex(for: id) {
-                                    main.activePlayer.selectSource(idx)
+                                    main.selectSource(idx)
                                 }
                             },
                             onToggleExpanded: {
@@ -76,13 +76,13 @@ struct CompositionPanel: View {
                             },
                             onDuplicate: {
                                 if let idx = layerIndex(for: id) {
-                                    main.activePlayer.selectSource(idx)
+                                    main.selectSource(idx)
                                 }
                                 main.duplicateCurrentLayer()
                             },
                             onDelete: {
                                 if let idx = layerIndex(for: id) {
-                                    main.activePlayer.selectSource(idx)
+                                    main.selectSource(idx)
                                 }
                                 main.removeCurrentLayer()
                             }
@@ -127,15 +127,15 @@ struct CompositionPanel: View {
                     Text("Play Rate")
                         .font(.callout)
                     Spacer()
-                    Text(String(format: "%.0f%%", main.activePlayer.playRate * 100))
+                    Text(String(format: "%.0f%%", main.playRate * 100))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
 
                 PanelSliderView(
                     value: Binding(
-                        get: { Double(main.activePlayer.playRate) },
-                        set: { main.activePlayer.playRate = Float($0) }
+                        get: { Double(main.playRate) },
+                        set: { main.playRate = Float($0) }
                     ),
                     bounds: 0.2...2.0,
                     step: 0.1
@@ -162,25 +162,25 @@ struct CompositionPanel: View {
                 .stroke(isSelected ? Color.accentColor.opacity(0.55) : Color.white.opacity(0.08), lineWidth: isSelected ? 1.0 : 0.5)
         )
         .onTapGesture {
-            main.activePlayer.selectCompositionLayer()
+            main.selectCompositionLayer()
         }
     }
 
     private func bindingForLayer(id: UUID, fallback: Layer) -> Binding<Layer> {
         Binding(
-            get: { main.activePlayer.layers.first(where: { $0.mediaClip.file.id == id }) ?? fallback },
+            get: { main.currentLayers.first(where: { $0.mediaClip.file.id == id }) ?? fallback },
             set: { updated in
-                var layers = main.activePlayer.layers
+                var layers = main.currentLayers
                 guard let index = layers.firstIndex(where: { $0.mediaClip.file.id == id }) else { return }
                 layers[index] = updated
-                main.activePlayer.layers = layers
-                main.activePlayer.notifyHypnogramMutated()
+                main.currentLayers = layers
+                main.notifyHypnogramMutated()
             }
         )
     }
 
     private func layerIndex(for id: UUID) -> Int? {
-        main.activePlayer.layers.firstIndex(where: { $0.mediaClip.file.id == id })
+        main.currentLayers.firstIndex(where: { $0.mediaClip.file.id == id })
     }
 
     private func toggleExpanded(id: UUID) {
@@ -194,7 +194,7 @@ struct CompositionPanel: View {
     private func moveLayer(sourceID: UUID, targetID: UUID) {
         guard sourceID != targetID else { return }
 
-        var layers = main.activePlayer.layers
+        var layers = main.currentLayers
         guard let fromIndex = layers.firstIndex(where: { $0.mediaClip.file.id == sourceID }) else { return }
         guard let toIndex = layers.firstIndex(where: { $0.mediaClip.file.id == targetID }) else { return }
         guard fromIndex != toIndex else { return }
@@ -212,14 +212,14 @@ struct CompositionPanel: View {
                 destination -= 1
             }
             layers.insert(movedLayer, at: max(0, min(destination, layers.count)))
-            main.activePlayer.layers = layers
+            main.currentLayers = layers
         }
 
         if let selectedID, let newIndex = layers.firstIndex(where: { $0.mediaClip.file.id == selectedID }) {
-            main.activePlayer.selectSource(newIndex)
+            main.selectSource(newIndex)
         }
 
-        main.activePlayer.notifyHypnogramChanged()
+        main.notifyHypnogramChanged()
     }
 }
 

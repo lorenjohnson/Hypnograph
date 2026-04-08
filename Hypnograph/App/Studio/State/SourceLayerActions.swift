@@ -12,7 +12,7 @@ import HypnoUI
 @MainActor
 extension Studio {
     func addSourceFromRandom() {
-        addSourceToPlayer(activePlayer)
+        addSource()
     }
 
     func addSourceFromFilesPanel() {
@@ -31,7 +31,7 @@ extension Studio {
         let fileURLs = urls.filter(\.isFileURL)
         guard !fileURLs.isEmpty else { return false }
 
-        let preferredLength = activePlayer.targetDuration.seconds
+        let preferredLength = targetDuration.seconds
         var layers: [Layer] = []
         var failedCount = 0
 
@@ -50,28 +50,28 @@ extension Studio {
             return false
         }
 
-        let compositionEffect = activePlayer.hypnogram.compositions.isEmpty
+        let compositionEffect = hypnogram.compositions.isEmpty
             ? EffectChain()
-            : activePlayer.currentComposition.effectChain.clone()
+            : currentComposition.effectChain.clone()
 
         var importedComposition = Composition(
             layers: layers,
-            targetDuration: activePlayer.targetDuration,
-            playRate: activePlayer.playRate,
+            targetDuration: targetDuration,
+            playRate: playRate,
             effectChain: compositionEffect,
             createdAt: Date()
         )
         importedComposition.syncTargetDurationToLayers()
 
-        activePlayer.hypnogram.compositions.append(importedComposition)
-        activePlayer.currentCompositionIndex = activePlayer.hypnogram.compositions.count - 1
-        activePlayer.currentLayerIndex = layers.count - 1
-        activePlayer.notifyHypnogramMutated()
+        hypnogram.compositions.append(importedComposition)
+        currentCompositionIndex = hypnogram.compositions.count - 1
+        activePlayer.currentLayerIndex = currentLayers.count - 1
+        notifyHypnogramMutated()
         enforceHistoryLimit()
         pruneSaveTargetsToCurrentHypnogram()
         applyCompositionSelectionChanged(manual: true)
 
-        let importedCount = layers.count
+        let importedCount = currentLayers.count
         if failedCount == 0 {
             AppNotifications.show("Imported \(importedCount) layer\(importedCount == 1 ? "" : "s")", flash: true, duration: 1.5)
         } else {
@@ -88,22 +88,22 @@ extension Studio {
     /// Add a source layer from an explicit local file.
     @discardableResult
     func addSource(fromFileURL url: URL) -> Bool {
-        guard let mediaClip = makeClip(forFileURL: url, preferredLength: activePlayer.targetDuration.seconds) else {
+        guard let mediaClip = makeClip(forFileURL: url, preferredLength: targetDuration.seconds) else {
             AppNotifications.show("Couldn't add source from file", flash: true, duration: 1.5)
             return false
         }
-        addSourceToPlayer(activePlayer, mediaClip: mediaClip)
+        addSource(mediaClip: mediaClip)
         return true
     }
 
     /// Add a source layer from an explicit Photos asset identifier.
     @discardableResult
     func addSource(fromPhotosAssetIdentifier identifier: String) -> Bool {
-        guard let mediaClip = makeClip(forPhotosAssetIdentifier: identifier, preferredLength: activePlayer.targetDuration.seconds) else {
+        guard let mediaClip = makeClip(forPhotosAssetIdentifier: identifier, preferredLength: targetDuration.seconds) else {
             AppNotifications.show("Couldn't add source from Photos", flash: true, duration: 1.5)
             return false
         }
-        addSourceToPlayer(activePlayer, mediaClip: mediaClip)
+        addSource(mediaClip: mediaClip)
         return true
     }
 
@@ -114,10 +114,10 @@ extension Studio {
     func removeCurrentLayer() {
         let idx: Int
         if activePlayer.currentLayerIndex == -1 {
-            if activePlayer.layers.count == 1 {
+            if currentLayers.count == 1 {
                 idx = 0
             } else {
-                if activePlayer.layers.isEmpty {
+                if currentLayers.isEmpty {
                     AppNotifications.show("No layers selected", flash: true, duration: 1.25)
                 } else {
                     AppNotifications.show("Select a layer (1-9)", flash: true, duration: 1.25)
@@ -128,27 +128,27 @@ extension Studio {
             idx = activePlayer.currentLayerIndex
         }
 
-        guard idx >= 0, idx < activePlayer.layers.count else { return }
+        guard idx >= 0, idx < currentLayers.count else { return }
 
-        if activePlayer.layers.count == 1 {
+        if currentLayers.count == 1 {
             replaceSource(atLayerIndex: idx)
             return
         }
 
-        activePlayer.layers.remove(at: idx)
+        currentLayers.remove(at: idx)
 
-        if idx >= activePlayer.layers.count {
-            activePlayer.currentLayerIndex = activePlayer.layers.count - 1
+        if idx >= currentLayers.count {
+            activePlayer.currentLayerIndex = currentLayers.count - 1
         }
     }
 
     func duplicateCurrentLayer() {
         let idx: Int
         if activePlayer.currentLayerIndex == -1 {
-            if activePlayer.layers.count == 1 {
+            if currentLayers.count == 1 {
                 idx = 0
             } else {
-                if activePlayer.layers.isEmpty {
+                if currentLayers.isEmpty {
                     AppNotifications.show("No layers to duplicate", flash: true, duration: 1.25)
                 } else {
                     AppNotifications.show("Select a layer (1-9)", flash: true, duration: 1.25)
@@ -159,11 +159,11 @@ extension Studio {
             idx = activePlayer.currentLayerIndex
         }
 
-        guard idx >= 0, idx < activePlayer.layers.count else { return }
+        guard idx >= 0, idx < currentLayers.count else { return }
 
-        let duplicatedLayer = duplicatedLayerWithNewFileID(from: activePlayer.layers[idx])
+        let duplicatedLayer = duplicatedLayerWithNewFileID(from: currentLayers[idx])
         let insertIndex = idx + 1
-        activePlayer.layers.insert(duplicatedLayer, at: insertIndex)
+        currentLayers.insert(duplicatedLayer, at: insertIndex)
         activePlayer.currentLayerIndex = insertIndex
     }
 
@@ -191,24 +191,23 @@ extension Studio {
     }
 
     func replaceSource(atLayerIndex idx: Int) {
-        guard idx >= 0, idx < activePlayer.layers.count else { return }
-        guard let mediaClip = state.library.randomClip(clipLength: activePlayer.targetDuration.seconds) else { return }
-        activePlayer.layers[idx].mediaClip = mediaClip
+        guard idx >= 0, idx < currentLayers.count else { return }
+        guard let mediaClip = state.library.randomClip(clipLength: targetDuration.seconds) else { return }
+        currentLayers[idx].mediaClip = mediaClip
     }
 
-    /// Add a source to the given player
-    func addSourceToPlayer(_ player: PlayerState, length: Double? = nil) {
-        let clipLength = length ?? player.targetDuration.seconds
+    func addSource(length: Double? = nil) {
+        let clipLength = length ?? targetDuration.seconds
         guard let mediaClip = state.library.randomClip(clipLength: clipLength) else { return }
-        addSourceToPlayer(player, mediaClip: mediaClip)
+        addSource(mediaClip: mediaClip)
     }
 
     /// Add a specific clip as a new source layer.
-    func addSourceToPlayer(_ player: PlayerState, mediaClip: MediaClip) {
-        let blendMode = player.layers.isEmpty ? BlendMode.sourceOver : BlendMode.defaultMontage
+    func addSource(mediaClip: MediaClip) {
+        let blendMode = currentLayers.isEmpty ? BlendMode.sourceOver : BlendMode.defaultMontage
         let layer = Layer(mediaClip: mediaClip, blendMode: blendMode)
-        player.layers.append(layer)
-        player.currentLayerIndex = player.layers.count - 1
+        currentLayers.append(layer)
+        activePlayer.currentLayerIndex = currentLayers.count - 1
     }
 
     /// Build a clip from a local file URL (image or video).
@@ -284,10 +283,10 @@ extension Studio {
         endSeconds: Double,
         maxDurationSeconds: Double? = nil
     ) {
-        guard sourceIndex >= 0, sourceIndex < activePlayer.layers.count else { return }
+        guard sourceIndex >= 0, sourceIndex < currentLayers.count else { return }
 
-        var layers = activePlayer.layers
-        var layer = layers[sourceIndex]
+        var currentLayers = self.currentLayers
+        var layer = currentLayers[sourceIndex]
         guard layer.mediaClip.file.mediaKind == .video else { return }
 
         let totalSeconds = max(0.1, layer.mediaClip.file.duration.seconds)
@@ -316,8 +315,8 @@ extension Studio {
             duration: CMTime(seconds: newDuration, preferredTimescale: 600)
         )
 
-        layers[sourceIndex] = layer
-        activePlayer.layers = layers
+        currentLayers[sourceIndex] = layer
+        self.currentLayers = currentLayers
         activePlayer.currentLayerTimeOffset = nil
     }
 
@@ -350,8 +349,8 @@ extension Studio {
     }
 
     private func blendModeForSourceIndex(_ idx: Int) -> String {
-        guard idx >= 0, idx < activePlayer.layers.count else { return BlendMode.sourceOver }
-        return activePlayer.layers[idx].blendMode ?? (idx == 0 ? BlendMode.sourceOver : BlendMode.defaultMontage)
+        guard idx >= 0, idx < currentLayers.count else { return BlendMode.sourceOver }
+        return currentLayers[idx].blendMode ?? (idx == 0 ? BlendMode.sourceOver : BlendMode.defaultMontage)
     }
 
     func currentBlendModeDisplayName() -> String {
@@ -362,7 +361,7 @@ extension Studio {
 
     func cycleBlendMode(at index: Int? = nil) {
         let idx = index ?? activePlayer.currentLayerIndex
-        guard idx > 0, idx < activePlayer.layers.count else { return }
+        guard idx > 0, idx < currentLayers.count else { return }
         activePlayer.effectManager.cycleBlendMode(for: idx)
     }
 
@@ -370,28 +369,28 @@ extension Studio {
         activePlayer.config.aspectRatio = ratio
         livePlayer.config.aspectRatio = ratio
         syncCurrentHypnogramDocumentContextFromRuntime()
-        activePlayer.notifyHypnogramMutated()
+        notifyHypnogramMutated()
         objectWillChange.send()
     }
 
     func setOutputResolution(_ resolution: OutputResolution) {
         outputResolution = resolution
         syncCurrentHypnogramDocumentContextFromRuntime()
-        activePlayer.notifyHypnogramMutated()
+        notifyHypnogramMutated()
         objectWillChange.send()
     }
 
     func setSourceFraming(_ framing: SourceFraming) {
         livePlayer.setSourceFraming(framing)
         syncCurrentHypnogramDocumentContextFromRuntime()
-        activePlayer.notifyHypnogramMutated()
+        notifyHypnogramMutated()
         objectWillChange.send()
     }
 
     func setTransitionStyle(_ style: TransitionRenderer.TransitionType) {
         livePlayer.transitionType = style
         syncCurrentHypnogramDocumentContextFromRuntime()
-        activePlayer.notifyHypnogramMutated()
+        notifyHypnogramMutated()
         objectWillChange.send()
     }
 
@@ -399,7 +398,7 @@ extension Studio {
         let clampedDuration = min(max(duration, 0.1), 3.0)
         livePlayer.crossfadeDuration = clampedDuration
         syncCurrentHypnogramDocumentContextFromRuntime()
-        activePlayer.notifyHypnogramMutated()
+        notifyHypnogramMutated()
         objectWillChange.send()
     }
 
@@ -433,7 +432,7 @@ extension Studio {
 
     private func resolveSelectedSourceIndexForCuration() -> Int? {
         if activePlayer.currentLayerIndex == -1 {
-            if activePlayer.layers.count == 1 {
+            if currentLayers.count == 1 {
                 return 0
             }
             return nil
@@ -443,7 +442,7 @@ extension Studio {
 
     private func curateCurrentSource(_ action: SourceCurationAction) {
         guard let idx = resolveSelectedSourceIndexForCuration() else {
-            if activePlayer.layers.isEmpty {
+            if currentLayers.isEmpty {
                 AppNotifications.show("No layers selected", flash: true, duration: 1.25)
             } else {
                 AppNotifications.show("Select a layer (1-9)", flash: true, duration: 1.25)
@@ -451,12 +450,12 @@ extension Studio {
             return
         }
 
-        guard idx >= 0, idx < activePlayer.layers.count else {
+        guard idx >= 0, idx < currentLayers.count else {
             AppNotifications.show("No layer selected", flash: true, duration: 1.25)
             return
         }
 
-        let file = activePlayer.layers[idx].mediaClip.file
+        let file = currentLayers[idx].mediaClip.file
 
         switch file.source {
         case .url:

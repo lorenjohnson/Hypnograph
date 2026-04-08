@@ -41,7 +41,7 @@ extension Studio {
 
         EffectChainLibraryActions.importChainsFromSession(mutableHypnogram, into: effectsSession)
         performWithoutMarkingWorkingHypnogramDirty {
-            player.setHypnogram(mutableHypnogram)
+            setHypnogram(mutableHypnogram)
             setActiveWorkingHypnogramURL(sourceURL)
             clearUnsavedWorkingHypnogramChanges()
             clearAllSaveTargets()
@@ -51,7 +51,7 @@ extension Studio {
             player.hasPendingGeneratedNextComposition = false
         }
         player.effectManager.clearFrameBuffer()
-        player.notifyHypnogramChanged()
+        notifyHypnogramChanged()
     }
 
     func confirmReplacingWorkingHypnogramIfNeeded(actionDescription: String) -> Bool {

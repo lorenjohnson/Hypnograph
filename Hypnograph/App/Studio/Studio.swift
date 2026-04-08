@@ -40,6 +40,10 @@ final class Studio: ObservableObject {
 
     // MARK: - Player States
 
+    @Published var hypnogram: Hypnogram
+    @Published var currentCompositionIndex: Int
+    @Published private(set) var hypnogramRevision: Int = 0
+
     /// In-app deck - a layered clip
     let player: PlayerState
 
@@ -159,9 +163,24 @@ final class Studio: ObservableObject {
         self.effectsLibrarySession = EffectsSession(filename: "effects-library.json")
         self.recentEffectsStore = RecentEffectChainsStore()
 
+        let initialHypnogram = Hypnogram(
+            compositions: [
+                Composition(
+                    layers: [],
+                    targetDuration: CMTime(seconds: 15, preferredTimescale: 600),
+                    playRate: 1.0
+                )
+            ]
+        )
+        self.hypnogram = initialHypnogram
+        self.currentCompositionIndex = 0
+
         // Create the preview player state (single deck) + live display
         let initialPlayerConfig = PlayerConfiguration.defaultValue(maxLayers: state.settings.maxLayers)
-        self.player = PlayerState(config: initialPlayerConfig, effectsSession: effectsLibrarySession)
+        self.player = PlayerState(
+            config: initialPlayerConfig,
+            effectsSession: effectsLibrarySession
+        )
         self.livePlayer = LivePlayer(
             config: initialPlayerConfig,
             sourceFraming: .fill,
@@ -176,6 +195,25 @@ final class Studio: ObservableObject {
 
         // Create audio controller (handles device selection, volume, persistence)
         self.audioController = AudioController(settingsStore: state.settingsStore, livePlayer: livePlayer)
+
+        player.configureDocumentBindings(
+            compositionProvider: { [unowned self] in self.currentComposition },
+            setCompositionEffectChain: { [weak self] chain in
+                self?.updateCurrentComposition { $0.effectChain = chain }
+            },
+            setSourceEffectChain: { [weak self] sourceIndex, chain in
+                self?.updateCurrentComposition { composition in
+                    guard sourceIndex >= 0, sourceIndex < composition.layers.count else { return }
+                    composition.layers[sourceIndex].effectChain = chain
+                }
+            },
+            setBlendMode: { [weak self] sourceIndex, blendMode in
+                self?.updateCurrentComposition { composition in
+                    guard sourceIndex >= 0, sourceIndex < composition.layers.count else { return }
+                    composition.layers[sourceIndex].blendMode = blendMode
+                }
+            }
+        )
 
         // Forward player state changes to Studio's objectWillChange for SwiftUI reactivity
         player.objectWillChange
@@ -226,6 +264,136 @@ final class Studio: ObservableObject {
         setupHistoryPersistence()
     }
 
+    // MARK: - Working Hypnogram
+
+    var currentComposition: Composition {
+        get {
+            let index = max(0, min(currentCompositionIndex, max(0, hypnogram.compositions.count - 1)))
+            var composition = hypnogram.compositions[index]
+            composition.syncTargetDurationToLayers()
+            return composition
+        }
+        set {
+            guard !hypnogram.compositions.isEmpty else { return }
+            let index = max(0, min(currentCompositionIndex, hypnogram.compositions.count - 1))
+            var normalized = newValue
+            normalized.syncTargetDurationToLayers()
+            hypnogram.compositions[index] = normalized
+            notifyHypnogramChanged()
+        }
+    }
+
+    var currentLayers: [Layer] {
+        get { currentComposition.layers }
+        set { updateCurrentComposition { $0.layers = newValue } }
+    }
+
+    var effectChain: EffectChain {
+        get { currentComposition.effectChain }
+        set { updateCurrentComposition { $0.effectChain = newValue } }
+    }
+
+    var playRate: Float {
+        get { currentComposition.playRate }
+        set { updateCurrentComposition { $0.playRate = newValue } }
+    }
+
+    var targetDuration: CMTime {
+        get { currentComposition.effectiveDuration }
+        set { updateCurrentComposition { $0.targetDuration = newValue } }
+    }
+
+    var currentLayer: Layer? {
+        guard player.currentLayerIndex >= 0, player.currentLayerIndex < currentLayers.count else { return nil }
+        return currentLayers[player.currentLayerIndex]
+    }
+
+    var currentMediaClip: MediaClip? {
+        currentLayer?.mediaClip
+    }
+
+    var isOnCompositionLayer: Bool {
+        player.currentLayerIndex == -1
+    }
+
+    private func updateCurrentComposition(_ update: (inout Composition) -> Void) {
+        var composition = currentComposition
+        update(&composition)
+        currentComposition = composition
+    }
+
+    func setHypnogram(_ newHypnogram: Hypnogram) {
+        var normalizedHypnogram = newHypnogram
+        for index in normalizedHypnogram.compositions.indices {
+            normalizedHypnogram.compositions[index].syncTargetDurationToLayers()
+        }
+
+        hypnogram = normalizedHypnogram
+        currentCompositionIndex = max(
+            0,
+            min(normalizedHypnogram.currentCompositionIndex ?? 0, max(0, normalizedHypnogram.compositions.count - 1))
+        )
+        player.currentRenderedCompositionID = nil
+        player.currentCompositionPreviewNeedsRefresh = true
+        player.suppressNextPreviewInvalidation = false
+        hypnogramRevision &+= 1
+    }
+
+    func notifyHypnogramChanged() {
+        hypnogramRevision &+= 1
+        player.effectsChangeCounter += 1
+    }
+
+    func notifyHypnogramMutated() {
+        for index in hypnogram.compositions.indices {
+            hypnogram.compositions[index].syncTargetDurationToLayers()
+        }
+        hypnogramRevision &+= 1
+    }
+
+    func selectSource(_ index: Int) {
+        guard index >= -1, index < currentLayers.count else { return }
+        player.currentLayerIndex = index
+    }
+
+    func selectCompositionLayer() {
+        player.currentLayerIndex = -1
+    }
+
+    func nextSource() {
+        guard !currentLayers.isEmpty else { return }
+        if player.currentLayerIndex == -1 {
+            player.currentLayerIndex = 0
+        } else if player.currentLayerIndex >= currentLayers.count - 1 {
+            player.currentLayerIndex = -1
+        } else {
+            player.currentLayerIndex += 1
+        }
+    }
+
+    func previousSource() {
+        guard !currentLayers.isEmpty else { return }
+        if player.currentLayerIndex == -1 {
+            player.currentLayerIndex = currentLayers.count - 1
+        } else if player.currentLayerIndex == 0 {
+            player.currentLayerIndex = -1
+        } else {
+            player.currentLayerIndex -= 1
+        }
+    }
+
+    func clampCurrentSourceIndex() {
+        if player.currentLayerIndex == -1 { return }
+        let maxIndex = currentLayers.count - 1
+        if maxIndex < 0 {
+            player.currentLayerIndex = -1
+            return
+        }
+        if player.currentLayerIndex > maxIndex {
+            player.currentLayerIndex = maxIndex
+        }
+    }
+
     // MARK: - Display
 
     func makeDisplayView() -> AnyView {
@@ -236,22 +404,22 @@ final class Studio: ObservableObject {
             )
         }
 
-        if activePlayer.hypnogram.compositions.isEmpty || activePlayer.layers.isEmpty {
+        if hypnogram.compositions.isEmpty || currentLayers.isEmpty {
             // Avoid an infinite "generate new clip" loop when the media library is empty.
             if state.library.assetCount == 0 {
                 return AnyView(NoSourcesView(state: state, main: self))
             }
 
-            if activePlayer.hypnogram.compositions.isEmpty {
+            if hypnogram.compositions.isEmpty {
                 replaceHistoryWithNewComposition()
-            } else if activePlayer.layers.isEmpty {
+            } else if currentLayers.isEmpty {
                 // Defensive: keep history shape, just replace the current composition if it is empty.
                 replaceCurrentCompositionWithNewComposition()
             }
         }
 
         let player = activePlayer
-        let composition = player.currentComposition
+        let composition = currentComposition
 
         if currentCompositionRequiresPhotosAccess(composition) && !state.photosAuthorizationStatus.canRead {
             return AnyView(PhotosAccessRequiredView(state: state, main: self))
@@ -271,7 +439,7 @@ final class Studio: ObservableObject {
         let sourceFraming = currentDocumentSourceFraming
         let playbackEndBehavior: PlaybackEndBehavior
         let isLastCompositionInSequence =
-            player.currentCompositionIndex >= max(0, player.hypnogram.compositions.count - 1)
+            currentCompositionIndex >= max(0, hypnogram.compositions.count - 1)
         switch state.settings.playbackLoopMode {
         case .composition:
             playbackEndBehavior = .loopComposition
@@ -311,7 +479,7 @@ final class Studio: ObservableObject {
             get: { player.hasPendingGeneratedNextComposition },
             set: { player.hasPendingGeneratedNextComposition = $0 }
         )
-        let viewID = "main-preview-\(player.config.viewID)-\(player.playRate)"
+        let viewID = "main-preview-\(player.config.viewID)-\(playRate)"
 
         return AnyView(
             PlayerView(
@@ -332,7 +500,7 @@ final class Studio: ObservableObject {
                 ),
                 isPaused: player.isPaused,
                 effectsChangeCounter: player.effectsChangeCounter,
-                hypnogramRevision: player.hypnogramRevision,
+                hypnogramRevision: hypnogramRevision,
                 effectManager: player.effectManager,
                 volume: volume,
                 audioDeviceUID: audioDeviceUID,
@@ -386,7 +554,7 @@ final class Studio: ObservableObject {
     /// Build a hypnogram snapshot for display/export (timestamp + effects library snapshot)
     func makeDisplayHypnogram() -> Hypnogram {
         let createdAt = Date()
-        var composition = activePlayer.currentComposition
+        var composition = currentComposition
         composition.createdAt = createdAt
         return makeHypnogramWithCurrentDocumentContext(
             compositions: [composition],
@@ -468,37 +636,37 @@ final class Studio: ObservableObject {
     }
 
     func copyDocumentContext(from hypnogram: Hypnogram) {
-        player.hypnogram.aspectRatio = resolvedAspectRatio(for: hypnogram)
-        player.hypnogram.playerResolution = resolvedPlayerResolution(for: hypnogram)
-        player.hypnogram.outputResolution = resolvedOutputResolution(for: hypnogram)
-        player.hypnogram.sourceFraming = resolvedSourceFraming(for: hypnogram)
-        player.hypnogram.transitionStyle = resolvedTransitionStyle(for: hypnogram)
-        player.hypnogram.transitionDuration = resolvedTransitionDuration(for: hypnogram)
+        self.hypnogram.aspectRatio = resolvedAspectRatio(for: hypnogram)
+        self.hypnogram.playerResolution = resolvedPlayerResolution(for: hypnogram)
+        self.hypnogram.outputResolution = resolvedOutputResolution(for: hypnogram)
+        self.hypnogram.sourceFraming = resolvedSourceFraming(for: hypnogram)
+        self.hypnogram.transitionStyle = resolvedTransitionStyle(for: hypnogram)
+        self.hypnogram.transitionDuration = resolvedTransitionDuration(for: hypnogram)
     }
 
     func syncCurrentHypnogramDocumentContextFromRuntime() {
-        player.hypnogram.aspectRatio = currentDocumentAspectRatio
-        player.hypnogram.playerResolution = currentDocumentPlayerResolution
-        player.hypnogram.outputResolution = currentDocumentOutputResolution
-        player.hypnogram.sourceFraming = currentDocumentSourceFraming
-        player.hypnogram.transitionStyle = currentDocumentTransitionStyle
-        player.hypnogram.transitionDuration = currentDocumentTransitionDuration
+        hypnogram.aspectRatio = currentDocumentAspectRatio
+        hypnogram.playerResolution = currentDocumentPlayerResolution
+        hypnogram.outputResolution = currentDocumentOutputResolution
+        hypnogram.sourceFraming = currentDocumentSourceFraming
+        hypnogram.transitionStyle = currentDocumentTransitionStyle
+        hypnogram.transitionDuration = currentDocumentTransitionDuration
     }
 
     func applyCurrentHypnogramDocumentContextToRuntime() {
-        let aspectRatio = resolvedAspectRatio(for: player.hypnogram)
-        let playerResolution = resolvedPlayerResolution(for: player.hypnogram)
-        let outputResolution = resolvedOutputResolution(for: player.hypnogram)
-        let sourceFraming = resolvedSourceFraming(for: player.hypnogram)
-        let transitionStyle = resolvedTransitionStyle(for: player.hypnogram)
-        let transitionDuration = resolvedTransitionDuration(for: player.hypnogram)
+        let aspectRatio = resolvedAspectRatio(for: hypnogram)
+        let playerResolution = resolvedPlayerResolution(for: hypnogram)
+        let outputResolution = resolvedOutputResolution(for: hypnogram)
+        let sourceFraming = resolvedSourceFraming(for: hypnogram)
+        let transitionStyle = resolvedTransitionStyle(for: hypnogram)
+        let transitionDuration = resolvedTransitionDuration(for: hypnogram)
 
-        player.hypnogram.aspectRatio = aspectRatio
-        player.hypnogram.playerResolution = playerResolution
-        player.hypnogram.outputResolution = outputResolution
-        player.hypnogram.sourceFraming = sourceFraming
-        player.hypnogram.transitionStyle = transitionStyle
-        player.hypnogram.transitionDuration = transitionDuration
+        hypnogram.aspectRatio = aspectRatio
+        hypnogram.playerResolution = playerResolution
+        hypnogram.outputResolution = outputResolution
+        hypnogram.sourceFraming = sourceFraming
+        hypnogram.transitionStyle = transitionStyle
+        hypnogram.transitionDuration = transitionDuration
         self.outputResolution = outputResolution
 
         if player.config.aspectRatio != aspectRatio {
@@ -520,7 +688,7 @@ final class Studio: ObservableObject {
     }
 
     var currentSaveTargetURL: URL? {
-        saveTargetsByCompositionID[activePlayer.currentComposition.id]
+        saveTargetsByCompositionID[currentComposition.id]
     }
 
     func setSaveTargetURL(_ url: URL?, for compositionID: UUID) {
@@ -545,7 +713,7 @@ final class Studio: ObservableObject {
     }
 
     func pruneSaveTargetsToCurrentHypnogram() {
-        let validIDs = Set(activePlayer.hypnogram.compositions.map(\.id))
+        let validIDs = Set(hypnogram.compositions.map(\.id))
         saveTargetsByCompositionID = saveTargetsByCompositionID.filter { validIDs.contains($0.key) }
     }
 

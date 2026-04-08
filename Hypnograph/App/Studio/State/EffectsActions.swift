@@ -13,12 +13,12 @@ extension Studio {
 
         let sourceCount = isLiveMode
             ? livePlayer.activeLayerCount
-            : activePlayer.activeLayerCount
+            : currentLayers.count
 
         for i in 0..<sourceCount {
             activeEffectManager.clearEffect(for: i)
-            if !isLiveMode && i > 0 && i < activePlayer.layers.count {
-                activePlayer.layers[i].blendMode = BlendMode.defaultMontage
+            if !isLiveMode && i > 0 && i < currentLayers.count {
+                currentLayers[i].blendMode = BlendMode.defaultMontage
             }
         }
     }

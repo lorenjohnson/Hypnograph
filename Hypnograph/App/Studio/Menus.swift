@@ -26,7 +26,7 @@ extension Studio {
         isTyping || !isMainWindowShortcutContext
     }
     fileprivate var hasSelectedActualLayer: Bool {
-        activePlayer.currentLayerIndex >= 0 && activePlayer.currentLayerIndex < activePlayer.layers.count
+        activePlayer.currentLayerIndex >= 0 && activePlayer.currentLayerIndex < currentLayers.count
     }
 
     @ViewBuilder
@@ -206,14 +206,14 @@ extension Studio {
             .disabled(disableMainWindowShortcuts)
 
             Button("Composition") { [self] in
-                activePlayer.selectCompositionLayer()
+                selectCompositionLayer()
             }
             .keyboardShortcut("`", modifiers: [])
             .disabled(disableMainWindowShortcuts)
 
             ForEach(0..<9, id: \.self) { [self] idx in
                 Button("Select \(idx + 1)") { [self] in
-                    self.selectSource(index: idx)
+                    self.selectSource(idx)
                 }
                 .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
                 .disabled(disableMainWindowShortcuts)

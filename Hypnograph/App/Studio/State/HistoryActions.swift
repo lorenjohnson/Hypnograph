@@ -24,7 +24,7 @@ extension Studio {
             }
         }
 
-        player.$hypnogramRevision
+        $hypnogramRevision
             .dropFirst()
             .sink { [weak self] _ in
                 self?.scheduleHistorySave()
@@ -32,7 +32,7 @@ extension Studio {
             }
             .store(in: &historySaveCancellables)
 
-        player.$currentCompositionIndex
+        $currentCompositionIndex
             .dropFirst()
             .sink { [weak self] _ in
                 self?.scheduleHistorySave()
@@ -53,7 +53,7 @@ extension Studio {
     func saveHistory(synchronous: Bool) {
         guard isUsingDefaultWorkingHypnogram else { return }
         syncCurrentHypnogramDocumentContextFromRuntime()
-        var history = player.hypnogram
+        var history = hypnogram
         history.currentCompositionIndex = clampedCurrentCompositionIndex
         history.snapshot = nil
         historyPersistenceService.save(
@@ -85,38 +85,38 @@ extension Studio {
     }
 
     var currentCompositionIndicatorText: String {
-        let compositions = player.hypnogram.compositions
+        let compositions = hypnogram.compositions
         guard !compositions.isEmpty else { return "Composition --" }
-        let displayIndex = max(0, min(player.currentCompositionIndex, compositions.count - 1)) + 1
+        let displayIndex = max(0, min(currentCompositionIndex, compositions.count - 1)) + 1
         return "Composition \(displayIndex)"
     }
 
     var currentHistoryPositionText: String {
-        let compositions = player.hypnogram.compositions
+        let compositions = hypnogram.compositions
         guard !compositions.isEmpty else { return "--/--" }
-        let displayIndex = max(0, min(player.currentCompositionIndex, compositions.count - 1)) + 1
+        let displayIndex = max(0, min(currentCompositionIndex, compositions.count - 1)) + 1
         return "\(displayIndex)/\(compositions.count)"
     }
 
     var isViewingHistoryComposition: Bool {
-        let count = player.hypnogram.compositions.count
+        let count = hypnogram.compositions.count
         guard count > 1 else { return false }
-        return player.currentCompositionIndex < (count - 1)
+        return currentCompositionIndex < (count - 1)
     }
 
     func enforceHistoryLimit() {
         guard isUsingDefaultWorkingHypnogram else { return }
         let limit = max(1, state.settings.historyLimit)
-        let overflow = max(0, player.hypnogram.compositions.count - limit)
+        let overflow = max(0, hypnogram.compositions.count - limit)
         guard overflow > 0 else { return }
 
-        player.hypnogram.compositions.removeFirst(overflow)
-        player.currentCompositionIndex = max(0, player.currentCompositionIndex - overflow)
-        player.notifyHypnogramMutated()
+        hypnogram.compositions.removeFirst(overflow)
+        currentCompositionIndex = max(0, currentCompositionIndex - overflow)
+        notifyHypnogramMutated()
     }
 
     func applyCompositionSelectionChanged(manual: Bool) {
-        let selectedCompositionID = player.currentComposition.id
+        let selectedCompositionID = currentComposition.id
         compositionSelectionUpdateToken &+= 1
         let token = compositionSelectionUpdateToken
         compositionSelectionWorkItem?.cancel()
@@ -124,14 +124,14 @@ extension Studio {
         let workItem = DispatchWorkItem { [weak self] in
             guard let self else { return }
             guard self.compositionSelectionUpdateToken == token else { return }
-            guard self.player.currentComposition.id == selectedCompositionID else { return }
+            guard self.currentComposition.id == selectedCompositionID else { return }
 
             self.player.currentCompositionLoadFailure = nil
-            self.player.clampCurrentSourceIndex()
+            self.clampCurrentSourceIndex()
             self.player.currentLayerTimeOffset = nil
             self.player.effectManager.clearFrameBuffer()
             self.player.effectManager.invalidateBlendAnalysis()
-            self.player.notifyHypnogramChanged()
+            self.notifyHypnogramChanged()
 
             if manual {
                 self.flashHistoryIndicator()
@@ -144,43 +144,43 @@ extension Studio {
 
     func previousComposition() {
         if isLoopSequenceEnabled {
-            guard !player.hypnogram.compositions.isEmpty else { return }
+            guard !hypnogram.compositions.isEmpty else { return }
             persistCurrentCompositionPreviewIfNeeded()
             player.hasPendingGeneratedNextComposition = false
             player.currentCompositionLoadFailure = nil
-            player.currentCompositionIndex = player.currentCompositionIndex > 0
-                ? (player.currentCompositionIndex - 1)
-                : (player.hypnogram.compositions.count - 1)
+            currentCompositionIndex = currentCompositionIndex > 0
+                ? (currentCompositionIndex - 1)
+                : (hypnogram.compositions.count - 1)
             applyCompositionSelectionChanged(manual: true)
             return
         }
 
-        guard player.currentCompositionIndex > 0 else { return }
+        guard currentCompositionIndex > 0 else { return }
         persistCurrentCompositionPreviewIfNeeded()
         player.hasPendingGeneratedNextComposition = false
         player.currentCompositionLoadFailure = nil
-        player.currentCompositionIndex -= 1
+        currentCompositionIndex -= 1
         applyCompositionSelectionChanged(manual: true)
     }
 
     func nextComposition() {
         if isLoopSequenceEnabled {
-            guard !player.hypnogram.compositions.isEmpty else { return }
+            guard !hypnogram.compositions.isEmpty else { return }
             persistCurrentCompositionPreviewIfNeeded()
             player.hasPendingGeneratedNextComposition = false
             player.currentCompositionLoadFailure = nil
-            let nextIndex = player.currentCompositionIndex + 1
-            player.currentCompositionIndex = nextIndex < player.hypnogram.compositions.count ? nextIndex : 0
+            let nextIndex = currentCompositionIndex + 1
+            currentCompositionIndex = nextIndex < hypnogram.compositions.count ? nextIndex : 0
             applyCompositionSelectionChanged(manual: true)
             return
         }
 
-        let nextIndex = player.currentCompositionIndex + 1
-        if nextIndex < player.hypnogram.compositions.count {
+        let nextIndex = currentCompositionIndex + 1
+        if nextIndex < hypnogram.compositions.count {
             persistCurrentCompositionPreviewIfNeeded()
             player.hasPendingGeneratedNextComposition = false
             player.currentCompositionLoadFailure = nil
-            player.currentCompositionIndex = nextIndex
+            currentCompositionIndex = nextIndex
             applyCompositionSelectionChanged(manual: true)
         } else {
             guard !player.hasPendingGeneratedNextComposition else { return }
@@ -190,26 +190,26 @@ extension Studio {
     }
 
     func jumpToComposition(at index: Int) {
-        guard !player.hypnogram.compositions.isEmpty else { return }
+        guard !hypnogram.compositions.isEmpty else { return }
 
-        let clampedIndex = max(0, min(index, player.hypnogram.compositions.count - 1))
-        guard clampedIndex != player.currentCompositionIndex else { return }
+        let clampedIndex = max(0, min(index, hypnogram.compositions.count - 1))
+        guard clampedIndex != currentCompositionIndex else { return }
 
         persistCurrentCompositionPreviewIfNeeded()
         player.hasPendingGeneratedNextComposition = false
         player.currentCompositionLoadFailure = nil
-        player.currentCompositionIndex = clampedIndex
+        currentCompositionIndex = clampedIndex
         applyCompositionSelectionChanged(manual: true)
     }
 
     func deleteCurrentComposition() {
-        deleteComposition(at: player.currentCompositionIndex)
+        deleteComposition(at: currentCompositionIndex)
     }
 
     func deleteComposition(at index: Int) {
-        guard !player.hypnogram.compositions.isEmpty else { return }
+        guard !hypnogram.compositions.isEmpty else { return }
 
-        if player.hypnogram.compositions.count == 1 {
+        if hypnogram.compositions.count == 1 {
             if isUsingDefaultWorkingHypnogram {
                 replaceHistoryWithNewComposition()
             } else {
@@ -219,43 +219,43 @@ extension Studio {
             return
         }
 
-        let clampedIndex = max(0, min(index, player.hypnogram.compositions.count - 1))
-        player.hypnogram.compositions.remove(at: clampedIndex)
+        let clampedIndex = max(0, min(index, hypnogram.compositions.count - 1))
+        hypnogram.compositions.remove(at: clampedIndex)
 
-        if clampedIndex < player.currentCompositionIndex {
-            player.currentCompositionIndex -= 1
-        } else if clampedIndex == player.currentCompositionIndex {
-            player.currentCompositionIndex = min(
+        if clampedIndex < currentCompositionIndex {
+            currentCompositionIndex -= 1
+        } else if clampedIndex == currentCompositionIndex {
+            currentCompositionIndex = min(
                 clampedIndex,
-                max(0, player.hypnogram.compositions.count - 1)
+                max(0, hypnogram.compositions.count - 1)
             )
         }
 
-        player.notifyHypnogramMutated()
+        notifyHypnogramMutated()
         applyCompositionSelectionChanged(manual: true)
     }
 
     func clearHistory() {
-        let composition = player.currentComposition
-        player.hypnogram = makeHypnogramWithCurrentDocumentContext(
+        let composition = currentComposition
+        hypnogram = makeHypnogramWithCurrentDocumentContext(
             compositions: [composition],
             currentCompositionIndex: 0
         )
-        player.currentCompositionIndex = 0
-        player.notifyHypnogramMutated()
+        currentCompositionIndex = 0
+        notifyHypnogramMutated()
         applyCompositionSelectionChanged(manual: true)
     }
 
     private var clampedCurrentCompositionIndex: Int {
-        max(0, min(player.currentCompositionIndex, max(0, player.hypnogram.compositions.count - 1)))
+        max(0, min(currentCompositionIndex, max(0, hypnogram.compositions.count - 1)))
     }
 
     private func syncCurrentCompositionIndexIntoHypnogram() {
-        player.hypnogram.currentCompositionIndex = clampedCurrentCompositionIndex
+        hypnogram.currentCompositionIndex = clampedCurrentCompositionIndex
     }
 
     func persistCurrentCompositionPreviewIfNeeded() {
-        let composition = player.currentComposition
+        let composition = currentComposition
         let compositionIndex = clampedCurrentCompositionIndex
         guard player.currentCompositionPreviewNeedsRefresh else { return }
         guard player.currentRenderedCompositionID == composition.id else { return }
@@ -267,22 +267,22 @@ extension Studio {
                   let previewImages = CompositionPreviewImageCodec.makePreviewImages(from: frameSnapshot) else { return }
 
             Task { @MainActor in
-                guard compositionIndex < self.player.hypnogram.compositions.count else { return }
-                guard self.player.hypnogram.compositions[compositionIndex].id == compositionID else { return }
+                guard compositionIndex < self.hypnogram.compositions.count else { return }
+                guard self.hypnogram.compositions[compositionIndex].id == compositionID else { return }
 
-                self.player.hypnogram.compositions[compositionIndex].snapshot = previewImages.snapshotBase64
-                self.player.hypnogram.compositions[compositionIndex].thumbnail = previewImages.thumbnailBase64
+                self.hypnogram.compositions[compositionIndex].snapshot = previewImages.snapshotBase64
+                self.hypnogram.compositions[compositionIndex].thumbnail = previewImages.thumbnailBase64
                 self.player.currentCompositionPreviewNeedsRefresh = false
                 self.player.suppressNextPreviewInvalidation = true
                 self.performWithoutMarkingWorkingHypnogramDirty {
-                    self.player.notifyHypnogramMutated()
+                    self.notifyHypnogramMutated()
                 }
             }
         }
     }
 
     private func flashHistoryIndicator() {
-        guard !player.hypnogram.compositions.isEmpty else { return }
+        guard !hypnogram.compositions.isEmpty else { return }
         historyIndicatorText = currentHistoryPositionText
 
         historyIndicatorClearWorkItem?.cancel()

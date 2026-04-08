@@ -20,7 +20,7 @@ struct EffectChainLibraryView: View {
 
     private var selectedLayerIndex: Int? {
         let idx = main.activePlayer.currentLayerIndex
-        guard idx >= 0, idx < main.activePlayer.layers.count else { return nil }
+        guard idx >= 0, idx < main.currentLayers.count else { return nil }
         return idx
     }
 

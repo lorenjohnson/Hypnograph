@@ -89,24 +89,24 @@ extension Studio {
 
     func replaceHistoryWithNewComposition() {
         let composition = makeRandomComposition(preservingGlobalEffectFrom: nil)
-        player.hypnogram = makeHypnogramWithCurrentDocumentContext(
+        hypnogram = makeHypnogramWithCurrentDocumentContext(
             compositions: [composition],
             currentCompositionIndex: 0,
         )
         setActiveWorkingHypnogramURL(nil)
         clearUnsavedWorkingHypnogramChanges()
-        player.currentCompositionIndex = 0
+        currentCompositionIndex = 0
         player.currentLayerIndex = -1
         clearAllSaveTargets()
         applyCurrentHypnogramDocumentContextToRuntime()
-        player.notifyHypnogramMutated()
+        notifyHypnogramMutated()
         applyCompositionSelectionChanged(manual: false)
     }
 
     func replaceCurrentCompositionWithNewComposition(manual: Bool = false) {
-        let replacedCompositionID = player.currentComposition.id
-        let composition = makeRandomComposition(preservingGlobalEffectFrom: player.currentComposition)
-        player.currentComposition = composition
+        let replacedCompositionID = currentComposition.id
+        let composition = makeRandomComposition(preservingGlobalEffectFrom: currentComposition)
+        currentComposition = composition
         player.currentLayerIndex = -1
         clearSaveTarget(for: replacedCompositionID)
         pruneSaveTargetsToCurrentHypnogram()
@@ -115,13 +115,13 @@ extension Studio {
 
     func insertNewCompositionAfterCurrentAndSelect(manual: Bool) {
         persistCurrentCompositionPreviewIfNeeded()
-        let composition = makeRandomComposition(preservingGlobalEffectFrom: player.currentComposition)
-        let insertIndex = min(player.currentCompositionIndex + 1, player.hypnogram.compositions.count)
-        player.hypnogram.compositions.insert(composition, at: insertIndex)
-        player.currentCompositionIndex = insertIndex
+        let composition = makeRandomComposition(preservingGlobalEffectFrom: currentComposition)
+        let insertIndex = min(currentCompositionIndex + 1, hypnogram.compositions.count)
+        hypnogram.compositions.insert(composition, at: insertIndex)
+        currentCompositionIndex = insertIndex
         player.currentLayerIndex = -1
         pruneSaveTargetsToCurrentHypnogram()
-        player.notifyHypnogramMutated()
+        notifyHypnogramMutated()
         enforceHistoryLimit()
         applyCompositionSelectionChanged(manual: manual)
     }
@@ -129,12 +129,12 @@ extension Studio {
     @discardableResult
     func advanceOrGenerateOnCompositionEnded(loopSequenceAtEnd: Bool, generateAtEnd: Bool) -> Bool {
         persistCurrentCompositionPreviewIfNeeded()
-        let nextIndex = player.currentCompositionIndex + 1
-        if nextIndex < player.hypnogram.compositions.count {
-            player.currentCompositionIndex = nextIndex
+        let nextIndex = currentCompositionIndex + 1
+        if nextIndex < hypnogram.compositions.count {
+            currentCompositionIndex = nextIndex
             applyCompositionSelectionChanged(manual: false)
-        } else if loopSequenceAtEnd, !player.hypnogram.compositions.isEmpty {
-            player.currentCompositionIndex = 0
+        } else if loopSequenceAtEnd, !hypnogram.compositions.isEmpty {
+            currentCompositionIndex = 0
             applyCompositionSelectionChanged(manual: false)
         } else if generateAtEnd {
             insertNewCompositionAfterCurrentAndSelect(manual: false)

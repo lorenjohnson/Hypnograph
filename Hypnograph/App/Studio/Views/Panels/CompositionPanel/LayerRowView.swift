@@ -128,7 +128,7 @@ struct LayerRowView: View {
 
             Button {
                 layer.isMuted.toggle()
-                main.activePlayer.notifyHypnogramMutated()
+                main.notifyHypnogramMutated()
             } label: {
                 Text("M")
                     .font(.caption.weight(.bold))
@@ -224,7 +224,7 @@ struct LayerRowView: View {
                     set: { newValue in
                         guard index != 0 else { return }
                         layer.blendMode = newValue
-                        main.activePlayer.notifyHypnogramMutated()
+                        main.notifyHypnogramMutated()
                     }
                 )) {
                     Text("Normal").tag(BlendMode.sourceOver)
@@ -260,7 +260,7 @@ struct LayerRowView: View {
                             if layer.opacity > 0.001 {
                                 lastVisibleOpacity = layer.opacity
                             }
-                            main.activePlayer.notifyHypnogramMutated()
+                            main.notifyHypnogramMutated()
                         }
                     ),
                     bounds: 0...1
@@ -284,7 +284,7 @@ struct LayerRowView: View {
             lastVisibleOpacity = layer.opacity
             layer.opacity = 0
         }
-        main.activePlayer.notifyHypnogramMutated()
+        main.notifyHypnogramMutated()
     }
 
     private func subtitleBase() -> String? {

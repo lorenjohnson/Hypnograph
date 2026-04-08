@@ -30,8 +30,8 @@ struct ContentView: View {
     }
 
     private var layerTrimContexts: [LayerTrimContext] {
-        let layers = main.activePlayer.layers
-        guard !layers.isEmpty else { return [] }
+        let currentLayers = main.currentLayers
+        guard !currentLayers.isEmpty else { return [] }
 
         func makeContext(layer: Layer, index: Int) -> LayerTrimContext? {
             guard layer.mediaClip.file.mediaKind == .video else { return nil }
@@ -54,14 +54,14 @@ struct ContentView: View {
         }
 
         if main.activePlayer.currentLayerIndex == -1 {
-            return layers.enumerated().compactMap { index, layer in
+            return currentLayers.enumerated().compactMap { index, layer in
                 makeContext(layer: layer, index: index)
             }
         }
 
         let index = main.activePlayer.currentLayerIndex
-        guard index >= 0, index < layers.count else { return [] }
-        guard let context = makeContext(layer: layers[index], index: index) else { return [] }
+        guard index >= 0, index < currentLayers.count else { return [] }
+        guard let context = makeContext(layer: currentLayers[index], index: index) else { return [] }
         return [context]
     }
 
@@ -99,14 +99,14 @@ struct ContentView: View {
         }
 
         // Layer indicators: show during flash solo (1-9 hold) or composition hold (`) while composition effect chains are suspended.
-        guard !main.activePlayer.layers.isEmpty else { return nil }
+        guard !main.currentLayers.isEmpty else { return nil }
 
         if main.activePlayer.effectManager.flashSoloIndex != nil {
-            return ("\(main.activePlayer.currentLayerIndex + 1)/\(main.activePlayer.layers.count)", .red)
+            return ("\(main.activePlayer.currentLayerIndex + 1)/\(main.currentLayers.count)", .red)
         }
 
         if main.activePlayer.isCompositionEffectSuspended {
-            return ("GLOBAL/\(main.activePlayer.layers.count)", .red)
+            return ("GLOBAL/\(main.currentLayers.count)", .red)
         }
 
         return nil
@@ -123,7 +123,7 @@ struct ContentView: View {
             return player.rate != 0
         }
 
-        let clip = main.activePlayer.currentComposition
+        let clip = main.currentComposition
         let hasVideo = clip.layers.contains { $0.mediaClip.file.mediaKind == .video }
         return hasVideo && (main.activePlayer.isPaused == false)
     }
@@ -140,7 +140,7 @@ struct ContentView: View {
         guard !main.isLiveMode else { return [] }
         guard main.activePlayer.isPrimaryCompositionLoadInFlight else { return [] }
 
-        let composition = main.activePlayer.currentComposition
+        let composition = main.currentComposition
         guard !composition.layers.isEmpty else { return [] }
 
         let latestDownloadsByIdentifier = Dictionary(
@@ -224,7 +224,7 @@ struct ContentView: View {
             isPaused: main.activePlayer.isPaused,
             isLoopCompositionEnabled: main.isLoopCompositionEnabled,
             isLoopSequenceEnabled: main.isLoopSequenceEnabled,
-            compositionLengthSeconds: main.activePlayer.targetDuration.seconds,
+            compositionLengthSeconds: main.targetDuration.seconds,
             layerTrimContexts: layerTrimContexts,
             volume: Binding(
                 get: { Double(main.volume) },
@@ -250,11 +250,11 @@ struct ContentView: View {
 
     private var hypnogramsContent: some View {
         HypnogramsPanel(
-            historyEntries: main.activePlayer.hypnogram.compositions.enumerated().map { index, composition in
+            historyEntries: main.hypnogram.compositions.enumerated().map { index, composition in
                 HistoryCompositionEntry(
                     index: index,
                     composition: composition,
-                    isCurrent: index == main.activePlayer.currentCompositionIndex
+                    isCurrent: index == main.currentCompositionIndex
                 )
             },
             recentEntries: hypnogramStore.recent,

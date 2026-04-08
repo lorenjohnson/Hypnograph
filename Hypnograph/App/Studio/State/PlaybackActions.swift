@@ -52,7 +52,7 @@ extension Studio {
     /// Send current hypnogram to live display
     func sendToLivePlayer() {
         livePlayer.send(
-            composition: activePlayer.currentComposition.copyForExport(),
+            composition: currentComposition.copyForExport(),
             config: activePlayer.config
         )
     }
@@ -104,17 +104,5 @@ extension Studio {
         let newValue = !isGenerateAtEndEnabled
         state.setGenerateAtEnd(newValue)
         AppNotifications.show(newValue ? "Generate at End" : "Stop at End", flash: true, duration: 1.25)
-    }
-
-    func nextSource() {
-        activePlayer.nextSource()
-    }
-
-    func previousSource() {
-        activePlayer.previousSource()
-    }
-
-    func selectSource(index: Int) {
-        activePlayer.selectSource(index)
     }
 }

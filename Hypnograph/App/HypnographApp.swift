@@ -131,7 +131,7 @@ struct HypnographApp: App {
                     guard let studio, !studio.isLiveMode else { return false }
                     // Only set flash solo if the source exists, otherwise ignore
                     if let index = sourceIndex {
-                        guard index < studio.player.layers.count else { return false }
+                        guard index < studio.currentLayers.count else { return false }
                     }
                     studio.player.effectManager.setFlashSolo(sourceIndex)
                     return true
@@ -140,12 +140,12 @@ struct HypnographApp: App {
                 // Wire up 1-9 source selection (used by the flash-solo key monitor)
                 appDelegate.selectSourceIndex = { [weak studio] index in
                     guard let studio, !studio.isLiveMode else { return }
-                    guard index >= 0, index < studio.player.layers.count else { return }
-                    studio.player.selectSource(index)
+                    guard index >= 0, index < studio.currentLayers.count else { return }
+                    studio.selectSource(index)
                 }
                 appDelegate.selectCompositionLayer = { [weak studio] in
                     guard let studio, !studio.isLiveMode else { return }
-                    studio.player.selectCompositionLayer()
+                    studio.selectCompositionLayer()
                 }
 
                 // Wire up external file opening (hypnogram documents + media sources)

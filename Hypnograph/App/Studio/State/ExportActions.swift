@@ -32,8 +32,8 @@ extension Studio {
 
     private func makeWorkingHypnogram() -> Hypnogram {
         syncCurrentHypnogramDocumentContextFromRuntime()
-        var hypnogram = activePlayer.hypnogram
-        let currentCompositionIndex = max(0, min(activePlayer.currentCompositionIndex, max(0, hypnogram.compositions.count - 1)))
+        var hypnogram = self.hypnogram
+        let currentCompositionIndex = max(0, min(self.currentCompositionIndex, max(0, hypnogram.compositions.count - 1)))
         hypnogram.currentCompositionIndex = currentCompositionIndex
         return hypnogram
     }
@@ -116,7 +116,7 @@ extension Studio {
         }
 
         let hypnogram = makeDisplayHypnogram().copyForExport()
-        let compositionID = activePlayer.currentComposition.id
+        let compositionID = currentComposition.id
 
         guard let saveURL = currentSaveTargetURL else {
             guard let entry = HypnogramStore.shared.add(hypnogram: hypnogram, snapshot: cgImage, isFavorite: false) else {
@@ -162,12 +162,12 @@ extension Studio {
     }
 
     func renderAndSaveVideo() {
-        guard !activePlayer.layers.isEmpty else {
+        guard !currentLayers.isEmpty else {
             print("Studio: no sources to render.")
             return
         }
 
-        let renderHypnogram = activePlayer.currentComposition.copyForExport()
+        let renderHypnogram = currentComposition.copyForExport()
         let outputSize = exportSettings()
 
         print("Studio: enqueueing clip with \(renderHypnogram.layers.count) layer(s), duration: \(renderHypnogram.effectiveDuration.seconds)s")
@@ -226,7 +226,7 @@ extension Studio {
         }
 
         let hypnogram = makeDisplayHypnogram().copyForExport()
-        let compositionID = activePlayer.currentComposition.id
+        let compositionID = currentComposition.id
         HypnogramFileActions.saveAs(
             hypnogram: hypnogram,
             snapshot: cgImage,
@@ -270,7 +270,7 @@ extension Studio {
     }
 
     func favoriteCurrentHypnogram() {
-        guard !activePlayer.layers.isEmpty else {
+        guard !currentLayers.isEmpty else {
             print("Studio: no sources to favorite")
             return
         }
