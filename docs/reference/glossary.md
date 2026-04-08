@@ -23,6 +23,3 @@ A reusable ordered set of Effects that run one after another. Each Effect proces
 
 **Effect**  
 A single visual effect inside an Effect Chain. In the current implementation, Effects are fundamentally Metal shader-based and may expose parameters that can be adjusted in the UI. For people who want to go deeper, Effects can be created and modified in Effects Composer.
-
-**Effect Chains Library**  
-The reusable library of saved Effect Chains available inside Hypnograph Studio. It is used to store, browse, load, and reapply Effect Chains across different Compositions and Layers.
