@@ -39,8 +39,9 @@ The next visible milestone is a sequence strip or timeline that makes the compos
 - Completed slice: the active working document model now distinguishes between the unnamed default session and file-backed `.hypno` documents without treating history as a different data model.
 - Completed slice: transport behavior is now split cleanly between loop mode (`off`, `composition`, `sequence`) and the app-level `Generate at End` toggle. Manual next-at-end still generates, while loop-sequence also wraps manual sequence navigation.
 - Completed slice: the active working `Hypnogram`, `currentCompositionIndex`, and document revision are now owned directly by `Studio`, while `PlayerState` has been reduced to playback-local concerns.
-- Next slice: reduce the remaining runtime mirroring around document-level settings and then move into the first sequence strip or timeline surface.
-- Follow-on slice: define the first sequence strip or timeline surface, including segment visibility, range selection, and how dense histories are made legible.
+- Completed slice: document-level playback and viewing settings are now read primarily from the working `Hypnogram`, and `PlayerConfiguration` has been reduced back toward generation-only concerns.
+- Next slice: define the first sequence strip or timeline surface, including segment visibility, range selection, and how dense histories are made legible.
+- Follow-on slice: refine the first sequence strip once it exists, especially around density, scrolling, zoom, and reordering.
 - Later slice: refine sequence transport and timeline interaction once a visible sequence range exists, especially around clip-level scrubbing and beginning/end affordances.
 
 ## Open Questions
@@ -76,15 +77,16 @@ That means:
 - The working hypnogram is now owned directly by `Studio`, with `PlayerState` consuming that document instead of storing its own separate hypnogram.
 - Playback transport now uses a three-state loop model (`off`, `composition`, `sequence`) plus an app-level `Generate at End` toggle. These are intentionally runtime behaviors, not hypnogram document state.
 - Passive playback reaching the end of the sequence now either stops, loops the composition, loops the sequence, or continues generating depending on those transport settings, while explicit manual `Next` at the end still generates a new composition.
-- The remaining architectural cleanup is narrower now: document ownership is settled, but some document-level settings are still mirrored across `Studio`, `LivePlayer`, and player configuration more than the desired end state.
+- Document-level playback and viewing settings are now sourced primarily from the working `Hypnogram`, with only the live player keeping a small runtime copy of the values it actively renders with.
+- `PlayerConfiguration` has been reduced back to generation-oriented state rather than acting as a second source of truth for document-level playback settings.
 
 ## Next Refactor
 
-This session is intentionally pausing here. The next clean architectural step is not to add more fields or more migration support, but to simplify the remaining runtime mirroring around the already-established model shape.
+This session is intentionally pausing here. The next clean architectural step is not to add more fields or more migration support, but to start defining the first visible sequence-editing surface on top of the cleaner model.
 
-- Let document-level settings live as current-hypnogram state first, with runtime systems applying from and syncing back to that single source of truth.
-- Remove avoidable mirrored state for those document-level settings where possible, especially where the current implementation is carrying both live runtime values and hypnogram copies only to keep them aligned.
-- Use that cleaner ownership model as the base for the first horizontal sequence strip or timeline surface.
+- Build the first horizontal sequence strip or timeline surface against the now-central `Studio`-owned working hypnogram.
+- Decide how dense sequences should be made legible first: scale only, scrolling, zoom, or some overview-plus-focus combination.
+- Keep the next timeline slice honest to Hypnograph's compound-clip workflow rather than drifting into a generic nonlinear editor.
 
 --- LLM IGNORE EVERYTHING BELOW THIS LINE FOR NOW ---
 

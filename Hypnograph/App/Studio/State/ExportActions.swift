@@ -31,7 +31,6 @@ extension Studio {
     }
 
     private func makeWorkingHypnogram() -> Hypnogram {
-        syncCurrentHypnogramDocumentContextFromRuntime()
         var hypnogram = self.hypnogram
         let currentCompositionIndex = max(0, min(self.currentCompositionIndex, max(0, hypnogram.compositions.count - 1)))
         hypnogram.currentCompositionIndex = currentCompositionIndex

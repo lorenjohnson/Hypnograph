@@ -90,7 +90,7 @@ struct OutputSettingsPanel: View {
 
     @ViewBuilder
     private var aspectRatioButtons: some View {
-        let selectedRatio = isLiveMode ? main.livePlayer.config.aspectRatio : main.currentDocumentAspectRatio
+        let selectedRatio = main.currentDocumentAspectRatio
 
         HStack(spacing: 4) {
             ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in

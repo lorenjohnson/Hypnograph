@@ -52,7 +52,6 @@ extension Studio {
 
     func saveHistory(synchronous: Bool) {
         guard isUsingDefaultWorkingHypnogram else { return }
-        syncCurrentHypnogramDocumentContextFromRuntime()
         var history = hypnogram
         history.currentCompositionIndex = clampedCurrentCompositionIndex
         history.snapshot = nil

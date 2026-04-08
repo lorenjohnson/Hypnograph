@@ -29,7 +29,7 @@ struct LivePreviewPanel: View {
     /// If the player is set to Fill Window, pick a reasonable default based on the live target screen
     /// (external monitor if present, otherwise main).
     private var previewAspectRatio: CGFloat {
-        let ar = livePlayer.config.aspectRatio
+        let ar = livePlayer.aspectRatio
         if !ar.isFillWindow {
             return ar.value
         }

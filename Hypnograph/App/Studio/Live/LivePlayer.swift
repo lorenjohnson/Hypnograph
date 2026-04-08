@@ -24,8 +24,11 @@ final class LivePlayer: ObservableObject {
     /// Transition type for shader-based transitions
     var transitionType: TransitionRenderer.TransitionType = .crossfade
 
-    /// Per-player settings (aspect ratio, resolution, generation settings)
-    @Published var config: PlayerConfiguration
+    /// Display aspect ratio used for live rendering and preview layout.
+    @Published var aspectRatio: AspectRatio
+
+    /// Preview resolution used for live rendering.
+    @Published var playerResolution: OutputResolution
 
     /// Global source framing behavior (Fill vs Fit)
     private var sourceFraming: SourceFraming
@@ -120,13 +123,15 @@ final class LivePlayer: ObservableObject {
     // MARK: - Init
 
     init(
-        config: PlayerConfiguration,
+        aspectRatio: AspectRatio,
+        playerResolution: OutputResolution,
         sourceFraming: SourceFraming,
         transitionStyle: TransitionRenderer.TransitionType,
         transitionDuration: Double,
         effectsSession: EffectsSession
     ) {
-        self.config = config
+        self.aspectRatio = aspectRatio
+        self.playerResolution = playerResolution
         self.sourceFraming = sourceFraming
         self.crossfadeDuration = transitionDuration
         self.transitionType = transitionStyle
@@ -387,8 +392,14 @@ final class LivePlayer: ObservableObject {
     /// Builds the composition asynchronously, then crossfades to it
     /// - Parameters:
     ///   - composition: The composition to display
-    ///   - config: Player configuration (aspect ratio, resolution, etc.)
-    func send(composition: Composition, config: PlayerConfiguration) {
+    func send(
+        composition: Composition,
+        aspectRatio: AspectRatio,
+        playerResolution: OutputResolution,
+        sourceFraming: SourceFraming,
+        transitionStyle: TransitionRenderer.TransitionType,
+        transitionDuration: Double
+    ) {
         // Ensure we have a content view for playback
         ensureContentView()
 
@@ -405,8 +416,11 @@ final class LivePlayer: ObservableObject {
         // Cancel any pending build
         pendingBuildTask?.cancel()
 
-        // Update config from the recipe being sent
-        self.config = config
+        self.aspectRatio = aspectRatio
+        self.playerResolution = playerResolution
+        self.sourceFraming = sourceFraming
+        self.transitionType = transitionStyle
+        self.crossfadeDuration = transitionDuration
 
         // Store the composition for live effect modifications
         self.currentComposition = composition
@@ -427,7 +441,7 @@ final class LivePlayer: ObservableObject {
     /// Build and transition using Metal shader transitions
     private func buildAndTransitionMetal() async {
         guard let composition = currentComposition, let metalContent = contentView else { return }
-        let outputSize = renderSize(aspectRatio: config.aspectRatio, maxDimension: config.playerResolution.maxDimension)
+        let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: playerResolution.maxDimension)
 
         if hasContent, let outgoingComposition = lastRenderedComposition {
             let frozenManager = effectManager.makeTransitionSnapshotManager(

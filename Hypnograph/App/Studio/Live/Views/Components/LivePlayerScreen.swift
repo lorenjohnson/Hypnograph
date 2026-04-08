@@ -82,7 +82,7 @@ struct LiveContentViewWrapper: NSViewRepresentable {
         c.mirrorView?.syncTransitionState()
 
         // Update content mode
-        let contentMode: HypnoCore.RendererView.ContentMode = livePlayer.config.aspectRatio.isFillWindow ? .aspectFill : .aspectFit
+        let contentMode: HypnoCore.RendererView.ContentMode = livePlayer.aspectRatio.isFillWindow ? .aspectFill : .aspectFit
         c.mirrorView?.setContentMode(contentMode)
     }
 

@@ -77,7 +77,7 @@ extension Studio {
         Section("Aspect Ratio") {
             ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
                 Toggle(ratio.menuLabel, isOn: Binding(
-                    get: { [self] in activePlayer.config.aspectRatio == ratio },
+                    get: { [self] in currentDocumentAspectRatio == ratio },
                     set: { [self] in if $0 { setAspectRatio(ratio) } }
                 ))
             }

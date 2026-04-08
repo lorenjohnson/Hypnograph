@@ -366,38 +366,36 @@ extension Studio {
     }
 
     func setAspectRatio(_ ratio: AspectRatio) {
-        activePlayer.config.aspectRatio = ratio
-        livePlayer.config.aspectRatio = ratio
-        syncCurrentHypnogramDocumentContextFromRuntime()
+        hypnogram.aspectRatio = ratio
+        applyCurrentHypnogramDocumentContextToRuntime()
         notifyHypnogramMutated()
         objectWillChange.send()
     }
 
     func setOutputResolution(_ resolution: OutputResolution) {
-        outputResolution = resolution
-        syncCurrentHypnogramDocumentContextFromRuntime()
+        hypnogram.outputResolution = resolution
         notifyHypnogramMutated()
         objectWillChange.send()
     }
 
     func setSourceFraming(_ framing: SourceFraming) {
+        hypnogram.sourceFraming = framing
         livePlayer.setSourceFraming(framing)
-        syncCurrentHypnogramDocumentContextFromRuntime()
         notifyHypnogramMutated()
         objectWillChange.send()
     }
 
     func setTransitionStyle(_ style: TransitionRenderer.TransitionType) {
+        hypnogram.transitionStyle = style
         livePlayer.transitionType = style
-        syncCurrentHypnogramDocumentContextFromRuntime()
         notifyHypnogramMutated()
         objectWillChange.send()
     }
 
     func setTransitionDuration(_ duration: Double) {
         let clampedDuration = min(max(duration, 0.1), 3.0)
+        hypnogram.transitionDuration = clampedDuration
         livePlayer.crossfadeDuration = clampedDuration
-        syncCurrentHypnogramDocumentContextFromRuntime()
         notifyHypnogramMutated()
         objectWillChange.send()
     }

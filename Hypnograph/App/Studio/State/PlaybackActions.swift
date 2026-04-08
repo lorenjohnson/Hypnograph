@@ -53,7 +53,11 @@ extension Studio {
     func sendToLivePlayer() {
         livePlayer.send(
             composition: currentComposition.copyForExport(),
-            config: activePlayer.config
+            aspectRatio: currentDocumentAspectRatio,
+            playerResolution: currentDocumentPlayerResolution,
+            sourceFraming: currentDocumentSourceFraming,
+            transitionStyle: currentDocumentTransitionStyle,
+            transitionDuration: currentDocumentTransitionDuration
         )
     }
 

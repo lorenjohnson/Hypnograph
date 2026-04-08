@@ -2,39 +2,21 @@
 //  PlayerConfiguration.swift
 //  Hypnograph
 //
-//  Per-player configuration (in-app + live).
-//  Groups related display and generation settings into a single, cohesive structure.
+//  Per-player generation configuration.
 //
-//  Note: targetDuration and playRate are stored on Hypnogram (within Hypnogram), not here.
+//  Note: display and document-level playback settings now live on the working Hypnogram.
 //
 
 import Foundation
 import HypnoCore
 
-/// Configuration for a player (in-app or live).
-/// Each player maintains its own independent configuration.
-///
-/// Note: `targetDuration` and `playRate` live on the recipe, not here.
+/// Configuration for generation behavior.
 struct PlayerConfiguration: Codable {
-    static let defaultAspectRatio: AspectRatio = .ratio16x9
-    static let defaultPlayerResolution: OutputResolution = .p1080
     static let defaultMaxLayers: Int = 1
 
     static func defaultValue(maxLayers: Int = defaultMaxLayers) -> PlayerConfiguration {
-        PlayerConfiguration(
-            aspectRatio: defaultAspectRatio,
-            playerResolution: defaultPlayerResolution,
-            maxLayers: maxLayers
-        )
+        PlayerConfiguration(maxLayers: maxLayers)
     }
-
-    // MARK: - Display StudioSettings
-
-    /// Aspect ratio for rendering
-    var aspectRatio: AspectRatio
-
-    /// Output resolution
-    var playerResolution: OutputResolution
 
     // MARK: - Generation StudioSettings
 
@@ -45,25 +27,19 @@ struct PlayerConfiguration: Codable {
 
     /// Initialize with explicit values
     init(
-        aspectRatio: AspectRatio,
-        playerResolution: OutputResolution,
         maxLayers: Int
     ) {
-        self.aspectRatio = aspectRatio
-        self.playerResolution = playerResolution
         self.maxLayers = maxLayers
     }
 
     private enum CodingKeys: String, CodingKey {
-        case aspectRatio, playerResolution, maxLayers
+        case maxLayers
         // Backward-compatible decode key used by older settings files.
         case maxSourcesForNew
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        aspectRatio = try container.decode(AspectRatio.self, forKey: .aspectRatio)
-        playerResolution = try container.decode(OutputResolution.self, forKey: .playerResolution)
         maxLayers = try container.decodeIfPresent(Int.self, forKey: .maxLayers)
             ?? container.decodeIfPresent(Int.self, forKey: .maxSourcesForNew)
             ?? 5
@@ -71,17 +47,6 @@ struct PlayerConfiguration: Codable {
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(aspectRatio, forKey: .aspectRatio)
-        try container.encode(playerResolution, forKey: .playerResolution)
         try container.encode(maxLayers, forKey: .maxLayers)
-    }
-
-    // MARK: - View Identity
-
-    /// Stable identity string for SwiftUI .id() - includes all config properties
-    /// so view rebuilds when display-affecting config changes.
-    /// Generation-only settings like maxLayers should not force the current player to refresh.
-    var viewID: String {
-        "\(aspectRatio.displayString)-\(playerResolution.rawValue)"
     }
 }

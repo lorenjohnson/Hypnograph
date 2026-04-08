@@ -24,6 +24,9 @@ final class Studio: ObservableObject {
         case advanceAcrossCompositions(loopAtSequenceEnd: Bool, generateAtSequenceEnd: Bool)
     }
 
+    static let defaultAspectRatio: AspectRatio = .ratio16x9
+    static let defaultPlayerResolution: OutputResolution = .p1080
+
     let state: HypnographState
     let panels: PanelStateController
     let renderQueue: RenderEngine.ExportQueue
@@ -70,8 +73,6 @@ final class Studio: ObservableObject {
     }
 
     @Published var liveMode: LiveMode = .edit
-    @Published var outputResolution: OutputResolution = PlayerConfiguration.defaultPlayerResolution
-
     var isLiveMode: Bool { liveMode == .live }
     var isLiveModeAvailable: Bool { state.settings.liveModeEnabled }
     var isUsingDefaultWorkingHypnogram: Bool { activeWorkingHypnogramURL == nil }
@@ -182,7 +183,8 @@ final class Studio: ObservableObject {
             effectsSession: effectsLibrarySession
         )
         self.livePlayer = LivePlayer(
-            config: initialPlayerConfig,
+            aspectRatio: Studio.defaultAspectRatio,
+            playerResolution: Studio.defaultPlayerResolution,
             sourceFraming: .fill,
             transitionStyle: .crossfade,
             transitionDuration: 1.0,
@@ -400,7 +402,7 @@ final class Studio: ObservableObject {
         if isLiveMode {
             return AnyView(
                 LivePlayerScreen(livePlayer: livePlayer)
-                    .id("main-live-\(livePlayer.config.viewID)")
+                    .id("main-live-\(currentDocumentAspectRatio.displayString)-\(currentDocumentPlayerResolution.rawValue)")
             )
         }
 
@@ -479,7 +481,7 @@ final class Studio: ObservableObject {
             get: { player.hasPendingGeneratedNextComposition },
             set: { player.hasPendingGeneratedNextComposition = $0 }
         )
-        let viewID = "main-preview-\(player.config.viewID)-\(playRate)"
+        let viewID = "main-preview-\(currentDocumentAspectRatio.displayString)-\(currentDocumentPlayerResolution.rawValue)-\(playRate)"
 
         return AnyView(
             PlayerView(
@@ -584,43 +586,43 @@ final class Studio: ObservableObject {
     }
 
     var currentDocumentAspectRatio: AspectRatio {
-        activePlayer.config.aspectRatio
+        resolvedAspectRatio(for: hypnogram)
     }
 
     var currentDocumentPlayerResolution: OutputResolution {
-        activePlayer.config.playerResolution
+        resolvedPlayerResolution(for: hypnogram)
     }
 
     var currentDocumentOutputResolution: OutputResolution {
-        outputResolution
+        resolvedOutputResolution(for: hypnogram)
     }
 
     var currentDocumentSourceFraming: SourceFraming {
-        livePlayer.currentSourceFraming
+        resolvedSourceFraming(for: hypnogram)
     }
 
     var currentDocumentTransitionStyle: TransitionRenderer.TransitionType {
-        livePlayer.transitionType
+        resolvedTransitionStyle(for: hypnogram)
     }
 
     var currentDocumentTransitionDuration: Double {
-        livePlayer.crossfadeDuration
+        resolvedTransitionDuration(for: hypnogram)
     }
 
     private func resolvedAspectRatio(for hypnogram: Hypnogram) -> AspectRatio {
-        hypnogram.aspectRatio ?? PlayerConfiguration.defaultAspectRatio
+        hypnogram.aspectRatio ?? Studio.defaultAspectRatio
     }
 
     private func resolvedPlayerResolution(for hypnogram: Hypnogram) -> OutputResolution {
         hypnogram.playerResolution
             ?? hypnogram.outputResolution
-            ?? PlayerConfiguration.defaultPlayerResolution
+            ?? Studio.defaultPlayerResolution
     }
 
     private func resolvedOutputResolution(for hypnogram: Hypnogram) -> OutputResolution {
         hypnogram.outputResolution
             ?? hypnogram.playerResolution
-            ?? PlayerConfiguration.defaultPlayerResolution
+            ?? Studio.defaultPlayerResolution
     }
 
     private func resolvedSourceFraming(for hypnogram: Hypnogram) -> SourceFraming {
@@ -644,44 +646,22 @@ final class Studio: ObservableObject {
         self.hypnogram.transitionDuration = resolvedTransitionDuration(for: hypnogram)
     }
 
-    func syncCurrentHypnogramDocumentContextFromRuntime() {
-        hypnogram.aspectRatio = currentDocumentAspectRatio
-        hypnogram.playerResolution = currentDocumentPlayerResolution
-        hypnogram.outputResolution = currentDocumentOutputResolution
-        hypnogram.sourceFraming = currentDocumentSourceFraming
-        hypnogram.transitionStyle = currentDocumentTransitionStyle
-        hypnogram.transitionDuration = currentDocumentTransitionDuration
-    }
-
     func applyCurrentHypnogramDocumentContextToRuntime() {
         let aspectRatio = resolvedAspectRatio(for: hypnogram)
         let playerResolution = resolvedPlayerResolution(for: hypnogram)
-        let outputResolution = resolvedOutputResolution(for: hypnogram)
         let sourceFraming = resolvedSourceFraming(for: hypnogram)
         let transitionStyle = resolvedTransitionStyle(for: hypnogram)
         let transitionDuration = resolvedTransitionDuration(for: hypnogram)
 
         hypnogram.aspectRatio = aspectRatio
         hypnogram.playerResolution = playerResolution
-        hypnogram.outputResolution = outputResolution
+        hypnogram.outputResolution = resolvedOutputResolution(for: hypnogram)
         hypnogram.sourceFraming = sourceFraming
         hypnogram.transitionStyle = transitionStyle
         hypnogram.transitionDuration = transitionDuration
-        self.outputResolution = outputResolution
 
-        if player.config.aspectRatio != aspectRatio {
-            player.config.aspectRatio = aspectRatio
-        }
-        if player.config.playerResolution != playerResolution {
-            player.config.playerResolution = playerResolution
-        }
-        if livePlayer.config.aspectRatio != aspectRatio {
-            livePlayer.config.aspectRatio = aspectRatio
-        }
-        if livePlayer.config.playerResolution != playerResolution {
-            livePlayer.config.playerResolution = playerResolution
-        }
-
+        livePlayer.aspectRatio = aspectRatio
+        livePlayer.playerResolution = playerResolution
         livePlayer.setSourceFraming(sourceFraming)
         livePlayer.transitionType = transitionStyle
         livePlayer.crossfadeDuration = transitionDuration
