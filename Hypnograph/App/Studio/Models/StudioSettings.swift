@@ -40,6 +40,9 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     var playbackLoopMode: PlaybackLoopMode
     var generateAtEnd: Bool
     var snapshotsFolder: String
+    var keyboardAccessibilityOverridesEnabled: Bool
+    var effectsComposerEnabled: Bool
+    var autoHidePanelsEnabled: Bool
 
     /// Default composition length range (seconds) for newly generated compositions
     var compositionLengthMinSeconds: Double
@@ -101,6 +104,9 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         static let generateAtEnd: Bool = true
         static let outputFolder = "~/Movies/Hypnograph/renders"
         static let snapshotsFolder = "~/Movies/Hypnograph/snapshots"
+        static let keyboardAccessibilityOverridesEnabled: Bool = true
+        static let effectsComposerEnabled: Bool = true
+        static let autoHidePanelsEnabled: Bool = false
         static let compositionLengthMinSeconds: Double = 5.0
         static let compositionLengthMaxSeconds: Double = 20.0
         static let compositionPlayRateMin: Double = 1.0
@@ -135,6 +141,9 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             playbackLoopMode: Defaults.playbackLoopMode,
             generateAtEnd: Defaults.generateAtEnd,
             snapshotsFolder: Defaults.snapshotsFolder,
+            keyboardAccessibilityOverridesEnabled: Defaults.keyboardAccessibilityOverridesEnabled,
+            effectsComposerEnabled: Defaults.effectsComposerEnabled,
+            autoHidePanelsEnabled: Defaults.autoHidePanelsEnabled,
             compositionLengthMinSeconds: Defaults.compositionLengthMinSeconds,
             compositionLengthMaxSeconds: Defaults.compositionLengthMaxSeconds,
             compositionPlayRateMin: Defaults.compositionPlayRateMin,
@@ -159,6 +168,7 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     private enum CodingKeys: String, CodingKey {
         case outputFolder, sources
         case playbackLoopMode, generateAtEnd, snapshotsFolder
+        case keyboardAccessibilityOverridesEnabled, effectsComposerEnabled, autoHidePanelsEnabled
         case compositionLengthMinSeconds, compositionLengthMaxSeconds
         case compositionPlayRateMin, compositionPlayRateMax
         case historyLimit
@@ -181,6 +191,9 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         playbackLoopMode: PlaybackLoopMode = Defaults.playbackLoopMode,
         generateAtEnd: Bool = Defaults.generateAtEnd,
         snapshotsFolder: String = Defaults.snapshotsFolder,
+        keyboardAccessibilityOverridesEnabled: Bool = Defaults.keyboardAccessibilityOverridesEnabled,
+        effectsComposerEnabled: Bool = Defaults.effectsComposerEnabled,
+        autoHidePanelsEnabled: Bool = Defaults.autoHidePanelsEnabled,
         compositionLengthMinSeconds: Double = Defaults.compositionLengthMinSeconds,
         compositionLengthMaxSeconds: Double = Defaults.compositionLengthMaxSeconds,
         compositionPlayRateMin: Double = Defaults.compositionPlayRateMin,
@@ -205,6 +218,9 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         self.playbackLoopMode = playbackLoopMode
         self.generateAtEnd = generateAtEnd
         self.snapshotsFolder = snapshotsFolder
+        self.keyboardAccessibilityOverridesEnabled = keyboardAccessibilityOverridesEnabled
+        self.effectsComposerEnabled = effectsComposerEnabled
+        self.autoHidePanelsEnabled = autoHidePanelsEnabled
         self.compositionLengthMinSeconds = compositionLengthMinSeconds
         self.compositionLengthMaxSeconds = compositionLengthMaxSeconds
         self.compositionPlayRateMin = compositionPlayRateMin
@@ -238,6 +254,12 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             ?? Defaults.generateAtEnd
         snapshotsFolder = try c.decodeIfPresent(String.self, forKey: .snapshotsFolder)
             ?? Defaults.snapshotsFolder
+        keyboardAccessibilityOverridesEnabled = try c.decodeIfPresent(Bool.self, forKey: .keyboardAccessibilityOverridesEnabled)
+            ?? Defaults.keyboardAccessibilityOverridesEnabled
+        effectsComposerEnabled = try c.decodeIfPresent(Bool.self, forKey: .effectsComposerEnabled)
+            ?? Defaults.effectsComposerEnabled
+        autoHidePanelsEnabled = try c.decodeIfPresent(Bool.self, forKey: .autoHidePanelsEnabled)
+            ?? Defaults.autoHidePanelsEnabled
         compositionLengthMinSeconds =
             try c.decodeIfPresent(Double.self, forKey: .compositionLengthMinSeconds)
             ?? c.decodeIfPresent(Double.self, forKey: .clipLengthMinSeconds)
@@ -293,6 +315,9 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         try c.encode(playbackLoopMode, forKey: .playbackLoopMode)
         try c.encode(generateAtEnd, forKey: .generateAtEnd)
         try c.encode(snapshotsFolder, forKey: .snapshotsFolder)
+        try c.encode(keyboardAccessibilityOverridesEnabled, forKey: .keyboardAccessibilityOverridesEnabled)
+        try c.encode(effectsComposerEnabled, forKey: .effectsComposerEnabled)
+        try c.encode(autoHidePanelsEnabled, forKey: .autoHidePanelsEnabled)
         try c.encode(compositionLengthMinSeconds, forKey: .compositionLengthMinSeconds)
         try c.encode(compositionLengthMaxSeconds, forKey: .compositionLengthMaxSeconds)
         try c.encode(compositionPlayRateMin, forKey: .compositionPlayRateMin)

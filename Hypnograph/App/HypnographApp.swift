@@ -11,7 +11,6 @@ struct HypnographApp: App {
     private var appDelegate
 
     private let settingsStore: StudioSettingsStore
-    private let appSettingsStore: AppSettingsStore
     private let effectsComposerSettingsStore: EffectsComposerSettingsStore
     @StateObject private var state: HypnographState
     private let renderQueue: RenderEngine.ExportQueue  // Not @StateObject - we don't want to trigger view updates
@@ -28,10 +27,8 @@ struct HypnographApp: App {
         Environment.ensureDefaultSettingsFilesExist()
 
         let settingsStore = StudioSettingsStore()
-        let appSettingsStore = AppSettingsStore()
         let effectsComposerSettingsStore = EffectsComposerSettingsStore()
         self.settingsStore = settingsStore
-        self.appSettingsStore = appSettingsStore
         self.effectsComposerSettingsStore = effectsComposerSettingsStore
         let coreConfig = HypnoCoreConfig(appSupportDirectory: Environment.appSupportDirectory)
         HypnoCoreConfig.shared = coreConfig
@@ -40,7 +37,6 @@ struct HypnographApp: App {
 
         let state = HypnographState(
             settingsStore: settingsStore,
-            appSettingsStore: appSettingsStore,
             coreConfig: coreConfig
         )
         let renderQueue = RenderEngine.ExportQueue()
@@ -104,7 +100,7 @@ struct HypnographApp: App {
                     state?.isKeyboardTextInputActive ?? false
                 }
                 appDelegate.isKeyboardAccessibilityOverridesEnabled = { [weak state] in
-                    state?.appSettings.keyboardAccessibilityOverridesEnabled ?? true
+                    state?.settings.keyboardAccessibilityOverridesEnabled ?? true
                 }
 
                 // Wire up panel state persistence
@@ -187,11 +183,11 @@ struct HypnographApp: App {
 
                 // When transport keys override accessibility navigation, start with no focused control.
                 DispatchQueue.main.async {
-                    guard state.appSettings.keyboardAccessibilityOverridesEnabled else { return }
+                    guard state.settings.keyboardAccessibilityOverridesEnabled else { return }
                     (appDelegate.mainWindow ?? NSApp.mainWindow ?? NSApp.windows.first)?.makeFirstResponder(nil)
                 }
             }
-            .onChange(of: state.appSettings.keyboardAccessibilityOverridesEnabled) { _, isEnabled in
+            .onChange(of: settingsStore.value.keyboardAccessibilityOverridesEnabled) { _, isEnabled in
                 guard isEnabled else { return }
                 DispatchQueue.main.async {
                     (appDelegate.mainWindow ?? NSApp.mainWindow ?? NSApp.windows.first)?.makeFirstResponder(nil)

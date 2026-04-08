@@ -675,7 +675,7 @@ struct EffectsComposerView: View {
     }
 
     private func shouldHandleEffectsComposerTab(event: NSEvent) -> Bool {
-        guard state.appSettings.keyboardAccessibilityOverridesEnabled else { return false }
+        guard state.settings.keyboardAccessibilityOverridesEnabled else { return false }
 
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let isPlainTab = modifiers.isEmpty

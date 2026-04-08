@@ -366,27 +366,28 @@ extension Studio {
     }
 
     func setAspectRatio(_ ratio: AspectRatio) {
-        hypnogram.aspectRatio = ratio
+        updateHypnogramDocumentSettings { $0.aspectRatio = ratio }
         applyCurrentHypnogramDocumentContextToRuntime()
         notifyHypnogramMutated()
         objectWillChange.send()
     }
 
     func setOutputResolution(_ resolution: OutputResolution) {
-        hypnogram.outputResolution = resolution
+        updateHypnogramDocumentSettings { $0.outputResolution = resolution }
+        applyCurrentHypnogramDocumentContextToRuntime()
         notifyHypnogramMutated()
         objectWillChange.send()
     }
 
     func setSourceFraming(_ framing: SourceFraming) {
-        hypnogram.sourceFraming = framing
+        updateHypnogramDocumentSettings { $0.sourceFraming = framing }
         livePlayer.setSourceFraming(framing)
         notifyHypnogramMutated()
         objectWillChange.send()
     }
 
     func setTransitionStyle(_ style: TransitionRenderer.TransitionType) {
-        hypnogram.transitionStyle = style
+        updateHypnogramDocumentSettings { $0.transitionStyle = style }
         livePlayer.transitionType = style
         notifyHypnogramMutated()
         objectWillChange.send()
@@ -394,7 +395,7 @@ extension Studio {
 
     func setTransitionDuration(_ duration: Double) {
         let clampedDuration = min(max(duration, 0.1), 3.0)
-        hypnogram.transitionDuration = clampedDuration
+        updateHypnogramDocumentSettings { $0.transitionDuration = clampedDuration }
         livePlayer.crossfadeDuration = clampedDuration
         notifyHypnogramMutated()
         objectWillChange.send()

@@ -43,7 +43,6 @@ final class PanelStateController: ObservableObject {
 
         private enum CodingKeys: String, CodingKey {
             case panelState
-            case windowState
             case mainWindowFullScreen
             case panelFrames
             case panelOrder
@@ -66,11 +65,7 @@ final class PanelStateController: ObservableObject {
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            if let decodedPanelState = try? container.decode(PanelVisibilityState.self, forKey: .panelState) {
-                panelState = decodedPanelState
-            } else {
-                panelState = try container.decode(PanelVisibilityState.self, forKey: .windowState)
-            }
+            panelState = try container.decode(PanelVisibilityState.self, forKey: .panelState)
             mainWindowFullScreen = try container.decode(Bool.self, forKey: .mainWindowFullScreen)
             panelFrames = try container.decodeIfPresent([String: PersistedPanelFrame].self, forKey: .panelFrames)
             panelOrder = try container.decodeIfPresent([String].self, forKey: .panelOrder)
@@ -171,23 +166,12 @@ final class PanelStateController: ObservableObject {
         Environment.defaultPanelStateURL
     }
 
-    private var legacyStateFileURL: URL {
-        Environment.legacyDefaultPanelStateURL
-    }
-
     private func loadFromDisk() {
         let fm = FileManager.default
-        let sourceURL: URL
-        if fm.fileExists(atPath: stateFileURL.path) {
-            sourceURL = stateFileURL
-        } else if fm.fileExists(atPath: legacyStateFileURL.path) {
-            sourceURL = legacyStateFileURL
-        } else {
-            return
-        }
+        guard fm.fileExists(atPath: stateFileURL.path) else { return }
 
         do {
-            let data = try Data(contentsOf: sourceURL)
+            let data = try Data(contentsOf: stateFileURL)
             let decoder = JSONDecoder()
 
             if let persisted = try? decoder.decode(PersistedPanelState.self, from: data) {

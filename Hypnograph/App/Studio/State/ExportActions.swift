@@ -25,8 +25,8 @@ extension Studio {
     /// Build export settings on-demand with current player config
     func exportSettings() -> CGSize {
         renderSize(
-            aspectRatio: currentDocumentAspectRatio,
-            maxDimension: currentDocumentOutputResolution.maxDimension
+            aspectRatio: currentHypnogramAspectRatio,
+            maxDimension: currentHypnogramOutputResolution.maxDimension
         )
     }
 
@@ -175,7 +175,7 @@ extension Studio {
             composition: renderHypnogram,
             outputFolder: state.settings.outputURL,
             outputSize: outputSize,
-            sourceFraming: currentDocumentSourceFraming,
+            sourceFraming: currentHypnogramSourceFraming,
             notifyExternalDestinationHooks: false,
             completion: { [weak self] result in
                 guard let self else { return }

@@ -573,8 +573,14 @@ struct PlayerView: NSViewRepresentable {
             return "\(name)|\(start)|\(dur)|\(muted)|\(transformsStr)"
         }
         let durationPart = "dur=\(composition.effectiveDuration.seconds)"
+        let aspectRatioPart = "aspect=\(aspectRatio.displayString)"
+        let resolutionPart = "resolution=\(displayResolution.rawValue)"
         let framingPart = "framing=\(sourceFraming.rawValue)"
-        return pairs.joined(separator: ";;") + "||" + durationPart + "||" + framingPart
+        return pairs.joined(separator: ";;")
+            + "||" + durationPart
+            + "||" + aspectRatioPart
+            + "||" + resolutionPart
+            + "||" + framingPart
     }
 
     @MainActor

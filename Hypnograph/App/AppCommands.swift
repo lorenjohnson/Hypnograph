@@ -21,7 +21,7 @@ struct AppCommands: Commands {
     @ObservedObject private var state: HypnographState
     @ObservedObject private var studio: Studio
     @ObservedObject private var panels: PanelStateController
-    @ObservedObject private var appSettingsStore: AppSettingsStore
+    @ObservedObject private var settingsStore: StudioSettingsStore
 
     /// Whether a text field is currently being edited
     private var isTyping: Bool { state.isKeyboardTextInputActive }
@@ -36,7 +36,7 @@ struct AppCommands: Commands {
         _state = ObservedObject(initialValue: state)
         _studio = ObservedObject(initialValue: studio)
         _panels = ObservedObject(initialValue: studio.panels)
-        _appSettingsStore = ObservedObject(initialValue: state.appSettingsStore)
+        _settingsStore = ObservedObject(initialValue: state.settingsStore)
     }
 
     var body: some Commands {
@@ -48,7 +48,7 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(after: .appInfo) {
-            if appSettingsStore.value.effectsComposerEnabled {
+            if settingsStore.value.effectsComposerEnabled {
                 Button("Open Effects Composer") {
                     openWindow(id: "effectsComposer")
                 }
@@ -165,9 +165,9 @@ struct AppCommands: Commands {
                 .keyboardShortcut(.tab, modifiers: [])
 
                 Toggle("Auto-Hide Panels", isOn: Binding(
-                    get: { appSettingsStore.value.autoHidePanelsEnabled },
+                    get: { settingsStore.value.autoHidePanelsEnabled },
                     set: { newValue in
-                        appSettingsStore.update { $0.autoHidePanelsEnabled = newValue }
+                        settingsStore.update { $0.autoHidePanelsEnabled = newValue }
                     }
                 ))
 

@@ -20,7 +20,6 @@ extension Studio {
             MainActor.assumeIsolated {
                 self?.saveHistory(synchronous: true)
                 self?.state.settingsStore.save(synchronous: true)
-                self?.state.appSettingsStore.save(synchronous: true)
             }
         }
 
@@ -236,7 +235,7 @@ extension Studio {
 
     func clearHistory() {
         let composition = currentComposition
-        hypnogram = makeHypnogramWithCurrentDocumentContext(
+        hypnogram = makeHypnogramWithCurrentHypnogramContext(
             compositions: [composition],
             currentCompositionIndex: 0
         )

@@ -195,7 +195,7 @@ struct SourcesPanel: View {
                 albums: ApplePhotos.shared.fetchUserAlbums(),
                 authorizationStatus: state.photosAuthorizationStatus,
                 isRequestingPhotos: isRequestingPhotos,
-                suppressInitialKeyboardFocus: state.appSettings.keyboardAccessibilityOverridesEnabled,
+                suppressInitialKeyboardFocus: state.settings.keyboardAccessibilityOverridesEnabled,
                 isPresented: $showPhotosAlbumsPicker,
                 onAddAllItems: {
                     Task { @MainActor in

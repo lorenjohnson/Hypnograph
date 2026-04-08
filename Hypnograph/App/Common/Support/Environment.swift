@@ -126,11 +126,6 @@ enum Environment {
         appSupportDirectory.appendingPathComponent("main-settings.json")
     }
 
-    /// ~/Library/Application Support/Hypnograph/hypnograph-settings.json
-    static var defaultAppSettingsURL: URL {
-        appSupportDirectory.appendingPathComponent("hypnograph-settings.json")
-    }
-
     /// ~/Library/Application Support/Hypnograph/effects-studio-settings.json
     static var defaultEffectsComposerSettingsURL: URL {
         appSupportDirectory.appendingPathComponent("effects-studio-settings.json")
@@ -139,11 +134,6 @@ enum Environment {
     /// ~/Library/Application Support/Hypnograph/panel-state.json
     static var defaultPanelStateURL: URL {
         appSupportDirectory.appendingPathComponent("panel-state.json")
-    }
-
-    /// Legacy panel-state filename kept for one-way migration reads.
-    static var legacyDefaultPanelStateURL: URL {
-        appSupportDirectory.appendingPathComponent("window-state.json")
     }
 
     /// ~/Library/Application Support/Hypnograph/history.json
@@ -184,20 +174,6 @@ enum Environment {
         )
     }
 
-    static func ensureDefaultAppSettingsFileExists() {
-        let fm = FileManager.default
-        let url = defaultAppSettingsURL
-        guard !fm.fileExists(atPath: url.path) else { return }
-
-        let migratedKeyboardOverride = keyboardAccessibilityOverrideFromStudioSettings()
-            ?? AppSettings.defaultValue.keyboardAccessibilityOverridesEnabled
-        let appSettings = AppSettings(
-            keyboardAccessibilityOverridesEnabled: migratedKeyboardOverride
-        )
-
-        writeCodableSettings(appSettings, to: url, label: "app settings")
-    }
-
     static func ensureDefaultEffectsComposerSettingsFileExists() {
         let fm = FileManager.default
         let url = defaultEffectsComposerSettingsURL
@@ -209,7 +185,6 @@ enum Environment {
         let fm = FileManager.default
         let url = defaultPanelStateURL
         guard !fm.fileExists(atPath: url.path) else { return }
-        guard !fm.fileExists(atPath: legacyDefaultPanelStateURL.path) else { return }
 
         let bundledURL = Bundle.main.url(
             forResource: "default-panel-state",
@@ -233,7 +208,6 @@ enum Environment {
 
     static func ensureDefaultSettingsFilesExist() {
         ensureDefaultStudioSettingsFileExists()
-        ensureDefaultAppSettingsFileExists()
         ensureDefaultEffectsComposerSettingsFileExists()
         ensureDefaultPanelStateFileExists()
     }
@@ -250,7 +224,7 @@ enum Environment {
 
     static func saveCurrentPanelStateAsBundledDefault() throws {
         let fm = FileManager.default
-        let sourceURL = fm.fileExists(atPath: defaultPanelStateURL.path) ? defaultPanelStateURL : legacyDefaultPanelStateURL
+        let sourceURL = defaultPanelStateURL
         let destinationURL = sourceControlledDefaultPanelStateURL
 
         guard fm.fileExists(atPath: sourceURL.path) else {
@@ -371,16 +345,6 @@ enum Environment {
         } catch {
             print("Failed to write default \(label) to \(url.path): \(error)")
         }
-    }
-
-    private static func keyboardAccessibilityOverrideFromStudioSettings() -> Bool? {
-        guard let data = try? Data(contentsOf: defaultStudioSettingsURL),
-              let json = try? JSONSerialization.jsonObject(with: data, options: []),
-              let dict = json as? [String: Any],
-              let value = dict["keyboardAccessibilityOverridesEnabled"] as? Bool else {
-            return nil
-        }
-        return value
     }
 
     private static func stableJSONEncoder() -> JSONEncoder {

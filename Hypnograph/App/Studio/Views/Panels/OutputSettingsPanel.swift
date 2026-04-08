@@ -14,7 +14,7 @@ struct OutputSettingsPanel: View {
 
             PanelInlineFieldRowView(title: "Transition Style") {
                 Picker("", selection: Binding(
-                    get: { main.currentDocumentTransitionStyle },
+                    get: { main.currentHypnogramTransitionStyle },
                     set: { newValue in
                         main.setTransitionStyle(newValue)
                     }
@@ -29,11 +29,11 @@ struct OutputSettingsPanel: View {
 
             PanelFieldRowView(
                 title: "Transition Duration",
-                valueText: String(format: "%.1fs", main.currentDocumentTransitionDuration)
+                valueText: String(format: "%.1fs", main.currentHypnogramTransitionDuration)
             ) {
                 PanelSliderView(
                     value: Binding(
-                        get: { main.currentDocumentTransitionDuration },
+                        get: { main.currentHypnogramTransitionDuration },
                         set: { newValue in
                             main.setTransitionDuration(newValue)
                         }
@@ -69,7 +69,7 @@ struct OutputSettingsPanel: View {
     private var sourceFramingButtons: some View {
         HStack(spacing: 5) {
             ForEach(SourceFraming.allCases, id: \.self) { framing in
-                let isSelected = main.currentDocumentSourceFraming == framing
+                let isSelected = main.currentHypnogramSourceFraming == framing
                 Button {
                     main.setSourceFraming(framing)
                 } label: {
@@ -90,7 +90,7 @@ struct OutputSettingsPanel: View {
 
     @ViewBuilder
     private var aspectRatioButtons: some View {
-        let selectedRatio = main.currentDocumentAspectRatio
+        let selectedRatio = main.currentHypnogramAspectRatio
 
         HStack(spacing: 4) {
             ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in

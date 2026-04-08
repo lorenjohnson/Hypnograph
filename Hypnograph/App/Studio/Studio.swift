@@ -184,7 +184,7 @@ final class Studio: ObservableObject {
         )
         self.livePlayer = LivePlayer(
             aspectRatio: Studio.defaultAspectRatio,
-            playerResolution: Studio.defaultPlayerResolution,
+            outputResolution: Studio.defaultPlayerResolution,
             sourceFraming: .fill,
             transitionStyle: .crossfade,
             transitionDuration: 1.0,
@@ -324,6 +324,12 @@ final class Studio: ObservableObject {
         currentComposition = composition
     }
 
+    func updateHypnogramDocumentSettings(_ update: (inout Hypnogram) -> Void) {
+        var updatedHypnogram = hypnogram
+        update(&updatedHypnogram)
+        hypnogram = updatedHypnogram
+    }
+
     func setHypnogram(_ newHypnogram: Hypnogram) {
         var normalizedHypnogram = newHypnogram
         for index in normalizedHypnogram.compositions.indices {
@@ -402,7 +408,6 @@ final class Studio: ObservableObject {
         if isLiveMode {
             return AnyView(
                 LivePlayerScreen(livePlayer: livePlayer)
-                    .id("main-live-\(currentDocumentAspectRatio.displayString)-\(currentDocumentPlayerResolution.rawValue)")
             )
         }
 
@@ -436,9 +441,9 @@ final class Studio: ObservableObject {
         }
 
         // Common view parameters
-        let aspectRatio = currentDocumentAspectRatio
-        let displayResolution = currentDocumentPlayerResolution
-        let sourceFraming = currentDocumentSourceFraming
+        let aspectRatio = currentHypnogramAspectRatio
+        let displayResolution = currentHypnogramOutputResolution
+        let sourceFraming = currentHypnogramSourceFraming
         let playbackEndBehavior: PlaybackEndBehavior
         let isLastCompositionInSequence =
             currentCompositionIndex >= max(0, hypnogram.compositions.count - 1)
@@ -481,8 +486,6 @@ final class Studio: ObservableObject {
             get: { player.hasPendingGeneratedNextComposition },
             set: { player.hasPendingGeneratedNextComposition = $0 }
         )
-        let viewID = "main-preview-\(currentDocumentAspectRatio.displayString)-\(currentDocumentPlayerResolution.rawValue)-\(playRate)"
-
         return AnyView(
             PlayerView(
                 playbackEndBehavior: playbackEndBehavior,
@@ -506,8 +509,8 @@ final class Studio: ObservableObject {
                 effectManager: player.effectManager,
                 volume: volume,
                 audioDeviceUID: audioDeviceUID,
-                transitionStyle: currentDocumentTransitionStyle,
-                transitionDuration: currentDocumentTransitionDuration,
+                transitionStyle: currentHypnogramTransitionStyle,
+                transitionDuration: currentHypnogramTransitionDuration,
                 onCompositionFramePresented: { [weak self, weak player] compositionID in
                     guard let player else { return }
 
@@ -527,7 +530,6 @@ final class Studio: ObservableObject {
                     self?.persistCurrentCompositionPreviewIfNeeded()
                 }
             )
-            .id(viewID)
         )
     }
 
@@ -558,14 +560,14 @@ final class Studio: ObservableObject {
         let createdAt = Date()
         var composition = currentComposition
         composition.createdAt = createdAt
-        return makeHypnogramWithCurrentDocumentContext(
+        return makeHypnogramWithCurrentHypnogramContext(
             compositions: [composition],
             currentCompositionIndex: 0,
             createdAt: createdAt
         )
     }
 
-    func makeHypnogramWithCurrentDocumentContext(
+    func makeHypnogramWithCurrentHypnogramContext(
         compositions: [Composition],
         currentCompositionIndex: Int?,
         snapshot: String? = nil,
@@ -574,38 +576,33 @@ final class Studio: ObservableObject {
         Hypnogram(
             compositions: compositions,
             currentCompositionIndex: currentCompositionIndex,
-            aspectRatio: currentDocumentAspectRatio,
-            playerResolution: currentDocumentPlayerResolution,
-            outputResolution: currentDocumentOutputResolution,
-            sourceFraming: currentDocumentSourceFraming,
-            transitionStyle: currentDocumentTransitionStyle,
-            transitionDuration: currentDocumentTransitionDuration,
+            aspectRatio: currentHypnogramAspectRatio,
+            outputResolution: currentHypnogramOutputResolution,
+            sourceFraming: currentHypnogramSourceFraming,
+            transitionStyle: currentHypnogramTransitionStyle,
+            transitionDuration: currentHypnogramTransitionDuration,
             snapshot: snapshot,
             createdAt: createdAt
         )
     }
 
-    var currentDocumentAspectRatio: AspectRatio {
+    var currentHypnogramAspectRatio: AspectRatio {
         resolvedAspectRatio(for: hypnogram)
     }
 
-    var currentDocumentPlayerResolution: OutputResolution {
-        resolvedPlayerResolution(for: hypnogram)
-    }
-
-    var currentDocumentOutputResolution: OutputResolution {
+    var currentHypnogramOutputResolution: OutputResolution {
         resolvedOutputResolution(for: hypnogram)
     }
 
-    var currentDocumentSourceFraming: SourceFraming {
+    var currentHypnogramSourceFraming: SourceFraming {
         resolvedSourceFraming(for: hypnogram)
     }
 
-    var currentDocumentTransitionStyle: TransitionRenderer.TransitionType {
+    var currentHypnogramTransitionStyle: TransitionRenderer.TransitionType {
         resolvedTransitionStyle(for: hypnogram)
     }
 
-    var currentDocumentTransitionDuration: Double {
+    var currentHypnogramTransitionDuration: Double {
         resolvedTransitionDuration(for: hypnogram)
     }
 
@@ -613,15 +610,8 @@ final class Studio: ObservableObject {
         hypnogram.aspectRatio ?? Studio.defaultAspectRatio
     }
 
-    private func resolvedPlayerResolution(for hypnogram: Hypnogram) -> OutputResolution {
-        hypnogram.playerResolution
-            ?? hypnogram.outputResolution
-            ?? Studio.defaultPlayerResolution
-    }
-
     private func resolvedOutputResolution(for hypnogram: Hypnogram) -> OutputResolution {
         hypnogram.outputResolution
-            ?? hypnogram.playerResolution
             ?? Studio.defaultPlayerResolution
     }
 
@@ -639,7 +629,6 @@ final class Studio: ObservableObject {
 
     func copyDocumentContext(from hypnogram: Hypnogram) {
         self.hypnogram.aspectRatio = resolvedAspectRatio(for: hypnogram)
-        self.hypnogram.playerResolution = resolvedPlayerResolution(for: hypnogram)
         self.hypnogram.outputResolution = resolvedOutputResolution(for: hypnogram)
         self.hypnogram.sourceFraming = resolvedSourceFraming(for: hypnogram)
         self.hypnogram.transitionStyle = resolvedTransitionStyle(for: hypnogram)
@@ -648,20 +637,18 @@ final class Studio: ObservableObject {
 
     func applyCurrentHypnogramDocumentContextToRuntime() {
         let aspectRatio = resolvedAspectRatio(for: hypnogram)
-        let playerResolution = resolvedPlayerResolution(for: hypnogram)
         let sourceFraming = resolvedSourceFraming(for: hypnogram)
         let transitionStyle = resolvedTransitionStyle(for: hypnogram)
         let transitionDuration = resolvedTransitionDuration(for: hypnogram)
 
         hypnogram.aspectRatio = aspectRatio
-        hypnogram.playerResolution = playerResolution
         hypnogram.outputResolution = resolvedOutputResolution(for: hypnogram)
         hypnogram.sourceFraming = sourceFraming
         hypnogram.transitionStyle = transitionStyle
         hypnogram.transitionDuration = transitionDuration
 
         livePlayer.aspectRatio = aspectRatio
-        livePlayer.playerResolution = playerResolution
+        livePlayer.outputResolution = resolvedOutputResolution(for: hypnogram)
         livePlayer.setSourceFraming(sourceFraming)
         livePlayer.transitionType = transitionStyle
         livePlayer.crossfadeDuration = transitionDuration

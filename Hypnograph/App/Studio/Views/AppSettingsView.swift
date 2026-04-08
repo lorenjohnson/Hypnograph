@@ -6,7 +6,6 @@ struct AppSettingsView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
     @ObservedObject private var settingsStore: StudioSettingsStore
-    @ObservedObject private var appSettingsStore: AppSettingsStore
     @StateObject private var audioManager = AudioDeviceManager.shared
     @State private var selectedTab: SettingsTab = .general
 
@@ -14,7 +13,6 @@ struct AppSettingsView: View {
         self.state = state
         self.main = main
         _settingsStore = ObservedObject(initialValue: state.settingsStore)
-        _appSettingsStore = ObservedObject(initialValue: state.appSettingsStore)
     }
 
     private enum SettingsTab: CaseIterable {
@@ -191,9 +189,9 @@ struct AppSettingsView: View {
             title: "Enable Effects Composer",
             description: "Shows the Effects Composer command and allows opening the Effects Composer window.",
             isOn: Binding(
-                get: { appSettingsStore.value.effectsComposerEnabled },
+                get: { settingsStore.value.effectsComposerEnabled },
                 set: { newValue in
-                    appSettingsStore.update { $0.effectsComposerEnabled = newValue }
+                    settingsStore.update { $0.effectsComposerEnabled = newValue }
                 }
             )
         )
@@ -203,9 +201,9 @@ struct AppSettingsView: View {
             title: "Override Global Keyboard Controls",
             description: "When enabled, Hypnograph uses direct keyboard controls like Space for Play/Pause and Tab for panel toggle, and suppresses default keyboard focus navigation highlights in Studio panels.",
             isOn: Binding(
-                get: { appSettingsStore.value.keyboardAccessibilityOverridesEnabled },
+                get: { settingsStore.value.keyboardAccessibilityOverridesEnabled },
                 set: { newValue in
-                    appSettingsStore.update { $0.keyboardAccessibilityOverridesEnabled = newValue }
+                    settingsStore.update { $0.keyboardAccessibilityOverridesEnabled = newValue }
                 }
             )
         )

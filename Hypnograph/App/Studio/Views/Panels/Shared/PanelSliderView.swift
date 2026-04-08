@@ -9,6 +9,7 @@ struct PanelSliderView: NSViewRepresentable {
 
     var step: Double = 0
     var snapMarkers: [Double] = []
+    var onEditingChanged: ((Bool) -> Void)? = nil
 
     @SwiftUI.Environment(\.isEnabled) private var isEnabled
 
@@ -16,6 +17,9 @@ struct PanelSliderView: NSViewRepresentable {
         let control = PanelSliderControl()
         control.onValueChanged = { newValue in
             value = newValue
+        }
+        control.onEditingChanged = { isEditing in
+            onEditingChanged?(isEditing)
         }
         return control
     }
@@ -27,6 +31,9 @@ struct PanelSliderView: NSViewRepresentable {
         nsView.snapMarkers = snapMarkers
         nsView.onValueChanged = { newValue in
             value = newValue
+        }
+        nsView.onEditingChanged = { isEditing in
+            onEditingChanged?(isEditing)
         }
         nsView.setValue(value)
     }
@@ -46,6 +53,7 @@ final class PanelSliderControl: NSControl {
     }
 
     var onValueChanged: ((Double) -> Void)?
+    var onEditingChanged: ((Bool) -> Void)?
 
     private(set) var currentValue: Double = 0
     private var isTrackingThumb = false
@@ -103,11 +111,13 @@ final class PanelSliderControl: NSControl {
         }
 
         isTrackingThumb = true
+        onEditingChanged?(true)
         updateValue(with: convert(event.locationInWindow, from: nil))
         needsDisplay = true
 
         guard let window else {
             isTrackingThumb = false
+            onEditingChanged?(false)
             needsDisplay = true
             return
         }
@@ -119,6 +129,7 @@ final class PanelSliderControl: NSControl {
             case .leftMouseUp:
                 updateValue(with: convert(nextEvent.locationInWindow, from: nil))
                 isTrackingThumb = false
+                onEditingChanged?(false)
                 needsDisplay = true
                 return
             default:
@@ -127,6 +138,7 @@ final class PanelSliderControl: NSControl {
         }
 
         isTrackingThumb = false
+        onEditingChanged?(false)
         needsDisplay = true
     }
 

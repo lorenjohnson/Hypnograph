@@ -10,7 +10,7 @@ struct ContentView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
     @ObservedObject private var panels: PanelStateController
-    @ObservedObject private var appSettingsStore: AppSettingsStore
+    @ObservedObject private var settingsStore: StudioSettingsStore
     @ObservedObject private var hypnogramStore: HypnogramStore
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
     @StateObject private var panelHostService = PanelHostService()
@@ -25,7 +25,7 @@ struct ContentView: View {
         self.state = state
         self.main = main
         _panels = ObservedObject(initialValue: main.panels)
-        _appSettingsStore = ObservedObject(initialValue: state.appSettingsStore)
+        _settingsStore = ObservedObject(initialValue: state.settingsStore)
         _hypnogramStore = ObservedObject(initialValue: HypnogramStore.shared)
     }
 
@@ -371,8 +371,8 @@ struct ContentView: View {
                     "playerControlsPanel": panels.panelFrame("playerControlsPanel")
                 ].compactMapValues { $0 },
                 panelOrder: panels.panelOrderIDs(),
-                autoHidePanels: appSettingsStore.value.autoHidePanelsEnabled,
-                keyboardAccessibilityOverridesEnabled: appSettingsStore.value.keyboardAccessibilityOverridesEnabled,
+                autoHidePanels: settingsStore.value.autoHidePanelsEnabled,
+                keyboardAccessibilityOverridesEnabled: settingsStore.value.keyboardAccessibilityOverridesEnabled,
                 onPanelVisibilityChanged: { panelID, isVisible in
                     panels.setPanelVisible(panelID, visible: isVisible)
                 },

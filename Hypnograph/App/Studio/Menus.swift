@@ -46,7 +46,11 @@ extension Studio {
         Toggle("Loop Composition", isOn: Binding(
             get: { [self] in isLoopCompositionEnabled },
             set: { [self] in
-                setPlaybackLoopMode($0 ? .composition : .off)
+                if $0 {
+                    toggleLoopCompositionMode()
+                } else if isLoopCompositionEnabled {
+                    setPlaybackLoopMode(.off)
+                }
             }
         ))
         .keyboardShortcut("l", modifiers: [])
@@ -77,21 +81,23 @@ extension Studio {
         Section("Aspect Ratio") {
             ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
                 Toggle(ratio.menuLabel, isOn: Binding(
-                    get: { [self] in currentDocumentAspectRatio == ratio },
+                    get: { [self] in currentHypnogramAspectRatio == ratio },
                     set: { [self] in if $0 { setAspectRatio(ratio) } }
                 ))
             }
         }
+        .id("aspect-ratio-\(currentHypnogramAspectRatio.displayString)")
 
         // Output Resolution
         Section("Output Resolution") {
             ForEach(OutputResolution.allCases, id: \.self) { resolution in
                 Toggle(resolution.displayName, isOn: Binding(
-                    get: { [self] in currentDocumentOutputResolution == resolution },
+                    get: { [self] in currentHypnogramOutputResolution == resolution },
                     set: { [self] in if $0 { setOutputResolution(resolution) } }
                 ))
             }
         }
+        .id("output-resolution-\(currentHypnogramOutputResolution.rawValue)")
     }
 
     @ViewBuilder

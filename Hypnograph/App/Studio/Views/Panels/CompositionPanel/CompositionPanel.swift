@@ -9,6 +9,7 @@ struct CompositionPanel: View {
 
     @State private var expandedLayerIDs: Set<UUID> = []
     @State private var draggedLayerID: UUID?
+    @State private var draftPlayRate: Double?
     @StateObject private var thumbnailStore = TimelineThumbnailStore()
     @SwiftUI.Environment(\.panelLayoutInvalidator) private var panelLayoutInvalidator
 
@@ -127,18 +128,28 @@ struct CompositionPanel: View {
                     Text("Play Rate")
                         .font(.callout)
                     Spacer()
-                    Text(String(format: "%.0f%%", main.playRate * 100))
+                    Text(String(format: "%.0f%%", (draftPlayRate ?? Double(main.playRate)) * 100))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
 
                 PanelSliderView(
                     value: Binding(
-                        get: { Double(main.playRate) },
-                        set: { main.playRate = Float($0) }
+                        get: { draftPlayRate ?? Double(main.playRate) },
+                        set: { draftPlayRate = $0 }
                     ),
                     bounds: 0.2...2.0,
-                    step: 0.1
+                    step: 0.1,
+                    onEditingChanged: { isEditing in
+                        if isEditing {
+                            draftPlayRate = Double(main.playRate)
+                        } else {
+                            if let draftPlayRate {
+                                main.playRate = Float(draftPlayRate)
+                            }
+                            draftPlayRate = nil
+                        }
+                    }
                 )
             }
             .disabled(main.isLiveMode)

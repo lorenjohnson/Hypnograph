@@ -53,11 +53,11 @@ extension Studio {
     func sendToLivePlayer() {
         livePlayer.send(
             composition: currentComposition.copyForExport(),
-            aspectRatio: currentDocumentAspectRatio,
-            playerResolution: currentDocumentPlayerResolution,
-            sourceFraming: currentDocumentSourceFraming,
-            transitionStyle: currentDocumentTransitionStyle,
-            transitionDuration: currentDocumentTransitionDuration
+            aspectRatio: currentHypnogramAspectRatio,
+            outputResolution: currentHypnogramOutputResolution,
+            sourceFraming: currentHypnogramSourceFraming,
+            transitionStyle: currentHypnogramTransitionStyle,
+            transitionDuration: currentHypnogramTransitionDuration
         )
     }
 
@@ -97,7 +97,12 @@ extension Studio {
     }
 
     func toggleLoopCompositionMode() {
-        setPlaybackLoopMode(isLoopCompositionEnabled ? .off : .composition)
+        switch playbackLoopMode {
+        case .off:
+            setPlaybackLoopMode(.composition)
+        case .composition, .sequence:
+            setPlaybackLoopMode(.off)
+        }
     }
 
     func toggleLoopSequenceMode() {

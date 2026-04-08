@@ -89,7 +89,7 @@ extension Studio {
 
     func replaceHistoryWithNewComposition() {
         let composition = makeRandomComposition(preservingGlobalEffectFrom: nil)
-        hypnogram = makeHypnogramWithCurrentDocumentContext(
+        hypnogram = makeHypnogramWithCurrentHypnogramContext(
             compositions: [composition],
             currentCompositionIndex: 0,
         )

@@ -27,8 +27,8 @@ final class LivePlayer: ObservableObject {
     /// Display aspect ratio used for live rendering and preview layout.
     @Published var aspectRatio: AspectRatio
 
-    /// Preview resolution used for live rendering.
-    @Published var playerResolution: OutputResolution
+    /// Resolution used for live rendering.
+    @Published var outputResolution: OutputResolution
 
     /// Global source framing behavior (Fill vs Fit)
     private var sourceFraming: SourceFraming
@@ -124,14 +124,14 @@ final class LivePlayer: ObservableObject {
 
     init(
         aspectRatio: AspectRatio,
-        playerResolution: OutputResolution,
+        outputResolution: OutputResolution,
         sourceFraming: SourceFraming,
         transitionStyle: TransitionRenderer.TransitionType,
         transitionDuration: Double,
         effectsSession: EffectsSession
     ) {
         self.aspectRatio = aspectRatio
-        self.playerResolution = playerResolution
+        self.outputResolution = outputResolution
         self.sourceFraming = sourceFraming
         self.crossfadeDuration = transitionDuration
         self.transitionType = transitionStyle
@@ -395,7 +395,7 @@ final class LivePlayer: ObservableObject {
     func send(
         composition: Composition,
         aspectRatio: AspectRatio,
-        playerResolution: OutputResolution,
+        outputResolution: OutputResolution,
         sourceFraming: SourceFraming,
         transitionStyle: TransitionRenderer.TransitionType,
         transitionDuration: Double
@@ -417,7 +417,7 @@ final class LivePlayer: ObservableObject {
         pendingBuildTask?.cancel()
 
         self.aspectRatio = aspectRatio
-        self.playerResolution = playerResolution
+        self.outputResolution = outputResolution
         self.sourceFraming = sourceFraming
         self.transitionType = transitionStyle
         self.crossfadeDuration = transitionDuration
@@ -441,7 +441,7 @@ final class LivePlayer: ObservableObject {
     /// Build and transition using Metal shader transitions
     private func buildAndTransitionMetal() async {
         guard let composition = currentComposition, let metalContent = contentView else { return }
-        let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: playerResolution.maxDimension)
+        let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: outputResolution.maxDimension)
 
         if hasContent, let outgoingComposition = lastRenderedComposition {
             let frozenManager = effectManager.makeTransitionSnapshotManager(
