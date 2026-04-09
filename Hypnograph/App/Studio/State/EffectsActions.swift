@@ -8,9 +8,7 @@ import HypnoCore
 
 @MainActor
 extension Studio {
-    func clearAllEffects() {
-        activeEffectManager.clearEffect(for: -1)
-
+    func clearAllLayerEffects() {
         let sourceCount = isLiveMode
             ? livePlayer.activeLayerCount
             : currentLayers.count

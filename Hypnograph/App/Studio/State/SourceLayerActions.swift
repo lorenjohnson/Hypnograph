@@ -333,18 +333,34 @@ extension Studio {
         )
     }
 
-    func cycleEffect(direction: Int = 1) {
+    func cycleCompositionEffect(direction: Int = 1) {
+        activeEffectManager.cycleEffect(for: -1, direction: direction)
+
+        let effectName = activeEffectManager.effectName(for: -1)
+        AppNotifications.show("Composition: \(effectName)", flash: true, duration: 1.5)
+    }
+
+    func cycleCurrentLayerEffect(direction: Int = 1) {
+        guard activePlayer.currentLayerIndex >= 0, activePlayer.currentLayerIndex < currentLayers.count else { return }
+
         activeEffectManager.cycleEffect(for: activePlayer.currentLayerIndex, direction: direction)
 
         let effectName = activeEffectManager.effectName(for: activePlayer.currentLayerIndex)
-        let layerLabel = activePlayer.currentLayerIndex == -1 ? "Composition" : "Layer \(activePlayer.currentLayerIndex + 1)"
+        let layerLabel = "Layer \(activePlayer.currentLayerIndex + 1)"
         AppNotifications.show("\(layerLabel): \(effectName)", flash: true, duration: 1.5)
     }
 
+    func clearCompositionEffect() {
+        activeEffectManager.clearEffect(for: -1)
+        AppNotifications.show("Composition: None", flash: true, duration: 1.5)
+    }
+
     func clearCurrentLayerEffect() {
+        guard activePlayer.currentLayerIndex >= 0, activePlayer.currentLayerIndex < currentLayers.count else { return }
+
         activeEffectManager.clearEffect(for: activePlayer.currentLayerIndex)
 
-        let layerLabel = activePlayer.currentLayerIndex == -1 ? "Composition" : "Layer \(activePlayer.currentLayerIndex + 1)"
+        let layerLabel = "Layer \(activePlayer.currentLayerIndex + 1)"
         AppNotifications.show("\(layerLabel): None", flash: true, duration: 1.5)
     }
 

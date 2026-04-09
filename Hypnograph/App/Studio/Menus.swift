@@ -102,7 +102,7 @@ extension Studio {
 
     @ViewBuilder
     func compositionMenu() -> some View {
-        Button("Save as Favorite") { [self] in
+        Button("Favorite") { [self] in
             favoriteCurrentHypnogram()
         }
         .keyboardShortcut("f", modifiers: [.command])
@@ -116,55 +116,42 @@ extension Studio {
 
         Divider()
 
-        Section("Add Layer") {
-            Button("From Files...") { [self] in
-                addSourceFromFilesPanel()
-            }
-
-            Button("From Photos...") { [self] in
-                addSourceFromPhotosPicker()
-            }
-            .disabled(!state.photosAuthorizationStatus.canRead)
-
-            Button("Random Source") { [self] in
-                addSourceFromRandom()
-            }
-            .keyboardShortcut("n", modifiers: [.shift])
-            .disabled(disableMainWindowShortcuts)
-        }
-
-        Divider()
-
-        Section("Effects") {
+        Section("Effect Chain") {
             Button("Next") { [self] in
-                cycleEffect(direction: 1)
+                cycleCompositionEffect(direction: 1)
             }
             .keyboardShortcut("e", modifiers: [.command])
 
             Button("Previous") { [self] in
-                cycleEffect(direction: -1)
+                cycleCompositionEffect(direction: -1)
             }
             .keyboardShortcut("e", modifiers: [.command, .shift])
 
             Button("Clear") { [self] in
-                activeEffectManager.clearEffect(for: -1)
+                clearCompositionEffect()
             }
-
-            Button("Clear for All Layers") { [self] in
-                clearAllEffects()
-            }
-            .keyboardShortcut("c", modifiers: [.control, .shift])
-            .disabled(disableMainWindowShortcuts)
+            .keyboardShortcut("c", modifiers: [.shift])
         }
     }
 
     @ViewBuilder
     func sourceMenu() -> some View {
-        Button("Clear Effect") { [self] in
-            clearCurrentLayerEffect()
+        Button("Add from Files...") { [self] in
+            addSourceFromFilesPanel()
         }
-        .keyboardShortcut("c", modifiers: [])
-        .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+
+        Button("Add from Photos...") { [self] in
+            addSourceFromPhotosPicker()
+        }
+        .disabled(!state.photosAuthorizationStatus.canRead)
+
+        Button("Add Random Source") { [self] in
+            addSourceFromRandom()
+        }
+        .keyboardShortcut("n", modifiers: [.shift])
+        .disabled(disableMainWindowShortcuts)
+
+        Divider()
 
         Button("Cycle Blend Mode") { [self] in
             cycleBlendMode()
@@ -172,29 +159,58 @@ extension Studio {
         .keyboardShortcut("m", modifiers: [])
         .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
 
-        Button("Remove") { [self] in
+        Button("Delete") { [self] in
             removeCurrentLayer()
         }
         .keyboardShortcut(.delete, modifiers: [])
         .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
 
-        Button("New Random Source") { [self] in
-            randomizeCurrentSource()
-        }
-        .keyboardShortcut(".", modifiers: [])
-        .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+        Divider()
 
-        Button("Favorite Source") { [self] in
-            favoriteCurrentSource()
-        }
-        .keyboardShortcut("f", modifiers: [.shift])
-        .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+        Section("Effect Chain") {
+            Button("Clear") { [self] in
+                clearCurrentLayerEffect()
+            }
+            .keyboardShortcut("c", modifiers: [])
+            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
 
-        Button("Exclude Source") { [self] in
-            excludeCurrentSource()
+            Button("Clear for All Layers") { [self] in
+                clearAllLayerEffects()
+            }
+            .disabled(disableMainWindowShortcuts)
+
+            Button("Next") { [self] in
+                cycleCurrentLayerEffect(direction: 1)
+            }
+            .keyboardShortcut("e", modifiers: [])
+            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+
+            Button("Previous") { [self] in
+                cycleCurrentLayerEffect(direction: -1)
+            }
+            .keyboardShortcut("e", modifiers: [.shift])
+            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
         }
-        .keyboardShortcut("x", modifiers: [.shift])
-        .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+
+        Section("Source") {
+            Button("New Random") { [self] in
+                randomizeCurrentSource()
+            }
+            .keyboardShortcut(".", modifiers: [])
+            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+
+            Button("Favorite") { [self] in
+                favoriteCurrentSource()
+            }
+            .keyboardShortcut("f", modifiers: [.shift])
+            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+
+            Button("Exclude") { [self] in
+                excludeCurrentSource()
+            }
+            .keyboardShortcut("x", modifiers: [.shift])
+            .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
+        }
 
         Divider()
 
@@ -211,20 +227,38 @@ extension Studio {
             .keyboardShortcut(.leftArrow, modifiers: [.option])
             .disabled(disableMainWindowShortcuts)
 
-            Button("Composition") { [self] in
-                selectCompositionLayer()
-            }
-            .keyboardShortcut("`", modifiers: [])
-            .disabled(disableMainWindowShortcuts)
-
-            ForEach(0..<9, id: \.self) { [self] idx in
-                Button("Select \(idx + 1)") { [self] in
-                    self.selectSource(idx)
-                }
-                .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")), modifiers: [])
-                .disabled(disableMainWindowShortcuts)
+            Menu("Current") {
+                currentSelectionMenuItem(title: "Composition", index: -1, shortcut: "`")
+                currentSelectionMenuItem(title: "Layer 1", index: 0, shortcut: "1")
+                currentSelectionMenuItem(title: "Layer 2", index: 1, shortcut: "2")
+                currentSelectionMenuItem(title: "Layer 3", index: 2, shortcut: "3")
+                currentSelectionMenuItem(title: "Layer 4", index: 3, shortcut: "4")
+                currentSelectionMenuItem(title: "Layer 5", index: 4, shortcut: "5")
+                currentSelectionMenuItem(title: "Layer 6", index: 5, shortcut: "6")
+                currentSelectionMenuItem(title: "Layer 7", index: 6, shortcut: "7")
+                currentSelectionMenuItem(title: "Layer 8", index: 7, shortcut: "8")
+                currentSelectionMenuItem(title: "Layer 9", index: 8, shortcut: "9")
             }
         }
+    }
+
+    @ViewBuilder
+    private func currentSelectionMenuItem(title: String, index: Int, shortcut: KeyEquivalent) -> some View {
+        Button {
+            if index == -1 {
+                self.selectCompositionLayer()
+            } else {
+                self.selectSource(index)
+            }
+        } label: {
+            if activePlayer.currentLayerIndex == index {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
+            }
+        }
+        .keyboardShortcut(shortcut, modifiers: [])
+        .disabled(disableMainWindowShortcuts)
     }
 
     private func windowBelongsToMain(_ window: NSWindow?) -> Bool {
