@@ -149,12 +149,12 @@ struct AppSettingsView: View {
         Divider()
 
         settingsActionRow(
-            title: "Clear History",
-            description: "Removes all previous compositions from history and keeps your current composition selected.",
+            title: "Clear Sequence",
+            description: "Removes all previous compositions from the current sequence and keeps your current composition selected.",
             buttonTitle: "Clear",
             isDestructive: true
         ) {
-            main.clearHistory()
+            main.resetDefaultHypnogram()
         }
         Divider()
 

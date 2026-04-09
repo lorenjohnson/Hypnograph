@@ -136,14 +136,9 @@ enum Environment {
         appSupportDirectory.appendingPathComponent("panel-state.json")
     }
 
-    /// ~/Library/Application Support/Hypnograph/history.json
-    static var historyURL: URL {
-        appSupportDirectory.appendingPathComponent("history.json")
-    }
-
-    /// Legacy history filename kept for one-way migration reads.
-    static var legacyClipHistoryURL: URL {
-        appSupportDirectory.appendingPathComponent("clip-history.json")
+    /// ~/Library/Application Support/Hypnograph/default-hypnogram.hypno
+    static var defaultHypnogramURL: URL {
+        appSupportDirectory.appendingPathComponent("default-hypnogram.hypno")
     }
 
     /// ~/Library/Application Support/Hypnograph/exclusions.json

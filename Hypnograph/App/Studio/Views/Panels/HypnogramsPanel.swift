@@ -10,12 +10,12 @@ import HypnoCore
 
 /// Tab selection for the list
 enum HypnogramsPanelTab: String, CaseIterable {
-    case history = "History"
+    case sequence = "Sequence"
     case recent = "Recently Saved"
     case favorites = "Favorites"
 }
 
-struct HistoryCompositionEntry: Identifiable {
+struct CompositionEntry: Identifiable {
     let index: Int
     let composition: Composition
     let isCurrent: Bool
@@ -29,27 +29,27 @@ struct HistoryCompositionEntry: Identifiable {
 
 /// Panel displaying saved hypnograms
 struct HypnogramsPanel: View {
-    let historyEntries: [HistoryCompositionEntry]
+    let compositionEntries: [CompositionEntry]
     let recentEntries: [HypnogramEntry]
     let favoriteEntries: [HypnogramEntry]
     @AppStorage("studio.hypnogramsPanel.selectedTab")
-    private var selectedTabRawValue: String = HypnogramsPanelTab.history.rawValue
+    private var selectedTabRawValue: String = HypnogramsPanelTab.sequence.rawValue
 
     /// Called when user wants to load a hypnogram
     var onLoad: (HypnogramEntry) -> Void
     var onToggleFavorite: (HypnogramEntry) -> Void
-    var onJumpToHistory: (Int) -> Void
-    var onDeleteHistoryEntry: (Int) -> Void
+    var onJumpToComposition: (Int) -> Void
+    var onDeleteCompositionEntry: (Int) -> Void
 
     private var selectedTab: Binding<HypnogramsPanelTab> {
         Binding(
-            get: { HypnogramsPanelTab(rawValue: selectedTabRawValue) ?? .history },
+            get: { HypnogramsPanelTab(rawValue: selectedTabRawValue) ?? .sequence },
             set: { selectedTabRawValue = $0.rawValue }
         )
     }
 
     private var currentSelectedTab: HypnogramsPanelTab {
-        HypnogramsPanelTab(rawValue: selectedTabRawValue) ?? .history
+        HypnogramsPanelTab(rawValue: selectedTabRawValue) ?? .sequence
     }
 
     var body: some View {
@@ -68,18 +68,18 @@ struct HypnogramsPanel: View {
             ScrollView {
                 LazyVStack(spacing: 6) {
                     switch currentSelectedTab {
-                    case .history:
-                        if historyEntries.isEmpty {
-                            emptyStateText("No history yet")
+                    case .sequence:
+                        if compositionEntries.isEmpty {
+                            emptyStateText("No compositions yet")
                         } else {
-                            ForEach(Array(historyEntries.reversed())) { entry in
-                                HistoryCompositionRowView(
+                            ForEach(Array(compositionEntries.reversed())) { entry in
+                                CompositionRowView(
                                     entry: entry,
                                     onJump: {
-                                        onJumpToHistory(entry.index)
+                                        onJumpToComposition(entry.index)
                                     },
                                     onDelete: {
-                                        onDeleteHistoryEntry(entry.index)
+                                        onDeleteCompositionEntry(entry.index)
                                     }
                                 )
                             }
@@ -187,8 +187,8 @@ struct ThumbnailView: View {
     }
 }
 
-struct HistoryCompositionRowView: View {
-    let entry: HistoryCompositionEntry
+struct CompositionRowView: View {
+    let entry: CompositionEntry
     let onJump: () -> Void
     let onDelete: () -> Void
 

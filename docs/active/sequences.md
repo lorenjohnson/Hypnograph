@@ -8,7 +8,7 @@ doc-status: in-progress
 
 This project is about turning Hypnograph's evolving history into a first real sequence-authoring surface.
 
-The core model is now clear: there is one active working `Hypnogram` at a time. If the app is launched normally, that working hypnogram is the default autosaved `history.json` session. If a `.hypno` file is opened, that file replaces the active working hypnogram. Sequence UI and behavior should build on that document model rather than treating history as a separate architecture.
+The core model is now clear: there is one active working `Hypnogram` at a time. If the app is launched normally, that working hypnogram is the default autosaved `default-hypnogram.hypno` session. If a `.hypno` file is opened, that file replaces the active working hypnogram. Sequence UI and behavior should build on that document model rather than treating history as a separate architecture.
 
 The next visible milestone is a sequence strip or timeline that makes the compositions in the current working hypnogram visible and editable as an ordered range. Export remains follow-on work and is tracked separately in [sequence-render-and-export.md](/Users/lorenjohnson/dev/Hypnograph/docs/backlog/sequence-render-and-export.md) and [sequence-fcpxml-export.md](/Users/lorenjohnson/dev/Hypnograph/docs/backlog/sequence-fcpxml-export.md).
 
@@ -49,7 +49,7 @@ The next visible milestone is a sequence strip or timeline that makes the compos
 - Should the top-level `Hypnogram.snapshot` remain as a stored document-poster image, or become a derived accessor that simply returns the first composition's preview image?
 - What is the clearest first way to handle hundreds of history items in the strip: zoom, overview + focus, collapsing, or something else?
 - Is moving or reordering compositions within the sequence in scope for this first project, or only something to leave open while the basic range-selection model settles?
-- Before this project is done, revisit the `history` naming in both code and UI so it more honestly describes the unnamed scratch session or default working document rather than implying a separate model.
+- Before this project is done, revisit any remaining `history` naming in both code and UI so it more honestly describes the unnamed scratch session or default working hypnogram rather than implying a separate model.
 - That same pass should resolve scratch-session edge cases, such as what should happen after explicitly saving the scratch session as a file-backed hypnogram and whether the default scratch session should immediately reset to a fresh working document afterward.
 - The project will also need an easy way to import or merge one hypnogram into another and to move compositions around within the current sequence once that authoring surface exists.
 
@@ -69,10 +69,10 @@ That means:
 - Composition-level `snapshot` and `thumbnail` fields are now in place and are used for history-item previews.
 - `currentCompositionIndex` is now treated as optional document state on `Hypnogram`.
 - Document-level viewing and playback settings such as aspect ratio, player or output resolution, source framing, and transition settings have been moved off app-global settings and onto `Hypnogram`.
-- Opening a `.hypno` file now replaces the active working hypnogram instead of appending into the default autosaved history document.
-- The default `history.json` now effectively behaves as the unnamed fallback working hypnogram and is only autosaved while it remains the active document.
+- Opening a `.hypno` file now replaces the active working hypnogram instead of appending into the default autosaved fallback hypnogram.
+- The default `default-hypnogram.hypno` now behaves as the unnamed fallback working hypnogram and is only autosaved while it remains the active document.
 - `Save` and `Save As` now save the full current working hypnogram, while `Save Composition` and `Save Composition As` explicitly save only the current composition as a single-composition `.hypno`.
-- File-open replacement now prompts to save only when the current active working document is a dirty file-backed hypnogram. The unnamed default history document is simply autosaved and replaced.
+- File-open replacement now prompts to save only when the current active working document is a dirty file-backed hypnogram. The unnamed default fallback hypnogram is simply autosaved and replaced.
 - `New` now starts a fresh working hypnogram, while `New Composition` inserts a new composition immediately after the current one in the active sequence.
 - The working hypnogram is now owned directly by `Studio`, with `PlayerState` consuming that document instead of storing its own separate hypnogram.
 - Playback transport now uses a three-state loop model (`off`, `composition`, `sequence`) plus an app-level `Generate at End` toggle. These are intentionally runtime behaviors, not hypnogram document state.
@@ -82,11 +82,12 @@ That means:
 
 ## Next Refactor
 
-This session is intentionally pausing here. The next clean architectural step is not to add more fields or more migration support, but to start defining the first visible sequence-editing surface on top of the cleaner model.
+This session is intentionally pausing here. The next refactor should address the lingering fallback-session naming and behavior mismatch now that the app clearly has one active working `Hypnogram` at a time.
 
-- Build the first horizontal sequence strip or timeline surface against the now-central `Studio`-owned working hypnogram.
-- Decide how dense sequences should be made legible first: scale only, scrolling, zoom, or some overview-plus-focus combination.
-- Keep the next timeline slice honest to Hypnograph's compound-clip workflow rather than drifting into a generic nonlinear editor.
+- Reframe the default `default-hypnogram.hypno` session more explicitly as the unnamed scratch or default working hypnogram rather than implying a separate model or mode.
+- Update code and UI naming where needed so `history` no longer suggests a different architecture from opened `.hypno` files.
+- Resolve the scratch-session behavior edge cases, especially what should happen after explicitly saving the scratch session as a file-backed hypnogram and whether a fresh unnamed working session should be created immediately afterward.
+- Use that refactor to make the relationship between the default scratch session and opened file-backed hypnograms clearer before moving on to the first visible sequence strip or timeline surface.
 
 --- LLM IGNORE EVERYTHING BELOW THIS LINE FOR NOW ---
 

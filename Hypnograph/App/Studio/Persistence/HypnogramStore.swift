@@ -97,7 +97,7 @@ private enum HypnogramEntryThumbnailCache {
     }
 }
 
-/// Observable store for hypnogram entries (favorites and history)
+/// Observable store for saved hypnogram entries (recent and favorites)
 @MainActor
 final class HypnogramStore: ObservableObject {
     static let shared = HypnogramStore()

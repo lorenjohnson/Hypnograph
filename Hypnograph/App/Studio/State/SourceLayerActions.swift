@@ -67,7 +67,7 @@ extension Studio {
         currentCompositionIndex = hypnogram.compositions.count - 1
         activePlayer.currentLayerIndex = currentLayers.count - 1
         notifyHypnogramMutated()
-        enforceHistoryLimit()
+        enforceDefaultHypnogramCompositionLimit()
         pruneSaveTargetsToCurrentHypnogram()
         applyCompositionSelectionChanged(manual: true)
 

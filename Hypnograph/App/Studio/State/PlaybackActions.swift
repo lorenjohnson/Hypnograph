@@ -41,7 +41,7 @@ extension Studio {
             actionDescription: "creating a new sequence"
         ) else { return }
         prepareForManualGenerationAction()
-        replaceHistoryWithNewComposition()
+        replaceDefaultHypnogramWithNewComposition()
     }
 
     func newComposition() {

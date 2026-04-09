@@ -41,6 +41,8 @@ struct PlayerView: NSViewRepresentable {
     var transitionDuration: Double = 1.5
     /// Called when the incoming composition has actually presented a frame.
     var onCompositionFramePresented: ((UUID?) -> Void)? = nil
+    /// Called when playback reaches the end and should be reflected as paused in UI state.
+    var onPlaybackStoppedAtEnd: (() -> Void)? = nil
 
     // MARK: - Coordinator
     //
@@ -482,6 +484,8 @@ struct PlayerView: NSViewRepresentable {
                                 isLastCompositionInSequence: self.isLastCompositionInSequence
                             ) else {
                                 player.pause()
+                                self.onPlaybackStoppedAtEnd?()
+                                c.lastPauseState = true
                                 return
                             }
                             if c.isAutoAdvanceInFlight {
@@ -498,6 +502,8 @@ struct PlayerView: NSViewRepresentable {
                         seekToStartAndPlayIfNeeded()
                     case .stopAtEnd:
                         player.pause()
+                        self.onPlaybackStoppedAtEnd?()
+                        c.lastPauseState = true
                     }
                 }
             }

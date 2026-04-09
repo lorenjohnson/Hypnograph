@@ -36,7 +36,7 @@ final class PlayerState: ObservableObject {
     /// True while the primary player is building/loading the current composition.
     @Published var isPrimaryCompositionLoadInFlight: Bool = false
 
-    /// True while a manually generated "next" composition at the end of history
+    /// True while a manually generated "next" composition at the end of the sequence
     /// is still unresolved and has not yet started transitioning in.
     var hasPendingGeneratedNextComposition: Bool = false
 

@@ -90,11 +90,11 @@ struct ContentView: View {
             return ("LIVE", .red)
         }
 
-        if shouldShowPersistentHistoryIndicator {
-            return (main.currentHistoryPositionText, .blue)
+        if shouldShowPersistentCompositionIndicator {
+            return (main.currentCompositionPositionText, .blue)
         }
 
-        if let clipText = main.historyIndicatorText {
+        if let clipText = main.compositionPositionIndicatorText {
             return (clipText, .blue)
         }
 
@@ -112,9 +112,9 @@ struct ContentView: View {
         return nil
     }
 
-    private var shouldShowPersistentHistoryIndicator: Bool {
+    private var shouldShowPersistentCompositionIndicator: Bool {
         guard !panelsCurrentlyAutoHidden else { return false }
-        return main.isViewingHistoryComposition
+        return main.isViewingEarlierComposition
     }
 
     private var shouldAutoHideCursor: Bool {
@@ -250,8 +250,8 @@ struct ContentView: View {
 
     private var hypnogramsContent: some View {
         HypnogramsPanel(
-            historyEntries: main.hypnogram.compositions.enumerated().map { index, composition in
-                HistoryCompositionEntry(
+            compositionEntries: main.hypnogram.compositions.enumerated().map { index, composition in
+                CompositionEntry(
                     index: index,
                     composition: composition,
                     isCurrent: index == main.currentCompositionIndex
@@ -269,10 +269,10 @@ struct ContentView: View {
             onToggleFavorite: { entry in
                 hypnogramStore.toggleFavorite(entry)
             },
-            onJumpToHistory: { index in
+            onJumpToComposition: { index in
                 main.jumpToComposition(at: index)
             },
-            onDeleteHistoryEntry: { index in
+            onDeleteCompositionEntry: { index in
                 main.deleteComposition(at: index)
             }
         )

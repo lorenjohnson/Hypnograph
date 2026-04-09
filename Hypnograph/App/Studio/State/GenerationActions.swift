@@ -87,7 +87,7 @@ extension Studio {
         return composition
     }
 
-    func replaceHistoryWithNewComposition() {
+    func replaceDefaultHypnogramWithNewComposition() {
         let composition = makeRandomComposition(preservingGlobalEffectFrom: nil)
         hypnogram = makeHypnogramWithCurrentHypnogramContext(
             compositions: [composition],
@@ -122,7 +122,7 @@ extension Studio {
         player.currentLayerIndex = -1
         pruneSaveTargetsToCurrentHypnogram()
         notifyHypnogramMutated()
-        enforceHistoryLimit()
+        enforceDefaultHypnogramCompositionLimit()
         applyCompositionSelectionChanged(manual: manual)
     }
 

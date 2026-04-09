@@ -30,10 +30,8 @@ final class Studio: ObservableObject {
     let state: HypnographState
     let panels: PanelStateController
     let renderQueue: RenderEngine.ExportQueue
-    let dependencies: StudioDependencies
     let panelHostService: FilePanelService
     let photosIntegrationService: PhotosIntegrationService
-    let historyPersistenceService: HistoryPersistenceService
 
     /// Global templates store (shared across preview + live)
     let effectsLibrarySession: EffectsSession
@@ -75,21 +73,21 @@ final class Studio: ObservableObject {
     @Published var liveMode: LiveMode = .edit
     var isLiveMode: Bool { liveMode == .live }
     var isLiveModeAvailable: Bool { state.settings.liveModeEnabled }
-    var isUsingDefaultWorkingHypnogram: Bool { activeWorkingHypnogramURL == nil }
+    var isUsingDefaultHypnogram: Bool { activeWorkingHypnogramURL == nil }
 
-    // MARK: - History HUD
+    // MARK: - Composition Position HUD
 
-    /// Flash-only composition position indicator (e.g. "3/57") shown when manually navigating history.
-    @Published var historyIndicatorText: String?
+    /// Flash-only composition position indicator (e.g. "3/57") shown when manually navigating compositions.
+    @Published var compositionPositionIndicatorText: String?
 
-    var historyIndicatorClearWorkItem: DispatchWorkItem?
+    var compositionPositionIndicatorClearWorkItem: DispatchWorkItem?
     var compositionSelectionWorkItem: DispatchWorkItem?
     var compositionSelectionUpdateToken: UInt64 = 0
 
-    // MARK: - History Persistence
+    // MARK: - Default Hypnogram Persistence
 
-    var historySaveTimer: Timer?
-    var historySaveCancellables: Set<AnyCancellable> = []
+    var defaultHypnogramSaveTimer: Timer?
+    var defaultHypnogramSaveCancellables: Set<AnyCancellable> = []
 
     // MARK: - Audio Output
 
@@ -155,10 +153,8 @@ final class Studio: ObservableObject {
         self.state = state
         self.panels = PanelStateController()
         self.renderQueue = renderQueue
-        self.dependencies = dependencies
         self.panelHostService = dependencies.makePanelHostService()
         self.photosIntegrationService = dependencies.photosIntegrationService
-        self.historyPersistenceService = dependencies.historyPersistenceService
 
         // One canonical effects library across modes.
         self.effectsLibrarySession = EffectsSession(filename: "effects-library.json")
@@ -259,11 +255,11 @@ final class Studio: ObservableObject {
             }
             .store(in: &playerSubscriptions)
 
-        // Restore history if available
-        restoreHistory()
+        // Restore the default fallback hypnogram if available
+        restoreDefaultHypnogram()
 
-        // Save history when app terminates and on edits
-        setupHistoryPersistence()
+        // Save the default working hypnogram when app terminates and on edits
+        setupDefaultHypnogramPersistence()
     }
 
     // MARK: - Working Hypnogram
@@ -418,9 +414,9 @@ final class Studio: ObservableObject {
             }
 
             if hypnogram.compositions.isEmpty {
-                replaceHistoryWithNewComposition()
+                replaceDefaultHypnogramWithNewComposition()
             } else if currentLayers.isEmpty {
-                // Defensive: keep history shape, just replace the current composition if it is empty.
+                // Defensive: keep the current sequence shape, just replace the current composition if it is empty.
                 replaceCurrentCompositionWithNewComposition()
             }
         }
@@ -528,6 +524,9 @@ final class Studio: ObservableObject {
                     player.currentRenderedCompositionID = compositionID
                     guard player.currentCompositionPreviewNeedsRefresh else { return }
                     self?.persistCurrentCompositionPreviewIfNeeded()
+                },
+                onPlaybackStoppedAtEnd: { [weak self] in
+                    self?.player.isPaused = true
                 }
             )
         )

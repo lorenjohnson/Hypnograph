@@ -55,8 +55,8 @@ extension Studio {
     }
 
     func confirmReplacingWorkingHypnogramIfNeeded(actionDescription: String) -> Bool {
-        guard !isUsingDefaultWorkingHypnogram else {
-            saveHistory(synchronous: true)
+        guard !isUsingDefaultHypnogram else {
+            saveDefaultHypnogram(synchronous: true)
             return true
         }
         guard hasUnsavedWorkingHypnogramChanges else { return true }
