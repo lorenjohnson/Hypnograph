@@ -6,51 +6,33 @@ doc-status: in-progress
 
 ## Overview
 
-This project is about turning Hypnograph's evolving history into a first real sequence-authoring surface.
+This project is about turning Hypnograph's multi-composition working state into a real sequence-authoring surface.
 
-The core model is now clear: there is one active working `Hypnogram` at a time. If the app is launched normally, that working hypnogram is the default autosaved `default-hypnogram.hypno` session. If a `.hypno` file is opened, that file replaces the active working hypnogram. Sequence UI and behavior should build on that document model rather than treating history as a separate architecture.
+The core model is now clear: there is one active working `Hypnogram` at a time. If the app is launched normally, that working hypnogram is the default autosaved `default-hypnogram.hypno` fallback file. If a `.hypno` file is opened, that file replaces the active working hypnogram. Sequence UI and behavior should build on that document model rather than treating sequence editing as a separate architecture.
 
 The next visible milestone is a sequence strip or timeline that makes the compositions in the current working hypnogram visible and editable as an ordered range. Export remains follow-on work and is tracked separately in [sequence-render-and-export.md](/Users/lorenjohnson/dev/Hypnograph/docs/backlog/sequence-render-and-export.md) and [sequence-fcpxml-export.md](/Users/lorenjohnson/dev/Hypnograph/docs/backlog/sequence-fcpxml-export.md).
 
 ## Rules
 
-- MUST keep the current history-based model usable while adding sequence authorship on top of it.
-- MUST prototype a history timeline strip that uses the same general styling language as the existing composition or layer timelines.
-- MUST let the operator set an in point and an out point across history.
-- MUST let history range selection snap to whole-hypnogram boundaries rather than arbitrary sub-clip positions.
-- MUST make the history strip capable of dealing with large histories rather than assuming only a handful of visible items.
-- MUST treat history persistence convergence with the saved `Hypnogram` document format as in scope for this project rather than as unrelated cleanup.
-- MUST treat `currentCompositionIndex` as optional multi-composition document state on `Hypnogram`, not as a history-only sidecar format.
-- MUST establish composition-level preview image fields so sequence and history UI can render composition thumbnails without inventing a history-only image model.
-- MUST treat document-level viewing or restore context such as aspect ratio, player or output resolution, source framing, and transition style or duration as optional state on `Hypnogram` rather than only as app-global settings.
-- MUST deprecate the previous app-global persistence locations for those document-level viewing fields rather than carrying forward migration support for them.
-- MUST keep `playRate` as composition-level authored data rather than moving it into hypnogram-level document state.
-- MUST treat loop mode and `Generate at End` as app/runtime transport behavior, not as document state on `Hypnogram`.
-- SHOULD treat show or hide behavior for the history timeline and the existing hypnogram timeline as one coordinated UX decision.
-- MUST keep a clear distinction between passive end-of-sequence behavior and explicit manual navigation.
-- SHOULD add clearer transport affordances for jumping to the beginning and end of the active range or history, if that remains the clearest MVP control shape.
-- MUST keep export concerns from taking over the first sequence UI and behavior decisions.
-- MUST NOT let longer-term naming or model-cleanup questions block the first usable version.
+- MUST keep one active working `Hypnogram` as the central sequence model.
+- MUST keep composition previews, ordering, and `currentCompositionIndex` as document state on `Hypnogram`.
+- MUST keep loop mode and `Generate at End` as runtime transport behavior, not document state.
+- MUST keep the first visible sequence surface lightweight and editable before taking on export- or timeline-heavy work.
+- MUST keep later timeline work aligned with the same composition ordering and selection semantics already used by the Sequence panel.
 
 ## Plan
 
-- Completed slice: history persistence now validates as a shared multi-composition `Hypnogram`, with composition-level previews and canonical `currentCompositionIndex`.
-- Completed slice: document-level restore context now lives on `Hypnogram`, not in app-global settings. `playRate` remains composition-level.
-- Completed slice: the active working document model now distinguishes between the unnamed default session and file-backed `.hypno` documents without treating history as a different data model.
-- Completed slice: transport behavior is now split cleanly between loop mode (`off`, `composition`, `sequence`) and the app-level `Generate at End` toggle. Manual next-at-end still generates, while loop-sequence also wraps manual sequence navigation.
-- Completed slice: the active working `Hypnogram`, `currentCompositionIndex`, and document revision are now owned directly by `Studio`, while `PlayerState` has been reduced to playback-local concerns.
-- Completed slice: document-level playback and viewing settings are now read primarily from the working `Hypnogram`, and `PlayerConfiguration` has been reduced back toward generation-only concerns.
-- Completed slice: `Sequence` now lives in its own panel instead of being a tab inside `Hypnograms`, and that panel supports basic drag-and-drop composition reordering.
-- Next slice: define the first richer sequence strip or timeline surface, including segment visibility, range selection, and how dense histories are made legible.
-- Follow-on slice: refine the first sequence strip once it exists, especially around density, scrolling, zoom, and reordering.
-- Later slice: refine sequence transport and timeline interaction once a visible sequence range exists, especially around clip-level scrubbing and beginning/end affordances.
+- Completed: multi-composition `Hypnogram` persistence, previews, document-level restore settings, and sequence-aware save/open behavior.
+- Completed: loop and end-of-sequence runtime behavior is now separate from document state.
+- Completed: `Studio` owns the working `Hypnogram`, and `Sequence` now lives in its own panel with basic drag-and-drop composition reordering.
+- Completed: the unnamed fallback working hypnogram now resets to a fresh default after it is explicitly saved out as a file-backed `.hypno`.
+- Next: build the first richer sequence strip or timeline surface on top of the current ordering and selection model.
 
 ## Open Questions
 
-- Should the top-level `Hypnogram.snapshot` remain as a stored document-poster image, or become a derived accessor that simply returns the first composition's preview image?
-- What is the clearest first way to handle hundreds of history items in the strip: zoom, overview + focus, collapsing, or something else?
-- That same pass should resolve scratch-session edge cases, such as what should happen after explicitly saving the scratch session as a file-backed hypnogram and whether the default scratch session should immediately reset to a fresh working document afterward.
-- The project will also need an easy way to import or merge one hypnogram into another and to move compositions around within the current sequence once that authoring surface exists.
+- Should the top-level `Hypnogram.snapshot` remain stored, or simply derive from the first composition preview?
+- What is the clearest first way to handle very long sequences in the later strip or timeline: zoom, overview plus focus, collapsing, or something else?
+- What is the first good import or merge flow for bringing one hypnogram into another?
 
 ## Architecture Direction
 
@@ -64,31 +46,23 @@ That means:
 
 ## Current Implementation State
 
-- History persistence now uses the shared multi-composition `Hypnogram` schema rather than a separate history-only shape.
-- Composition-level `snapshot` and `thumbnail` fields are now in place and are used for history-item previews.
-- `currentCompositionIndex` is now treated as optional document state on `Hypnogram`.
-- Document-level viewing and playback settings such as aspect ratio, player or output resolution, source framing, and transition settings have been moved off app-global settings and onto `Hypnogram`.
-- Opening a `.hypno` file now replaces the active working hypnogram instead of appending into the default autosaved fallback hypnogram.
-- The default `default-hypnogram.hypno` now behaves as the unnamed fallback working hypnogram and is only autosaved while it remains the active document.
-- `Save` and `Save As` now save the full current working hypnogram, while `Save Composition` and `Save Composition As` explicitly save only the current composition as a single-composition `.hypno`.
-- File-open replacement now prompts to save only when the current active working document is a dirty file-backed hypnogram. The unnamed default fallback hypnogram is simply autosaved and replaced.
-- `New` now starts a fresh working hypnogram, while `New Composition` inserts a new composition immediately after the current one in the active sequence.
-- The working hypnogram is now owned directly by `Studio`, with `PlayerState` consuming that document instead of storing its own separate hypnogram.
-- `Sequence` now lives in its own dedicated panel, while `Hypnograms` has narrowed back to saved-entry browsing.
-- The current Sequence panel now supports drag-and-drop composition reordering, with selection preserved by composition identity so the same move semantics can be reused by a later timeline surface.
-- Playback transport now uses a three-state loop model (`off`, `composition`, `sequence`) plus an app-level `Generate at End` toggle. These are intentionally runtime behaviors, not hypnogram document state.
-- Passive playback reaching the end of the sequence now either stops, loops the composition, loops the sequence, or continues generating depending on those transport settings, while explicit manual `Next` at the end still generates a new composition.
-- Document-level playback and viewing settings are now sourced primarily from the working `Hypnogram`, with only the live player keeping a small runtime copy of the values it actively renders with.
-- `PlayerConfiguration` has been reduced back to generation-oriented state rather than acting as a second source of truth for document-level playback settings.
+- The app now works from one active multi-composition `Hypnogram` at a time.
+- The unnamed fallback working file is `default-hypnogram.hypno`; opening a `.hypno` replaces it rather than merging into a separate sequence/history model.
+- `Save` and `Save As` save the full working hypnogram; composition-only save is explicit.
+- Saving the unnamed fallback working hypnogram as a real `.hypno` now resets the persisted fallback file to a fresh default.
+- `Studio` owns the working `Hypnogram`, `currentCompositionIndex`, and document mutation flow.
+- `Sequence` is now its own panel and supports basic composition reordering with selection preserved by composition identity.
+- Playback loop and `Generate at End` are runtime transport behavior only.
 
 ## Next Refactor
 
-This session is intentionally pausing here. The next refactor should address the lingering fallback-session naming and behavior mismatch now that the app clearly has one active working `Hypnogram` at a time.
+The next refactor should move from the current Sequence list into a richer sequence strip or timeline surface.
 
-- Reframe the default `default-hypnogram.hypno` session more explicitly as the unnamed scratch or default working hypnogram rather than implying a separate model or mode.
-- Update code and UI naming where needed so `history` no longer suggests a different architecture from opened `.hypno` files.
-- Resolve the scratch-session behavior edge cases, especially what should happen after explicitly saving the scratch session as a file-backed hypnogram and whether a fresh unnamed working session should be created immediately afterward.
-- Use that refactor to make the relationship between the default scratch session and opened file-backed hypnograms clearer before moving on to the first visible sequence strip or timeline surface.
+- Keep the current composition ordering and selection semantics as the basis for the new surface.
+- Make the sequence visually legible at higher density than the current list.
+- Introduce the first timeline-specific affordances only where they materially improve editing.
+
+
 
 --- LLM IGNORE EVERYTHING BELOW THIS LINE FOR NOW ---
 

@@ -73,6 +73,25 @@ extension Studio {
         }
     }
 
+    func resetPersistedDefaultHypnogramToFreshComposition() {
+        let freshComposition = makeRandomComposition(preservingGlobalEffectFrom: nil)
+        var defaultHypnogram = makeHypnogramWithCurrentHypnogramContext(
+            compositions: [freshComposition],
+            currentCompositionIndex: 0
+        )
+        defaultHypnogram.snapshot = nil
+
+        do {
+            try DefaultHypnogramStore.save(
+                defaultHypnogram,
+                url: Environment.defaultHypnogramURL,
+                historyLimit: state.settings.historyLimit
+            )
+        } catch {
+            print("⚠️ Studio: Failed to reset persisted default hypnogram: \(error)")
+        }
+    }
+
     func restoreDefaultHypnogram() {
         if let restoredHypnogram = DefaultHypnogramStore.load(
             url: Environment.defaultHypnogramURL,

@@ -10,7 +10,7 @@ import HypnoUI
 
 @MainActor
 extension Studio {
-    private func makeRandomComposition(preservingGlobalEffectFrom previous: Composition?) -> Composition {
+    func makeRandomComposition(preservingGlobalEffectFrom previous: Composition?) -> Composition {
         let compositionLengthMin = max(0.1, state.settings.compositionLengthMinSeconds)
         let compositionLengthMax = max(compositionLengthMin, state.settings.compositionLengthMaxSeconds)
         let compositionLengthSeconds = Double.random(in: compositionLengthMin...compositionLengthMax)

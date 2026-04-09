@@ -255,6 +255,7 @@ extension Studio {
         }
 
         let hypnogram = makeWorkingHypnogram().copyForExport()
+        let wasUsingDefaultHypnogram = isUsingDefaultHypnogram
         HypnogramFileActions.saveAs(
             hypnogram: hypnogram,
             snapshot: cgImage,
@@ -264,6 +265,9 @@ extension Studio {
             self.setActiveWorkingHypnogramURL(savedURL)
             self.clearUnsavedWorkingHypnogramChanges()
             _ = HypnogramStore.shared.upsertSavedSession(at: savedURL, snapshot: cgImage)
+            if wasUsingDefaultHypnogram {
+                self.resetPersistedDefaultHypnogramToFreshComposition()
+            }
             AppNotifications.show("Saved sequence \(savedURL.lastPathComponent)", flash: true)
         }
     }
