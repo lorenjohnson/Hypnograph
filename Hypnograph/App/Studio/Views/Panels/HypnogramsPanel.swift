@@ -6,50 +6,32 @@
 //
 
 import SwiftUI
-import HypnoCore
-
 /// Tab selection for the list
 enum HypnogramsPanelTab: String, CaseIterable {
-    case sequence = "Sequence"
     case recent = "Recently Saved"
     case favorites = "Favorites"
 }
 
-struct CompositionEntry: Identifiable {
-    let index: Int
-    let composition: Composition
-    let isCurrent: Bool
-
-    var id: Int { index }
-
-    var thumbnailImage: NSImage? {
-        CompositionPreviewImageCodec.decodeImage(from: composition.thumbnail ?? composition.snapshot)
-    }
-}
-
 /// Panel displaying saved hypnograms
 struct HypnogramsPanel: View {
-    let compositionEntries: [CompositionEntry]
     let recentEntries: [HypnogramEntry]
     let favoriteEntries: [HypnogramEntry]
     @AppStorage("studio.hypnogramsPanel.selectedTab")
-    private var selectedTabRawValue: String = HypnogramsPanelTab.sequence.rawValue
+    private var selectedTabRawValue: String = HypnogramsPanelTab.recent.rawValue
 
     /// Called when user wants to load a hypnogram
     var onLoad: (HypnogramEntry) -> Void
     var onToggleFavorite: (HypnogramEntry) -> Void
-    var onJumpToComposition: (Int) -> Void
-    var onDeleteCompositionEntry: (Int) -> Void
 
     private var selectedTab: Binding<HypnogramsPanelTab> {
         Binding(
-            get: { HypnogramsPanelTab(rawValue: selectedTabRawValue) ?? .sequence },
+            get: { HypnogramsPanelTab(rawValue: selectedTabRawValue) ?? .recent },
             set: { selectedTabRawValue = $0.rawValue }
         )
     }
 
     private var currentSelectedTab: HypnogramsPanelTab {
-        HypnogramsPanelTab(rawValue: selectedTabRawValue) ?? .sequence
+        HypnogramsPanelTab(rawValue: selectedTabRawValue) ?? .recent
     }
 
     var body: some View {
@@ -68,22 +50,6 @@ struct HypnogramsPanel: View {
             ScrollView {
                 LazyVStack(spacing: 6) {
                     switch currentSelectedTab {
-                    case .sequence:
-                        if compositionEntries.isEmpty {
-                            emptyStateText("No compositions yet")
-                        } else {
-                            ForEach(Array(compositionEntries.reversed())) { entry in
-                                CompositionRowView(
-                                    entry: entry,
-                                    onJump: {
-                                        onJumpToComposition(entry.index)
-                                    },
-                                    onDelete: {
-                                        onDeleteCompositionEntry(entry.index)
-                                    }
-                                )
-                            }
-                        }
                     case .recent, .favorites:
                         let entries = currentSelectedTab == .favorites ? favoriteEntries : recentEntries
 
@@ -184,61 +150,5 @@ struct ThumbnailView: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 6))
-    }
-}
-
-struct CompositionRowView: View {
-    let entry: CompositionEntry
-    let onJump: () -> Void
-    let onDelete: () -> Void
-
-    private var layerCountText: String {
-        let count = entry.composition.layers.count
-        return "\(count) layer\(count == 1 ? "" : "s")"
-    }
-
-    private var durationText: String {
-        let seconds = max(0.1, entry.composition.targetDuration.seconds)
-        let rounded = (seconds * 10).rounded() / 10
-        if abs(rounded - rounded.rounded()) < 0.05 {
-            return "\(Int(rounded.rounded()))s"
-        }
-        return String(format: "%.1fs", rounded)
-    }
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            ThumbnailView(image: entry.thumbnailImage)
-                .frame(width: 60, height: 60)
-                .clipped()
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Composition \(entry.index + 1)")
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.white)
-
-                Text("\(layerCountText) • \(durationText)")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.65))
-
-                Text(entry.composition.createdAt, style: .date)
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.5))
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(entry.isCurrent ? Color.blue.opacity(0.16) : Color.white.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .contentShape(Rectangle())
-        .onTapGesture {
-            onJump()
-        }
-        .contextMenu {
-            Button(role: .destructive, action: onDelete) {
-                Label("Delete Composition", systemImage: "trash")
-            }
-        }
     }
 }

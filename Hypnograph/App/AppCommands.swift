@@ -110,47 +110,54 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(replacing: .sidebar) {
-            Section("Studio Panels") {
+            Section("Panels") {
+                Toggle("Sequence", isOn: Binding(
+                    get: { panels.isPanelVisible("sequencePanel") },
+                    set: { _ in panels.togglePanel("sequencePanel") }
+                ))
+                .keyboardShortcut("1", modifiers: [.option])
+                .disabled(isTyping || !isStudioWindowShortcutContext)
+
                 Toggle("Composition", isOn: Binding(
                     get: { panels.isPanelVisible("compositionPanel") },
                     set: { _ in panels.togglePanel("compositionPanel") }
                 ))
-                .keyboardShortcut("1", modifiers: [.option])
+                .keyboardShortcut("2", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("Output Settings", isOn: Binding(
                     get: { panels.isPanelVisible("outputSettingsPanel") },
                     set: { _ in panels.togglePanel("outputSettingsPanel") }
                 ))
-                .keyboardShortcut("2", modifiers: [.option])
+                .keyboardShortcut("3", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("New Compositions", isOn: Binding(
                     get: { panels.isPanelVisible("newCompositionsPanel") },
                     set: { _ in panels.togglePanel("newCompositionsPanel") }
                 ))
-                .keyboardShortcut("3", modifiers: [.option])
+                .keyboardShortcut("4", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("Sources", isOn: Binding(
                     get: { panels.isPanelVisible("sourcesPanel") },
                     set: { _ in panels.togglePanel("sourcesPanel") }
                 ))
-                .keyboardShortcut("4", modifiers: [.option])
+                .keyboardShortcut("5", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("Effect Chains", isOn: Binding(
                     get: { panels.isPanelVisible("effectsPanel") },
                     set: { _ in panels.togglePanel("effectsPanel") }
                 ))
-                .keyboardShortcut("5", modifiers: [.option])
+                .keyboardShortcut("6", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Toggle("Hypnograms", isOn: Binding(
                     get: { panels.isPanelVisible("hypnogramsPanel") },
                     set: { _ in panels.togglePanel("hypnogramsPanel") }
                 ))
-                .keyboardShortcut("6", modifiers: [.option])
+                .keyboardShortcut("7", modifiers: [.option])
                 .disabled(isTyping || !isStudioWindowShortcutContext)
 
                 Divider()

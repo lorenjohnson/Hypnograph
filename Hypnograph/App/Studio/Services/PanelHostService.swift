@@ -7,6 +7,7 @@ import SwiftUI
 import AppKit
 
 private enum PanelKind {
+    case sequence
     case hypnograms
     case sources
     case newCompositions
@@ -17,6 +18,7 @@ private enum PanelKind {
 
     var title: String {
         switch self {
+        case .sequence: return "Sequence"
         case .hypnograms: return "Hypnograms"
         case .sources: return "Sources"
         case .newCompositions: return "New Compositions"
@@ -29,6 +31,7 @@ private enum PanelKind {
 
     var panelStateID: String {
         switch self {
+        case .sequence: return "sequencePanel"
         case .hypnograms: return "hypnogramsPanel"
         case .sources: return "sourcesPanel"
         case .newCompositions: return "newCompositionsPanel"
@@ -41,6 +44,7 @@ private enum PanelKind {
 
     var defaultSize: CGSize {
         switch self {
+        case .sequence: return CGSize(width: 420, height: 520)
         case .hypnograms: return CGSize(width: 420, height: 520)
         case .sources: return CGSize(width: 420, height: 420)
         case .newCompositions: return CGSize(width: 360, height: 560)
@@ -71,6 +75,7 @@ private enum PanelKind {
 
     var minSize: CGSize {
         switch self {
+        case .sequence: return CGSize(width: 360, height: 320)
         case .hypnograms: return CGSize(width: 360, height: 320)
         case .sources: return CGSize(width: 360, height: 120)
         case .newCompositions: return CGSize(width: defaultSize.width, height: 120)
@@ -83,7 +88,7 @@ private enum PanelKind {
 
     var shouldFitHeightToContent: Bool {
         switch self {
-        case .effects, .hypnograms:
+        case .effects, .sequence, .hypnograms:
             return false
         default:
             return true
@@ -92,7 +97,7 @@ private enum PanelKind {
 
     var allowsBackgroundDragging: Bool {
         switch self {
-        case .composition, .effects, .playerControls:
+        case .sequence, .composition, .effects, .playerControls:
             return false
         default:
             return true
@@ -101,9 +106,13 @@ private enum PanelKind {
 
     var defaultOrigin: (NSRect, CGSize) -> CGPoint {
         switch self {
-        case .hypnograms:
+        case .sequence:
             return { parentFrame, size in
                 CGPoint(x: parentFrame.minX - size.width - 16, y: parentFrame.maxY - size.height - 36)
+            }
+        case .hypnograms:
+            return { parentFrame, size in
+                CGPoint(x: parentFrame.minX - size.width - 16, y: parentFrame.maxY - size.height - 420)
             }
         case .sources:
             return { parentFrame, size in
@@ -145,7 +154,7 @@ private enum PanelKind {
 
     var isResizable: Bool {
         switch self {
-        case .hypnograms, .effects:
+        case .sequence, .hypnograms, .effects:
             return true
         default:
             return false
@@ -166,7 +175,7 @@ private enum PanelKind {
 
     var shouldRefreshRootViewOnSync: Bool {
         switch self {
-        case .hypnograms, .playerControls:
+        case .sequence, .hypnograms, .playerControls:
             return true
         default:
             return false
@@ -349,6 +358,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
 
     func sync(
         parentWindow: NSWindow?,
+        showSequence: Bool,
         showHypnograms: Bool,
         showSources: Bool,
         showNewCompositions: Bool,
@@ -365,6 +375,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
         onPanelFrameChanged: @escaping (String, CGRect) -> Void,
         onPanelOrderChanged: @escaping ([String]) -> Void,
         onPanelsAutoHiddenChanged: @escaping (Bool) -> Void,
+        sequenceContent: AnyView,
         hypnogramsContent: AnyView,
         sourcesContent: AnyView,
         newCompositionsContent: AnyView,
@@ -386,7 +397,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
             clearFocusForVisiblePanels()
         }
         let anyVisibleRequested =
-            showHypnograms || showSources || showNewCompositions || showOutputSettings || showComposition || showEffects || showPlayerControls
+            showSequence || showHypnograms || showSources || showNewCompositions || showOutputSettings || showComposition || showEffects || showPlayerControls
         let shouldStartAutoHidden =
             autoHidePanels && anyVisibleRequested && !hasInitializedVisiblePanelPresentation
 
@@ -420,6 +431,13 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
 
         updateAutoHideMonitoring(enabled: autoHidePanels, startHidden: shouldStartAutoHidden)
 
+        syncPanel(
+            kind: .sequence,
+            visible: showSequence,
+            content: sequenceContent,
+            parentWindow: parentWindow,
+            suppressVisibilityActivity: shouldStartAutoHidden
+        )
         syncPanel(
             kind: .hypnograms,
             visible: showHypnograms,

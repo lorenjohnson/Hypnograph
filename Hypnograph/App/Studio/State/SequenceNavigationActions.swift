@@ -151,6 +151,32 @@ extension Studio {
         applyCompositionSelectionChanged(manual: true)
     }
 
+    func moveComposition(sourceID: UUID, targetID: UUID) {
+        guard sourceID != targetID else { return }
+
+        var compositions = hypnogram.compositions
+        guard let fromIndex = compositions.firstIndex(where: { $0.id == sourceID }) else { return }
+        guard let toIndex = compositions.firstIndex(where: { $0.id == targetID }) else { return }
+        guard fromIndex != toIndex else { return }
+
+        let selectedCompositionID = currentComposition.id
+
+        let movedComposition = compositions.remove(at: fromIndex)
+        var destination = toIndex
+        if fromIndex < toIndex {
+            destination -= 1
+        }
+        compositions.insert(movedComposition, at: max(0, min(destination, compositions.count)))
+
+        hypnogram.compositions = compositions
+
+        if let selectedIndex = compositions.firstIndex(where: { $0.id == selectedCompositionID }) {
+            currentCompositionIndex = selectedIndex
+        }
+
+        notifyHypnogramMutated()
+    }
+
     func persistCurrentCompositionPreviewIfNeeded() {
         let composition = currentComposition
         let compositionIndex = max(0, min(currentCompositionIndex, max(0, hypnogram.compositions.count - 1)))

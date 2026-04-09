@@ -7,6 +7,7 @@ import SwiftUI
 
 struct PanelHostBridge: NSViewRepresentable {
     @ObservedObject var hostService: PanelHostService
+    let showSequence: Bool
     let showHypnograms: Bool
     let showSources: Bool
     let showNewCompositions: Bool
@@ -23,6 +24,7 @@ struct PanelHostBridge: NSViewRepresentable {
     let onPanelFrameChanged: (String, CGRect) -> Void
     let onPanelOrderChanged: ([String]) -> Void
     let onPanelsAutoHiddenChanged: (Bool) -> Void
+    let sequenceContent: AnyView
     let hypnogramsContent: AnyView
     let sourcesContent: AnyView
     let newCompositionsContent: AnyView
@@ -51,6 +53,7 @@ struct PanelHostBridge: NSViewRepresentable {
         context.coordinator.hostService = hostService
         context.coordinator.hostService.sync(
             parentWindow: nsView.window,
+            showSequence: showSequence,
             showHypnograms: showHypnograms,
             showSources: showSources,
             showNewCompositions: showNewCompositions,
@@ -67,6 +70,7 @@ struct PanelHostBridge: NSViewRepresentable {
             onPanelFrameChanged: onPanelFrameChanged,
             onPanelOrderChanged: onPanelOrderChanged,
             onPanelsAutoHiddenChanged: onPanelsAutoHiddenChanged,
+            sequenceContent: sequenceContent,
             hypnogramsContent: hypnogramsContent,
             sourcesContent: sourcesContent,
             newCompositionsContent: newCompositionsContent,
