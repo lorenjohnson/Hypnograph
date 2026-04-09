@@ -53,16 +53,9 @@ struct ContentView: View {
             )
         }
 
-        if main.activePlayer.currentLayerIndex == -1 {
-            return currentLayers.enumerated().compactMap { index, layer in
-                makeContext(layer: layer, index: index)
-            }
+        return currentLayers.enumerated().compactMap { index, layer in
+            makeContext(layer: layer, index: index)
         }
-
-        let index = main.activePlayer.currentLayerIndex
-        guard index >= 0, index < currentLayers.count else { return [] }
-        guard let context = makeContext(layer: currentLayers[index], index: index) else { return [] }
-        return [context]
     }
 
     private func layerTitle(for layer: Layer) -> String {
@@ -226,6 +219,13 @@ struct ContentView: View {
             isLoopSequenceEnabled: main.isLoopSequenceEnabled,
             compositionLengthSeconds: main.targetDuration.seconds,
             layerTrimContexts: layerTrimContexts,
+            sequenceEntries: main.hypnogram.compositions.enumerated().map { index, composition in
+                CompositionEntry(
+                    index: index,
+                    composition: composition,
+                    isCurrent: index == main.currentCompositionIndex
+                )
+            },
             volume: Binding(
                 get: { Double(main.volume) },
                 set: { main.volume = Float($0) }
@@ -243,6 +243,15 @@ struct ContentView: View {
                     startSeconds: range.lowerBound,
                     endSeconds: range.upperBound
                 )
+            },
+            onJumpToComposition: { index in
+                main.jumpToComposition(at: index)
+            },
+            onDeleteCompositionEntry: { index in
+                main.deleteComposition(at: index)
+            },
+            onMoveComposition: { sourceID, targetID in
+                main.moveComposition(sourceID: sourceID, targetID: targetID)
             }
         )
         .frame(maxWidth: 920)
@@ -261,27 +270,6 @@ struct ContentView: View {
             },
             onToggleFavorite: { entry in
                 hypnogramStore.toggleFavorite(entry)
-            }
-        )
-    }
-
-    private var sequenceContent: some View {
-        SequencePanel(
-            compositionEntries: main.hypnogram.compositions.enumerated().map { index, composition in
-                CompositionEntry(
-                    index: index,
-                    composition: composition,
-                    isCurrent: index == main.currentCompositionIndex
-                )
-            },
-            onJumpToComposition: { index in
-                main.jumpToComposition(at: index)
-            },
-            onDeleteCompositionEntry: { index in
-                main.deleteComposition(at: index)
-            },
-            onMoveComposition: { sourceID, targetID in
-                main.moveComposition(sourceID: sourceID, targetID: targetID)
             }
         )
     }
@@ -361,7 +349,6 @@ struct ContentView: View {
         .background(
             PanelHostBridge(
                 hostService: panelHostService,
-                showSequence: panels.isPanelVisible("sequencePanel"),
                 showHypnograms: panels.isPanelVisible("hypnogramsPanel"),
                 showSources: panels.isPanelVisible("sourcesPanel"),
                 showNewCompositions: panels.isPanelVisible("newCompositionsPanel"),
@@ -371,7 +358,6 @@ struct ContentView: View {
                 showPlayerControls: true,
                 expectedParentFullScreen: panels.mainWindowFullScreen,
                 panelFrames: [
-                    "sequencePanel": panels.panelFrame("sequencePanel"),
                     "hypnogramsPanel": panels.panelFrame("hypnogramsPanel"),
                     "sourcesPanel": panels.panelFrame("sourcesPanel"),
                     "newCompositionsPanel": panels.panelFrame("newCompositionsPanel"),
@@ -398,9 +384,6 @@ struct ContentView: View {
                         panels.setPanelsHidden(isHidden)
                     }
                 },
-                sequenceContent: AnyView(
-                    sequenceContent
-                ),
                 hypnogramsContent: AnyView(
                     hypnogramsContent
                 ),
@@ -434,7 +417,6 @@ struct ContentView: View {
             panelHostService.showPanelsNow()
         }
         .onAppear {
-            panels.registerPanel("sequencePanel", defaultVisible: false)
             panels.registerPanel("hypnogramsPanel", defaultVisible: false)
             panels.registerPanel("sourcesPanel", defaultVisible: false)
             panels.registerPanel("newCompositionsPanel", defaultVisible: true)

@@ -24,9 +24,9 @@ The next visible milestone is a sequence strip or timeline that makes the compos
 
 - Completed: multi-composition `Hypnogram` persistence, previews, document-level restore settings, and sequence-aware save/open behavior.
 - Completed: loop and end-of-sequence runtime behavior is now separate from document state.
-- Completed: `Studio` owns the working `Hypnogram`, and `Sequence` now lives in its own panel with basic drag-and-drop composition reordering.
-- Completed: the unnamed fallback working hypnogram now resets to a fresh default after it is explicitly saved out as a file-backed `.hypno`.
-- Next: build the first richer sequence strip or timeline surface on top of the current ordering and selection model.
+- Completed: `Studio` owns the working `Hypnogram`, and the unnamed fallback working hypnogram now resets to a fresh default after it is explicitly saved out as a file-backed `.hypno`.
+- In Progress: the first richer sequence strip is now embedded directly in playback controls, with current selection, drag-and-drop reordering, and horizontal scrolling.
+- Next: refine the embedded sequence lane until it is a solid first timeline surface, then decide what timeline-specific editing affordances come next.
 
 ## Open Questions
 
@@ -51,16 +51,17 @@ That means:
 - `Save` and `Save As` save the full working hypnogram; composition-only save is explicit.
 - Saving the unnamed fallback working hypnogram as a real `.hypno` now resets the persisted fallback file to a fresh default.
 - `Studio` owns the working `Hypnogram`, `currentCompositionIndex`, and document mutation flow.
-- `Sequence` is now its own panel and supports basic composition reordering with selection preserved by composition identity.
 - Playback loop and `Generate at End` are runtime transport behavior only.
+- The current sequence surface now lives inside playback controls rather than in a separate Sequence panel.
+- Layer trim strips now stay visible together, and the embedded sequence lane shares that same playback-controls context.
 
 ## Next Refactor
 
-The next refactor should move from the current Sequence list into a richer sequence strip or timeline surface.
+Keep iterating on the embedded sequence lane until it earns its place as the first real timeline surface.
 
-- Keep the current composition ordering and selection semantics as the basis for the new surface.
-- Make the sequence visually legible at higher density than the current list.
-- Introduce the first timeline-specific affordances only where they materially improve editing.
+- Preserve the current composition ordering and selection semantics as the basis for the lane.
+- Keep reordering reusable for a later fuller timeline view.
+- Improve density, scrolling feel, and visual legibility before adding heavier timeline mechanics.
 
 
 

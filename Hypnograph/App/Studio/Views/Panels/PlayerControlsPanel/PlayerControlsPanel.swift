@@ -6,6 +6,7 @@ struct PlayerControlsPanel: View {
     let isLoopSequenceEnabled: Bool
     let compositionLengthSeconds: Double
     let layerTrimContexts: [LayerTrimContext]
+    let sequenceEntries: [CompositionEntry]
     @Binding var volume: Double
     let onPrevious: () -> Void
     let onPlayPause: () -> Void
@@ -15,11 +16,15 @@ struct PlayerControlsPanel: View {
     let onSaveCurrent: () -> Void
     let onRenderCurrent: () -> Void
     let onCommitLayerTrimRange: (Int, ClosedRange<Double>) -> Void
+    let onJumpToComposition: (Int) -> Void
+    let onDeleteCompositionEntry: (Int) -> Void
+    let onMoveComposition: (UUID, UUID) -> Void
 
     @State private var pendingTooltipWorkItem: DispatchWorkItem?
     @State private var visibleTooltipControlID: String?
     @State private var visibleTooltipText: String?
     @State private var previousVolumeBeforeMute: Double = 0.8
+    @State private var draggedCompositionID: UUID?
 
     private let tooltipDelay: TimeInterval = 0.85
 
@@ -29,6 +34,29 @@ struct PlayerControlsPanel: View {
                 contexts: layerTrimContexts,
                 onCommit: onCommitLayerTrimRange
             )
+
+            if !sequenceEntries.isEmpty {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("Sequence")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+
+                    Spacer(minLength: 0)
+                }
+
+                SequenceLaneView(
+                    compositionEntries: sequenceEntries,
+                    draggedCompositionID: $draggedCompositionID,
+                    onJumpToComposition: onJumpToComposition,
+                    onDeleteCompositionEntry: onDeleteCompositionEntry,
+                    onMoveComposition: onMoveComposition
+                )
+                .padding(.horizontal, 2)
+
+                Divider()
+                    .background(Color.white.opacity(0.16))
+            }
 
             controlsRow
         }

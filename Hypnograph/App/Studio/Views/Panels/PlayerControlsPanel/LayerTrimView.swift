@@ -61,7 +61,7 @@ private struct LayerTrimRangeStrip: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(context.clipLabel)
                     .font(.caption)
@@ -71,7 +71,7 @@ private struct LayerTrimRangeStrip: View {
 
                 Spacer(minLength: 10)
 
-                Text(formatTime(activeRange.upperBound - activeRange.lowerBound))
+                Text("\(formatTime(activeRange.upperBound - activeRange.lowerBound)) of \(formatTime(safeTotalSeconds))")
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
             }
@@ -133,16 +133,6 @@ private struct LayerTrimRangeStrip: View {
                 .contentShape(Rectangle())
             }
             .frame(height: trackHeight)
-
-            HStack {
-                Text("0s")
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundStyle(.tertiary)
-                Spacer(minLength: 8)
-                Text(formatTime(safeTotalSeconds))
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundStyle(.tertiary)
-            }
         }
         .onChange(of: context) { _, newValue in
             draftRange = normalized(newValue.selectedRangeSeconds)

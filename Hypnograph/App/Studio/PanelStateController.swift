@@ -198,7 +198,6 @@ final class PanelStateController: ObservableObject {
     private func migratedPanelVisibilityState(from loadedState: PanelVisibilityState) -> PanelVisibilityState {
         var migratedState = PanelVisibilityState()
         let knownPanelIDs = [
-            "sequencePanel",
             "hypnogramsPanel",
             "sourcesPanel",
             "newCompositionsPanel",
