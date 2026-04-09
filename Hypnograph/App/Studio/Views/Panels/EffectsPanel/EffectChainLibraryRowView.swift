@@ -32,7 +32,7 @@ struct EffectChainLibraryRowView: View {
     }
 
     private var currentTargetLabel: String {
-        currentTargetLayer < 0 ? "Composition" : "Layer \(currentTargetLayer + 1)"
+        "Layer \(currentTargetLayer + 1)"
     }
 
     private func applyToCurrentSelection() {

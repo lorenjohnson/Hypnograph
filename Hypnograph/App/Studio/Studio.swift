@@ -310,10 +310,6 @@ final class Studio: ObservableObject {
         currentLayer?.mediaClip
     }
 
-    var isOnCompositionLayer: Bool {
-        player.currentLayerIndex == -1
-    }
-
     private func updateCurrentComposition(_ update: (inout Composition) -> Void) {
         var composition = currentComposition
         update(&composition)
@@ -356,41 +352,38 @@ final class Studio: ObservableObject {
     }
 
     func selectSource(_ index: Int) {
-        guard index >= -1, index < currentLayers.count else { return }
+        guard index >= 0, index < currentLayers.count else { return }
         player.currentLayerIndex = index
-    }
-
-    func selectCompositionLayer() {
-        player.currentLayerIndex = -1
     }
 
     func nextSource() {
         guard !currentLayers.isEmpty else { return }
-        if player.currentLayerIndex == -1 {
+        if player.currentLayerIndex < 0 || player.currentLayerIndex >= currentLayers.count {
             player.currentLayerIndex = 0
-        } else if player.currentLayerIndex >= currentLayers.count - 1 {
-            player.currentLayerIndex = -1
         } else {
-            player.currentLayerIndex += 1
+            player.currentLayerIndex = (player.currentLayerIndex + 1) % currentLayers.count
         }
     }
 
     func previousSource() {
         guard !currentLayers.isEmpty else { return }
-        if player.currentLayerIndex == -1 {
-            player.currentLayerIndex = currentLayers.count - 1
+        if player.currentLayerIndex < 0 || player.currentLayerIndex >= currentLayers.count {
+            player.currentLayerIndex = 0
         } else if player.currentLayerIndex == 0 {
-            player.currentLayerIndex = -1
+            player.currentLayerIndex = currentLayers.count - 1
         } else {
             player.currentLayerIndex -= 1
         }
     }
 
     func clampCurrentSourceIndex() {
-        if player.currentLayerIndex == -1 { return }
         let maxIndex = currentLayers.count - 1
         if maxIndex < 0 {
-            player.currentLayerIndex = -1
+            player.currentLayerIndex = 0
+            return
+        }
+        if player.currentLayerIndex < 0 {
+            player.currentLayerIndex = 0
             return
         }
         if player.currentLayerIndex > maxIndex {

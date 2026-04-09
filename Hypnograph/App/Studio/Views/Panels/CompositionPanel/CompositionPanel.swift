@@ -116,12 +116,10 @@ struct CompositionPanel: View {
     }
 
     private var compositionSection: some View {
-        let isSelected = main.activePlayer.currentLayerIndex == -1
-
         return VStack(alignment: .leading, spacing: 10) {
             Text("Composition")
                 .font(.headline)
-                .foregroundStyle(isSelected ? .primary : .secondary)
+                .foregroundStyle(.secondary)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
@@ -163,18 +161,14 @@ struct CompositionPanel: View {
             )
         }
         .padding(10)
-        .contentShape(Rectangle())
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isSelected ? Color.accentColor.opacity(0.14) : Color.white.opacity(0.05))
+                .fill(Color.white.opacity(0.05))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(isSelected ? Color.accentColor.opacity(0.55) : Color.white.opacity(0.08), lineWidth: isSelected ? 1.0 : 0.5)
+                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
         )
-        .onTapGesture {
-            main.selectCompositionLayer()
-        }
     }
 
     private func bindingForLayer(id: UUID, fallback: Layer) -> Binding<Layer> {

@@ -228,7 +228,6 @@ extension Studio {
             .disabled(disableMainWindowShortcuts)
 
             Menu("Current") {
-                currentSelectionMenuItem(title: "Composition", index: -1, shortcut: "`")
                 currentSelectionMenuItem(title: "Layer 1", index: 0, shortcut: "1")
                 currentSelectionMenuItem(title: "Layer 2", index: 1, shortcut: "2")
                 currentSelectionMenuItem(title: "Layer 3", index: 2, shortcut: "3")
@@ -245,11 +244,7 @@ extension Studio {
     @ViewBuilder
     private func currentSelectionMenuItem(title: String, index: Int, shortcut: KeyEquivalent) -> some View {
         Button {
-            if index == -1 {
-                self.selectCompositionLayer()
-            } else {
-                self.selectSource(index)
-            }
+            self.selectSource(index)
         } label: {
             if activePlayer.currentLayerIndex == index {
                 Label(title, systemImage: "checkmark")

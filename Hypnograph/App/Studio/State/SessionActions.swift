@@ -46,7 +46,7 @@ extension Studio {
             clearUnsavedWorkingHypnogramChanges()
             clearAllSaveTargets()
             applyCurrentHypnogramDocumentContextToRuntime()
-            player.currentLayerIndex = -1
+            player.currentLayerIndex = 0
             player.currentCompositionLoadFailure = nil
             player.hasPendingGeneratedNextComposition = false
         }

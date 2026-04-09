@@ -112,22 +112,7 @@ extension Studio {
     }
 
     func removeCurrentLayer() {
-        let idx: Int
-        if activePlayer.currentLayerIndex == -1 {
-            if currentLayers.count == 1 {
-                idx = 0
-            } else {
-                if currentLayers.isEmpty {
-                    AppNotifications.show("No layers selected", flash: true, duration: 1.25)
-                } else {
-                    AppNotifications.show("Select a layer (1-9)", flash: true, duration: 1.25)
-                }
-                return
-            }
-        } else {
-            idx = activePlayer.currentLayerIndex
-        }
-
+        let idx = activePlayer.currentLayerIndex
         guard idx >= 0, idx < currentLayers.count else { return }
 
         if currentLayers.count == 1 {
@@ -143,22 +128,7 @@ extension Studio {
     }
 
     func duplicateCurrentLayer() {
-        let idx: Int
-        if activePlayer.currentLayerIndex == -1 {
-            if currentLayers.count == 1 {
-                idx = 0
-            } else {
-                if currentLayers.isEmpty {
-                    AppNotifications.show("No layers to duplicate", flash: true, duration: 1.25)
-                } else {
-                    AppNotifications.show("Select a layer (1-9)", flash: true, duration: 1.25)
-                }
-                return
-            }
-        } else {
-            idx = activePlayer.currentLayerIndex
-        }
-
+        let idx = activePlayer.currentLayerIndex
         guard idx >= 0, idx < currentLayers.count else { return }
 
         let duplicatedLayer = duplicatedLayerWithNewFileID(from: currentLayers[idx])
@@ -446,12 +416,6 @@ extension Studio {
     }
 
     private func resolveSelectedSourceIndexForCuration() -> Int? {
-        if activePlayer.currentLayerIndex == -1 {
-            if currentLayers.count == 1 {
-                return 0
-            }
-            return nil
-        }
         return activePlayer.currentLayerIndex
     }
 

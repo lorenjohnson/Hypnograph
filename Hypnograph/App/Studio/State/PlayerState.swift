@@ -17,9 +17,9 @@ final class PlayerState: ObservableObject {
 
     // MARK: - Playback State
 
-    /// Current layer index for navigation (-1 = composition effect chain, 0+ = layer index)
-    /// Defaults to composition scope so effects set via E key persist across new compositions.
-    @Published var currentLayerIndex: Int = -1
+    /// Current layer index for navigation and layer-targeted actions.
+    /// Defaults to the first layer when available.
+    @Published var currentLayerIndex: Int = 0
 
     /// Optional playhead offset for scrubbing
     @Published var currentLayerTimeOffset: CMTime?
