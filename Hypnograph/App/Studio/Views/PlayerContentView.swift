@@ -170,8 +170,27 @@ final class PlayerContentView: NSView {
             nextSource.player.playImmediately(atRate: rate)
         }
 
+        let outgoingSource = source(for: outgoingSlot)
+        let hasOutgoingItem = outgoingSource?.player.currentItem != nil
+
         // Handle instant cut (no transition)
         if transitionType == .none {
+            // On first load there is no meaningful outgoing frame to preserve, so a direct
+            // primary-source swap is the cleanest path and avoids stalling playback startup.
+            guard hasOutgoingItem else {
+                outgoingSlotDuringTransition = nil
+                playerView.onTransitionProgress = nil
+                playerView.cancelTransition()
+                playerView.primarySource = nextSource
+                activeSlot = nextSlot
+                playerView.onNextFramePresented = onIncomingFramePresented
+                playerView.onFirstTransitionFramePresented = nil
+                applyAudioMix(progress: nil)
+                notifyMirrors()
+                completion?()
+                return
+            }
+
             outgoingSlotDuringTransition = outgoingSlot
             activeSlot = nextSlot
             playerView.onNextFramePresented = nil

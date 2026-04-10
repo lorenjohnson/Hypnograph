@@ -26,21 +26,15 @@ struct EffectChainLibraryRowView: View {
     @FocusState private var isNameFieldFocused: Bool
 
     private var displayName: String { chain.name ?? "Unnamed" }
-
-    private var currentTargetLayer: Int {
-        main.activePlayer.currentLayerIndex
-    }
-
-    private var currentTargetLabel: String {
-        "Layer \(currentTargetLayer + 1)"
-    }
+    private var isChainEnabled: Bool { chain.isEnabled }
 
     private func applyToCurrentSelection() {
+        guard chain.hasEnabledEffects else { return }
         if isRenaming {
             onCommitRename()
         }
-        main.activeEffectManager.applyTemplate(chain, to: currentTargetLayer)
-        AppNotifications.show("Applied to \(currentTargetLabel)", flash: true)
+        main.activeEffectManager.applyTemplate(chain, to: -1)
+        AppNotifications.show("Applied to Composition", flash: true)
     }
 
     var body: some View {
@@ -48,7 +42,19 @@ struct EffectChainLibraryRowView: View {
             headerRow
             .contextMenu {
                 Button(action: applyToCurrentSelection) {
-                    Label("Apply to \(currentTargetLabel)", systemImage: "square.stack.3d.up")
+                    Label("Apply to Composition", systemImage: "square.stack.3d.up")
+                }
+                .disabled(!chain.hasEnabledEffects)
+
+                Divider()
+
+                Button {
+                    session.setChainEnabled(chainIndex: chainIndex, enabled: !isChainEnabled)
+                } label: {
+                    Label(
+                        isChainEnabled ? "Disable Chain" : "Enable Chain",
+                        systemImage: isChainEnabled ? "eye.slash" : "eye"
+                    )
                 }
 
                 Divider()
@@ -76,6 +82,7 @@ struct EffectChainLibraryRowView: View {
         }
         .padding(.horizontal, 7)
         .padding(.vertical, 5)
+        .opacity(isChainEnabled ? 1.0 : 0.55)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(.white.opacity(0.05))
@@ -107,6 +114,13 @@ struct EffectChainLibraryRowView: View {
             }
             .buttonStyle(.plain)
             .focusable(false)
+
+            PanelToggleView(isOn: Binding(
+                get: { isChainEnabled },
+                set: { session.setChainEnabled(chainIndex: chainIndex, enabled: $0) }
+            ))
+            .frame(width: 30, height: 18)
+            .help(isChainEnabled ? "Disable Chain" : "Enable Chain")
 
             rowMainTapArea
 

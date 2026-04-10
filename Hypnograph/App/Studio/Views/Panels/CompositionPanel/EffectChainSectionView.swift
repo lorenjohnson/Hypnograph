@@ -22,7 +22,7 @@ struct EffectChainSectionView: View {
 
     private var availableLibraryChains: [EffectChain] {
         main.effectsLibrarySession.chains
-            .filter { !$0.effects.isEmpty }
+            .filter { $0.hasEnabledEffects }
             .sorted { lhs, rhs in
                 templateDisplayName(lhs).localizedCaseInsensitiveCompare(templateDisplayName(rhs)) == .orderedAscending
             }
