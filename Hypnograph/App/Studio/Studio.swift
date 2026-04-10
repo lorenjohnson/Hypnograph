@@ -18,6 +18,11 @@ import HypnoUI
 
 @MainActor
 final class Studio: ObservableObject {
+    // Temporary demo-safety switch: disable automatic composition preview persistence
+    // during playback navigation because it appears to contribute to transition hitching.
+    // Re-enable later by deleting this flag and the single guard that checks it below.
+    private static let isCompositionPreviewPersistenceDisabledForExperiment = true
+
     enum PlaybackEndBehavior {
         case stopAtEnd
         case loopComposition
@@ -516,6 +521,7 @@ final class Studio: ObservableObject {
 
                     player.currentRenderedCompositionID = compositionID
                     guard player.currentCompositionPreviewNeedsRefresh else { return }
+                    guard !Self.isCompositionPreviewPersistenceDisabledForExperiment else { return }
                     self?.persistCurrentCompositionPreviewIfNeeded()
                 },
                 onPlaybackStoppedAtEnd: { [weak self] in

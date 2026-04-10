@@ -129,6 +129,7 @@ extension Studio {
     @discardableResult
     func advanceOrGenerateOnCompositionEnded(loopSequenceAtEnd: Bool, generateAtEnd: Bool) -> Bool {
         persistCurrentCompositionPreviewIfNeeded()
+
         let nextIndex = currentCompositionIndex + 1
         if nextIndex < hypnogram.compositions.count {
             currentCompositionIndex = nextIndex

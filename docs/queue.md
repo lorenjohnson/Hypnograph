@@ -8,6 +8,7 @@ last_reviewed: 2026-04-04
 
 - [image-playback-duration](active/image-playback-duration.md)
 - [effects-and-effect-chain-ux](active/effects-and-effect-chain-ux/index.md)
+- [temporal-ordering-stage](active/temporal-ordering-stage.md)
 - [demo-source-set](active/demo-source-set.md)
 - [history-as-editing-surface-spike](active/history-as-editing-surface-spike.md)
 - [sequences](active/sequences.md)

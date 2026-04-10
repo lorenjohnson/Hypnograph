@@ -172,20 +172,25 @@ final class PlayerContentView: NSView {
 
         // Handle instant cut (no transition)
         if transitionType == .none {
-            outgoingSlotDuringTransition = nil
-            playerView.onTransitionProgress = nil
-            // Invalidate any pending transition completions/progress callbacks.
-            transitionToken &+= 1
-
-            // Stop the outgoing player's audio
-            clearSlot(outgoingSlot)
-
-            playerView.cancelTransition()
-            playerView.primarySource = nextSource
+            outgoingSlotDuringTransition = outgoingSlot
             activeSlot = nextSlot
-            playerView.onNextFramePresented = onIncomingFramePresented
-            playerView.onFirstTransitionFramePresented = nil
-            applyAudioMix(progress: nil)
+            playerView.onNextFramePresented = nil
+            playerView.onFirstTransitionFramePresented = onIncomingFramePresented
+            playerView.onTransitionProgress = { [weak self] progress in
+                self?.applyAudioMix(progress: progress)
+            }
+            playerView.onTransitionComplete = { [weak self] in
+                guard let self else { return }
+                self.clearSlot(outgoingSlot)
+                self.outgoingSlotDuringTransition = nil
+                self.playerView.onTransitionProgress = nil
+                self.applyAudioMix(progress: nil)
+                self.notifyMirrors()
+            }
+            // Use an effectively-instant crossfade internally so the renderer keeps the
+            // outgoing source visible until the incoming source has actually produced a frame.
+            playerView.startTransition(to: nextSource, type: .crossfade, duration: 0.0001)
+            applyAudioMix(progress: 0)
             notifyMirrors()
             print("🎬 PlayerContentView: Instant cut (no transition)")
             completion?()

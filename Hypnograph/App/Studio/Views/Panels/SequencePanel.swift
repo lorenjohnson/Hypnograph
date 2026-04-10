@@ -31,14 +31,14 @@ struct SequencePanel: View {
         ScrollView {
             LazyVStack(spacing: 6) {
                 if compositionEntries.isEmpty {
-                    Text("No compositions yet")
+                        Text("No compositions yet")
                         .foregroundColor(.white.opacity(0.5))
                         .font(.system(.body, design: .monospaced))
                         .padding(.vertical, 40)
                 } else {
                     ForEach(compositionEntries) { entry in
                         CompositionRowView(
-                            entry: entry,
+                            entry:  entry,
                             onJump: {
                                 onJumpToComposition(entry.index)
                             },
