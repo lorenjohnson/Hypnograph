@@ -97,6 +97,8 @@ extension Studio {
         clearUnsavedWorkingHypnogramChanges()
         currentCompositionIndex = 0
         player.currentLayerIndex = 0
+        player.pendingCompositionTransitionStyle = nil
+        player.pendingCompositionTransitionDuration = nil
         clearAllSaveTargets()
         applyCurrentHypnogramDocumentContextToRuntime()
         notifyHypnogramMutated()
@@ -108,6 +110,8 @@ extension Studio {
         let composition = makeRandomComposition(preservingGlobalEffectFrom: currentComposition)
         currentComposition = composition
         player.currentLayerIndex = 0
+        player.pendingCompositionTransitionStyle = nil
+        player.pendingCompositionTransitionDuration = nil
         clearSaveTarget(for: replacedCompositionID)
         pruneSaveTargetsToCurrentHypnogram()
         applyCompositionSelectionChanged(manual: manual)
@@ -118,6 +122,7 @@ extension Studio {
         let composition = makeRandomComposition(preservingGlobalEffectFrom: currentComposition)
         let insertIndex = min(currentCompositionIndex + 1, hypnogram.compositions.count)
         hypnogram.compositions.insert(composition, at: insertIndex)
+        setPendingTransition(for: currentComposition)
         currentCompositionIndex = insertIndex
         player.currentLayerIndex = 0
         pruneSaveTargetsToCurrentHypnogram()
@@ -132,9 +137,11 @@ extension Studio {
 
         let nextIndex = currentCompositionIndex + 1
         if nextIndex < hypnogram.compositions.count {
+            setPendingTransition(for: currentComposition)
             currentCompositionIndex = nextIndex
             applyCompositionSelectionChanged(manual: false)
         } else if loopSequenceAtEnd, !hypnogram.compositions.isEmpty {
+            setPendingTransition(for: currentComposition)
             currentCompositionIndex = 0
             applyCompositionSelectionChanged(manual: false)
         } else if generateAtEnd {

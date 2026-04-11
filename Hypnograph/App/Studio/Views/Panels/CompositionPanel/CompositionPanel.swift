@@ -10,6 +10,7 @@ struct CompositionPanel: View {
     @State private var expandedLayerIDs: Set<UUID> = []
     @State private var draggedLayerID: UUID?
     @State private var draftPlayRate: Double?
+    @State private var draftTransitionDuration: Double?
     @StateObject private var thumbnailStore = TimelineThumbnailStore()
     @SwiftUI.Environment(\.panelLayoutInvalidator) private var panelLayoutInvalidator
 
@@ -153,10 +154,62 @@ struct CompositionPanel: View {
             .disabled(main.isLiveMode)
             .opacity(main.isLiveMode ? 0.55 : 1.0)
 
+            PanelInlineFieldRowView(title: "Transition Style") {
+                Picker(
+                    "",
+                    selection: Binding(
+                        get: { main.currentCompositionTransitionStyleOverride },
+                        set: { newValue in
+                            main.setCurrentCompositionTransitionStyle(newValue)
+                        }
+                    )
+                ) {
+                    Text("Sequence Default (\(main.currentHypnogramTransitionStyle.displayName))")
+                        .tag(Optional<TransitionRenderer.TransitionType>.none)
+
+                    ForEach(TransitionRenderer.TransitionType.allCases, id: \.self) { style in
+                        Text(style.displayName)
+                            .tag(style as TransitionRenderer.TransitionType?)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(width: 180, alignment: .trailing)
+            }
+            .disabled(main.isLiveMode)
+            .opacity(main.isLiveMode ? 0.55 : 1.0)
+
+            if main.currentCompositionTransitionStyleOverride != nil {
+                PanelFieldRowView(
+                    title: "Transition Duration",
+                    valueText: transitionDurationValueText
+                ) {
+                    PanelSliderView(
+                        value: Binding(
+                            get: { draftTransitionDuration ?? main.currentCompositionTransitionDuration },
+                            set: { draftTransitionDuration = $0 }
+                        ),
+                        bounds: 0.1...3.0,
+                        step: 0.1,
+                        onEditingChanged: { isEditing in
+                            if isEditing {
+                                draftTransitionDuration = main.currentCompositionTransitionDuration
+                            } else {
+                                if let draftTransitionDuration {
+                                    main.setCurrentCompositionTransitionDuration(draftTransitionDuration)
+                                }
+                                draftTransitionDuration = nil
+                            }
+                        }
+                    )
+                }
+                .disabled(main.isLiveMode)
+                .opacity(main.isLiveMode ? 0.55 : 1.0)
+            }
+
             EffectChainSectionView(
                 state: state,
                 main: main,
-                layer: -1,
+                target: .composition,
                 title: "Effects"
             )
         }
@@ -225,6 +278,10 @@ struct CompositionPanel: View {
         }
 
         main.notifyHypnogramChanged()
+    }
+
+    private var transitionDurationValueText: String {
+        String(format: "%.1fs", draftTransitionDuration ?? main.currentCompositionTransitionDuration)
     }
 }
 

@@ -158,26 +158,34 @@ enum EffectChainLibraryActions {
 
     // MARK: - Private Helpers
 
-    /// Extract effect chains from a session (per-hypnogram composition + per-hypnogram per-layer)
+    /// Extract effect chains from a session (hypnogram + per-composition + per-layer)
     private static func extractEffectChains(from hypnographSession: Hypnogram) -> [EffectChain] {
         var chains: [EffectChain] = []
 
-        for (hypnogramIndex, hypnogram) in hypnographSession.compositions.enumerated() {
-            // Add per-hypnogram composition effect chain if it has effects
-            if !hypnogram.effectChain.effects.isEmpty {
-                let compositionChain = hypnogram.effectChain.clone()
+        if !hypnographSession.effectChain.effects.isEmpty {
+            let hypnogramChain = hypnographSession.effectChain.clone()
+            if hypnogramChain.name == nil || hypnogramChain.name?.isEmpty == true {
+                hypnogramChain.name = "Sequence Global (imported)"
+            }
+            chains.append(hypnogramChain)
+        }
+
+        for (compositionIndex, composition) in hypnographSession.compositions.enumerated() {
+            // Add per-composition effect chain if it has effects
+            if !composition.effectChain.effects.isEmpty {
+                let compositionChain = composition.effectChain.clone()
                 if compositionChain.name == nil || compositionChain.name?.isEmpty == true {
-                    compositionChain.name = "Hypnogram \(hypnogramIndex + 1) Global (imported)"
+                    compositionChain.name = "Composition \(compositionIndex + 1) Global (imported)"
                 }
                 chains.append(compositionChain)
             }
 
             // Add per-layer effect chains that have effects
-            for (layerIndex, layer) in hypnogram.layers.enumerated() {
+            for (layerIndex, layer) in composition.layers.enumerated() {
                 if !layer.effectChain.effects.isEmpty {
                     let layerChain = layer.effectChain.clone()
                     if layerChain.name == nil || layerChain.name?.isEmpty == true {
-                        layerChain.name = "Hypnogram \(hypnogramIndex + 1) Layer \(layerIndex + 1) (imported)"
+                        layerChain.name = "Composition \(compositionIndex + 1) Layer \(layerIndex + 1) (imported)"
                     }
                     chains.append(layerChain)
                 }

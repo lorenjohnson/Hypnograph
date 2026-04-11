@@ -27,6 +27,8 @@ struct PlayerView: NSViewRepresentable {
     @Binding var isPrimaryCompositionLoadInFlight: Bool
     @Binding var hasPendingGeneratedNextComposition: Bool
     @Binding var currentCompositionLoadFailure: PlayerState.CompositionLoadFailure?
+    @Binding var pendingCompositionTransitionStyle: TransitionRenderer.TransitionType?
+    @Binding var pendingCompositionTransitionDuration: Double?
     let isPaused: Bool
     let effectsChangeCounter: Int
     let hypnogramRevision: Int
@@ -39,6 +41,10 @@ struct PlayerView: NSViewRepresentable {
     var transitionStyle: TransitionRenderer.TransitionType = .crossfade
     /// Transition duration in seconds
     var transitionDuration: Double = 1.5
+    /// Sequence-level default transition style used when the outgoing composition has no override.
+    var sequenceTransitionStyle: TransitionRenderer.TransitionType = .crossfade
+    /// Sequence-level default transition duration used when the outgoing composition has no override.
+    var sequenceTransitionDuration: Double = 1.5
     /// Called when the incoming composition has actually presented a frame.
     var onCompositionFramePresented: ((UUID?) -> Void)? = nil
     /// Called when playback reaches the end and should be reflected as paused in UI state.
@@ -159,7 +165,6 @@ struct PlayerView: NSViewRepresentable {
 
         // Always update playRate so closures use current value
         c.playRate = composition.playRate
-        c.transitionDuration = transitionDuration
         c.playbackEndBehavior = playbackEndBehavior
         c.onCompositionEnded = onCompositionEnded
         c.isAllStillImages = composition.layers.allSatisfy { $0.mediaClip.file.mediaKind == .image }
@@ -274,12 +279,18 @@ struct PlayerView: NSViewRepresentable {
                     // - First load: no transition (instant)
                     // - Subsequent loads: use configured transition
                     let effectiveTransition: TransitionRenderer.TransitionType
+                    let effectiveTransitionDuration: Double
                     if c.isFirstLoad || previousID == nil {
                         effectiveTransition = .none
+                        effectiveTransitionDuration = transitionDuration
                         c.isFirstLoad = false
                     } else {
-                        effectiveTransition = self.transitionStyle
+                        effectiveTransition = pendingCompositionTransitionStyle ?? self.transitionStyle
+                        effectiveTransitionDuration = pendingCompositionTransitionDuration ?? self.transitionDuration
                     }
+                    c.transitionDuration = effectiveTransitionDuration
+                    pendingCompositionTransitionStyle = nil
+                    pendingCompositionTransitionDuration = nil
 
                     // Determine play rate (nil if paused or all still images)
                     let effectiveRate = effectiveVideoPlaybackRate(for: c)
@@ -289,7 +300,7 @@ struct PlayerView: NSViewRepresentable {
                     content.loadAndTransition(
                         playerItem: playerItem,
                         transitionType: effectiveTransition,
-                        duration: self.transitionDuration,
+                        duration: effectiveTransitionDuration,
                         playRate: playRate,
                         incomingEffectManager: self.effectManager,
                         onIncomingFramePresented: {

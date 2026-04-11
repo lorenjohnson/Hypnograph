@@ -201,6 +201,10 @@ final class Studio: ObservableObject {
 
         player.configureDocumentBindings(
             compositionProvider: { [unowned self] in self.currentComposition },
+            hypnogramEffectChainProvider: { [unowned self] in self.currentHypnogramEffectChain },
+            setHypnogramEffectChain: { [weak self] chain in
+                self?.currentHypnogramEffectChain = chain
+            },
             setCompositionEffectChain: { [weak self] chain in
                 self?.updateCurrentComposition { $0.effectChain = chain }
             },
@@ -296,9 +300,33 @@ final class Studio: ObservableObject {
         set { updateCurrentComposition { $0.effectChain = newValue } }
     }
 
+    var currentHypnogramEffectChain: EffectChain {
+        get { hypnogram.effectChain }
+        set {
+            updateHypnogramDocumentSettings { $0.effectChain = newValue }
+            notifyHypnogramChanged()
+        }
+    }
+
     var playRate: Float {
         get { currentComposition.playRate }
         set { updateCurrentComposition { $0.playRate = newValue } }
+    }
+
+    var currentCompositionTransitionStyleOverride: TransitionRenderer.TransitionType? {
+        currentComposition.transitionStyle
+    }
+
+    var currentCompositionTransitionStyle: TransitionRenderer.TransitionType {
+        resolvedTransitionStyle(for: currentComposition, in: hypnogram)
+    }
+
+    var currentCompositionTransitionDurationOverride: Double? {
+        currentComposition.transitionDuration
+    }
+
+    var currentCompositionTransitionDuration: Double {
+        resolvedTransitionDuration(for: currentComposition, in: hypnogram)
     }
 
     var targetDuration: CMTime {
@@ -315,7 +343,7 @@ final class Studio: ObservableObject {
         currentLayer?.mediaClip
     }
 
-    private func updateCurrentComposition(_ update: (inout Composition) -> Void) {
+    func updateCurrentComposition(_ update: (inout Composition) -> Void) {
         var composition = currentComposition
         update(&composition)
         currentComposition = composition
@@ -497,14 +525,24 @@ final class Studio: ObservableObject {
                     get: { player.currentCompositionLoadFailure },
                     set: { player.currentCompositionLoadFailure = $0 }
                 ),
+                pendingCompositionTransitionStyle: Binding(
+                    get: { player.pendingCompositionTransitionStyle },
+                    set: { player.pendingCompositionTransitionStyle = $0 }
+                ),
+                pendingCompositionTransitionDuration: Binding(
+                    get: { player.pendingCompositionTransitionDuration },
+                    set: { player.pendingCompositionTransitionDuration = $0 }
+                ),
                 isPaused: player.isPaused,
                 effectsChangeCounter: player.effectsChangeCounter,
                 hypnogramRevision: hypnogramRevision,
                 effectManager: player.effectManager,
                 volume: volume,
                 audioDeviceUID: audioDeviceUID,
-                transitionStyle: currentHypnogramTransitionStyle,
-                transitionDuration: currentHypnogramTransitionDuration,
+                transitionStyle: currentCompositionTransitionStyle,
+                transitionDuration: currentCompositionTransitionDuration,
+                sequenceTransitionStyle: currentHypnogramTransitionStyle,
+                sequenceTransitionDuration: currentHypnogramTransitionDuration,
                 onCompositionFramePresented: { [weak self, weak player] compositionID in
                     guard let player else { return }
 
@@ -574,6 +612,7 @@ final class Studio: ObservableObject {
         Hypnogram(
             compositions: compositions,
             currentCompositionIndex: currentCompositionIndex,
+            effectChain: currentHypnogramEffectChain,
             aspectRatio: currentHypnogramAspectRatio,
             outputResolution: currentHypnogramOutputResolution,
             sourceFraming: currentHypnogramSourceFraming,
@@ -625,7 +664,35 @@ final class Studio: ObservableObject {
         hypnogram.transitionDuration ?? 1.0
     }
 
+    private func resolvedTransitionStyle(
+        for composition: Composition,
+        in hypnogram: Hypnogram
+    ) -> TransitionRenderer.TransitionType {
+        composition.transitionStyle ?? resolvedTransitionStyle(for: hypnogram)
+    }
+
+    private func resolvedTransitionDuration(
+        for composition: Composition,
+        in hypnogram: Hypnogram
+    ) -> Double {
+        composition.transitionDuration ?? resolvedTransitionDuration(for: hypnogram)
+    }
+
+    func effectiveTransitionStyle(for composition: Composition) -> TransitionRenderer.TransitionType {
+        resolvedTransitionStyle(for: composition, in: hypnogram)
+    }
+
+    func effectiveTransitionDuration(for composition: Composition) -> Double {
+        resolvedTransitionDuration(for: composition, in: hypnogram)
+    }
+
+    func setPendingTransition(for composition: Composition?) {
+        player.pendingCompositionTransitionStyle = composition.map { effectiveTransitionStyle(for: $0) }
+        player.pendingCompositionTransitionDuration = composition.map { effectiveTransitionDuration(for: $0) }
+    }
+
     func copyDocumentContext(from hypnogram: Hypnogram) {
+        self.hypnogram.effectChain = hypnogram.effectChain.clone()
         self.hypnogram.aspectRatio = resolvedAspectRatio(for: hypnogram)
         self.hypnogram.outputResolution = resolvedOutputResolution(for: hypnogram)
         self.hypnogram.sourceFraming = resolvedSourceFraming(for: hypnogram)
@@ -636,9 +703,13 @@ final class Studio: ObservableObject {
     func applyCurrentHypnogramDocumentContextToRuntime() {
         let aspectRatio = resolvedAspectRatio(for: hypnogram)
         let sourceFraming = resolvedSourceFraming(for: hypnogram)
-        let transitionStyle = resolvedTransitionStyle(for: hypnogram)
-        let transitionDuration = resolvedTransitionDuration(for: hypnogram)
+        let composition = hypnogram.compositions.isEmpty ? nil : currentComposition
+        let transitionStyle = composition.map { resolvedTransitionStyle(for: $0, in: hypnogram) }
+            ?? resolvedTransitionStyle(for: hypnogram)
+        let transitionDuration = composition.map { resolvedTransitionDuration(for: $0, in: hypnogram) }
+            ?? resolvedTransitionDuration(for: hypnogram)
 
+        hypnogram.effectChain = hypnogram.effectChain.clone()
         hypnogram.aspectRatio = aspectRatio
         hypnogram.outputResolution = resolvedOutputResolution(for: hypnogram)
         hypnogram.sourceFraming = sourceFraming

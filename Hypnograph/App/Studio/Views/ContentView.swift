@@ -20,6 +20,8 @@ struct ContentView: View {
 
     private static let hidePanelsNowNotification = Notification.Name("StudioHidePanelsNow")
     private static let showPanelsNowNotification = Notification.Name("StudioShowPanelsNow")
+    private static let toolbarTopPadding: CGFloat = 12
+    private static let toolbarReserveHeight: CGFloat = 58
 
     init(state: HypnographState, main: Studio) {
         self.state = state
@@ -63,6 +65,46 @@ struct ContentView: View {
         guard index >= 0, index < currentLayers.count else { return [] }
         guard let context = makeContext(layer: currentLayers[index], index: index) else { return [] }
         return [context]
+    }
+
+    private var studioPanelToolbarItems: [StudioPanelToolbarItem] {
+        StudioPanelDescriptor.allCases.map { descriptor in
+            StudioPanelToolbarItem(descriptor: descriptor)
+        }
+    }
+
+    private var panelOpacity: Double {
+        settingsStore.value.panelOpacity.clamped(to: 0.22...0.92)
+    }
+
+    private var panelOpacityBinding: Binding<Double> {
+        Binding(
+            get: { panelOpacity },
+            set: { newValue in
+                settingsStore.update { settings in
+                    settings.panelOpacity = newValue.clamped(to: 0.22...0.92)
+                }
+            }
+        )
+    }
+
+    private var liveModeSelectionBinding: Binding<Int> {
+        Binding(
+            get: { main.isLiveMode ? 1 : 0 },
+            set: { newValue in
+                if (newValue == 1) != main.isLiveMode {
+                    main.toggleLiveMode()
+                }
+            }
+        )
+    }
+
+    private var shouldShowStudioPanelToolbar: Bool {
+        !panels.panelsHidden
+    }
+
+    private var topOverlayPadding: CGFloat {
+        shouldShowStudioPanelToolbar ? Self.toolbarReserveHeight : 10
     }
 
     private func layerTitle(for layer: Layer) -> String {
@@ -296,31 +338,40 @@ struct ContentView: View {
             main.makeDisplayView()
                 .ignoresSafeArea()
                 .overlay {
-                    CanvasPanelToggleHitView {
-                        panelHostService.hidePanelsForCanvasInteraction()
+                    VStack(spacing: 0) {
+                        Color.clear
+                            .frame(height: shouldShowStudioPanelToolbar ? (Self.toolbarTopPadding + Self.toolbarReserveHeight) : 0)
+                            .allowsHitTesting(false)
+
+                        CanvasPanelToggleHitView {
+                            panelHostService.hidePanelsForCanvasInteraction()
+                        }
                     }
                 }
 
             CursorAutoHideView(isEnabled: shouldAutoHideCursor, idleSeconds: 3.0)
                 .allowsHitTesting(false)
 
-        }
-        .overlay(alignment: .top) {
-            if main.isLiveModeAvailable {
-                Picker("", selection: Binding(
-                    get: { main.isLiveMode ? 1 : 0 },
-                    set: { newValue in
-                        if (newValue == 1) != main.isLiveMode {
-                            main.toggleLiveMode()
-                        }
-                    }
-                )) {
-                    Text("Edit").tag(0)
-                    Text("Live").tag(1)
+            if shouldShowStudioPanelToolbar {
+                VStack(spacing: 0) {
+                    StudioPanelToolbarView(
+                        items: studioPanelToolbarItems,
+                        isPanelVisible: { panelID in panels.isPanelVisible(panelID) },
+                        onTogglePanel: { panelID in
+                            panels.togglePanel(panelID)
+                        },
+                        panelOpacity: panelOpacityBinding,
+                        liveModeSelection: main.isLiveModeAvailable ? liveModeSelectionBinding : nil
+                    )
+                    .opacity(panelOpacity)
+                    .padding(.top, Self.toolbarTopPadding)
+                    .padding(.horizontal, 12)
+                    .allowsHitTesting(true)
+
+                    Spacer(minLength: 0)
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 170)
-                .padding(.top, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .zIndex(10)
             }
         }
         .overlay(alignment: .topTrailing) {
@@ -335,7 +386,7 @@ struct ContentView: View {
                 }
             }
             .frame(height: 34, alignment: .trailing)
-            .padding(.top, 10)
+            .padding(.top, topOverlayPadding)
             .padding(.trailing, 12)
         }
         .overlay(alignment: .topTrailing) {
@@ -350,10 +401,11 @@ struct ContentView: View {
                             panels.setPanelVisible("livePreviewPanel", visible: false)
                         }
                     )
+                    .opacity(panelOpacity)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
-            .padding(.top, 12)
+            .padding(.top, topOverlayPadding)
             .padding(.trailing, 12)
             .padding(.bottom, 12)
             .animation(.easeInOut(duration: 0.2), value: panels.isPanelVisible("livePreviewPanel"))
@@ -381,6 +433,7 @@ struct ContentView: View {
                     "playerControlsPanel": panels.panelFrame("playerControlsPanel")
                 ].compactMapValues { $0 },
                 panelOrder: panels.panelOrderIDs(),
+                panelOpacity: panelOpacity,
                 autoHidePanels: settingsStore.value.autoHidePanelsEnabled,
                 keyboardAccessibilityOverridesEnabled: settingsStore.value.keyboardAccessibilityOverridesEnabled,
                 onPanelVisibilityChanged: { panelID, isVisible in
@@ -517,7 +570,7 @@ private final class CanvasPanelToggleNSView: NSView {
     var onToggle: (() -> Void)?
 
     override func hitTest(_ point: NSPoint) -> NSView? {
-        self
+        return self
     }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {

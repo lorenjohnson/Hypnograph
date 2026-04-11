@@ -18,6 +18,7 @@ struct PanelHostBridge: NSViewRepresentable {
     let expectedParentFullScreen: Bool
     let panelFrames: [String: CGRect]
     let panelOrder: [String]
+    let panelOpacity: Double
     let autoHidePanels: Bool
     let keyboardAccessibilityOverridesEnabled: Bool
     let onPanelVisibilityChanged: (String, Bool) -> Void
@@ -64,6 +65,7 @@ struct PanelHostBridge: NSViewRepresentable {
             expectedParentFullScreen: expectedParentFullScreen,
             panelFrames: panelFrames,
             panelOrder: panelOrder,
+            panelOpacity: panelOpacity,
             autoHidePanels: autoHidePanels,
             keyboardAccessibilityOverridesEnabled: keyboardAccessibilityOverridesEnabled,
             onPanelVisibilityChanged: onPanelVisibilityChanged,

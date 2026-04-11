@@ -63,9 +63,11 @@ extension Studio {
             persistCurrentCompositionPreviewIfNeeded()
             player.hasPendingGeneratedNextComposition = false
             player.currentCompositionLoadFailure = nil
-            currentCompositionIndex = currentCompositionIndex > 0
+            let destinationIndex = currentCompositionIndex > 0
                 ? (currentCompositionIndex - 1)
                 : (hypnogram.compositions.count - 1)
+            setPendingTransition(for: hypnogram.compositions[destinationIndex])
+            currentCompositionIndex = destinationIndex
             applyCompositionSelectionChanged(manual: true)
             return
         }
@@ -74,7 +76,9 @@ extension Studio {
         persistCurrentCompositionPreviewIfNeeded()
         player.hasPendingGeneratedNextComposition = false
         player.currentCompositionLoadFailure = nil
-        currentCompositionIndex -= 1
+        let destinationIndex = currentCompositionIndex - 1
+        setPendingTransition(for: hypnogram.compositions[destinationIndex])
+        currentCompositionIndex = destinationIndex
         applyCompositionSelectionChanged(manual: true)
     }
 
@@ -84,6 +88,7 @@ extension Studio {
             persistCurrentCompositionPreviewIfNeeded()
             player.hasPendingGeneratedNextComposition = false
             player.currentCompositionLoadFailure = nil
+            setPendingTransition(for: currentComposition)
             let nextIndex = currentCompositionIndex + 1
             currentCompositionIndex = nextIndex < hypnogram.compositions.count ? nextIndex : 0
             applyCompositionSelectionChanged(manual: true)
@@ -95,12 +100,14 @@ extension Studio {
             persistCurrentCompositionPreviewIfNeeded()
             player.hasPendingGeneratedNextComposition = false
             player.currentCompositionLoadFailure = nil
+            setPendingTransition(for: currentComposition)
             currentCompositionIndex = nextIndex
             applyCompositionSelectionChanged(manual: true)
         } else {
             persistCurrentCompositionPreviewIfNeeded()
             player.hasPendingGeneratedNextComposition = true
             player.currentCompositionLoadFailure = nil
+            setPendingTransition(for: currentComposition)
             insertNewCompositionAfterCurrentAndSelect(manual: false)
         }
     }
@@ -114,6 +121,10 @@ extension Studio {
         persistCurrentCompositionPreviewIfNeeded()
         player.hasPendingGeneratedNextComposition = false
         player.currentCompositionLoadFailure = nil
+        let transitionOwner = clampedIndex < currentCompositionIndex
+            ? hypnogram.compositions[clampedIndex]
+            : currentComposition
+        setPendingTransition(for: transitionOwner)
         currentCompositionIndex = clampedIndex
         applyCompositionSelectionChanged(manual: true)
     }
@@ -139,8 +150,12 @@ extension Studio {
         hypnogram.compositions.remove(at: clampedIndex)
 
         if clampedIndex < currentCompositionIndex {
+            player.pendingCompositionTransitionStyle = nil
+            player.pendingCompositionTransitionDuration = nil
             currentCompositionIndex -= 1
         } else if clampedIndex == currentCompositionIndex {
+            player.pendingCompositionTransitionStyle = nil
+            player.pendingCompositionTransitionDuration = nil
             currentCompositionIndex = min(
                 clampedIndex,
                 max(0, hypnogram.compositions.count - 1)
@@ -171,6 +186,8 @@ extension Studio {
         hypnogram.compositions = compositions
 
         if let selectedIndex = compositions.firstIndex(where: { $0.id == selectedCompositionID }) {
+            player.pendingCompositionTransitionStyle = nil
+            player.pendingCompositionTransitionDuration = nil
             currentCompositionIndex = selectedIndex
         }
 

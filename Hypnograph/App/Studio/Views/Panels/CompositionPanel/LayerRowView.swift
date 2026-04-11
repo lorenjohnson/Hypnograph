@@ -270,7 +270,7 @@ struct LayerRowView: View {
             EffectChainSectionView(
                 state: state,
                 main: main,
-                layer: index,
+                target: .layer(index),
                 title: "Effects",
                 isCollapsible: true
             )

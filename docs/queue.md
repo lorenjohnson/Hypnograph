@@ -6,6 +6,7 @@ last_reviewed: 2026-04-04
 
 ## Active Projects
 
+- [studio-panel-toolbar](active/studio-panel-toolbar.md)
 - [image-playback-duration](active/image-playback-duration.md)
 - [effects-and-effect-chain-ux](active/effects-and-effect-chain-ux/index.md)
 - [temporal-ordering-stage](active/temporal-ordering-stage.md)

@@ -53,11 +53,12 @@ extension Studio {
     func sendToLivePlayer() {
         livePlayer.send(
             composition: currentComposition.copyForExport(),
+            hypnogramEffectChain: currentHypnogramEffectChain.clone(),
             aspectRatio: currentHypnogramAspectRatio,
             outputResolution: currentHypnogramOutputResolution,
             sourceFraming: currentHypnogramSourceFraming,
-            transitionStyle: currentHypnogramTransitionStyle,
-            transitionDuration: currentHypnogramTransitionDuration
+            transitionStyle: currentCompositionTransitionStyle,
+            transitionDuration: currentCompositionTransitionDuration
         )
     }
 

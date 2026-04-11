@@ -17,6 +17,7 @@ struct EffectChainLibraryView: View {
     @State private var expandedChainIDs: Set<UUID> = []
     @State private var expandedEffectIndicesByChainID: [UUID: Set<Int>] = [:]
     @State private var draggedChainID: UUID?
+    @State private var previewChainOrder: [UUID]?
 
     private var selectedLayerIndex: Int? {
         let idx = main.activePlayer.currentLayerIndex
@@ -34,6 +35,54 @@ struct EffectChainLibraryView: View {
         renameTargetID = nil
     }
 
+    private var displayedChains: [EffectChain] {
+        let chains = session.chains
+        guard let previewChainOrder else { return chains }
+
+        let chainsByID = Dictionary(uniqueKeysWithValues: chains.map { ($0.id, $0) })
+        let ordered = previewChainOrder.compactMap { chainsByID[$0] }
+        let previewSet = Set(previewChainOrder)
+        let remaining = chains.filter { !previewSet.contains($0.id) }
+        return ordered + remaining
+    }
+
+    private func reorderPreviewChain(from sourceID: UUID, to targetID: UUID) {
+        if previewChainOrder == nil {
+            previewChainOrder = session.chains.map(\.id)
+        }
+
+        guard var order = previewChainOrder,
+              let fromIndex = order.firstIndex(of: sourceID),
+              let toIndex = order.firstIndex(of: targetID),
+              fromIndex != toIndex else { return }
+
+        let moved = order.remove(at: fromIndex)
+        var destination = toIndex
+        if fromIndex < toIndex {
+            destination -= 1
+        }
+        order.insert(moved, at: max(0, min(destination, order.count)))
+        previewChainOrder = order
+    }
+
+    private func commitPreviewChainOrder() {
+        defer {
+            draggedChainID = nil
+            previewChainOrder = nil
+        }
+
+        guard let previewChainOrder else { return }
+        let currentChains = session.chains
+        let currentOrder = currentChains.map(\.id)
+        guard previewChainOrder != currentOrder else { return }
+
+        let chainsByID = Dictionary(uniqueKeysWithValues: currentChains.map { ($0.id, $0) })
+        let reordered = previewChainOrder.compactMap { chainsByID[$0] }
+        let previewSet = Set(previewChainOrder)
+        let remaining = currentChains.filter { !previewSet.contains($0.id) }
+        session.replaceChains(reordered + remaining)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
@@ -42,7 +91,7 @@ struct EffectChainLibraryView: View {
                         .foregroundStyle(.secondary)
                         .padding(.vertical, 4)
                 } else {
-                    let snapshot = session.chains
+                    let snapshot = displayedChains
                     ForEach(snapshot, id: \.id) { chain in
                         if let chainIndex = session.chainIndex(id: chain.id) {
                     EffectChainLibraryRowView(
@@ -98,17 +147,29 @@ struct EffectChainLibraryView: View {
                             .contentShape(Rectangle())
                             .onDrag {
                                 draggedChainID = chain.id
-                                return NSItemProvider(object: chain.id.uuidString as NSString)
+                                previewChainOrder = session.chains.map(\.id)
+                                return DragCleanupItemProvider(
+                                    object: chain.id.uuidString as NSString,
+                                    onDeinit: { [draggedChainID = $draggedChainID, previewChainOrder = $previewChainOrder] in
+                                        if draggedChainID.wrappedValue == chain.id {
+                                            draggedChainID.wrappedValue = nil
+                                            previewChainOrder.wrappedValue = nil
+                                        }
+                                    }
+                                )
                             }
                             .onDrop(
                                 of: [UTType.text],
                                 delegate: EffectChainReorderDropDelegate(
                                     targetID: chain.id,
                                     draggedChainID: $draggedChainID,
-                                    moveChain: { sourceID, targetID in
+                                    previewMoveChain: { sourceID, targetID in
                                         withAnimation(.easeInOut(duration: 0.15)) {
-                                            session.moveChain(fromID: sourceID, toID: targetID)
+                                            reorderPreviewChain(from: sourceID, to: targetID)
                                         }
+                                    },
+                                    commitDrop: {
+                                        commitPreviewChainOrder()
                                     }
                                 )
                             )
@@ -139,7 +200,8 @@ struct EffectChainLibraryView: View {
 private struct EffectChainReorderDropDelegate: DropDelegate {
     let targetID: UUID
     @Binding var draggedChainID: UUID?
-    let moveChain: (UUID, UUID) -> Void
+    let previewMoveChain: (UUID, UUID) -> Void
+    let commitDrop: () -> Void
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
         DropProposal(operation: .move)
@@ -148,15 +210,30 @@ private struct EffectChainReorderDropDelegate: DropDelegate {
     func dropEntered(info: DropInfo) {
         guard let sourceID = draggedChainID else { return }
         guard sourceID != targetID else { return }
-        moveChain(sourceID, targetID)
+        previewMoveChain(sourceID, targetID)
     }
 
     func performDrop(info: DropInfo) -> Bool {
-        draggedChainID = nil
+        commitDrop()
         return true
     }
 
     func dropExited(info: DropInfo) {
         // Keep current drag state; it will clear on performDrop.
+    }
+}
+
+private final class DragCleanupItemProvider: NSItemProvider {
+    private let onDeinit: @MainActor () -> Void
+
+    init(object: NSItemProviderWriting, onDeinit: @escaping @MainActor () -> Void) {
+        self.onDeinit = onDeinit
+        super.init(object: object)
+    }
+
+    deinit {
+        Task { @MainActor in
+            onDeinit()
+        }
     }
 }

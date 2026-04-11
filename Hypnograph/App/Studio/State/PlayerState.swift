@@ -40,6 +40,11 @@ final class PlayerState: ObservableObject {
     /// is still unresolved and has not yet started transitioning in.
     var hasPendingGeneratedNextComposition: Bool = false
 
+    /// Exact transition to use for the next composition handoff.
+    /// Sequence/navigation logic sets this explicitly so playback does not have to infer ownership.
+    var pendingCompositionTransitionStyle: TransitionRenderer.TransitionType?
+    var pendingCompositionTransitionDuration: Double?
+
     /// Set when the current composition failed to resolve any playable sources.
     @Published var currentCompositionLoadFailure: CompositionLoadFailure?
 
@@ -65,6 +70,8 @@ final class PlayerState: ObservableObject {
     /// This player's own effect manager - independent effects per deck
     let effectManager = EffectManager()
     private var compositionProvider: (() -> Composition?)?
+    private var hypnogramEffectChainProvider: (() -> EffectChain)?
+    private var hypnogramEffectChainSetter: ((EffectChain) -> Void)?
     private var compositionEffectChainSetter: ((EffectChain) -> Void)?
     private var sourceEffectChainSetter: ((Int, EffectChain) -> Void)?
     private var blendModeSetter: ((Int, String) -> Void)?
@@ -91,6 +98,14 @@ final class PlayerState: ObservableObject {
             self?.compositionProvider?()
         }
 
+        effectManager.hypnogramEffectChainProvider = { [weak self] in
+            self?.hypnogramEffectChainProvider?()
+        }
+
+        effectManager.hypnogramEffectChainSetter = { [weak self] chain in
+            self?.hypnogramEffectChainSetter?(chain)
+        }
+
         effectManager.compositionEffectChainSetter = { [weak self] chain in
             self?.compositionEffectChainSetter?(chain)
         }
@@ -112,11 +127,15 @@ final class PlayerState: ObservableObject {
 
     func configureDocumentBindings(
         compositionProvider: @escaping () -> Composition,
+        hypnogramEffectChainProvider: @escaping () -> EffectChain,
+        setHypnogramEffectChain: @escaping (EffectChain) -> Void,
         setCompositionEffectChain: @escaping (EffectChain) -> Void,
         setSourceEffectChain: @escaping (Int, EffectChain) -> Void,
         setBlendMode: @escaping (Int, String) -> Void
     ) {
         self.compositionProvider = compositionProvider
+        self.hypnogramEffectChainProvider = hypnogramEffectChainProvider
+        self.hypnogramEffectChainSetter = setHypnogramEffectChain
         self.compositionEffectChainSetter = setCompositionEffectChain
         self.sourceEffectChainSetter = setSourceEffectChain
         self.blendModeSetter = setBlendMode

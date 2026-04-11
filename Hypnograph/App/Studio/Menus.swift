@@ -80,10 +80,12 @@ extension Studio {
         // Aspect Ratio
         Section("Aspect Ratio") {
             ForEach(AspectRatio.menuPresets, id: \.displayString) { ratio in
-                Toggle(ratio.menuLabel, isOn: Binding(
+                Toggle(isOn: Binding(
                     get: { [self] in currentHypnogramAspectRatio == ratio },
                     set: { [self] in if $0 { setAspectRatio(ratio) } }
-                ))
+                )) {
+                    Label(ratio.menuLabel, systemImage: self.aspectRatioSystemImage(for: ratio))
+                }
             }
         }
         .id("aspect-ratio-\(currentHypnogramAspectRatio.displayString)")
@@ -265,5 +267,22 @@ extension Studio {
             return windowBelongsToMain(parent)
         }
         return false
+    }
+
+    private func aspectRatioSystemImage(for ratio: AspectRatio) -> String {
+        switch ratio.displayString {
+        case "fill":
+            return "aspectratio"
+        case "16:9":
+            return "rectangle.ratio.16.to.9"
+        case "9:16":
+            return "rectangle.portrait"
+        case "4:3":
+            return "rectangle.ratio.4.to.3"
+        case "1:1":
+            return "square"
+        default:
+            return "aspectratio"
+        }
     }
 }

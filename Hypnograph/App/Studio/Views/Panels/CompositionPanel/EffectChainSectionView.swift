@@ -6,8 +6,7 @@ struct EffectChainSectionView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
 
-    /// -1 = composition, 0+ = layer index
-    let layer: Int
+    let target: EffectTarget
     let title: String
     var isCollapsible: Bool = true
 
@@ -17,7 +16,7 @@ struct EffectChainSectionView: View {
     @SwiftUI.Environment(\.panelLayoutInvalidator) private var panelLayoutInvalidator
 
     private var chain: EffectChain {
-        main.activeEffectManager.effectChain(for: layer) ?? EffectChain()
+        main.activeEffectManager.effectChain(for: target) ?? EffectChain()
     }
 
     private var availableLibraryChains: [EffectChain] {
@@ -29,7 +28,7 @@ struct EffectChainSectionView: View {
     }
 
     private var isTemporarilyGlobalSuspended: Bool {
-        layer == -1 && main.player.isCompositionEffectSuspended
+        target == .composition && main.player.isCompositionEffectSuspended
     }
 
     var body: some View {
@@ -46,14 +45,14 @@ struct EffectChainSectionView: View {
                                 toggleEffectExpanded(index)
                             },
                             onSetEnabled: { enabled in
-                                main.activeEffectManager.setEffectEnabled(for: layer, effectDefIndex: index, enabled: enabled)
+                                main.activeEffectManager.setEffectEnabled(for: target, effectDefIndex: index, enabled: enabled)
                             },
                             onRemove: {
-                                main.activeEffectManager.removeEffectFromChain(for: layer, effectDefIndex: index)
+                                main.activeEffectManager.removeEffectFromChain(for: target, effectDefIndex: index)
                             },
                             onUpdateParameter: { key, newValue in
                                 main.activeEffectManager.updateEffectParameter(
-                                    for: layer,
+                                    for: target,
                                     effectDefIndex: index,
                                     key: key,
                                     value: newValue
@@ -76,7 +75,7 @@ struct EffectChainSectionView: View {
                             draggingIndex: $draggingEffectIndex,
                             onReorder: { from, to in
                                 main.activeEffectManager.reorderEffectsInChain(
-                                    for: layer,
+                                    for: target,
                                     fromIndex: from,
                                     toIndex: to
                                 )
@@ -127,7 +126,7 @@ struct EffectChainSectionView: View {
                 PanelToggleView(isOn: Binding(
                     get: { chain.isEnabled && !isTemporarilyGlobalSuspended },
                     set: { enabled in
-                        main.activeEffectManager.setChainEnabled(for: layer, enabled: enabled)
+                        main.activeEffectManager.setChainEnabled(for: target, enabled: enabled)
                     }
                 ))
                 .fixedSize()
@@ -181,7 +180,7 @@ struct EffectChainSectionView: View {
             Divider()
 
             Button(role: .destructive) {
-                main.activeEffectManager.clearEffect(for: layer)
+                main.activeEffectManager.clearEffect(for: target)
                 expandedEffectIndices.removeAll()
             } label: {
                 Label("Clear Effect", systemImage: "trash")
@@ -203,7 +202,7 @@ struct EffectChainSectionView: View {
             Section("Effect Chains") {
                 ForEach(availableLibraryChains, id: \.id) { libraryChain in
                 Button(templateDisplayName(libraryChain)) {
-                    main.activeEffectManager.applyTemplate(libraryChain, to: layer)
+                    main.activeEffectManager.applyTemplate(libraryChain, to: target)
                     isExpanded = true
                 }
             }
@@ -213,7 +212,7 @@ struct EffectChainSectionView: View {
         Section("FX") {
             ForEach(EffectRegistry.availableEffectTypes, id: \.type) { entry in
                 Button(entry.displayName) {
-                    main.activeEffectManager.addEffectToChain(for: layer, effectType: entry.type)
+                    main.activeEffectManager.addEffectToChain(for: target, effectType: entry.type)
                     isExpanded = true
                 }
             }
@@ -256,7 +255,7 @@ struct EffectChainSectionView: View {
             for (key, spec) in specs {
                 guard key != "_enabled", key.lowercased() != "opacity" else { continue }
                 main.activeEffectManager.updateEffectParameter(
-                    for: layer,
+                    for: target,
                     effectDefIndex: effectIndex,
                     key: key,
                     value: spec.randomValue()
@@ -272,7 +271,7 @@ struct EffectChainSectionView: View {
         for (key, spec) in specs {
             guard key != "_enabled" else { continue }
             main.activeEffectManager.updateEffectParameter(
-                for: layer,
+                for: target,
                 effectDefIndex: effectIndex,
                 key: key,
                 value: spec.defaultValue
@@ -287,7 +286,7 @@ struct EffectChainSectionView: View {
         for (key, spec) in specs {
             guard key != "_enabled", key.lowercased() != "opacity" else { continue }
             main.activeEffectManager.updateEffectParameter(
-                for: layer,
+                for: target,
                 effectDefIndex: effectIndex,
                 key: key,
                 value: spec.randomValue()

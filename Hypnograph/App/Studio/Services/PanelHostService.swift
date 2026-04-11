@@ -49,7 +49,7 @@ private enum PanelKind {
         case .sources: return CGSize(width: 420, height: 420)
         case .newCompositions: return CGSize(width: 360, height: 560)
         case .outputSettings: return CGSize(width: 360, height: 360)
-        case .composition: return CGSize(width: 420, height: 720)
+        case .composition: return CGSize(width: 360, height: 720)
         case .effects: return CGSize(width: 420, height: 720)
         case .playerControls: return CGSize(width: 920, height: 170)
         }
@@ -369,6 +369,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
         expectedParentFullScreen: Bool,
         panelFrames: [String: CGRect],
         panelOrder: [String],
+        panelOpacity: Double,
         autoHidePanels: Bool,
         keyboardAccessibilityOverridesEnabled: Bool,
         onPanelVisibilityChanged: @escaping (String, Bool) -> Void,
@@ -391,6 +392,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
         self.storedPanelFrames = panelFrames
         self.panelOrder = panelOrder
         onPanelsAutoHiddenChanged(panelsAutoHidden)
+        let opacity = min(max(panelOpacity, 0.22), 0.92)
         let keyboardOverrideJustEnabled = !self.keyboardAccessibilityOverridesEnabled && keyboardAccessibilityOverridesEnabled
         self.keyboardAccessibilityOverridesEnabled = keyboardAccessibilityOverridesEnabled
         if keyboardOverrideJustEnabled {
@@ -434,6 +436,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
         syncPanel(
             kind: .sequence,
             visible: showSequence,
+            opacity: opacity,
             content: sequenceContent,
             parentWindow: parentWindow,
             suppressVisibilityActivity: shouldStartAutoHidden
@@ -441,6 +444,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
         syncPanel(
             kind: .hypnograms,
             visible: showHypnograms,
+            opacity: opacity,
             content: hypnogramsContent,
             parentWindow: parentWindow,
             suppressVisibilityActivity: shouldStartAutoHidden
@@ -448,6 +452,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
         syncPanel(
             kind: .sources,
             visible: showSources,
+            opacity: opacity,
             content: sourcesContent,
             parentWindow: parentWindow,
             suppressVisibilityActivity: shouldStartAutoHidden
@@ -455,6 +460,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
         syncPanel(
             kind: .newCompositions,
             visible: showNewCompositions,
+            opacity: opacity,
             content: newCompositionsContent,
             parentWindow: parentWindow,
             suppressVisibilityActivity: shouldStartAutoHidden
@@ -462,6 +468,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
         syncPanel(
             kind: .outputSettings,
             visible: showOutputSettings,
+            opacity: opacity,
             content: outputSettingsContent,
             parentWindow: parentWindow,
             suppressVisibilityActivity: shouldStartAutoHidden
@@ -469,6 +476,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
         syncPanel(
             kind: .composition,
             visible: showComposition,
+            opacity: opacity,
             content: compositionContent,
             parentWindow: parentWindow,
             suppressVisibilityActivity: shouldStartAutoHidden
@@ -476,6 +484,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
         syncPanel(
             kind: .effects,
             visible: showEffects,
+            opacity: opacity,
             content: effectsContent,
             parentWindow: parentWindow,
             suppressVisibilityActivity: shouldStartAutoHidden
@@ -483,6 +492,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
         syncPanel(
             kind: .playerControls,
             visible: showPlayerControls,
+            opacity: opacity,
             content: playerControlsContent,
             parentWindow: parentWindow,
             suppressVisibilityActivity: shouldStartAutoHidden
@@ -509,6 +519,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
     private func syncPanel(
         kind: PanelKind,
         visible: Bool,
+        opacity: Double,
         content: AnyView,
         parentWindow: NSWindow,
         suppressVisibilityActivity: Bool
@@ -525,6 +536,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
             if kind.shouldRefreshRootViewOnSync {
                 managed.host.setRootView(content)
             }
+            managed.panel.alphaValue = opacity
             applySizing(for: kind, managed: managed)
 
             if panelsAutoHidden {

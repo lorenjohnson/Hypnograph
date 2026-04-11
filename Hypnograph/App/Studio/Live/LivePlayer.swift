@@ -115,6 +115,9 @@ final class LivePlayer: ObservableObject {
     /// This display's own effects session - for live mode effects
     let effectsSession: EffectsSession
 
+    /// The current hypnogram-level effect chain being displayed.
+    private var currentHypnogramEffectChain = EffectChain()
+
     /// The current composition being displayed (mutable for live effect changes)
     private var currentComposition: Composition?
     /// Snapshot of the currently rendered composition used to freeze outgoing transitions.
@@ -159,6 +162,14 @@ final class LivePlayer: ObservableObject {
         // Wire up composition provider to return the mutable current composition
         effectManager.compositionProvider = { [weak self] in
             self?.currentComposition
+        }
+
+        effectManager.hypnogramEffectChainProvider = { [weak self] in
+            self?.currentHypnogramEffectChain
+        }
+
+        effectManager.hypnogramEffectChainSetter = { [weak self] chain in
+            self?.currentHypnogramEffectChain = chain
         }
 
         // Wire up composition effect chain setter
@@ -357,6 +368,7 @@ final class LivePlayer: ObservableObject {
         isTransitioning = false
         currentRecipeDescription = ""
         activeLayerCount = 0
+        currentHypnogramEffectChain = EffectChain()
         currentComposition = nil
         lastRenderedComposition = nil
         hasContent = false
@@ -394,6 +406,7 @@ final class LivePlayer: ObservableObject {
     ///   - composition: The composition to display
     func send(
         composition: Composition,
+        hypnogramEffectChain: EffectChain,
         aspectRatio: AspectRatio,
         outputResolution: OutputResolution,
         sourceFraming: SourceFraming,
@@ -423,6 +436,7 @@ final class LivePlayer: ObservableObject {
         self.crossfadeDuration = transitionDuration
 
         // Store the composition for live effect modifications
+        self.currentHypnogramEffectChain = hypnogramEffectChain
         self.currentComposition = composition
 
         let sourceCount = composition.layers.count

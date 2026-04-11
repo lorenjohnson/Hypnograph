@@ -176,6 +176,7 @@ extension Studio {
             outputFolder: state.settings.outputURL,
             outputSize: outputSize,
             sourceFraming: currentHypnogramSourceFraming,
+            hypnogramEffectChain: currentHypnogramEffectChain.clone(),
             notifyExternalDestinationHooks: false,
             completion: { [weak self] result in
                 guard let self else { return }

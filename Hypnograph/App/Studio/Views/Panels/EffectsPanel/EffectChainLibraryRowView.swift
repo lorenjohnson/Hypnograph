@@ -33,7 +33,7 @@ struct EffectChainLibraryRowView: View {
         if isRenaming {
             onCommitRename()
         }
-        main.activeEffectManager.applyTemplate(chain, to: -1)
+        main.activeEffectManager.applyTemplate(chain, to: .composition)
         AppNotifications.show("Applied to Composition", flash: true)
     }
 

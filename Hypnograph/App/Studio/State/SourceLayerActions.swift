@@ -304,9 +304,9 @@ extension Studio {
     }
 
     func cycleCompositionEffect(direction: Int = 1) {
-        activeEffectManager.cycleEffect(for: -1, direction: direction)
+        activeEffectManager.cycleEffect(for: .composition, direction: direction)
 
-        let effectName = activeEffectManager.effectName(for: -1)
+        let effectName = activeEffectManager.effectName(for: .composition)
         AppNotifications.show("Composition: \(effectName)", flash: true, duration: 1.5)
     }
 
@@ -321,7 +321,7 @@ extension Studio {
     }
 
     func clearCompositionEffect() {
-        activeEffectManager.clearEffect(for: -1)
+        activeEffectManager.clearEffect(for: .composition)
         AppNotifications.show("Composition: None", flash: true, duration: 1.5)
     }
 
@@ -374,7 +374,7 @@ extension Studio {
 
     func setTransitionStyle(_ style: TransitionRenderer.TransitionType) {
         updateHypnogramDocumentSettings { $0.transitionStyle = style }
-        livePlayer.transitionType = style
+        livePlayer.transitionType = currentCompositionTransitionStyle
         notifyHypnogramMutated()
         objectWillChange.send()
     }
@@ -382,8 +382,27 @@ extension Studio {
     func setTransitionDuration(_ duration: Double) {
         let clampedDuration = min(max(duration, 0.1), 3.0)
         updateHypnogramDocumentSettings { $0.transitionDuration = clampedDuration }
-        livePlayer.crossfadeDuration = clampedDuration
+        livePlayer.crossfadeDuration = currentCompositionTransitionDuration
         notifyHypnogramMutated()
+        objectWillChange.send()
+    }
+
+    func setCurrentCompositionTransitionStyle(_ style: TransitionRenderer.TransitionType?) {
+        updateCurrentComposition { $0.transitionStyle = style }
+        livePlayer.transitionType = currentCompositionTransitionStyle
+        objectWillChange.send()
+    }
+
+    func setCurrentCompositionTransitionDuration(_ duration: Double) {
+        let clampedDuration = min(max(duration, 0.1), 3.0)
+        updateCurrentComposition { $0.transitionDuration = clampedDuration }
+        livePlayer.crossfadeDuration = currentCompositionTransitionDuration
+        objectWillChange.send()
+    }
+
+    func clearCurrentCompositionTransitionDurationOverride() {
+        updateCurrentComposition { $0.transitionDuration = nil }
+        livePlayer.crossfadeDuration = currentCompositionTransitionDuration
         objectWillChange.send()
     }
 
