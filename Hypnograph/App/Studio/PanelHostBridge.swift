@@ -7,12 +7,9 @@ import SwiftUI
 
 struct PanelHostBridge: NSViewRepresentable {
     @ObservedObject var hostService: PanelHostService
-    let showSequence: Bool
     let showHypnograms: Bool
-    let showSources: Bool
     let showNewCompositions: Bool
-    let showOutputSettings: Bool
-    let showComposition: Bool
+    let showProperties: Bool
     let showEffects: Bool
     let showPlayerControls: Bool
     let expectedParentFullScreen: Bool
@@ -25,12 +22,9 @@ struct PanelHostBridge: NSViewRepresentable {
     let onPanelFrameChanged: (String, CGRect) -> Void
     let onPanelOrderChanged: ([String]) -> Void
     let onPanelsAutoHiddenChanged: (Bool) -> Void
-    let sequenceContent: AnyView
     let hypnogramsContent: AnyView
-    let sourcesContent: AnyView
     let newCompositionsContent: AnyView
-    let outputSettingsContent: AnyView
-    let compositionContent: AnyView
+    let propertiesContent: AnyView
     let effectsContent: AnyView
     let playerControlsContent: AnyView
 
@@ -54,12 +48,9 @@ struct PanelHostBridge: NSViewRepresentable {
         context.coordinator.hostService = hostService
         context.coordinator.hostService.sync(
             parentWindow: nsView.window,
-            showSequence: showSequence,
             showHypnograms: showHypnograms,
-            showSources: showSources,
             showNewCompositions: showNewCompositions,
-            showOutputSettings: showOutputSettings,
-            showComposition: showComposition,
+            showProperties: showProperties,
             showEffects: showEffects,
             showPlayerControls: showPlayerControls,
             expectedParentFullScreen: expectedParentFullScreen,
@@ -72,12 +63,9 @@ struct PanelHostBridge: NSViewRepresentable {
             onPanelFrameChanged: onPanelFrameChanged,
             onPanelOrderChanged: onPanelOrderChanged,
             onPanelsAutoHiddenChanged: onPanelsAutoHiddenChanged,
-            sequenceContent: sequenceContent,
             hypnogramsContent: hypnogramsContent,
-            sourcesContent: sourcesContent,
             newCompositionsContent: newCompositionsContent,
-            outputSettingsContent: outputSettingsContent,
-            compositionContent: compositionContent,
+            propertiesContent: propertiesContent,
             effectsContent: effectsContent,
             playerControlsContent: playerControlsContent
         )

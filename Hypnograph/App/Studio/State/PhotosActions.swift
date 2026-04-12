@@ -27,6 +27,7 @@ extension Studio {
     func revealSourcesWindow() {
         panels.setPanelsHidden(false)
         NotificationCenter.default.post(name: ContentView.studioShowPanelsNowNotification, object: nil)
-        panels.setPanelVisible("sourcesPanel", visible: true)
+        state.settingsStore.update { $0.newCompositionsPanelTab = .sources }
+        panels.setPanelVisible("newCompositionsPanel", visible: true)
     }
 }

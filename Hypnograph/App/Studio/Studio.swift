@@ -691,6 +691,13 @@ final class Studio: ObservableObject {
         player.pendingCompositionTransitionDuration = composition.map { effectiveTransitionDuration(for: $0) }
     }
 
+    func setPendingImmediateCut() {
+        player.pendingCompositionTransitionStyle = .none
+        // Keep this tiny but nonzero so the no-transition path can still use the
+        // existing instant-cut machinery without falling back to normal defaults.
+        player.pendingCompositionTransitionDuration = 0.0001
+    }
+
     func copyDocumentContext(from hypnogram: Hypnogram) {
         self.hypnogram.effectChain = hypnogram.effectChain.clone()
         self.hypnogram.aspectRatio = resolvedAspectRatio(for: hypnogram)

@@ -1,15 +1,34 @@
 import SwiftUI
+import HypnoCore
 
 struct PlayerControlsPanel: View {
     let isPaused: Bool
     let isLoopCompositionEnabled: Bool
     let isLoopSequenceEnabled: Bool
+    let selectedLayerIndex: Int
     let compositionLengthSeconds: Double
+    let sequenceEntries: [CompositionEntry]
     let layerTrimContexts: [LayerTrimContext]
+    let visualOpacity: Double
     @Binding var volume: Double
+    let onJumpToComposition: (Int) -> Void
+    let onDeleteCompositionEntry: (Int) -> Void
+    let onMoveComposition: (UUID, UUID) -> Void
     let onPrevious: () -> Void
     let onPlayPause: () -> Void
     let onNext: () -> Void
+    let onSelectLayer: (Int) -> Void
+    let onMoveLayerUp: (Int) -> Void
+    let onMoveLayerDown: (Int) -> Void
+    let onDeleteLayer: (Int) -> Void
+    let onSetLayerBlendMode: (Int, String) -> Void
+    let onSetLayerOpacity: (Int, Double) -> Void
+    let onToggleLayerMute: (Int) -> Void
+    let onToggleLayerSolo: (Int) -> Void
+    let onToggleLayerVisibility: (Int) -> Void
+    let onAddSourceFromFiles: () -> Void
+    let onAddSourceFromPhotos: () -> Void
+    let onAddSourceFromRandom: () -> Void
     let onCyclePlaybackLoopMode: () -> Void
     let onSnapshotCurrent: () -> Void
     let onSaveCurrent: () -> Void
@@ -20,29 +39,81 @@ struct PlayerControlsPanel: View {
     @State private var visibleTooltipControlID: String?
     @State private var visibleTooltipText: String?
     @State private var previousVolumeBeforeMute: Double = 0.8
+    @State private var draggedCompositionID: UUID?
 
     private let tooltipDelay: TimeInterval = 0.85
 
+    private var totalSequenceDurationSeconds: Double {
+        sequenceEntries.reduce(0) { partial, entry in
+            partial + entry.composition.effectiveDuration.seconds
+        }
+    }
+
+    private var chromeOpacity: Double {
+        visualOpacity.clamped(to: 0.32...0.92)
+    }
+
     var body: some View {
-        VStack(spacing: 8) {
-            LayerTrimView(
-                contexts: layerTrimContexts,
-                onCommit: onCommitLayerTrimRange
-            )
+        VStack(spacing: 10) {
+            dockHeader
+
+            if !layerTrimContexts.isEmpty {
+                LayerTrimView(
+                    contexts: layerTrimContexts,
+                    selectedLayerIndex: selectedLayerIndex,
+                    visualOpacity: chromeOpacity,
+                    onSelectLayer: onSelectLayer,
+                    onMoveLayerUp: onMoveLayerUp,
+                    onMoveLayerDown: onMoveLayerDown,
+                    onDeleteLayer: onDeleteLayer,
+                    onSetBlendMode: onSetLayerBlendMode,
+                    onSetOpacity: onSetLayerOpacity,
+                    onToggleMute: onToggleLayerMute,
+                    onToggleSolo: onToggleLayerSolo,
+                    onToggleVisibility: onToggleLayerVisibility,
+                    onCommit: onCommitLayerTrimRange
+                )
+            }
+
+            if !sequenceEntries.isEmpty {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("Sequence")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Color.secondary.opacity(chromeOpacity))
+
+                    Spacer(minLength: 0)
+
+                    Text("\(formatTime(totalSequenceDurationSeconds)) / \(formatTime(compositionLengthSeconds))")
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(Color.secondary.opacity(chromeOpacity))
+                }
+
+                SequenceLaneView(
+                    compositionEntries: sequenceEntries,
+                    draggedCompositionID: $draggedCompositionID,
+                    onJumpToComposition: onJumpToComposition,
+                    onDeleteCompositionEntry: onDeleteCompositionEntry,
+                    onMoveComposition: onMoveComposition
+                )
+                .padding(.horizontal, 2)
+            }
 
             controlsRow
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.black.opacity(0.72))
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.black.opacity(0.18 + (0.58 * chromeOpacity)))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.white.opacity(0.08 + (0.12 * chromeOpacity)), lineWidth: 1)
                 )
         )
-        .shadow(color: .black.opacity(0.35), radius: 12, x: 0, y: 6)
+        .shadow(color: .black.opacity(0.16 + (0.19 * chromeOpacity)), radius: 12, x: 0, y: 6)
         .onChange(of: volume) { _, newValue in
             if newValue > 0.001 {
                 previousVolumeBeforeMute = newValue
@@ -56,7 +127,81 @@ struct PlayerControlsPanel: View {
         }
     }
 
+    private var dockHeader: some View {
+        HStack(spacing: 8) {
+            Text("Composition")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.secondary.opacity(chromeOpacity))
+
+            Spacer(minLength: 0)
+
+            Menu {
+                Button {
+                    onAddSourceFromFiles()
+                } label: {
+                    Label("From Files...", systemImage: "doc")
+                }
+
+                Button {
+                    onAddSourceFromPhotos()
+                } label: {
+                    Label("From Photos...", systemImage: "photo")
+                }
+
+                Button {
+                    onAddSourceFromRandom()
+                } label: {
+                    Label("Random Source", systemImage: "dice")
+                }
+            } label: {
+                Image(systemName: "plus")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(Color.white.opacity(0.72 + (0.2 * chromeOpacity)))
+                    .frame(width: 28, height: 28)
+            }
+            .menuStyle(.borderlessButton)
+            .help("Add Layer")
+        }
+    }
+
     private var controlsRow: some View {
+        HStack(spacing: 16) {
+            volumeSection
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            transportSection
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            actionSection
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+    }
+
+    private var volumeSection: some View {
+        HStack(spacing: 6) {
+            Button(action: toggleMute) {
+                Image(systemName: volume <= 0.001 ? "speaker.slash.fill" : "speaker.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.secondary.opacity(chromeOpacity))
+                    .frame(width: 16, height: 16)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(volume <= 0.001 ? "Unmute" : "Mute")
+
+            PanelSliderView(value: $volume, bounds: 0...1)
+                .frame(width: 120)
+                .help("Volume")
+
+            Image(systemName: "speaker.wave.3.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color.secondary.opacity(chromeOpacity))
+                .frame(width: 16)
+        }
+    }
+
+    private var transportSection: some View {
         HStack(spacing: 14) {
             deckButton(id: "prev", systemName: "backward.fill", tooltip: "Previous Composition", action: onPrevious)
             playPauseButton()
@@ -73,28 +218,11 @@ struct PlayerControlsPanel: View {
                 activeBackground: (isLoopCompositionEnabled || isLoopSequenceEnabled) ? .blue : nil,
                 action: onCyclePlaybackLoopMode
             )
+        }
+    }
 
-            Spacer(minLength: 6)
-
-            HStack(spacing: 6) {
-                Button(action: toggleMute) {
-                    Image(systemName: volume <= 0.001 ? "speaker.slash.fill" : "speaker.fill")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 16, height: 16)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help(volume <= 0.001 ? "Unmute" : "Mute")
-                PanelSliderView(value: $volume, bounds: 0...1)
-                    .frame(width: 120)
-                    .help("Volume")
-                Image(systemName: "speaker.wave.3.fill")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 16)
-            }
-
+    private var actionSection: some View {
+        HStack(spacing: 14) {
             deckButton(
                 id: "snapshot",
                 systemName: "camera.fill",
@@ -122,12 +250,12 @@ struct PlayerControlsPanel: View {
         return Button(action: onPlayPause) {
             Image(systemName: playPauseSystemName)
                 .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.white.opacity(0.68 + (0.32 * chromeOpacity)))
                 .frame(width: 28, height: 28)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 9)
         }
-        .buttonStyle(DeckBarButtonStyle())
+        .buttonStyle(DeckBarButtonStyle(chromeOpacity: chromeOpacity))
         .help(tooltip)
         .hudTooltip(tooltip)
         .onHover { isHovering in
@@ -151,6 +279,17 @@ struct PlayerControlsPanel: View {
         previousVolumeBeforeMute = volume
         volume = 0
     }
+
+    private func formatTime(_ seconds: Double) -> String {
+        let clampedSeconds = max(0, seconds)
+        if clampedSeconds >= 60 {
+            let minutes = Int(clampedSeconds) / 60
+            let remainder = clampedSeconds.truncatingRemainder(dividingBy: 60)
+            return String(format: "%d:%04.1f", minutes, remainder)
+        }
+        return String(format: "%.1fs", clampedSeconds)
+    }
+
     private var playPauseSystemName: String {
         isPaused ? "play.fill" : "pause.fill"
     }
@@ -199,9 +338,9 @@ struct PlayerControlsPanel: View {
     ) -> some View {
         Button(action: action) {
             label()
-                .foregroundStyle(tint)
+                .foregroundStyle(tint.opacity(0.68 + (0.32 * chromeOpacity)))
         }
-        .buttonStyle(DeckBarButtonStyle(activeBackground: activeBackground))
+        .buttonStyle(DeckBarButtonStyle(activeBackground: activeBackground, chromeOpacity: chromeOpacity))
         .help(tooltip)
         .hudTooltip(tooltip)
         .onHover { isHovering in
@@ -289,6 +428,7 @@ struct PlayerControlsPanel: View {
 
 private struct DeckBarButtonStyle: ButtonStyle {
     var activeBackground: Color?
+    var chromeOpacity: Double = 1.0
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -302,8 +442,8 @@ private struct DeckBarButtonStyle: ButtonStyle {
 
     private func backgroundColor(isPressed: Bool) -> Color {
         if let activeBackground {
-            return isPressed ? activeBackground.opacity(0.82) : activeBackground
+            return isPressed ? activeBackground.opacity(0.46 + (0.36 * chromeOpacity)) : activeBackground.opacity(0.62 + (0.38 * chromeOpacity))
         }
-        return isPressed ? Color.white.opacity(0.24) : Color.white.opacity(0.1)
+        return isPressed ? Color.white.opacity(0.10 + (0.14 * chromeOpacity)) : Color.white.opacity(0.04 + (0.06 * chromeOpacity))
     }
 }

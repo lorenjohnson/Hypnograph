@@ -118,13 +118,14 @@ extension Studio {
         let clampedIndex = max(0, min(index, hypnogram.compositions.count - 1))
         guard clampedIndex != currentCompositionIndex else { return }
 
-        persistCurrentCompositionPreviewIfNeeded()
+        // Direct jumps should prioritize responsiveness over eagerly persisting the
+        // outgoing composition preview. That snapshot path can be expensive enough
+        // to make sequence jumps feel sticky, especially in debug builds.
         player.hasPendingGeneratedNextComposition = false
         player.currentCompositionLoadFailure = nil
-        let transitionOwner = clampedIndex < currentCompositionIndex
-            ? hypnogram.compositions[clampedIndex]
-            : currentComposition
-        setPendingTransition(for: transitionOwner)
+        // Sequence-lane jumps should feel immediate and should not wait on the
+        // usual transition ownership logic used by stepwise navigation.
+        setPendingImmediateCut()
         currentCompositionIndex = clampedIndex
         applyCompositionSelectionChanged(manual: true)
     }

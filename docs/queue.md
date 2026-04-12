@@ -18,6 +18,7 @@ last_reviewed: 2026-04-04
 
 ## Backlog Projects
 
+- [dockable-panels](backlog/dockable-panels.md)
 - [effects-chain-ux-refinements](backlog/effects-chain-ux-refinements.md)
 - [audio-sources-spike](backlog/audio-sources-spike.md)
 - [new-compositions-advanced-source-selection](backlog/new-compositions-advanced-source-selection.md)

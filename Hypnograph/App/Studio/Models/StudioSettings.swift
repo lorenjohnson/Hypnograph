@@ -23,6 +23,22 @@ enum PlaybackLoopMode: String, Codable, CaseIterable {
     }
 }
 
+enum PlaybackDockMode: String, Codable, CaseIterable {
+    case sequence
+    case composition
+}
+
+enum PropertiesPanelScope: String, Codable, CaseIterable {
+    case sequence
+    case composition
+    case layer
+}
+
+enum NewCompositionsPanelTab: String, Codable, CaseIterable {
+    case sources
+    case generationParameters
+}
+
 enum RenderVideoSaveDestination: String, Codable, CaseIterable {
     case diskAndPhotosIfAvailable
     case photosIfAvailableOtherwiseDisk
@@ -44,6 +60,9 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     var effectsComposerEnabled: Bool
     var autoHidePanelsEnabled: Bool
     var panelOpacity: Double
+    var playbackDockMode: PlaybackDockMode
+    var propertiesPanelScope: PropertiesPanelScope
+    var newCompositionsPanelTab: NewCompositionsPanelTab
 
     /// Default composition length range (seconds) for newly generated compositions
     var compositionLengthMinSeconds: Double
@@ -109,6 +128,9 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         static let effectsComposerEnabled: Bool = true
         static let autoHidePanelsEnabled: Bool = false
         static let panelOpacity: Double = 0.72
+        static let playbackDockMode: PlaybackDockMode = .composition
+        static let propertiesPanelScope: PropertiesPanelScope = .composition
+        static let newCompositionsPanelTab: NewCompositionsPanelTab = .sources
         static let compositionLengthMinSeconds: Double = 5.0
         static let compositionLengthMaxSeconds: Double = 20.0
         static let compositionPlayRateMin: Double = 1.0
@@ -147,6 +169,9 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             effectsComposerEnabled: Defaults.effectsComposerEnabled,
             autoHidePanelsEnabled: Defaults.autoHidePanelsEnabled,
             panelOpacity: Defaults.panelOpacity,
+            playbackDockMode: Defaults.playbackDockMode,
+            propertiesPanelScope: Defaults.propertiesPanelScope,
+            newCompositionsPanelTab: Defaults.newCompositionsPanelTab,
             compositionLengthMinSeconds: Defaults.compositionLengthMinSeconds,
             compositionLengthMaxSeconds: Defaults.compositionLengthMaxSeconds,
             compositionPlayRateMin: Defaults.compositionPlayRateMin,
@@ -171,7 +196,7 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     private enum CodingKeys: String, CodingKey {
         case outputFolder, sources
         case playbackLoopMode, generateAtEnd, snapshotsFolder
-        case keyboardAccessibilityOverridesEnabled, effectsComposerEnabled, autoHidePanelsEnabled, panelOpacity
+        case keyboardAccessibilityOverridesEnabled, effectsComposerEnabled, autoHidePanelsEnabled, panelOpacity, playbackDockMode, propertiesPanelScope, newCompositionsPanelTab
         case compositionLengthMinSeconds, compositionLengthMaxSeconds
         case compositionPlayRateMin, compositionPlayRateMax
         case historyLimit
@@ -198,6 +223,9 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         effectsComposerEnabled: Bool = Defaults.effectsComposerEnabled,
         autoHidePanelsEnabled: Bool = Defaults.autoHidePanelsEnabled,
         panelOpacity: Double = Defaults.panelOpacity,
+        playbackDockMode: PlaybackDockMode = Defaults.playbackDockMode,
+        propertiesPanelScope: PropertiesPanelScope = Defaults.propertiesPanelScope,
+        newCompositionsPanelTab: NewCompositionsPanelTab = Defaults.newCompositionsPanelTab,
         compositionLengthMinSeconds: Double = Defaults.compositionLengthMinSeconds,
         compositionLengthMaxSeconds: Double = Defaults.compositionLengthMaxSeconds,
         compositionPlayRateMin: Double = Defaults.compositionPlayRateMin,
@@ -226,6 +254,9 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         self.effectsComposerEnabled = effectsComposerEnabled
         self.autoHidePanelsEnabled = autoHidePanelsEnabled
         self.panelOpacity = panelOpacity
+        self.playbackDockMode = playbackDockMode
+        self.propertiesPanelScope = propertiesPanelScope
+        self.newCompositionsPanelTab = newCompositionsPanelTab
         self.compositionLengthMinSeconds = compositionLengthMinSeconds
         self.compositionLengthMaxSeconds = compositionLengthMaxSeconds
         self.compositionPlayRateMin = compositionPlayRateMin
@@ -266,7 +297,13 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         autoHidePanelsEnabled = try c.decodeIfPresent(Bool.self, forKey: .autoHidePanelsEnabled)
             ?? Defaults.autoHidePanelsEnabled
         panelOpacity = (try c.decodeIfPresent(Double.self, forKey: .panelOpacity)
-            ?? Defaults.panelOpacity).clamped(to: 0.22...0.92)
+            ?? Defaults.panelOpacity).clamped(to: 0.32...0.92)
+        playbackDockMode = try c.decodeIfPresent(PlaybackDockMode.self, forKey: .playbackDockMode)
+            ?? Defaults.playbackDockMode
+        propertiesPanelScope = try c.decodeIfPresent(PropertiesPanelScope.self, forKey: .propertiesPanelScope)
+            ?? Defaults.propertiesPanelScope
+        newCompositionsPanelTab = try c.decodeIfPresent(NewCompositionsPanelTab.self, forKey: .newCompositionsPanelTab)
+            ?? Defaults.newCompositionsPanelTab
         compositionLengthMinSeconds =
             try c.decodeIfPresent(Double.self, forKey: .compositionLengthMinSeconds)
             ?? c.decodeIfPresent(Double.self, forKey: .clipLengthMinSeconds)
@@ -325,7 +362,10 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         try c.encode(keyboardAccessibilityOverridesEnabled, forKey: .keyboardAccessibilityOverridesEnabled)
         try c.encode(effectsComposerEnabled, forKey: .effectsComposerEnabled)
         try c.encode(autoHidePanelsEnabled, forKey: .autoHidePanelsEnabled)
-        try c.encode(panelOpacity.clamped(to: 0.22...0.92), forKey: .panelOpacity)
+        try c.encode(panelOpacity.clamped(to: 0.32...0.92), forKey: .panelOpacity)
+        try c.encode(playbackDockMode, forKey: .playbackDockMode)
+        try c.encode(propertiesPanelScope, forKey: .propertiesPanelScope)
+        try c.encode(newCompositionsPanelTab, forKey: .newCompositionsPanelTab)
         try c.encode(compositionLengthMinSeconds, forKey: .compositionLengthMinSeconds)
         try c.encode(compositionLengthMaxSeconds, forKey: .compositionLengthMaxSeconds)
         try c.encode(compositionPlayRateMin, forKey: .compositionPlayRateMin)

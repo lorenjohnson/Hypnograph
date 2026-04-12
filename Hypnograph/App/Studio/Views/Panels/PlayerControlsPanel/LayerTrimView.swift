@@ -7,7 +7,16 @@ struct LayerTrimContext: Equatable {
     let layerIndex: Int
     let fileID: UUID
     let source: MediaSource
+    let mediaKind: MediaKind
     let clipLabel: String
+    let blendMode: String
+    let opacity: Double
+    let canMoveUp: Bool
+    let canMoveDown: Bool
+    let canDelete: Bool
+    let isMuted: Bool
+    let isVisible: Bool
+    let isSoloActive: Bool
     let totalDurationSeconds: Double
     let maxSelectionDurationSeconds: Double
     let selectedRangeSeconds: ClosedRange<Double>
@@ -19,6 +28,17 @@ struct LayerTrimContext: Equatable {
 
 struct LayerTrimView: View {
     let contexts: [LayerTrimContext]
+    let selectedLayerIndex: Int
+    let visualOpacity: Double
+    let onSelectLayer: (Int) -> Void
+    let onMoveLayerUp: (Int) -> Void
+    let onMoveLayerDown: (Int) -> Void
+    let onDeleteLayer: (Int) -> Void
+    let onSetBlendMode: (Int, String) -> Void
+    let onSetOpacity: (Int, Double) -> Void
+    let onToggleMute: (Int) -> Void
+    let onToggleSolo: (Int) -> Void
+    let onToggleVisibility: (Int) -> Void
     let onCommit: (Int, ClosedRange<Double>) -> Void
 
     var body: some View {
@@ -27,6 +47,35 @@ struct LayerTrimView: View {
                 ForEach(contexts, id: \.stableID) { context in
                     LayerTrimRangeStrip(
                         context: context,
+                        isSelected: context.layerIndex == selectedLayerIndex,
+                        visualOpacity: visualOpacity,
+                        onSelect: {
+                            onSelectLayer(context.layerIndex)
+                        },
+                        onMoveUp: {
+                            onMoveLayerUp(context.layerIndex)
+                        },
+                        onMoveDown: {
+                            onMoveLayerDown(context.layerIndex)
+                        },
+                        onDelete: {
+                            onDeleteLayer(context.layerIndex)
+                        },
+                        onSetBlendMode: { blendMode in
+                            onSetBlendMode(context.layerIndex, blendMode)
+                        },
+                        onSetOpacity: { opacity in
+                            onSetOpacity(context.layerIndex, opacity)
+                        },
+                        onToggleMute: {
+                            onToggleMute(context.layerIndex)
+                        },
+                        onToggleSolo: {
+                            onToggleSolo(context.layerIndex)
+                        },
+                        onToggleVisibility: {
+                            onToggleVisibility(context.layerIndex)
+                        },
                         onCommit: { range in
                             onCommit(context.layerIndex, range)
                         }
@@ -42,38 +91,86 @@ struct LayerTrimView: View {
 
 private struct LayerTrimRangeStrip: View {
     let context: LayerTrimContext
+    let isSelected: Bool
+    let visualOpacity: Double
+    let onSelect: () -> Void
+    let onMoveUp: () -> Void
+    let onMoveDown: () -> Void
+    let onDelete: () -> Void
+    let onSetBlendMode: (String) -> Void
+    let onSetOpacity: (Double) -> Void
+    let onToggleMute: () -> Void
+    let onToggleSolo: () -> Void
+    let onToggleVisibility: () -> Void
     let onCommit: (ClosedRange<Double>) -> Void
 
     @StateObject private var thumbnailStore = LayerTrimThumbnailStripStore()
     @State private var draftRange: ClosedRange<Double>
+    @State private var draftOpacity: Double?
 
-    private let trackHeight: CGFloat = 38
+    private let trackHeight: CGFloat = 48
     private let handleWidth: CGFloat = 10
     private let minimumDurationSeconds: Double = 0.1
 
     init(
         context: LayerTrimContext,
+        isSelected: Bool,
+        visualOpacity: Double,
+        onSelect: @escaping () -> Void,
+        onMoveUp: @escaping () -> Void,
+        onMoveDown: @escaping () -> Void,
+        onDelete: @escaping () -> Void,
+        onSetBlendMode: @escaping (String) -> Void,
+        onSetOpacity: @escaping (Double) -> Void,
+        onToggleMute: @escaping () -> Void,
+        onToggleSolo: @escaping () -> Void,
+        onToggleVisibility: @escaping () -> Void,
         onCommit: @escaping (ClosedRange<Double>) -> Void
     ) {
         self.context = context
+        self.isSelected = isSelected
+        self.visualOpacity = visualOpacity
+        self.onSelect = onSelect
+        self.onMoveUp = onMoveUp
+        self.onMoveDown = onMoveDown
+        self.onDelete = onDelete
+        self.onSetBlendMode = onSetBlendMode
+        self.onSetOpacity = onSetOpacity
+        self.onToggleMute = onToggleMute
+        self.onToggleSolo = onToggleSolo
+        self.onToggleVisibility = onToggleVisibility
         self.onCommit = onCommit
         _draftRange = State(initialValue: context.selectedRangeSeconds)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .center, spacing: 8) {
+                if context.canMoveUp || context.canMoveDown {
+                    reorderControlCluster
+                }
+
                 Text(context.clipLabel)
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.secondary.opacity(visualOpacity))
                     .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onSelect)
 
-                Spacer(minLength: 10)
+                if context.layerIndex != 0 {
+                    blendModeMenu
+                }
 
-                Text(formatTime(activeRange.upperBound - activeRange.lowerBound))
+                compactOpacitySlider
+
+                Text("\(formatTime(safeTotalSeconds)) / \(formatTime(activeRange.upperBound - activeRange.lowerBound))")
                     .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.secondary.opacity(visualOpacity))
+                    .frame(height: 22)
+
+                layerControlCluster
             }
 
             GeometryReader { geometry in
@@ -123,6 +220,7 @@ private struct LayerTrimRangeStrip: View {
                         totalDurationSeconds: safeTotalSeconds,
                         maxSelectionDurationSeconds: maxWindowSeconds,
                         minimumDurationSeconds: minimumWindowSeconds,
+                        onSelect: onSelect,
                         onCommit: { committed in
                             let normalizedRange = normalized(committed)
                             draftRange = normalizedRange
@@ -133,17 +231,29 @@ private struct LayerTrimRangeStrip: View {
                 .contentShape(Rectangle())
             }
             .frame(height: trackHeight)
-
-            HStack {
-                Text("0s")
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundStyle(.tertiary)
-                Spacer(minLength: 8)
-                Text(formatTime(safeTotalSeconds))
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(isSelected ? Color.accentColor.opacity(0.10) : Color.white.opacity(0.05))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(isSelected ? Color.white.opacity(0.12) : Color.white.opacity(0.08), lineWidth: 0.5)
+        )
+        .overlay(alignment: .leading) {
+            if isSelected {
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.95))
+                    .frame(width: 3)
+                    .padding(.vertical, 4)
+                    .padding(.leading, 4)
             }
         }
+        .onTapGesture(perform: onSelect)
+        .padding(.horizontal, 2)
         .onChange(of: context) { _, newValue in
             draftRange = normalized(newValue.selectedRangeSeconds)
         }
@@ -160,6 +270,93 @@ private struct LayerTrimRangeStrip: View {
             thumbnailStore.loadIfNeeded(context: context)
         }
         .onDisappear {
+        }
+    }
+
+    private var blendModeMenu: some View {
+        Menu {
+            Button("Normal") {
+                onSetBlendMode(BlendMode.sourceOver)
+            }
+
+            ForEach(BlendMode.all, id: \.self) { mode in
+                Button(blendModeName(mode)) {
+                    onSetBlendMode(mode)
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(blendModeName(context.layerIndex == 0 ? BlendMode.sourceOver : context.blendMode))
+                    .font(.caption2.weight(.semibold))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(
+                context.layerIndex == 0
+                ? Color.secondary.opacity(0.45)
+                : Color.secondary.opacity(visualOpacity)
+            )
+            .padding(.horizontal, 8)
+            .frame(height: 22)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.white.opacity(0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(Color.white.opacity(0.10 + (0.15 * visualOpacity)), lineWidth: 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
+        .menuStyle(.borderlessButton)
+        .disabled(context.layerIndex == 0)
+    }
+
+    private var compactOpacitySlider: some View {
+        HStack(spacing: 3) {
+            Button {
+                draftOpacity = nil
+                onSetOpacity(0)
+            } label: {
+                Image(systemName: "eye.slash")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.secondary.opacity(visualOpacity))
+                    .frame(width: 14, height: 14)
+            }
+            .buttonStyle(.plain)
+            .help("Set Layer to 0% Opacity")
+
+            PanelSliderView(
+                value: Binding(
+                    get: { draftOpacity ?? context.opacity.clamped(to: 0...1) },
+                    set: { draftOpacity = $0 }
+                ),
+                bounds: 0...1,
+                step: 0.01,
+                thumbDiameter: 12,
+                onEditingChanged: { isEditing in
+                    if isEditing {
+                        draftOpacity = context.opacity.clamped(to: 0...1)
+                    } else {
+                        if let draftOpacity {
+                            onSetOpacity(draftOpacity.clamped(to: 0...1))
+                        }
+                        draftOpacity = nil
+                    }
+                }
+            )
+            .frame(width: 72, height: 22, alignment: .center)
+
+            Button {
+                draftOpacity = nil
+                onSetOpacity(1.0)
+            } label: {
+                Image(systemName: "eye")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.secondary.opacity(visualOpacity))
+                    .frame(width: 14, height: 14)
+            }
+            .buttonStyle(.plain)
+            .help("Set Layer to 100% Opacity")
         }
     }
 
@@ -249,9 +446,9 @@ private struct LayerTrimRangeStrip: View {
         }
         .frame(width: trackWidth, height: trackHeight)
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .saturation(0.9)
-        .contrast(1.02)
-        .opacity(0.76)
+        .saturation(0.84)
+        .contrast(0.98)
+        .opacity(0.58)
     }
 
     private func formatTime(_ seconds: Double) -> String {
@@ -262,6 +459,133 @@ private struct LayerTrimRangeStrip: View {
             return String(format: "%d:%04.1f", minutes, remainder)
         }
         return String(format: "%.1fs", clampedSeconds)
+    }
+
+    private func blendModeName(_ mode: String) -> String {
+        if mode == BlendMode.sourceOver {
+            return "Normal"
+        }
+        return blendModeNameFromCoreImageFilter(mode)
+    }
+
+    private func blendModeNameFromCoreImageFilter(_ filterName: String) -> String {
+        let stripped = filterName
+            .replacingOccurrences(of: "CI", with: "")
+            .replacingOccurrences(of: "Compositing", with: "")
+            .replacingOccurrences(of: "BlendMode", with: "")
+        return stripped
+            .replacingOccurrences(of: "(?<!^)([A-Z])", with: " $1", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var layerControlCluster: some View {
+        HStack(spacing: 6) {
+            layerIconButton(
+                systemName: "trash",
+                isEnabled: context.canDelete,
+                foreground: context.canDelete ? Color.red.opacity(0.82) : Color.secondary.opacity(0.28),
+                tooltip: "Delete Layer",
+                action: onDelete
+            )
+
+            layerToggleButton(
+                label: {
+                    Image(systemName: context.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                        .font(.caption.weight(.medium))
+                },
+                isActive: context.isMuted,
+                activeFill: Color.red,
+                activeForeground: .white,
+                inactiveForeground: Color.secondary.opacity(visualOpacity),
+                tooltip: context.isMuted ? "Unmute Layer" : "Mute Layer",
+                action: onToggleMute
+            )
+
+            layerToggleButton(
+                label: { Text("S").font(.caption.weight(.bold)) },
+                isActive: context.isSoloActive,
+                activeFill: Color.yellow,
+                activeForeground: .black,
+                inactiveForeground: Color.secondary.opacity(visualOpacity),
+                tooltip: context.isSoloActive ? "Clear Solo" : "Solo Layer",
+                action: onToggleSolo
+            )
+        }
+    }
+
+    private var reorderControlCluster: some View {
+        HStack(spacing: 6) {
+            layerIconButton(
+                systemName: "chevron.up",
+                isEnabled: context.canMoveUp,
+                tooltip: "Move Layer Up",
+                action: onMoveUp
+            )
+
+            layerIconButton(
+                systemName: "chevron.down",
+                isEnabled: context.canMoveDown,
+                tooltip: "Move Layer Down",
+                action: onMoveDown
+            )
+        }
+    }
+
+    private func layerIconButton(
+        systemName: String,
+        isEnabled: Bool,
+        foreground: Color? = nil,
+        tooltip: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(Color.clear)
+                    .frame(width: 22, height: 22)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .stroke(Color.white.opacity(0.10 + (0.15 * visualOpacity)), lineWidth: 1)
+                    )
+
+                Image(systemName: systemName)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(
+                        isEnabled
+                        ? (foreground ?? Color.secondary.opacity(visualOpacity))
+                        : Color.secondary.opacity(0.28)
+                    )
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .help(tooltip)
+    }
+
+    private func layerToggleButton<Label: View>(
+        @ViewBuilder label: () -> Label,
+        isActive: Bool,
+        activeFill: Color,
+        activeForeground: Color,
+        inactiveForeground: Color,
+        tooltip: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            label()
+                .frame(width: 20, height: 20)
+                .background(isActive ? activeFill : Color.clear)
+                .foregroundStyle(isActive ? activeForeground : inactiveForeground)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .stroke(Color.white.opacity(0.10 + (0.15 * visualOpacity)), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .help(tooltip)
     }
 
     private var trimHandle: some View {
@@ -302,10 +626,12 @@ private struct LayerTrimInteractionOverlay: NSViewRepresentable {
     let totalDurationSeconds: Double
     let maxSelectionDurationSeconds: Double
     let minimumDurationSeconds: Double
+    let onSelect: () -> Void
     let onCommit: (ClosedRange<Double>) -> Void
 
     func makeNSView(context: Context) -> LayerTrimInteractionView {
         let view = LayerTrimInteractionView()
+        view.onSelect = onSelect
         view.onRangeChanged = { newRange in
             range = newRange
         }
@@ -320,6 +646,7 @@ private struct LayerTrimInteractionOverlay: NSViewRepresentable {
         nsView.maxSelectionDurationSeconds = maxSelectionDurationSeconds
         nsView.minimumDurationSeconds = minimumDurationSeconds
         nsView.currentRange = range
+        nsView.onSelect = onSelect
         nsView.onRangeChanged = { newRange in
             range = newRange
         }
@@ -340,6 +667,7 @@ private final class LayerTrimInteractionView: NSView {
     var maxSelectionDurationSeconds: Double = 0.1
     var minimumDurationSeconds: Double = 0.1
     var currentRange: ClosedRange<Double> = 0...0.1
+    var onSelect: (() -> Void)?
     var onRangeChanged: ((ClosedRange<Double>) -> Void)?
     var onRangeCommitted: ((ClosedRange<Double>) -> Void)?
 
@@ -354,6 +682,7 @@ private final class LayerTrimInteractionView: NSView {
     override var isOpaque: Bool { false }
 
     override func mouseDown(with event: NSEvent) {
+        onSelect?()
         let point = convert(event.locationInWindow, from: nil)
         dragStartPoint = point
         dragStartRange = normalized(currentRange)
@@ -520,10 +849,15 @@ private final class LayerTrimThumbnailStripStore: ObservableObject {
 
         let fileID = context.fileID
         let source = context.source
+        let mediaKind = context.mediaKind
         let duration = context.totalDurationSeconds
 
         loadTask = Task(priority: .utility) { [weak self] in
-            let generated = await Self.generateThumbnails(source: source, durationSeconds: duration)
+            let generated = await Self.generateThumbnails(
+                source: source,
+                mediaKind: mediaKind,
+                durationSeconds: duration
+            )
             guard !Task.isCancelled else { return }
 
             await MainActor.run {
@@ -553,16 +887,26 @@ private final class LayerTrimThumbnailStripStore: ObservableObject {
 
     private static func generateThumbnails(
         source: MediaSource,
+        mediaKind: MediaKind,
         durationSeconds: Double
     ) async -> [NSImage] {
+        if mediaKind == .image {
+            guard let image = await resolveStillImage(for: source) else { return [] }
+            let totalDuration = max(0.2, durationSeconds)
+            let frameCount = min(24, max(6, Int(totalDuration.rounded(.up))))
+            return Array(repeating: image, count: frameCount)
+        }
+
         guard let asset = await resolveAsset(for: source) else { return [] }
 
         let totalDuration = max(0.2, durationSeconds)
-        let frameCount = min(10, max(5, Int((totalDuration / 2.0).rounded(.up))))
+        // Aim for roughly one thumbnail per second on longer clips, but keep a hard cap
+        // so thumbnail generation stays cheap and unlikely to interfere with playback.
+        let frameCount = min(24, max(6, Int(totalDuration.rounded(.up))))
 
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
-        generator.maximumSize = CGSize(width: 140, height: 84)
+        generator.maximumSize = CGSize(width: 112, height: 68)
         generator.requestedTimeToleranceBefore = CMTime(seconds: 0.12, preferredTimescale: 600)
         generator.requestedTimeToleranceAfter = CMTime(seconds: 0.12, preferredTimescale: 600)
 
@@ -595,6 +939,26 @@ private final class LayerTrimThumbnailStripStore: ObservableObject {
             return AVURLAsset(url: url)
         case .external(let identifier):
             return await HypnoCoreHooks.shared.resolveExternalVideo?(identifier)
+        }
+    }
+
+    private static func resolveStillImage(for source: MediaSource) async -> NSImage? {
+        switch source {
+        case .url(let url):
+            if let image = NSImage(contentsOf: url) {
+                return image
+            }
+            guard let cgImage = StillImageCache.cgImage(for: url) else { return nil }
+            return NSImage(cgImage: cgImage, size: .zero)
+        case .external(let identifier):
+            guard let cgImage = await MediaFile(
+                source: .external(identifier: identifier),
+                mediaKind: .image,
+                duration: .zero
+            ).loadCGImage() else {
+                return nil
+            }
+            return NSImage(cgImage: cgImage, size: .zero)
         }
     }
 }

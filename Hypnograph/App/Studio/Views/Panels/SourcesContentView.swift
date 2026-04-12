@@ -1,58 +1,58 @@
 import SwiftUI
 import HypnoCore
 
-struct SourcesPanel: View {
+private enum ApplePhotosAddMode: String, CaseIterable, Identifiable {
+    case allItems
+    case albums
+    case custom
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .allItems:
+            return "All Items"
+        case .albums:
+            return "Specific Albums"
+        case .custom:
+            return "Custom Selection"
+        }
+    }
+}
+
+private struct FilesystemSourceRow: Identifiable {
+    let key: String
+    let displayName: String
+    let paths: [String]
+    let assetCount: Int
+
+    var id: String { key }
+}
+
+private struct SourceRow: Identifiable {
+    enum Kind {
+        case filesystem(paths: [String], assetCount: Int)
+        case photosAll(assetCount: Int)
+        case photosCustom(assetCount: Int)
+        case photosAlbum(assetCount: Int)
+    }
+
+    let id: String
+    let key: String
+    let typeLabel: String
+    let title: String
+    let detail: String
+    let kind: Kind
+    let canEditSelection: Bool
+    let hasMissingPath: Bool
+}
+
+struct SourcesContentView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
 
     @State private var isRequestingPhotos = false
     @State private var showPhotosAlbumsPicker = false
-
-    enum ApplePhotosAddMode: String, CaseIterable, Identifiable {
-        case allItems
-        case albums
-        case custom
-
-        var id: String { rawValue }
-
-        var title: String {
-            switch self {
-            case .allItems:
-                return "All Items"
-            case .albums:
-                return "Specific Albums"
-            case .custom:
-                return "Custom Selection"
-            }
-        }
-    }
-
-    private struct FilesystemSourceRow: Identifiable {
-        let key: String
-        let displayName: String
-        let paths: [String]
-        let assetCount: Int
-
-        var id: String { key }
-    }
-
-    private struct SourceRow: Identifiable {
-        enum Kind {
-            case filesystem(paths: [String], assetCount: Int)
-            case photosAll(assetCount: Int)
-            case photosCustom(assetCount: Int)
-            case photosAlbum(assetCount: Int)
-        }
-
-        let id: String
-        let key: String
-        let typeLabel: String
-        let title: String
-        let detail: String
-        let kind: Kind
-        let canEditSelection: Bool
-        let hasMissingPath: Bool
-    }
 
     private var folderAssetCounts: [String: Int] {
         Dictionary(uniqueKeysWithValues: state.availableLibraries.map { ($0.id, $0.assetCount) })
@@ -173,13 +173,6 @@ struct SourcesPanel: View {
             sourcesSection
             mediaTypesSection
         }
-        .padding(14)
-        .padding(.vertical, 18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            Color.black.opacity(0.96)
-                .ignoresSafeArea()
-        )
         .onAppear {
             Task { @MainActor in
                 let status = main.refreshPhotosStatus()
@@ -219,7 +212,9 @@ struct SourcesPanel: View {
             )
         }
     }
+}
 
+private extension SourcesContentView {
     private var mediaTypesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionDivider()
@@ -433,7 +428,7 @@ private struct ApplePhotosSourcePickerSheet: View {
     let onRequestAccess: () -> Void
     let onOpenSystemSettings: () -> Void
 
-    @State private var mode: SourcesPanel.ApplePhotosAddMode = .allItems
+    @State private var mode: ApplePhotosAddMode = .allItems
     @State private var selectedKeys: Set<String> = []
 
     var body: some View {
@@ -449,7 +444,7 @@ private struct ApplePhotosSourcePickerSheet: View {
                             .foregroundStyle(.secondary)
 
                         Picker("Selection", selection: $mode) {
-                            ForEach(SourcesPanel.ApplePhotosAddMode.allCases) { mode in
+                            ForEach(ApplePhotosAddMode.allCases) { mode in
                                 Text(mode.title).tag(mode)
                             }
                         }
