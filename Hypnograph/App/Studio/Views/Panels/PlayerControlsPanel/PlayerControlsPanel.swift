@@ -33,6 +33,7 @@ struct PlayerControlsPanel: View {
     let onSnapshotCurrent: () -> Void
     let onSaveCurrent: () -> Void
     let onRenderCurrent: () -> Void
+    let onRenderSequence: () -> Void
     let onCommitLayerTrimRange: (Int, ClosedRange<Double>) -> Void
 
     @State private var pendingTooltipWorkItem: DispatchWorkItem?
@@ -237,9 +238,15 @@ struct PlayerControlsPanel: View {
             )
             deckButton(
                 id: "render",
-                systemName: "film.stack",
+                systemName: "film",
                 tooltip: "Save & Render Current (CMD+OPT+S)",
                 action: onRenderCurrent
+            )
+            deckButton(
+                id: "render-sequence",
+                systemName: "film.stack",
+                tooltip: "Save & Render Sequence (CTRL+CMD+SHIFT+S)",
+                action: onRenderSequence
             )
         }
     }

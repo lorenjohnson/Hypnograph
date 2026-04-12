@@ -187,6 +187,32 @@ extension Studio {
         )
     }
 
+    func renderAndSaveSequenceVideo() {
+        let renderHypnogram = makeWorkingHypnogram().copyForExport()
+        guard !renderHypnogram.compositions.isEmpty else {
+            print("Studio: no compositions to render.")
+            return
+        }
+
+        let outputSize = exportSettings()
+
+        print("Studio: enqueueing sequence with \(renderHypnogram.compositions.count) composition(s), duration: \(renderHypnogram.makeSequenceRenderPlan().totalDuration.seconds)s")
+
+        renderQueue.enqueue(
+            hypnogram: renderHypnogram,
+            outputFolder: state.settings.outputURL,
+            outputSize: outputSize,
+            sourceFraming: currentHypnogramSourceFraming,
+            notifyExternalDestinationHooks: false,
+            completion: { [weak self] result in
+                guard let self else { return }
+                Task { @MainActor in
+                    await self.handleRenderedVideoDestination(result: result)
+                }
+            }
+        )
+    }
+
     private func handleRenderedVideoDestination(result: Result<URL, RenderError>) async {
         guard case .success(let outputURL) = result else { return }
 

@@ -328,6 +328,7 @@ struct ContentView: View {
                 onSnapshotCurrent: { main.saveSnapshotImage() },
                 onSaveCurrent: { main.saveComposition() },
                 onRenderCurrent: { main.renderAndSaveVideo() },
+                onRenderSequence: { main.renderAndSaveSequenceVideo() },
                 onCommitLayerTrimRange: { layerIndex, range in
                     main.setLayerRange(
                         sourceIndex: layerIndex,

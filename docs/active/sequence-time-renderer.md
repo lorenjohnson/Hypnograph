@@ -2,43 +2,18 @@
 doc-status: in-progress
 ---
 
-# Overview
+# Sequence-Time Renderer
 
-This project is the first architectural pass toward a mature render pipeline that can eventually drive both preview and export from the same sequence-time model.
+This project established the first shared sequence-time model and used it to land a real full-sequence export path.
 
-The immediate goal is not to replace the current AVPlayer-based preview path in one sweep. The immediate goal is to introduce a canonical forward sequence-time plan that can answer:
+The architecture reference now lives here:
 
-- what composition is active at sequence time `T`
-- whether `T` is in a composition body or a transition overlap
-- what outgoing and incoming composition times should be sampled during that overlap
+- [render-pipeline](../reference/render-pipeline.md)
 
-That shared time model is the prerequisite for later work such as full-sequence render, deterministic export, playhead/scrubbing, and a preview path that is less dependent on stitched `AVPlayerItem` handoffs.
+# Outcome
 
-# Scope
+The important thing this project proved is that Hypnograph can export a full hypnogram from one sequence-time plan without falling back to stitched pre-rendered composition movies. That path now handles transitions, sequence-level effects, and audio in one finished export.
 
-- MUST define a canonical forward sequence-time plan for a saved hypnogram.
-- MUST resolve composition-owned vs hypnogram-default transition settings into that plan.
-- MUST model transition overlap as sequence time, not as a player-side side effect.
-- SHOULD keep the first slice small and usable by future preview and export work without replacing the current playback engine yet.
-- MUST NOT attempt a full preview-pipeline rewrite in this project’s first pass.
+# Remaining Direction
 
-# Plan
-
-- Smallest meaningful next slice:
-  - add a tested `SequenceRenderPlan` that maps global sequence time into composition body or transition overlap samples
-  - make transition duration clamping and overlap math explicit and reusable
-  - add an export-shaped frame schedule so a future sequence renderer can iterate deterministic frame requests at a target frame rate
-- Immediate acceptance check:
-  - a multi-composition hypnogram can resolve sequence time deterministically
-  - transition ownership and overlap reduce total rendered sequence duration as expected
-  - the same plan can later feed both preview and export callers
-  - export-oriented code can request ordered frame samples without inventing a second timing model
-- Follow-on slices:
-  - use the same plan to implement full-sequence render/export
-  - add playhead-aware preview/scrubbing on top of that sequence-time model
-
-# Open Questions
-
-- Whether the first consumer after planning should be full-sequence export or a playhead/scrubbing path.
-- How much of the current AVPlayer preview path should be preserved as a pragmatic transport shell while a shared sequence renderer grows underneath it.
-- When audio enters the same shared timeline model versus remaining partly delegated to AVFoundation for a while.
+The next work should use the same sequence-time model for playhead-aware preview, scrubbing, and more deterministic sequence navigation. The reference document above should be treated as the architecture source of truth rather than this project note.

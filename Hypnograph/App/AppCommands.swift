@@ -107,6 +107,11 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("s", modifiers: [.control, .command])
 
+            Button("Save & Render Sequence") {
+                studio.renderAndSaveSequenceVideo()
+            }
+            .keyboardShortcut("s", modifiers: [.control, .command, .shift])
+
         }
 
         CommandGroup(replacing: .sidebar) {
