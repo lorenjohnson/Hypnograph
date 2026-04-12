@@ -6,6 +6,7 @@ last_reviewed: 2026-04-04
 
 ## Active Projects
 
+- [sequence-time-renderer](active/sequence-time-renderer.md)
 - [bottom-dock-and-properties](active/bottom-dock-and-properties.md)
 - [image-playback-duration](active/image-playback-duration.md)
 - [effects-and-effect-chain-ux](active/effects-and-effect-chain-ux/index.md)

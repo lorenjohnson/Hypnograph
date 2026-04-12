@@ -8,6 +8,8 @@ doc-status: draft
 
 This project separates export of authored sequences from the core `Sequences` UI and behavior work. Once Hypnograph can clearly define and select a sequence range across multiple compositions, the first export outcome should be the ability to render that authored range as one finished movie from inside Hypnograph.
 
+The new [sequence-time-renderer](../active/sequence-time-renderer.md) work now owns the shared timing model underneath this. This backlog item should treat that model as the foundation for real sequence export rather than inventing separate export-only timing logic.
+
 That finished render should preserve the sequence timing, transitions, and other playback results that Hypnograph itself is responsible for. The operator should not need to leave the app just to get a coherent finished movie from a selected sequence range.
 
 This project is intentionally broader than a raw render button. It should define how a selected sequence range becomes an exportable artifact, how that maps onto the existing render destination model, and what the operator can expect when rendering a sequence versus rendering a single composition.
