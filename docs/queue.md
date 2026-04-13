@@ -6,26 +6,23 @@ last_reviewed: 2026-04-04
 
 ## Active Projects
 
-- [sequence-time-renderer](active/sequence-time-renderer.md)
 - [bottom-dock-and-properties](active/bottom-dock-and-properties.md)
 - [image-playback-duration](active/image-playback-duration.md)
 - [effects-and-effect-chain-ux](active/effects-and-effect-chain-ux/index.md)
 - [temporal-ordering-stage](active/temporal-ordering-stage.md)
 - [demo-source-set](active/demo-source-set.md)
-- [history-as-editing-surface-spike](active/history-as-editing-surface-spike.md)
-- [sequences](active/sequences.md)
 - [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
 - Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause a crash?
 
 ## Backlog Projects
 
+- [new-compositions](backlog/new-compositions.md)
 - [dockable-panels](backlog/dockable-panels.md)
 - [effects-chain-ux-refinements](backlog/effects-chain-ux-refinements.md)
 - [audio-sources-spike](backlog/audio-sources-spike.md)
-- [new-compositions-advanced-source-selection](backlog/new-compositions-advanced-source-selection.md)
-- [sequence-render-and-export](backlog/sequence-render-and-export.md)
 - [contextual-help](backlog/contextual-help.md)
 - [in-app-feedback](backlog/in-app-feedback.md)
+- [layout-transforms-vs-viewer-pan-zoom](backlog/layout-transforms-vs-viewer-pan-zoom.md)
 - [location-overlay-effect](backlog/location-overlay-effect.md)
 - [preview-frame-buffer-bleed-between-clips](backlog/preview-frame-buffer-bleed-between-clips.md)
 - [sequence-fcpxml-export](backlog/sequence-fcpxml-export.md)
