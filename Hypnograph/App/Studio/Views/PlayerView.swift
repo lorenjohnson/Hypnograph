@@ -45,8 +45,6 @@ struct PlayerView: NSViewRepresentable {
     var sequenceTransitionStyle: TransitionRenderer.TransitionType = .crossfade
     /// Sequence-level default transition duration used when the outgoing composition has no override.
     var sequenceTransitionDuration: Double = 1.5
-    /// Called when the incoming composition has actually presented a frame.
-    var onCompositionFramePresented: ((UUID?) -> Void)? = nil
     /// Called when playback reaches the end and should be reflected as paused in UI state.
     var onPlaybackStoppedAtEnd: (() -> Void)? = nil
 
@@ -180,7 +178,6 @@ struct PlayerView: NSViewRepresentable {
             c.currentTask?.cancel()
             c.currentTask = nil
             c.compositionID = nil
-            onCompositionFramePresented?(nil)
             deferCompositionLoadInFlight(false, coordinator: c, token: bindingUpdateToken)
             hasPendingGeneratedNextComposition = false
             if currentSourceTime != nil {
@@ -208,7 +205,6 @@ struct PlayerView: NSViewRepresentable {
             c.currentTask?.cancel()
             c.compositionID = newID
             c.didRequestPreEndAdvance = false
-            onCompositionFramePresented?(nil)
             deferCompositionLoadInFlight(true, coordinator: c, token: bindingUpdateToken)
             deferCompositionLoadFailure(nil, coordinator: c, token: bindingUpdateToken)
 
@@ -302,10 +298,7 @@ struct PlayerView: NSViewRepresentable {
                         transitionType: effectiveTransition,
                         duration: effectiveTransitionDuration,
                         playRate: playRate,
-                        incomingEffectManager: self.effectManager,
-                        onIncomingFramePresented: {
-                            self.onCompositionFramePresented?(composition.id)
-                        }
+                        incomingEffectManager: self.effectManager
                     ) {
                         Task { @MainActor in
                             c.isAutoAdvanceInFlight = false
@@ -385,10 +378,6 @@ struct PlayerView: NSViewRepresentable {
 
             if didEffectsChange || didSessionMutate {
                 if let content = c.contentView {
-                    self.onCompositionFramePresented?(nil)
-                    content.notifyOnNextPresentedFrame {
-                        self.onCompositionFramePresented?(composition.id)
-                    }
                     if c.isAllStillImages {
                         // Force redraw of still frame at t=0
                         content.refreshActiveFrame(at: .zero)

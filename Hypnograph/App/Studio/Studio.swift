@@ -18,11 +18,6 @@ import HypnoUI
 
 @MainActor
 final class Studio: ObservableObject {
-    // Temporary demo-safety switch: disable automatic composition preview persistence
-    // during playback navigation because it appears to contribute to transition hitching.
-    // Re-enable later by deleting this flag and the single guard that checks it below.
-    private static let isCompositionPreviewPersistenceDisabledForExperiment = true
-
     enum PlaybackEndBehavior {
         case stopAtEnd
         case loopComposition
@@ -37,6 +32,7 @@ final class Studio: ObservableObject {
     let renderQueue: RenderEngine.ExportQueue
     let panelHostService: FilePanelService
     let photosIntegrationService: PhotosIntegrationService
+    let compositionPreviewPersistenceScheduler = CompositionPreviewPersistenceScheduler()
 
     /// Global templates store (shared across preview + live)
     let effectsLibrarySession: EffectsSession
@@ -291,6 +287,7 @@ final class Studio: ObservableObject {
             var normalized = newValue
             normalized.syncTargetDurationToLayers()
             hypnogram.compositions[index] = normalized
+            markCurrentCompositionPreviewNeedsRefresh()
             notifyHypnogramChanged()
         }
     }
@@ -371,9 +368,7 @@ final class Studio: ObservableObject {
             0,
             min(normalizedHypnogram.currentCompositionIndex ?? 0, max(0, normalizedHypnogram.compositions.count - 1))
         )
-        player.currentRenderedCompositionID = nil
-        player.currentCompositionPreviewNeedsRefresh = true
-        player.suppressNextPreviewInvalidation = false
+        syncCurrentCompositionPreviewPersistenceState()
         hypnogramRevision &+= 1
     }
 
@@ -548,25 +543,6 @@ final class Studio: ObservableObject {
                 transitionDuration: currentCompositionTransitionDuration,
                 sequenceTransitionStyle: currentHypnogramTransitionStyle,
                 sequenceTransitionDuration: currentHypnogramTransitionDuration,
-                onCompositionFramePresented: { [weak self, weak player] compositionID in
-                    guard let player else { return }
-
-                    if compositionID == nil {
-                        if player.suppressNextPreviewInvalidation {
-                            player.suppressNextPreviewInvalidation = false
-                            return
-                        }
-
-                        player.currentRenderedCompositionID = nil
-                        player.currentCompositionPreviewNeedsRefresh = true
-                        return
-                    }
-
-                    player.currentRenderedCompositionID = compositionID
-                    guard player.currentCompositionPreviewNeedsRefresh else { return }
-                    guard !Self.isCompositionPreviewPersistenceDisabledForExperiment else { return }
-                    self?.persistCurrentCompositionPreviewIfNeeded()
-                },
                 onPlaybackStoppedAtEnd: { [weak self] in
                     self?.player.isPaused = true
                 }

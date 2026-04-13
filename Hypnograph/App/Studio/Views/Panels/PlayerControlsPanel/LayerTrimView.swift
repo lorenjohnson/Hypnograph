@@ -287,22 +287,22 @@ private struct LayerTrimRangeStrip: View {
                 }
                 .frame(width: trackWidth, height: trackHeight)
 
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .stroke(Color.white.opacity(isSelected ? 0.44 : 0.28), lineWidth: 1.0)
-                .frame(width: selectedWindowWidth, height: trackHeight - 2)
-                .frame(width: trackWidth, height: trackHeight, alignment: .leading)
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .stroke(Color.white.opacity(isSelected ? 0.44 : 0.28), lineWidth: 1.0)
+                    .frame(width: selectedWindowWidth, height: trackHeight - 2)
+                    .frame(width: trackWidth, height: trackHeight, alignment: .leading)
 
-            resizeHandleOverlay(trackWidth: trackWidth, selectedWindowWidth: selectedWindowWidth)
-            compositionPlayheadOverlay(trackWidth: trackWidth)
+                resizeHandleOverlay(trackWidth: trackWidth, selectedWindowWidth: selectedWindowWidth)
+                compositionPlayheadOverlay(trackWidth: trackWidth)
 
-            VStack(spacing: 0) {
-                Spacer(minLength: 0)
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
 
                     LinearGradient(
                         colors: [
                             Color.black.opacity(0.0),
-                            Color.black.opacity(0.14),
-                            Color.black.opacity(0.5)
+                            Color.black.opacity(0.18),
+                            Color.black.opacity(0.62)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -370,8 +370,8 @@ private struct LayerTrimRangeStrip: View {
                 LinearGradient(
                     colors: [
                         Color.black.opacity(0.0),
-                        Color.black.opacity(0.14),
-                        Color.black.opacity(0.5)
+                        Color.black.opacity(0.18),
+                        Color.black.opacity(0.62)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
@@ -472,8 +472,6 @@ private struct LayerTrimRangeStrip: View {
             if context.layerIndex != 0 {
                 blendModeMenu
             }
-
-            // compactOpacitySlider
 
             Text(formatTime(activeRange.upperBound - activeRange.lowerBound))
                 .font(.system(.caption, design: .monospaced))

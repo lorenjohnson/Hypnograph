@@ -187,9 +187,14 @@ struct LayerRowView: View {
                         .foregroundStyle(.red.opacity(0.9))
                 }
             } else if let image = thumbnailStore.image(for: layer) {
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFill()
+                ZStack {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(.white.opacity(0.04))
+
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                }
             } else {
                 ZStack {
                     RoundedRectangle(cornerRadius: 6, style: .continuous)

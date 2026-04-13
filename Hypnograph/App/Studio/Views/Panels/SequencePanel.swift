@@ -93,9 +93,9 @@ struct SequenceLaneView: View {
                 }
 
                 laneFooterOverlay
-                    .padding(.trailing, 10)
+                    .padding(.leading, 10)
                     .padding(.bottom, 5)
-                    .frame(width: laneWidth, height: laneTrackHeight, alignment: .bottomTrailing)
+                    .frame(width: laneWidth, height: laneTrackHeight, alignment: .bottomLeading)
                     .allowsHitTesting(false)
                     .zIndex(6)
             }
@@ -131,9 +131,9 @@ struct SequenceLaneView: View {
         .background(
             LinearGradient(
                 colors: [
-                    Color.black.opacity(0.0),
+                    Color.black.opacity(0.36),
                     Color.black.opacity(0.12),
-                    Color.black.opacity(0.36)
+                    Color.black.opacity(0.0)
                 ],
                 startPoint: .leading,
                 endPoint: .trailing

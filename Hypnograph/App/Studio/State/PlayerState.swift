@@ -48,12 +48,8 @@ final class PlayerState: ObservableObject {
     /// Set when the current composition failed to resolve any playable sources.
     @Published var currentCompositionLoadFailure: CompositionLoadFailure?
 
-    /// The composition that most recently presented a frame in the main preview.
-    var currentRenderedCompositionID: UUID?
-    /// Whether the current composition needs a fresh persisted preview after its next real render.
+    /// Whether the current composition needs a fresh persisted preview.
     var currentCompositionPreviewNeedsRefresh: Bool = true
-    /// Used to ignore the immediate preview invalidation caused by writing preview metadata itself.
-    var suppressNextPreviewInvalidation: Bool = false
 
     // MARK: - Player Configuration
 

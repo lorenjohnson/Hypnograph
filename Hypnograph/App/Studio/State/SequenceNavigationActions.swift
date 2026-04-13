@@ -47,6 +47,7 @@ extension Studio {
             self.player.effectManager.clearFrameBuffer()
             self.player.effectManager.invalidateBlendAnalysis()
             self.notifyHypnogramChanged()
+            self.syncCurrentCompositionPreviewPersistenceState()
 
             if manual {
                 self.flashCompositionPositionIndicator()
@@ -118,9 +119,7 @@ extension Studio {
         let clampedIndex = max(0, min(index, hypnogram.compositions.count - 1))
         guard clampedIndex != currentCompositionIndex else { return }
 
-        // Direct jumps should prioritize responsiveness over eagerly persisting the
-        // outgoing composition preview. That snapshot path can be expensive enough
-        // to make sequence jumps feel sticky, especially in debug builds.
+        persistCurrentCompositionPreviewIfNeeded()
         player.hasPendingGeneratedNextComposition = false
         player.currentCompositionLoadFailure = nil
         // Sequence-lane jumps should feel immediate and should not wait on the
@@ -194,34 +193,6 @@ extension Studio {
 
         notifyHypnogramMutated()
     }
-
-    func persistCurrentCompositionPreviewIfNeeded() {
-        let composition = currentComposition
-        let compositionIndex = max(0, min(currentCompositionIndex, max(0, hypnogram.compositions.count - 1)))
-        guard player.currentCompositionPreviewNeedsRefresh else { return }
-        guard player.currentRenderedCompositionID == composition.id else { return }
-        guard let frameSnapshot = currentFrameSnapshot() else { return }
-
-        let compositionID = composition.id
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard let self,
-                  let previewImages = CompositionPreviewImageCodec.makePreviewImages(from: frameSnapshot) else { return }
-
-            Task { @MainActor in
-                guard compositionIndex < self.hypnogram.compositions.count else { return }
-                guard self.hypnogram.compositions[compositionIndex].id == compositionID else { return }
-
-                self.hypnogram.compositions[compositionIndex].snapshot = previewImages.snapshotBase64
-                self.hypnogram.compositions[compositionIndex].thumbnail = previewImages.thumbnailBase64
-                self.player.currentCompositionPreviewNeedsRefresh = false
-                self.player.suppressNextPreviewInvalidation = true
-                self.performWithoutMarkingWorkingHypnogramDirty {
-                    self.notifyHypnogramMutated()
-                }
-            }
-        }
-    }
-
     private func flashCompositionPositionIndicator() {
         guard !hypnogram.compositions.isEmpty else { return }
         compositionPositionIndicatorText = currentCompositionPositionText
