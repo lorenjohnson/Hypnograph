@@ -34,6 +34,7 @@ struct CompositionEntry: Identifiable {
 
 struct SequenceLaneView: View {
     let compositionEntries: [CompositionEntry]
+    let summaryText: String
     @Binding var draggedCompositionID: UUID?
     var onJumpToComposition: (Int) -> Void
     var onDeleteCompositionEntry: (Int) -> Void
@@ -90,6 +91,13 @@ struct SequenceLaneView: View {
                     .frame(width: laneWidth, height: laneTrackHeight)
                     .zIndex(5)
                 }
+
+                laneFooterOverlay
+                    .padding(.trailing, 10)
+                    .padding(.bottom, 5)
+                    .frame(width: laneWidth, height: laneTrackHeight, alignment: .bottomTrailing)
+                    .allowsHitTesting(false)
+                    .zIndex(6)
             }
             .onAppear {
                 clampScrollOffset(laneWidth: laneWidth)
@@ -106,6 +114,31 @@ struct SequenceLaneView: View {
             .gesture(scrollGesture(laneWidth: laneWidth))
         }
         .frame(height: laneTrackHeight + 2)
+    }
+
+    private var laneFooterOverlay: some View {
+        HStack(alignment: .lastTextBaseline, spacing: 8) {
+            Text("Sequence")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.secondary.opacity(0.88))
+
+            Text(summaryText)
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(Color.secondary.opacity(0.88))
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.0),
+                    Color.black.opacity(0.12),
+                    Color.black.opacity(0.36)
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        )
     }
 
     private func preferredClipWidth(for entry: CompositionEntry) -> CGFloat {
@@ -315,12 +348,11 @@ struct SequenceClipView: View {
     let onJump: () -> Void
     let onDelete: () -> Void
 
-    @State private var isHoveringReorderHandle = false
     @State private var isHoveringClip = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            ThumbnailView(image: entry.thumbnailImage)
+            ThumbnailView(image: entry.thumbnailImage, fill: true)
                 .frame(width: width, height: max(1, height))
                 .clipped()
 
@@ -329,10 +361,6 @@ struct SequenceClipView: View {
                     .fill(Color.blue.opacity(0.95))
                     .frame(height: 2.5)
             }
-
-            reorderHandle
-                .padding(.horizontal, 1)
-                .padding(.bottom, 1)
         }
         .opacity(clipOpacity)
         .frame(width: width, alignment: .topLeading)
@@ -348,12 +376,20 @@ struct SequenceClipView: View {
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.12)) {
                 isHoveringClip = hovering
-                isHoveringReorderHandle = hovering
             }
         }
         .onTapGesture {
             onJump()
         }
+        .onDrag(
+            {
+                draggedCompositionID = entry.id
+                return NSItemProvider(object: entry.id.uuidString as NSString)
+            },
+            preview: {
+                dragPreview
+            }
+        )
         .contextMenu {
             Button(role: .destructive, action: onDelete) {
                 Label("Delete Composition", systemImage: "trash")
@@ -363,36 +399,12 @@ struct SequenceClipView: View {
 
     private var clipOpacity: Double {
         if entry.isCurrent { return 1.0 }
-        if isHoveringClip { return 0.62 }
-        return 0.36
-    }
-
-    private var reorderHandle: some View {
-        Rectangle()
-            .fill(Color.clear)
-            .frame(width: width - 2, height: 11)
-            .overlay(alignment: .center) {
-                if isHoveringReorderHandle {
-                    Capsule(style: .continuous)
-                        .fill(Color.white.opacity(0.34))
-                        .frame(width: min(34, max(14, width - 10)), height: 2)
-                        .shadow(color: .black.opacity(0.25), radius: 1, x: 0, y: 1)
-                }
-            }
-            .contentShape(Rectangle())
-            .onDrag(
-                {
-                    draggedCompositionID = entry.id
-                    return NSItemProvider(object: entry.id.uuidString as NSString)
-                },
-                preview: {
-                    dragPreview
-                }
-            )
+        if isHoveringClip { return 0.52 }
+        return 0.24
     }
 
     private var dragPreview: some View {
-        ThumbnailView(image: entry.thumbnailImage)
+        ThumbnailView(image: entry.thumbnailImage, fill: true)
             .frame(width: width, height: max(28, height - 6))
             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             .overlay(

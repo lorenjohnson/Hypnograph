@@ -84,21 +84,9 @@ struct PlayerControlsPanel: View {
             }
 
             if !sequenceEntries.isEmpty {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("Sequence")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(Color.secondary.opacity(chromeOpacity))
-
-                    Spacer(minLength: 0)
-
-                    Text("\(formatTime(totalSequenceDurationSeconds)) / \(formatTime(compositionLengthSeconds))")
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(Color.secondary.opacity(chromeOpacity))
-                }
-
                 SequenceLaneView(
                     compositionEntries: sequenceEntries,
+                    summaryText: "\(formatTime(totalSequenceDurationSeconds)) / \(formatTime(compositionLengthSeconds))",
                     draggedCompositionID: $draggedCompositionID,
                     onJumpToComposition: onJumpToComposition,
                     onDeleteCompositionEntry: onDeleteCompositionEntry,
@@ -137,11 +125,6 @@ struct PlayerControlsPanel: View {
 
     private var dockHeader: some View {
         HStack(spacing: 8) {
-            Text("Composition")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(Color.secondary.opacity(chromeOpacity))
-
             Spacer(minLength: 0)
 
             Button(action: onToggleShowFullClips) {

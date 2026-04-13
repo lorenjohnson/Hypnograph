@@ -265,13 +265,21 @@ private struct LayerTrimRangeStrip: View {
                     .frame(width: trackWidth, height: trackHeight)
 
                 if !thumbnailStore.baseThumbnails.isEmpty {
-                    thumbnailTrack(trackWidth: trackWidth)
+                    HStack(spacing: 0) {
+                        selectedTimelineThumbnailTrack(trackWidth: selectedWindowWidth)
+
+                        if trailingShadeWidth > 0.5 {
+                            trailingContextThumbnailTrack(trackWidth: trailingShadeWidth)
+                        }
+                    }
+                    .frame(width: trackWidth, height: trackHeight, alignment: .leading)
                 }
 
                 HStack(spacing: 0) {
-                    Rectangle()
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
                         .fill(Color.white.opacity(isSelected ? 0.06 : 0.03))
-                        .frame(width: selectedWindowWidth)
+                        .frame(width: selectedWindowWidth, height: trackHeight - 2)
+                        .frame(height: trackHeight)
 
                     Rectangle()
                         .fill(Color.black.opacity(0.42))
@@ -279,7 +287,7 @@ private struct LayerTrimRangeStrip: View {
                 }
                 .frame(width: trackWidth, height: trackHeight)
 
-            Rectangle()
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
                 .stroke(Color.white.opacity(isSelected ? 0.44 : 0.28), lineWidth: 1.0)
                 .frame(width: selectedWindowWidth, height: trackHeight - 2)
                 .frame(width: trackWidth, height: trackHeight, alignment: .leading)
@@ -336,9 +344,10 @@ private struct LayerTrimRangeStrip: View {
                     .fill(Color.black.opacity(0.42))
                     .frame(width: leadingShadeWidth)
 
-                Rectangle()
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
                     .fill(Color.white.opacity(isSelected ? 0.06 : 0.03))
-                    .frame(width: selectedWidth)
+                    .frame(width: selectedWidth, height: trackHeight - 2)
+                    .frame(height: trackHeight)
 
                 Rectangle()
                     .fill(Color.black.opacity(0.42))
@@ -346,7 +355,7 @@ private struct LayerTrimRangeStrip: View {
             }
             .frame(width: trackWidth, height: trackHeight)
 
-            Rectangle()
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
                 .stroke(Color.white.opacity(isSelected ? 0.44 : 0.28), lineWidth: 1.0)
                 .frame(width: selectedWidth, height: trackHeight - 2)
                 .frame(width: trackWidth, height: trackHeight, alignment: .leading)
@@ -464,9 +473,9 @@ private struct LayerTrimRangeStrip: View {
                 blendModeMenu
             }
 
-            compactOpacitySlider
+            // compactOpacitySlider
 
-            Text("\(formatTime(activeRange.upperBound - activeRange.lowerBound)) / \(formatTime(sourceTotalSeconds))")
+            Text(formatTime(activeRange.upperBound - activeRange.lowerBound))
                 .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(Color.secondary.opacity(visualOpacity))
                 .frame(height: 22)
@@ -639,7 +648,7 @@ private struct LayerTrimRangeStrip: View {
     }
 
     @ViewBuilder
-    private func thumbnailTrack(trackWidth: CGFloat) -> some View {
+    private func selectedTimelineThumbnailTrack(trackWidth: CGFloat) -> some View {
         let thumbnails = displayedThumbnails(from: thumbnailStore.baseThumbnails, trackWidth: trackWidth)
         let count = max(1, thumbnails.count)
         let tileWidth = trackWidth / CGFloat(count)
@@ -647,6 +656,8 @@ private struct LayerTrimRangeStrip: View {
         HStack(spacing: 0) {
             ForEach(Array(thumbnails.enumerated()), id: \.offset) { _, thumbnail in
                 ZStack(alignment: .leading) {
+                    Color.black.opacity(0.22)
+
                     Image(nsImage: thumbnail.image)
                         .resizable()
                         .scaledToFill()
@@ -669,6 +680,32 @@ private struct LayerTrimRangeStrip: View {
     }
 
     @ViewBuilder
+    private func trailingContextThumbnailTrack(trackWidth: CGFloat) -> some View {
+        let thumbnails = displayedSourceThumbnails(from: thumbnailStore.baseThumbnails, trackWidth: trackWidth)
+        let count = max(1, thumbnails.count)
+        let tileWidth = trackWidth / CGFloat(count)
+
+        HStack(spacing: 0) {
+            ForEach(Array(thumbnails.enumerated()), id: \.offset) { _, thumbnail in
+                ZStack {
+                    Color.black.opacity(0.22)
+
+                    Image(nsImage: thumbnail)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: tileWidth, height: trackHeight)
+                        .clipped()
+                }
+            }
+        }
+        .frame(width: trackWidth, height: trackHeight)
+        .clipShape(Rectangle())
+        .saturation(0.82)
+        .contrast(0.94)
+        .opacity(0.46)
+    }
+
+    @ViewBuilder
     private func sourceThumbnailTrack(trackWidth: CGFloat) -> some View {
         let thumbnails = displayedSourceThumbnails(from: thumbnailStore.baseThumbnails, trackWidth: trackWidth)
         let count = max(1, thumbnails.count)
@@ -676,11 +713,15 @@ private struct LayerTrimRangeStrip: View {
 
         HStack(spacing: 0) {
             ForEach(Array(thumbnails.enumerated()), id: \.offset) { _, thumbnail in
-                Image(nsImage: thumbnail)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: tileWidth, height: trackHeight)
-                    .clipped()
+                ZStack {
+                    Color.black.opacity(0.22)
+
+                    Image(nsImage: thumbnail)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: tileWidth, height: trackHeight)
+                        .clipped()
+                }
             }
         }
         .frame(width: trackWidth, height: trackHeight)
@@ -696,16 +737,16 @@ private struct LayerTrimRangeStrip: View {
         let totalDuration = max(0.2, sourceTotalSeconds)
         let durationDrivenCount: Int
         if totalDuration >= 5 * 60 {
-            durationDrivenCount = 12
-        } else if totalDuration >= 90 {
-            durationDrivenCount = 14
-        } else if totalDuration >= 30 {
-            durationDrivenCount = 16
-        } else {
             durationDrivenCount = 20
+        } else if totalDuration >= 90 {
+            durationDrivenCount = 22
+        } else if totalDuration >= 30 {
+            durationDrivenCount = 24
+        } else {
+            durationDrivenCount = 28
         }
 
-        let widthDrivenCap = max(8, Int(trackWidth / 56))
+        let widthDrivenCap = max(10, Int(trackWidth / 56))
         let frameCount = min(baseThumbnails.count, min(durationDrivenCount, widthDrivenCap))
         guard frameCount < baseThumbnails.count else { return baseThumbnails }
 
@@ -725,9 +766,9 @@ private struct LayerTrimRangeStrip: View {
         let totalDuration = max(0.2, timelineDurationSeconds)
         let selectedStart = activeRange.lowerBound
         let selectedDuration = max(0.033, activeRange.upperBound - activeRange.lowerBound)
-        let durationDrivenCount = max(10, Int(totalDuration.rounded(.up) * 1.5))
-        let widthDrivenCap = max(8, Int(trackWidth / 40))
-        let frameCount = min(72, min(durationDrivenCount, widthDrivenCap))
+        let durationDrivenCount = max(18, Int(totalDuration.rounded(.up) * 3.0))
+        let widthDrivenCap = max(12, Int(trackWidth / 56))
+        let frameCount = min(96, min(durationDrivenCount, widthDrivenCap))
         let frameStep = totalDuration / Double(frameCount)
 
         return (0..<frameCount).map { index in
@@ -800,6 +841,19 @@ private struct LayerTrimRangeStrip: View {
                 inactiveForeground: Color.secondary.opacity(visualOpacity),
                 tooltip: context.isSoloActive ? "Clear Solo" : "Solo Layer",
                 action: onToggleSolo
+            )
+
+            layerToggleButton(
+                label: {
+                    Image(systemName: context.isVisible ? "eye" : "eye.slash")
+                        .font(.caption.weight(.medium))
+                },
+                isActive: !context.isVisible,
+                activeFill: Color.red.opacity(0.88),
+                activeForeground: .white,
+                inactiveForeground: Color.secondary.opacity(visualOpacity),
+                tooltip: context.isVisible ? "Hide Layer" : "Show Layer",
+                action: onToggleVisibility
             )
         }
     }
@@ -1172,11 +1226,13 @@ private final class LayerTrimThumbnailStripStore: ObservableObject {
         let mediaKind = context.mediaKind
         let sourceDuration = context.sourceDurationSeconds
 
-        loadTask = Task(priority: .utility) { [weak self] in
-            let generated = await Self.generateThumbnails(
+        loadTask = Task(priority: ThumbnailWorkPolicy.mediaThumbnailTaskPriority) { [weak self] in
+            let generated = await MediaThumbnailGenerator.makeStrip(
                 source: source,
                 mediaKind: mediaKind,
-                sourceDurationSeconds: sourceDuration
+                sourceDurationSeconds: sourceDuration,
+                frameCount: ThumbnailWorkPolicy.layerStripFrameCount(for: sourceDuration),
+                maximumSize: ThumbnailWorkPolicy.layerStripThumbnailSize
             )
             guard !Task.isCancelled else { return }
 
@@ -1202,84 +1258,6 @@ private final class LayerTrimThumbnailStripStore: ObservableObject {
         while cacheOrder.count > maxCacheEntries {
             let removedID = cacheOrder.removeFirst()
             cache.removeValue(forKey: removedID)
-        }
-    }
-
-    private static func generateThumbnails(
-        source: MediaSource,
-        mediaKind: MediaKind,
-        sourceDurationSeconds: Double
-    ) async -> [NSImage] {
-        if mediaKind == .image {
-            guard let image = await resolveStillImage(for: source) else { return [] }
-            let totalDuration = max(0.2, sourceDurationSeconds)
-            let frameCount = min(96, max(24, Int(totalDuration.rounded(.up) * 2)))
-            return Array(repeating: image, count: frameCount)
-        }
-
-        guard let asset = await resolveAsset(for: source) else { return [] }
-
-        let totalDuration = max(0.2, sourceDurationSeconds)
-        let sourceDuration = max(0.2, sourceDurationSeconds)
-        // Aim for roughly one thumbnail per second on longer clips, but keep a hard cap
-        // so thumbnail generation stays cheap and unlikely to interfere with playback.
-        let frameCount = min(96, max(24, Int(totalDuration.rounded(.up) * 2)))
-
-        let generator = AVAssetImageGenerator(asset: asset)
-        generator.appliesPreferredTrackTransform = true
-        generator.maximumSize = CGSize(width: 112, height: 68)
-        generator.requestedTimeToleranceBefore = CMTime(seconds: 0.12, preferredTimescale: 600)
-        generator.requestedTimeToleranceAfter = CMTime(seconds: 0.12, preferredTimescale: 600)
-
-        var images: [NSImage] = []
-        images.reserveCapacity(frameCount)
-
-        for index in 0..<frameCount {
-            if Task.isCancelled { return [] }
-
-            let fraction = (Double(index) + 0.5) / Double(frameCount)
-            let sampleSeconds = min(sourceDuration - 0.033, max(0, totalDuration * fraction))
-            let sampleTime = CMTime(seconds: sampleSeconds, preferredTimescale: 600)
-
-            if let cgImage = try? generator.copyCGImage(at: sampleTime, actualTime: nil) {
-                images.append(NSImage(cgImage: cgImage, size: .zero))
-            }
-        }
-
-        if images.isEmpty,
-           let cgImage = try? generator.copyCGImage(at: .zero, actualTime: nil) {
-            images.append(NSImage(cgImage: cgImage, size: .zero))
-        }
-
-        return images
-    }
-
-    private static func resolveAsset(for source: MediaSource) async -> AVAsset? {
-        switch source {
-        case .url(let url):
-            return AVURLAsset(url: url)
-        case .external(let identifier):
-            return await HypnoCoreHooks.shared.resolveExternalVideo?(identifier)
-        }
-    }
-
-    private static func resolveStillImage(for source: MediaSource) async -> NSImage? {
-        switch source {
-        case .url(let url):
-            if let image = NSImage(contentsOf: url) {
-                return image
-            }
-            guard let cgImage = StillImageCache.cgImage(for: url) else { return nil }
-            return NSImage(cgImage: cgImage, size: .zero)
-        case .external(let identifier):
-            guard let cgImage = await MediaFile(
-                source: .external(identifier: identifier),
-                mediaKind: .image,
-                duration: .zero
-            ).loadCGImage() else {
-                return nil
-            }
-            return NSImage(cgImage: cgImage, size: .zero)
         }
     }
 }

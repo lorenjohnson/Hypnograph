@@ -149,6 +149,10 @@ struct ContentView: View {
         return nil
     }
 
+    private var shouldShowLoopSequenceIndicator: Bool {
+        main.isLoopSequenceEnabled
+    }
+
     private var shouldShowPersistentCompositionIndicator: Bool {
         guard !panelsCurrentlyAutoHidden else { return false }
         return main.isViewingEarlierComposition
@@ -392,10 +396,17 @@ struct ContentView: View {
                 .allowsHitTesting(false)
         }
         .overlay(alignment: .topTrailing) {
-            HStack(alignment: .center, spacing: 4) {
+            HStack(alignment: .center, spacing: 6) {
                 if shouldShowCurrentCompositionDownloadHUD {
                     currentCompositionDownloadHUD(progress: currentCompositionDownloadAggregateProgress)
                         .transition(.scale(scale: 0.9).combined(with: .opacity))
+                }
+
+                if shouldShowLoopSequenceIndicator {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.blue)
+                        .frame(width: 22, height: 34, alignment: .center)
                 }
 
                 if let indicator = topRightIndicator {

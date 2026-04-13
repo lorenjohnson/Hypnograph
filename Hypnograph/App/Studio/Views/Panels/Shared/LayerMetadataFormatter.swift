@@ -5,6 +5,13 @@ import HypnoCore
 
 @MainActor
 enum LayerMetadataFormatter {
+    struct Summary {
+        let fileName: String
+        let dateText: String?
+        let locationText: String?
+        let totalLengthText: String
+    }
+
     private static var cachedFileNamesByIdentifier: [String: String] = [:]
     private static var cachedMetadataPartsByIdentifier: [String: [String]] = [:]
 
@@ -16,10 +23,33 @@ enum LayerMetadataFormatter {
     }()
 
     static func displayLabel(for layer: Layer) -> String {
-        let fileName = fileName(for: layer)
+        let summary = summary(for: layer)
+        var parts: [String] = []
+
+        if let dateText = summary.dateText, !dateText.isEmpty {
+            parts.append(dateText)
+        }
+
+        if let locationText = summary.locationText, !locationText.isEmpty {
+            parts.append(locationText)
+        }
+
+        parts.append("(\(summary.fileName))")
+        parts.append(summary.totalLengthText)
+        return parts.joined(separator: " | ")
+    }
+
+    static func summary(for layer: Layer) -> Summary {
         let metadata = metadataParts(for: layer)
-        guard !metadata.isEmpty else { return fileName }
-        return ([fileName] + metadata).joined(separator: " | ")
+        let dateText = metadata.first
+        let locationText = metadata.dropFirst().first
+
+        return Summary(
+            fileName: fileName(for: layer),
+            dateText: dateText,
+            locationText: locationText,
+            totalLengthText: totalLengthText(for: layer)
+        )
     }
 
     static func fileName(for layer: Layer) -> String {
@@ -72,11 +102,32 @@ enum LayerMetadataFormatter {
         }
     }
 
+    static func totalLengthText(for layer: Layer) -> String {
+        let seconds: Double
+        if layer.mediaClip.file.mediaKind == .video {
+            seconds = max(0.1, layer.mediaClip.file.duration.seconds)
+        } else {
+            seconds = max(0.1, layer.mediaClip.duration.seconds)
+        }
+
+        return formatTime(seconds)
+    }
+
     static func locationString(_ location: CLLocation) -> String {
         let lat = abs(location.coordinate.latitude)
         let lon = abs(location.coordinate.longitude)
         let latSuffix = location.coordinate.latitude >= 0 ? "N" : "S"
         let lonSuffix = location.coordinate.longitude >= 0 ? "E" : "W"
         return String(format: "%.2f%@/%.2f%@", lat, latSuffix, lon, lonSuffix)
+    }
+
+    private static func formatTime(_ seconds: Double) -> String {
+        let clampedSeconds = max(0, seconds)
+        if clampedSeconds >= 60 {
+            let minutes = Int(clampedSeconds) / 60
+            let remainder = clampedSeconds.truncatingRemainder(dividingBy: 60)
+            return String(format: "%d:%04.1f", minutes, remainder)
+        }
+        return String(format: "%.1fs", clampedSeconds)
     }
 }

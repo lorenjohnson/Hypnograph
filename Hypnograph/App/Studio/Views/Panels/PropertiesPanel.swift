@@ -225,14 +225,27 @@ struct PropertiesPanel: View {
     private var layerContent: some View {
         if let layerIndex = selectedLayerIndex {
             let layerBinding = bindingForLayer(at: layerIndex)
+            let metadataSummary = LayerMetadataFormatter.summary(for: layerBinding.wrappedValue)
 
             VStack(alignment: .leading, spacing: 16) {
                 PanelSectionHeaderView(title: "Layer")
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(LayerMetadataFormatter.displayLabel(for: layerBinding.wrappedValue))
+                    Text(metadataSummary.fileName)
                         .font(.callout.weight(.medium))
                         .lineLimit(1)
+                    if let locationText = metadataSummary.locationText {
+                        Text(locationText)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    if let dateText = metadataSummary.dateText {
+                        Text(dateText)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                     Text("Layer \(layerIndex + 1)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
