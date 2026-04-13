@@ -348,6 +348,7 @@ struct SequenceClipView: View {
     let onJump: () -> Void
     let onDelete: () -> Void
 
+    @State private var isHoveringReorderHandle = false
     @State private var isHoveringClip = false
 
     var body: some View {
@@ -361,6 +362,10 @@ struct SequenceClipView: View {
                     .fill(Color.blue.opacity(0.95))
                     .frame(height: 2.5)
             }
+
+            reorderHandle
+                .padding(.horizontal, 1)
+                .padding(.bottom, 1)
         }
         .opacity(clipOpacity)
         .frame(width: width, alignment: .topLeading)
@@ -376,20 +381,12 @@ struct SequenceClipView: View {
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.12)) {
                 isHoveringClip = hovering
+                isHoveringReorderHandle = hovering
             }
         }
         .onTapGesture {
             onJump()
         }
-        .onDrag(
-            {
-                draggedCompositionID = entry.id
-                return NSItemProvider(object: entry.id.uuidString as NSString)
-            },
-            preview: {
-                dragPreview
-            }
-        )
         .contextMenu {
             Button(role: .destructive, action: onDelete) {
                 Label("Delete Composition", systemImage: "trash")
@@ -401,6 +398,30 @@ struct SequenceClipView: View {
         if entry.isCurrent { return 1.0 }
         if isHoveringClip { return 0.52 }
         return 0.24
+    }
+
+    private var reorderHandle: some View {
+        Rectangle()
+            .fill(Color.clear)
+            .frame(width: width - 2, height: 11)
+            .overlay(alignment: .center) {
+                if isHoveringReorderHandle {
+                    Capsule(style: .continuous)
+                        .fill(Color.white.opacity(0.34))
+                        .frame(width: min(34, max(14, width - 10)), height: 2)
+                        .shadow(color: .black.opacity(0.25), radius: 1, x: 0, y: 1)
+                }
+            }
+            .contentShape(Rectangle())
+            .onDrag(
+                {
+                    draggedCompositionID = entry.id
+                    return NSItemProvider(object: entry.id.uuidString as NSString)
+                },
+                preview: {
+                    dragPreview
+                }
+            )
     }
 
     private var dragPreview: some View {
