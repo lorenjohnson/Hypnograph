@@ -3,7 +3,11 @@ import CoreLocation
 import Photos
 import HypnoCore
 
+@MainActor
 enum LayerMetadataFormatter {
+    private static var cachedFileNamesByIdentifier: [String: String] = [:]
+    private static var cachedMetadataPartsByIdentifier: [String: [String]] = [:]
+
     static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -23,14 +27,21 @@ enum LayerMetadataFormatter {
         case .url(let url):
             return url.lastPathComponent
         case .external(let identifier):
+            if let cached = cachedFileNamesByIdentifier[identifier] {
+                return cached
+            }
             guard let asset = ApplePhotos.shared.fetchAsset(localIdentifier: identifier) else {
                 return layer.mediaClip.file.displayName
             }
             let resources = PHAssetResource.assetResources(for: asset)
+            let resolvedName: String
             if let resource = resources.first(where: { $0.type == .pairedVideo || $0.type == .video || $0.type == .photo }) {
-                return resource.originalFilename
+                resolvedName = resource.originalFilename
+            } else {
+                resolvedName = resources.first?.originalFilename ?? layer.mediaClip.file.displayName
             }
-            return resources.first?.originalFilename ?? layer.mediaClip.file.displayName
+            cachedFileNamesByIdentifier[identifier] = resolvedName
+            return resolvedName
         }
     }
 
@@ -45,6 +56,9 @@ enum LayerMetadataFormatter {
             }
             return []
         case .external(let identifier):
+            if let cached = cachedMetadataPartsByIdentifier[identifier] {
+                return cached
+            }
             guard let asset = ApplePhotos.shared.fetchAsset(localIdentifier: identifier) else { return [] }
             var parts: [String] = []
             if let date = asset.creationDate {
@@ -53,6 +67,7 @@ enum LayerMetadataFormatter {
             if let location = asset.location {
                 parts.append(locationString(location))
             }
+            cachedMetadataPartsByIdentifier[identifier] = parts
             return parts
         }
     }

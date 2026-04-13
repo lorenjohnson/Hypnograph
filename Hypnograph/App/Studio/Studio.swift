@@ -76,6 +76,7 @@ final class Studio: ObservableObject {
     }
 
     @Published var liveMode: LiveMode = .edit
+    @Published var isShowingFullClips = false
     var isLiveMode: Bool { liveMode == .live }
     var isLiveModeAvailable: Bool { state.settings.liveModeEnabled }
     var isUsingDefaultHypnogram: Bool { activeWorkingHypnogramURL == nil }
@@ -146,6 +147,10 @@ final class Studio: ObservableObject {
         }
         liveMode = (liveMode == .edit) ? .live : .edit
         print("🎬 Live Mode: \(liveMode == .live ? "LIVE" : "Edit")")
+    }
+
+    func toggleShowFullClips() {
+        isShowingFullClips.toggle()
     }
 
     // MARK: - Init

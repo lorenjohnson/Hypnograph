@@ -144,22 +144,37 @@ struct AppCommands: Commands {
                         settingsStore.update { $0.autoHidePanelsEnabled = newValue }
                     }
                 ))
-
-                #if DEBUG
-                Divider()
-
-                Button("Save Current Panel Layout as App Default") {
-                    panels.saveToDisk()
-                    do {
-                        try Environment.saveCurrentPanelStateAsBundledDefault()
-                        AppNotifications.show("Saved current panel layout as bundled default", flash: true)
-                    } catch {
-                        AppNotifications.show("Failed to save bundled panel layout", flash: true)
-                        print("Failed to save bundled panel layout: \(error)")
-                    }
-                }
-                #endif
             }
+
+            Divider()
+
+            Section("Timeline") {
+                Toggle("Show Full Clips", isOn: Binding(
+                    get: { studio.isShowingFullClips },
+                    set: { newValue in
+                        if studio.isShowingFullClips != newValue {
+                            studio.toggleShowFullClips()
+                        }
+                    }
+                ))
+                .keyboardShortcut("f", modifiers: [])
+                .disabled(isTyping || !isStudioWindowShortcutContext)
+            }
+
+            #if DEBUG
+            Divider()
+
+            Button("Save Current Panel Layout as App Default") {
+                panels.saveToDisk()
+                do {
+                    try Environment.saveCurrentPanelStateAsBundledDefault()
+                    AppNotifications.show("Saved current panel layout as bundled default", flash: true)
+                } catch {
+                    AppNotifications.show("Failed to save bundled panel layout", flash: true)
+                    print("Failed to save bundled panel layout: \(error)")
+                }
+            }
+            #endif
 
             if studio.isLiveModeAvailable {
                 Divider()

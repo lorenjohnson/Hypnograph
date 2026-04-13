@@ -443,10 +443,8 @@ struct PlayerView: NSViewRepresentable {
         let currentSeconds = currentSourceTime?.seconds
         let newSeconds = value?.seconds
         guard currentSeconds != newSeconds || (currentSourceTime == nil) != (value == nil) else { return }
-        DispatchQueue.main.async {
-            guard coordinator.bindingUpdateToken == token else { return }
-            self.currentSourceTime = value
-        }
+        guard coordinator.bindingUpdateToken == token else { return }
+        self.currentSourceTime = value
     }
 
     /// Setup looping or composition-ended notification handling for all players
@@ -526,10 +524,15 @@ struct PlayerView: NSViewRepresentable {
         //
         // We base this on *real time* remaining (video seconds / playRate).
         for player in content.allPlayers {
-            let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
+            let interval = CMTime(seconds: 1.0 / 60.0, preferredTimescale: 600)
             let token = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak c, weak player] _ in
                 Task { @MainActor [weak c, weak player] in
                     guard let c, let player, let contentView = c.contentView else { return }
+                    guard player === contentView.activeAVPlayer else { return }
+
+                    let bindingUpdateToken = c.bindingUpdateToken
+                    deferCurrentSourceTime(player.currentTime(), coordinator: c, token: bindingUpdateToken)
+
                     guard canAdvanceCurrentComposition(
                         c.playbackEndBehavior,
                         isLastCompositionInSequence: self.isLastCompositionInSequence
@@ -538,7 +541,6 @@ struct PlayerView: NSViewRepresentable {
                     guard !c.didRequestPreEndAdvance else { return }
                     guard !c.isAutoAdvanceInFlight else { return }
                     guard contentView.playerView.activeTransition == nil else { return }
-                    guard player === contentView.activeAVPlayer else { return }
 
                     guard let item = player.currentItem,
                           item.status == .readyToPlay,

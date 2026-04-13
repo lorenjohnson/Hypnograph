@@ -7,6 +7,8 @@ struct PlayerControlsPanel: View {
     let isLoopSequenceEnabled: Bool
     let selectedLayerIndex: Int
     let compositionLengthSeconds: Double
+    let currentCompositionTimeSeconds: Double?
+    let isShowingFullClips: Bool
     let sequenceEntries: [CompositionEntry]
     let layerTrimContexts: [LayerTrimContext]
     let visualOpacity: Double
@@ -29,6 +31,7 @@ struct PlayerControlsPanel: View {
     let onAddSourceFromFiles: () -> Void
     let onAddSourceFromPhotos: () -> Void
     let onAddSourceFromRandom: () -> Void
+    let onToggleShowFullClips: () -> Void
     let onCyclePlaybackLoopMode: () -> Void
     let onSnapshotCurrent: () -> Void
     let onSaveCurrent: () -> Void
@@ -62,6 +65,9 @@ struct PlayerControlsPanel: View {
                 LayerTrimView(
                     contexts: layerTrimContexts,
                     selectedLayerIndex: selectedLayerIndex,
+                    compositionTimelineDurationSeconds: compositionLengthSeconds,
+                    currentPlayheadSeconds: currentCompositionTimeSeconds,
+                    isShowingFullClips: isShowingFullClips,
                     visualOpacity: chromeOpacity,
                     onSelectLayer: onSelectLayer,
                     onMoveLayerUp: onMoveLayerUp,
@@ -72,6 +78,7 @@ struct PlayerControlsPanel: View {
                     onToggleMute: onToggleLayerMute,
                     onToggleSolo: onToggleLayerSolo,
                     onToggleVisibility: onToggleLayerVisibility,
+                    onToggleShowFullClips: onToggleShowFullClips,
                     onCommit: onCommitLayerTrimRange
                 )
             }
@@ -136,6 +143,27 @@ struct PlayerControlsPanel: View {
                 .foregroundStyle(Color.secondary.opacity(chromeOpacity))
 
             Spacer(minLength: 0)
+
+            Button(action: onToggleShowFullClips) {
+                Image(systemName: "arrow.left.and.right.circle")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(
+                        isShowingFullClips
+                        ? Color.accentColor
+                        : Color.white.opacity(0.72 + (0.2 * chromeOpacity))
+                    )
+                    .frame(width: 28, height: 28)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(
+                                isShowingFullClips
+                                ? Color.accentColor.opacity(0.16)
+                                : Color.clear
+                            )
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("Show Full Clips (F)")
 
             Menu {
                 Button {

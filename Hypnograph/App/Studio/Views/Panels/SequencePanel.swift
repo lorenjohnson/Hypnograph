@@ -363,8 +363,8 @@ struct SequenceClipView: View {
 
     private var clipOpacity: Double {
         if entry.isCurrent { return 1.0 }
-        if isHoveringClip { return 0.76 }
-        return 0.56
+        if isHoveringClip { return 0.62 }
+        return 0.36
     }
 
     private var reorderHandle: some View {

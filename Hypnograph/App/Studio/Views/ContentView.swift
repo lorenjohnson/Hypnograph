@@ -35,16 +35,16 @@ struct ContentView: View {
         func makeContext(layer: Layer, index: Int) -> LayerTrimContext? {
             let isVideo = layer.mediaClip.file.mediaKind == .video
             let selectedDuration = max(0.1, layer.mediaClip.duration.seconds)
-            let total = isVideo
+            let sourceTotal = isVideo
                 ? max(0.1, layer.mediaClip.file.duration.seconds)
                 : max(selectedDuration, max(main.targetDuration.seconds, 20))
             let start = isVideo
-                ? max(0, min(layer.mediaClip.startTime.seconds, total))
+                ? max(0, min(layer.mediaClip.startTime.seconds, sourceTotal))
                 : 0
-            let maxSelection = total
+            let maxSelection = sourceTotal
             let end = isVideo
-                ? max(start + 0.1, min(start + min(selectedDuration, min(maxSelection, total - start)), total))
-                : max(0.1, min(selectedDuration, total))
+                ? max(start + 0.1, min(start + min(selectedDuration, min(maxSelection, sourceTotal - start)), sourceTotal))
+                : max(0.1, min(selectedDuration, sourceTotal))
 
             return LayerTrimContext(
                 layerIndex: index,
@@ -60,7 +60,7 @@ struct ContentView: View {
                 isMuted: layer.isMuted,
                 isVisible: layer.opacity > 0.001,
                 isSoloActive: main.activePlayer.effectManager.flashSoloIndex == index,
-                totalDurationSeconds: total,
+                sourceDurationSeconds: sourceTotal,
                 maxSelectionDurationSeconds: maxSelection,
                 selectedRangeSeconds: start...end
             )
@@ -275,6 +275,8 @@ struct ContentView: View {
                 isLoopSequenceEnabled: main.isLoopSequenceEnabled,
                 selectedLayerIndex: main.activePlayer.currentLayerIndex,
                 compositionLengthSeconds: main.targetDuration.seconds,
+                currentCompositionTimeSeconds: main.activePlayer.currentLayerTimeOffset?.seconds,
+                isShowingFullClips: main.isShowingFullClips,
                 sequenceEntries: currentCompositionEntries,
                 layerTrimContexts: layerTrimContexts,
                 visualOpacity: panelOpacity,
@@ -324,6 +326,7 @@ struct ContentView: View {
                 onAddSourceFromFiles: { main.addSourceFromFilesPanel() },
                 onAddSourceFromPhotos: { main.addSourceFromPhotosPicker() },
                 onAddSourceFromRandom: { main.addSourceFromRandom() },
+                onToggleShowFullClips: { main.toggleShowFullClips() },
                 onCyclePlaybackLoopMode: { main.cyclePlaybackLoopMode() },
                 onSnapshotCurrent: { main.saveSnapshotImage() },
                 onSaveCurrent: { main.saveComposition() },
