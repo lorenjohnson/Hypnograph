@@ -1,47 +1,49 @@
 ---
-doc-status: draft
+doc-status: in-progress
 ---
 
 # Overview
 
-Playback and panel infrastructure in Studio are both becoming harder to reason about because their runtime logic is spread across role-based directories and view files. The code still works, but understanding either subsystem now often requires hopping across multiple files and reconstructing behavior mentally.
+Playback and panel code in Studio has become harder to hold in one’s head. The behavior still mostly works, but understanding or changing it often means jumping across too many files and reconstructing ownership mentally.
 
-This project is to reorganize both playback and panels into clearer feature-scoped areas, and to centralize their runtime orchestration into coordinator-shaped objects where appropriate. The goal is not abstraction for its own sake. The goal is to make the code easier to read, safer to change, and less likely to accumulate fragile edge-case logic in view files.
+This project is to make those subsystems easier to understand and safer to change. The goal is not to introduce architecture for its own sake. The goal is to consolidate ownership where it is currently too scattered, move related files into clearer places when that genuinely helps, and stop once the result is meaningfully easier to reason about.
 
-The current intended direction is:
-- use `Coordinator` as the naming convention for top-level runtime orchestration objects in this app
-- introduce scoped directories for playback and panels
-- include their related views inside those scoped areas if that proves coherent in practice, rather than keeping all views in one global `Views/` bucket by default
+The guiding idea is simple:
+- clearer ownership
+- fewer files to inspect to understand what happens next
+- less orchestration living implicitly in view files
+- no new abstraction unless it immediately reduces complexity
+
+`Coordinator` is the chosen naming direction for runtime orchestration objects in this work. We should also reduce unnecessary `preview` naming where `playback` or `rendering` is the more honest term.
 
 ## Scope
 
-- MUST evaluate Studio playback as one subsystem rather than continuing to let runtime playback logic accrete primarily inside `PlayerView`.
-- MUST evaluate Studio panels as one subsystem rather than continuing to split panel runtime logic across unrelated top-level files.
-- MUST prefer `Coordinator` naming for this class of runtime orchestration object and apply that choice consistently once this project begins.
-- MUST test whether feature-scoped directories actually improve clarity, rather than assuming they do.
-- SHOULD treat directory organization and interface cleanup as related work, not totally separate concerns.
-- SHOULD reduce unnecessary use of the word `preview` in playback-related names when `playback` or `rendering` describes the role more directly.
-- MAY move related views into `Playback/Views/` and `Panels/Views/` if doing so makes the subsystem boundaries easier to understand.
-- MUST NOT force artificial boundaries if the resulting directories would lie badly about actual dependencies.
+- MUST make playback behavior easier to locate and understand without introducing speculative framework code.
+- MUST make panel infrastructure easier to locate and understand without inventing artificial boundaries.
+- MUST use `Coordinator` consistently for this class of runtime orchestration object.
+- SHOULD move related files into feature-scoped areas when doing so makes the code easier to navigate.
+- SHOULD reduce orchestration burden in view files where that improves clarity.
+- SHOULD reduce unnecessary `preview` naming in playback-related code.
+- MAY move related views with their subsystem if that makes the boundary clearer in practice.
+- MUST NOT add abstraction that does not immediately simplify ownership or behavior.
 
 ## Plan
 
-- Smallest meaningful next slice:
-  - map the current playback files and panel files that together form each subsystem
-  - choose the initial destination structure for both subsystems
-  - extract or rename only the first runtime owner needed to validate the pattern
+- Start with playback, since it is currently the subsystem with the highest mental overhead and the most visible edge-case pressure.
+- Consolidate playback orchestration into a clearer owner and move the related files into a more legible structure.
+- Then do the same review for panels, moving infrastructure and views together only if that actually improves clarity.
+- Stop when the code is noticeably easier to understand and modify, rather than trying to force a perfectly pure architecture.
 
-- Immediate acceptance check:
-  - a future reader should be able to locate playback orchestration and panel orchestration without searching across unrelated files
-  - the naming should clearly distinguish runtime coordinators from models, services, and views
-  - the resulting directory structure should make the real subsystem boundaries easier to understand, not harder
-
-- Likely checkpoints:
-  - playback organization first, since current playback behavior and still-image handling are exposing the orchestration problem more directly
-  - panel infrastructure second, including a decision about whether panel views should move into the scoped area or remain under a shared views location
+Current implementation direction in this branch:
+- `PlayerView` and `PlayerContentView` move into `Studio/Playback/Views/`
+- `PlayerState` and `PlaybackActions` move into `Studio/Playback/State/`
+- the former nested playback runtime owner becomes a top-level `PlayerPlaybackCoordinator`
+- panel runtime files move into `Studio/Panels/`
+- `PanelStateController` becomes `PanelStateCoordinator`
+- `PanelHostService` becomes `PanelHostCoordinator`
+- panel-only bridge and helper views move with the panel subsystem where that improves clarity
 
 ## Open Questions
 
-- Does playback want one top-level coordinator, or a small set of tightly related coordinators with one clear owner?
-- Should panel views move with panel infrastructure immediately, or should panel infrastructure move first and views follow later if that proves helpful?
-- Are there any existing files that look like services but are really runtime coordinators already and should be renamed when this project begins?
+- Does playback become clearer with one top-level coordinator, or with one primary coordinator plus a very small number of helpers?
+- Should panel views move with panel infrastructure immediately, or only where the feature boundary becomes clearer by doing so?

@@ -48,7 +48,7 @@ struct PlayerView: NSViewRepresentable {
     /// Called when playback reaches the end and should be reflected as paused in UI state.
     var onPlaybackStoppedAtEnd: (() -> Void)? = nil
 
-    // MARK: - Coordinator
+    // MARK: - Playback Coordinator
     //
     // Auto-advance state machine:
     // ─────────────────────────
@@ -76,78 +76,8 @@ struct PlayerView: NSViewRepresentable {
     //   → we loop the outgoing composition to maintain smooth visuals
     // - Pausing or disabling auto-advance resets both flags
 
-    @MainActor
-    class Coordinator {
-        var contentView: PlayerContentView?
-        var stillClipTimer: Timer?
-        var compositionID: String?
-        var bindingUpdateToken: UInt64 = 0
-        var currentTask: Task<Void, Never>?
-        var lastPauseState: Bool?
-        var lastEffectsCounter: Int?
-        var lastSessionRevision: Int?
-        var playRate: Float = 0.8
-        var lastAppliedPlayRate: Float?
-        var transitionDuration: Double = 1.5
-        var lastVolume: Float?
-        var playbackEndBehavior: Studio.PlaybackEndBehavior = .advanceAcrossCompositions(loopAtSequenceEnd: false, generateAtSequenceEnd: true)
-        var onCompositionEnded: (() -> Bool)?
-        var isAllStillImages: Bool = false
-        var lastRenderedComposition: Composition?
-        /// Whether this is the first composition load (no transition needed)
-        var isFirstLoad: Bool = true
-        /// Use a sentinel to distinguish "never set" from "set to nil (system default)"
-        private static let notSetSentinel = "___NOT_SET___"
-        var lastAudioDeviceUID: String? = notSetSentinel
-        /// Observers for player item end notifications
-        var playbackEndObservers: [Any] = []
-        /// Observers for per-player time updates (used for pre-end advancing)
-        var playbackTimeObservers: [Any] = []
-        /// Guard so we request auto-advance at most once per active composition.
-        /// Reset when compositionID changes (new composition loaded).
-        var didRequestPreEndAdvance: Bool = false
-        /// Prevent runaway auto-advance while a new composition is being built/transitioned in.
-        /// If the current composition ends again before the next composition is ready, we loop the current composition
-        /// instead of requesting another advance. Cleared when transition completes.
-        var isAutoAdvanceInFlight: Bool = false
-
-        func audioDeviceChanged(to newUID: String?) -> Bool {
-            if lastAudioDeviceUID == Self.notSetSentinel { return true }
-            return lastAudioDeviceUID != newUID
-        }
-
-        func removePlaybackEndObservers() {
-            for observer in playbackEndObservers {
-                NotificationCenter.default.removeObserver(observer)
-            }
-            playbackEndObservers.removeAll()
-        }
-
-        func removePlaybackTimeObservers() {
-            guard let contentView else { return }
-            for (idx, observer) in playbackTimeObservers.enumerated() {
-                // Observers were registered for each player in `contentView.allPlayers` order.
-                // If counts don't match (due to a re-init), just attempt removal on both players.
-                if idx < contentView.allPlayers.count {
-                    contentView.allPlayers[idx].removeTimeObserver(observer)
-                } else {
-                    for player in contentView.allPlayers {
-                        player.removeTimeObserver(observer)
-                    }
-                }
-            }
-            playbackTimeObservers.removeAll()
-        }
-
-        func beginBindingUpdateCycle() -> UInt64 {
-            bindingUpdateToken &+= 1
-            return bindingUpdateToken
-        }
-
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
+    func makeCoordinator() -> PlayerPlaybackCoordinator {
+        PlayerPlaybackCoordinator()
     }
 
     func makeNSView(context: Context) -> NSView {
@@ -408,7 +338,7 @@ struct PlayerView: NSViewRepresentable {
         }
     }
 
-    private func deferCompositionLoadInFlight(_ value: Bool, coordinator: Coordinator, token: UInt64) {
+    private func deferCompositionLoadInFlight(_ value: Bool, coordinator: PlayerPlaybackCoordinator, token: UInt64) {
         guard isPrimaryCompositionLoadInFlight != value else { return }
         DispatchQueue.main.async {
             guard coordinator.bindingUpdateToken == token else { return }
@@ -418,7 +348,7 @@ struct PlayerView: NSViewRepresentable {
 
     private func deferCompositionLoadFailure(
         _ value: PlayerState.CompositionLoadFailure?,
-        coordinator: Coordinator,
+        coordinator: PlayerPlaybackCoordinator,
         token: UInt64
     ) {
         guard currentCompositionLoadFailure != value else { return }
@@ -428,7 +358,7 @@ struct PlayerView: NSViewRepresentable {
         }
     }
 
-    private func deferCurrentSourceTime(_ value: CMTime?, coordinator: Coordinator, token: UInt64) {
+    private func deferCurrentSourceTime(_ value: CMTime?, coordinator: PlayerPlaybackCoordinator, token: UInt64) {
         let currentSeconds = currentSourceTime?.seconds
         let newSeconds = value?.seconds
         guard currentSeconds != newSeconds || (currentSourceTime == nil) != (value == nil) else { return }
@@ -438,7 +368,7 @@ struct PlayerView: NSViewRepresentable {
 
     /// Setup looping or composition-ended notification handling for all players
     @MainActor
-    private func setupPlaybackEndHandling(content: PlayerContentView, coordinator c: Coordinator) {
+    private func setupPlaybackEndHandling(content: PlayerContentView, coordinator c: PlayerPlaybackCoordinator) {
         // Remove any existing observers
         c.removePlaybackEndObservers()
         c.removePlaybackTimeObservers()
@@ -567,7 +497,7 @@ struct PlayerView: NSViewRepresentable {
         }
     }
 
-    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+    static func dismantleNSView(_ nsView: NSView, coordinator: PlayerPlaybackCoordinator) {
         Task { @MainActor in
             tearDown(coordinator: coordinator)
         }
@@ -598,7 +528,7 @@ struct PlayerView: NSViewRepresentable {
     }
 
     @MainActor
-    private func freezeOutgoingEffectsIfNeeded(coordinator c: Coordinator, previousID: String?) {
+    private func freezeOutgoingEffectsIfNeeded(coordinator c: PlayerPlaybackCoordinator, previousID: String?) {
         guard previousID != nil,
               let content = c.contentView,
               !c.isFirstLoad,
@@ -614,7 +544,7 @@ struct PlayerView: NSViewRepresentable {
     }
 
     @MainActor
-    private func scheduleStillClipTimer(coordinator c: Coordinator) {
+    private func scheduleStillClipTimer(coordinator c: PlayerPlaybackCoordinator) {
         c.stillClipTimer?.invalidate()
         c.stillClipTimer = nil
 
@@ -633,7 +563,7 @@ struct PlayerView: NSViewRepresentable {
     }
 
     @MainActor
-    private func triggerAutoAdvance(_ coordinator: Coordinator) {
+    private func triggerAutoAdvance(_ coordinator: PlayerPlaybackCoordinator) {
         coordinator.didRequestPreEndAdvance = true
         coordinator.isAutoAdvanceInFlight = true
 
@@ -644,7 +574,7 @@ struct PlayerView: NSViewRepresentable {
         }
     }
 
-    private func effectiveVideoPlaybackRate(for coordinator: Coordinator) -> Float {
+    private func effectiveVideoPlaybackRate(for coordinator: PlayerPlaybackCoordinator) -> Float {
         coordinator.playRate
     }
 
@@ -673,7 +603,7 @@ struct PlayerView: NSViewRepresentable {
     // MARK: - Teardown
 
     @MainActor
-    private static func tearDown(coordinator c: Coordinator) {
+    private static func tearDown(coordinator c: PlayerPlaybackCoordinator) {
         c.stillClipTimer?.invalidate()
         c.stillClipTimer = nil
 

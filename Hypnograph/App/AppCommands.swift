@@ -20,7 +20,7 @@ struct AppCommands: Commands {
     @SwiftUI.Environment(\.openWindow) private var openWindow
     @ObservedObject private var state: HypnographState
     @ObservedObject private var studio: Studio
-    @ObservedObject private var panels: PanelStateController
+    @ObservedObject private var panels: PanelStateCoordinator
     @ObservedObject private var settingsStore: StudioSettingsStore
 
     /// Whether a text field is currently being edited

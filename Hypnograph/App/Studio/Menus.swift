@@ -133,7 +133,7 @@ extension Studio {
             Button("Clear") { [self] in
                 clearCompositionEffect()
             }
-            .keyboardShortcut("c", modifiers: [.shift])
+            .keyboardShortcut("c", modifiers: [])
         }
     }
 
@@ -174,7 +174,7 @@ extension Studio {
             Button("Clear") { [self] in
                 clearCurrentLayerEffect()
             }
-            .keyboardShortcut("c", modifiers: [])
+            .keyboardShortcut("c", modifiers: [.shift])
             .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
 
             Button("Clear for All Layers") { [self] in

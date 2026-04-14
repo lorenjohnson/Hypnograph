@@ -1,5 +1,5 @@
 //
-//  PanelHostService.swift
+//  PanelHostCoordinator.swift
 //  Hypnograph
 //
 
@@ -199,7 +199,7 @@ private final class PanelContentController: NSViewController {
     private let scrollView = NSScrollView()
 
     var onLayoutPass: (() -> Void)?
-    var onLayoutInvalidationRequest: (() -> Void)?
+    var onLayoutInvalidationRequest: ((Bool) -> Void)?
 
     init(kind: PanelKind, content: AnyView) {
         self.kind = kind
@@ -230,10 +230,10 @@ private final class PanelContentController: NSViewController {
             scrollView.documentView = documentView
             container.addSubview(scrollView)
             NSLayoutConstraint.activate([
-                scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-                scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                scrollView.topAnchor.constraint(equalTo: container.topAnchor),
-                scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+                scrollView.leadingAnchor.constraint(equalTo: container.safeAreaLayoutGuide.leadingAnchor),
+                scrollView.trailingAnchor.constraint(equalTo: container.safeAreaLayoutGuide.trailingAnchor),
+                scrollView.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor),
+                scrollView.bottomAnchor.constraint(equalTo: container.safeAreaLayoutGuide.bottomAnchor)
             ])
         } else {
             hostingView.translatesAutoresizingMaskIntoConstraints = false
@@ -260,8 +260,8 @@ private final class PanelContentController: NSViewController {
             content.environment(
                 \.panelLayoutInvalidator,
                  PanelLayoutInvalidator(
-                    invalidate: { [weak self] in
-                        self?.onLayoutInvalidationRequest?()
+                    invalidate: { [weak self] resetScrollToTop in
+                        self?.onLayoutInvalidationRequest?(resetScrollToTop)
                     }
                  )
             )
@@ -291,17 +291,25 @@ private final class PanelContentController: NSViewController {
 
         hostingView.layoutSubtreeIfNeeded()
         let fittingHeight = max(1, hostingView.fittingSize.height)
+        let documentHeight = max(fittingHeight, scrollView.contentSize.height)
         if abs(hostingView.frame.height - fittingHeight) > 0.5 || abs(hostingView.frame.width - targetWidth) > 0.5 {
             hostingView.frame = NSRect(x: 0, y: 0, width: targetWidth, height: fittingHeight)
         }
-        if abs(documentView.frame.width - targetWidth) > 0.5 || abs(documentView.frame.height - fittingHeight) > 0.5 {
-            documentView.frame = NSRect(x: 0, y: 0, width: targetWidth, height: fittingHeight)
+        if abs(documentView.frame.width - targetWidth) > 0.5 || abs(documentView.frame.height - documentHeight) > 0.5 {
+            documentView.frame = NSRect(x: 0, y: 0, width: targetWidth, height: documentHeight)
         }
+    }
+
+    func resetScrollPositionToTop() {
+        guard kind.shouldFitHeightToContent else { return }
+        let clipView = scrollView.contentView
+        clipView.scroll(to: .zero)
+        scrollView.reflectScrolledClipView(clipView)
     }
 }
 
 @MainActor
-final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
+final class PanelHostCoordinator: NSObject, ObservableObject, NSWindowDelegate {
     private struct ManagedPanel {
         let panel: ChildPanel
         let host: PanelContentController
@@ -317,6 +325,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
     private var onPanelsAutoHiddenChanged: ((Bool) -> Void)?
     private var storedPanelFrames: [String: CGRect] = [:]
     private var panelOrder: [String] = []
+    private var needsPanelOrderRestore = false
     private var autoHidePanelsEnabled = false
     private var keyboardAccessibilityOverridesEnabled = true
     private var autoHideTimer: Timer?
@@ -350,6 +359,9 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
         effectsContent: AnyView,
         playerControlsContent: AnyView
     ) {
+        if self.panelOrder != panelOrder {
+            needsPanelOrderRestore = true
+        }
         self.onPanelVisibilityChanged = onPanelVisibilityChanged
         self.onPanelFrameChanged = onPanelFrameChanged
         self.onPanelOrderChanged = onPanelOrderChanged
@@ -441,7 +453,10 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
 
         if anyVisibleRequested {
             hasInitializedVisiblePanelPresentation = true
-            restorePanelOrderIfNeeded()
+            if needsPanelOrderRestore {
+                restorePanelOrderIfNeeded()
+                needsPanelOrderRestore = false
+            }
         }
     }
 
@@ -467,6 +482,9 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
     ) {
         let previousVisibility = requestedVisibility[kind] ?? false
         requestedVisibility[kind] = visible
+        if previousVisibility != visible {
+            needsPanelOrderRestore = true
+        }
 
         if visible && !previousVisibility && !suppressVisibilityActivity {
             noteActivity()
@@ -550,9 +568,9 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
             guard let self, let panel, let kind = self.kind(for: panel) else { return }
             self.handleHostedContentLayout(for: kind)
         }
-        host.onLayoutInvalidationRequest = { [weak self, weak panel] in
+        host.onLayoutInvalidationRequest = { [weak self, weak panel] resetScrollToTop in
             guard let self, let panel, let kind = self.kind(for: panel) else { return }
-            self.handleExplicitLayoutInvalidation(for: kind)
+            self.handleExplicitLayoutInvalidation(for: kind, resetScrollToTop: resetScrollToTop)
         }
         panel.contentViewController = host
         panel.orderOut(nil)
@@ -887,6 +905,7 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
         }
 
         if !hidden {
+            needsPanelOrderRestore = true
             restorePanelOrderIfNeeded()
         }
     }
@@ -998,7 +1017,11 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
     private func persistPanelFrame(from notification: Notification) {
         guard let panel = notification.object as? NSWindow else { return }
         guard let kind = kind(for: panel) else { return }
-        onPanelFrameChanged?(kind.panelStateID, panel.frame)
+        let panelID = kind.panelStateID
+        let frame = panel.frame
+        DispatchQueue.main.async { [weak self] in
+            self?.onPanelFrameChanged?(panelID, frame)
+        }
     }
 
     private func handleHostedContentLayout(for kind: PanelKind) {
@@ -1007,11 +1030,16 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
         applySizing(for: kind, managed: managed)
     }
 
-    private func handleExplicitLayoutInvalidation(for kind: PanelKind) {
+    private func handleExplicitLayoutInvalidation(for kind: PanelKind, resetScrollToTop: Bool = false) {
         guard kind.shouldFitHeightToContent else { return }
         DispatchQueue.main.async { [weak self] in
             guard let self, let managed = self.panels[kind] else { return }
             self.applySizing(for: kind, managed: managed)
+            if resetScrollToTop {
+                DispatchQueue.main.async {
+                    managed.host.resetScrollPositionToTop()
+                }
+            }
         }
     }
 
@@ -1020,7 +1048,9 @@ final class PanelHostService: NSObject, ObservableObject, NSWindowDelegate {
         nextOrder.append(windowID)
         guard nextOrder != panelOrder else { return }
         panelOrder = nextOrder
-        onPanelOrderChanged?(nextOrder)
+        DispatchQueue.main.async { [weak self] in
+            self?.onPanelOrderChanged?(nextOrder)
+        }
     }
 
     private func restorePanelOrderIfNeeded() {
