@@ -113,6 +113,5 @@ extension Studio {
     func toggleGenerateAtEnd() {
         let newValue = !isGenerateAtEndEnabled
         state.setGenerateAtEnd(newValue)
-        AppNotifications.show(newValue ? "Generate at End" : "Stop at End", flash: true, duration: 1.25)
     }
 }

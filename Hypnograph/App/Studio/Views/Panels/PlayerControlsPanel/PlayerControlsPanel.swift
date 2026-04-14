@@ -133,15 +133,15 @@ struct PlayerControlsPanel: View {
     private var dockHeader: some View {
         HStack(spacing: 8) {
             HStack(spacing: 10) {
-                PanelSliderView(value: $panelOpacity, bounds: 0.32...0.92)
-                    .frame(width: 92)
-                    .help("Adjust all Studio panel transparency.")
-
                 HStack(spacing: 8) {
                     ForEach(panelToolbarItems) { item in
                         panelToggleButton(item)
                     }
                 }
+
+                PanelSliderView(value: $panelOpacity, bounds: 0.32...0.92)
+                    .frame(width: 92)
+                    .help("Adjust all Studio panel transparency.")
 
                 if let liveModeSelection {
                     Divider()
