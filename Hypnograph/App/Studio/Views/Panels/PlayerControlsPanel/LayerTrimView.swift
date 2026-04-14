@@ -142,6 +142,7 @@ private struct LayerTrimRangeStrip: View {
     private let headerOverlayHeight: CGFloat = 24
     private let trimInteractionBottomInset: CGFloat = 28
     private let minimumDurationSeconds: Double = 0.1
+    private let selectionLengthHorizontalPadding: CGFloat = 6
 
     init(
         context: LayerTrimContext,
@@ -293,6 +294,11 @@ private struct LayerTrimRangeStrip: View {
                     .frame(width: trackWidth, height: trackHeight, alignment: .leading)
 
                 resizeHandleOverlay(trackWidth: trackWidth, selectedWindowWidth: selectedWindowWidth)
+                selectionLengthOverlay(
+                    trackWidth: trackWidth,
+                    leadingOffset: 0,
+                    selectedWindowWidth: selectedWindowWidth
+                )
                 compositionPlayheadOverlay(trackWidth: trackWidth)
 
                 VStack(spacing: 0) {
@@ -362,6 +368,11 @@ private struct LayerTrimRangeStrip: View {
                 .offset(x: leadingShadeWidth)
 
             sourceSelectionHandleOverlay(trackWidth: trackWidth, leadingShadeWidth: leadingShadeWidth, selectedWidth: selectedWidth)
+            selectionLengthOverlay(
+                trackWidth: trackWidth,
+                leadingOffset: leadingShadeWidth,
+                selectedWindowWidth: selectedWidth
+            )
             sourcePlayheadOverlay(trackWidth: trackWidth)
 
             VStack(spacing: 0) {
@@ -473,13 +484,35 @@ private struct LayerTrimRangeStrip: View {
                 blendModeMenu
             }
 
-            Text(formatTime(activeRange.upperBound - activeRange.lowerBound))
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(Color.secondary.opacity(visualOpacity))
-                .frame(height: 22)
-
             layerControlCluster
         }
+    }
+
+    @ViewBuilder
+    private func selectionLengthOverlay(trackWidth: CGFloat, leadingOffset: CGFloat, selectedWindowWidth: CGFloat) -> some View {
+        let labelText = formatTime(activeRange.upperBound - activeRange.lowerBound)
+        let handleInset: CGFloat = 8
+        let handleX = leadingOffset + max(handleInset, selectedWindowWidth - handleInset)
+        let estimatedLabelWidth = CGFloat(max(36, min(88, Int(CGFloat(labelText.count) * 8.0 + 12))))
+        let fitsInside = selectedWindowWidth >= (estimatedLabelWidth + 22)
+        let desiredX = fitsInside
+            ? max(leadingOffset + selectionLengthHorizontalPadding, handleX - estimatedLabelWidth - 8)
+            : min(trackWidth - estimatedLabelWidth, handleX + 8)
+        let handleBandY: CGFloat = 6
+
+        Text(labelText)
+            .font(.system(.caption, design: .monospaced))
+            .foregroundStyle(Color.secondary.opacity(visualOpacity))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.black.opacity(0.42))
+            )
+            .frame(width: estimatedLabelWidth, height: 18, alignment: .center)
+            .offset(x: max(0, desiredX), y: handleBandY)
+            .frame(width: trackWidth, height: trackHeight, alignment: .topLeading)
+            .allowsHitTesting(false)
     }
 
     private var blendModeMenu: some View {

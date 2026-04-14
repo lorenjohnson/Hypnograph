@@ -123,12 +123,12 @@ extension Studio {
             Button("Next") { [self] in
                 cycleCompositionEffect(direction: 1)
             }
-            .keyboardShortcut("e", modifiers: [.command])
+            .keyboardShortcut("e", modifiers: [])
 
             Button("Previous") { [self] in
                 cycleCompositionEffect(direction: -1)
             }
-            .keyboardShortcut("e", modifiers: [.command, .shift])
+            .keyboardShortcut("e", modifiers: [.shift])
 
             Button("Clear") { [self] in
                 clearCompositionEffect()
@@ -185,13 +185,13 @@ extension Studio {
             Button("Next") { [self] in
                 cycleCurrentLayerEffect(direction: 1)
             }
-            .keyboardShortcut("e", modifiers: [])
+            .keyboardShortcut("e", modifiers: [.command])
             .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
 
             Button("Previous") { [self] in
                 cycleCurrentLayerEffect(direction: -1)
             }
-            .keyboardShortcut("e", modifiers: [.shift])
+            .keyboardShortcut("e", modifiers: [.command, .shift])
             .disabled(disableMainWindowShortcuts || !hasSelectedActualLayer)
         }
 

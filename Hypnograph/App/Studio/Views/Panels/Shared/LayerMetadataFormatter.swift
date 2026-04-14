@@ -34,7 +34,7 @@ enum LayerMetadataFormatter {
             parts.append(locationText)
         }
 
-        parts.append("(\(summary.fileName))")
+        parts.append(summary.fileName)
         parts.append(summary.totalLengthText)
         return parts.joined(separator: " | ")
     }

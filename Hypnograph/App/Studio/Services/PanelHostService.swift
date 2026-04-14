@@ -148,9 +148,7 @@ private enum PanelKind {
 
     var shouldRefreshRootViewOnSync: Bool {
         switch self {
-        case .hypnograms, .newCompositions, .playerControls:
-            return true
-        default:
+        case .hypnograms, .newCompositions, .properties, .effects, .playerControls:
             return false
         }
     }

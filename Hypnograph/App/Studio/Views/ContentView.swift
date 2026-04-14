@@ -121,6 +121,10 @@ struct ContentView: View {
         10
     }
 
+    private var notificationBottomPadding: CGFloat {
+        shouldShowStudioPanelToolbar ? 260 : 20
+    }
+
     private var topRightIndicator: (text: String, color: Color)? {
         // LIVE indicator (same placement/size as the layer indicator)
         if main.isLiveMode {
@@ -149,7 +153,7 @@ struct ContentView: View {
         return nil
     }
 
-    private var shouldShowLoopSequenceIndicator: Bool {
+    private var shouldShowLoopCompositionIndicator: Bool {
         main.isLoopCompositionEnabled
     }
 
@@ -264,6 +268,21 @@ struct ContentView: View {
         .accessibilityValue("\(Int((progress * 100).rounded())) percent")
     }
 
+    private var loopCompositionHUDIcon: some View {
+        ZStack(alignment: .topTrailing) {
+            Image(systemName: "arrow.counterclockwise")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(.blue)
+                .frame(width: 22, height: 34, alignment: .center)
+
+            Text("1")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(.blue)
+                .offset(x: 5, y: 2)
+        }
+        .frame(width: 22, height: 34, alignment: .center)
+    }
+
     private var playerControlsContent: some View {
         PlayerControlsPanel(
             isPaused: main.activePlayer.isPaused,
@@ -279,6 +298,7 @@ struct ContentView: View {
             liveModeSelection: main.isLiveModeAvailable ? liveModeSelectionBinding : nil,
             sequenceEntries: currentCompositionEntries,
             layerTrimContexts: layerTrimContexts,
+            renderQueueCount: main.renderQueueActiveJobs,
             visualOpacity: panelOpacity,
             panelOpacity: panelOpacityBinding,
             volume: Binding(
@@ -334,7 +354,6 @@ struct ContentView: View {
             onToggleGenerateAtEnd: { main.toggleGenerateAtEnd() },
             onCyclePlaybackLoopMode: { main.cyclePlaybackLoopMode() },
             onSnapshotCurrent: { main.saveSnapshotImage() },
-            onSaveCurrent: { main.saveComposition() },
             onRenderCurrent: { main.renderAndSaveVideo() },
             onRenderSequence: { main.renderAndSaveSequenceVideo() },
             onCommitLayerTrimRange: { layerIndex, range in
@@ -402,11 +421,8 @@ struct ContentView: View {
                         .transition(.scale(scale: 0.9).combined(with: .opacity))
                 }
 
-                if shouldShowLoopSequenceIndicator {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.blue)
-                        .frame(width: 22, height: 34, alignment: .center)
+                if shouldShowLoopCompositionIndicator {
+                    loopCompositionHUDIcon
                 }
 
                 if shouldShowGenerateAtEndIndicator {
@@ -498,7 +514,7 @@ struct ContentView: View {
             )
             .frame(width: 0, height: 0)
         )
-        .appNotifications()
+        .appNotifications(bottomPadding: notificationBottomPadding)
         .background(Color.black)
         .onReceive(NotificationCenter.default.publisher(for: Self.hidePanelsNowNotification)) { _ in
             panelHostService.hidePanelsNow()

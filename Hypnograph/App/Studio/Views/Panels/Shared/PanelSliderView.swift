@@ -10,6 +10,7 @@ struct PanelSliderView: NSViewRepresentable {
     var step: Double = 0
     var snapMarkers: [Double] = []
     var thumbDiameter: CGFloat = 16
+    var fillColor: NSColor = .controlAccentColor
     var onEditingChanged: ((Bool) -> Void)? = nil
 
     @SwiftUI.Environment(\.isEnabled) private var isEnabled
@@ -31,6 +32,7 @@ struct PanelSliderView: NSViewRepresentable {
         nsView.step = step
         nsView.snapMarkers = snapMarkers
         nsView.thumbDiameter = thumbDiameter
+        nsView.fillColor = fillColor
         nsView.onValueChanged = { newValue in
             value = newValue
         }
@@ -65,6 +67,9 @@ final class PanelSliderControl: NSControl {
             needsDisplay = true
             invalidateIntrinsicContentSize()
         }
+    }
+    var fillColor: NSColor = .controlAccentColor {
+        didSet { needsDisplay = true }
     }
     private let trackHeight: CGFloat = 4
     private let markerDiameter: CGFloat = 3
@@ -105,7 +110,7 @@ final class PanelSliderControl: NSControl {
             height: trackRect.height
         )
         let selectionPath = NSBezierPath(roundedRect: selectionRect, xRadius: trackHeight / 2, yRadius: trackHeight / 2)
-        NSColor.controlAccentColor.setFill()
+        fillColor.setFill()
         selectionPath.fill()
 
         drawThumb(centerX: centerX, active: isTrackingThumb)

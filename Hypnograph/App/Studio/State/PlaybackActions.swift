@@ -5,7 +5,6 @@
 
 import Foundation
 import HypnoCore
-import HypnoUI
 
 @MainActor
 extension Studio {
@@ -72,16 +71,6 @@ extension Studio {
 
     func setPlaybackLoopMode(_ mode: PlaybackLoopMode) {
         state.setPlaybackLoopMode(mode)
-        let message: String
-        switch mode {
-        case .off:
-            message = "Loop Off"
-        case .composition:
-            message = "Loop Composition"
-        case .sequence:
-            message = "Loop Sequence"
-        }
-        AppNotifications.show(message, flash: true, duration: 1.25)
     }
 
     func cyclePlaybackLoopMode() {

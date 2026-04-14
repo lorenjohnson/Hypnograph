@@ -45,6 +45,7 @@ struct NewCompositionsPanel: View {
                     generationParametersContent
                 }
             }
+            .padding(.top, 2)
             .id(settingsStore.value.newCompositionsPanelTab)
         }
         .padding(14)

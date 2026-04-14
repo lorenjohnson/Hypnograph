@@ -15,6 +15,7 @@ struct PlayerControlsPanel: View {
     let liveModeSelection: Binding<Int>?
     let sequenceEntries: [CompositionEntry]
     let layerTrimContexts: [LayerTrimContext]
+    let renderQueueCount: Int
     let visualOpacity: Double
     @Binding var panelOpacity: Double
     @Binding var volume: Double
@@ -41,18 +42,12 @@ struct PlayerControlsPanel: View {
     let onToggleGenerateAtEnd: () -> Void
     let onCyclePlaybackLoopMode: () -> Void
     let onSnapshotCurrent: () -> Void
-    let onSaveCurrent: () -> Void
     let onRenderCurrent: () -> Void
     let onRenderSequence: () -> Void
     let onCommitLayerTrimRange: (Int, ClosedRange<Double>) -> Void
 
-    @State private var pendingTooltipWorkItem: DispatchWorkItem?
-    @State private var visibleTooltipControlID: String?
-    @State private var visibleTooltipText: String?
     @State private var previousVolumeBeforeMute: Double = 0.8
     @State private var draggedCompositionID: UUID?
-
-    private let tooltipDelay: TimeInterval = 0.85
 
     private var totalSequenceDurationSeconds: Double {
         sequenceEntries.reduce(0) { partial, entry in
@@ -66,7 +61,7 @@ struct PlayerControlsPanel: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            dockHeader
+            controlsRow
 
             if !layerTrimContexts.isEmpty {
                 LayerTrimView(
@@ -102,7 +97,7 @@ struct PlayerControlsPanel: View {
                 .padding(.horizontal, 2)
             }
 
-            controlsRow
+            dockHeader
         }
         .padding(.horizontal, 16)
         .padding(.top, 10)
@@ -122,115 +117,51 @@ struct PlayerControlsPanel: View {
                 previousVolumeBeforeMute = newValue
             }
         }
-        .onDisappear {
-            pendingTooltipWorkItem?.cancel()
-            pendingTooltipWorkItem = nil
-            visibleTooltipControlID = nil
-            visibleTooltipText = nil
-        }
     }
 
     private var dockHeader: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 10) {
-                HStack(spacing: 8) {
-                    ForEach(panelToolbarItems) { item in
-                        panelToggleButton(item)
+        GeometryReader { geometry in
+            let showPanelLabels = shouldShowPanelLabels(availableWidth: geometry.size.width)
+
+            HStack(spacing: 8) {
+                HStack(spacing: 10) {
+                    HStack(spacing: 8) {
+                        ForEach(panelToolbarItems) { item in
+                            panelToggleButton(item, showLabel: showPanelLabels)
+                        }
+                    }
+
+                    PanelSliderView(
+                        value: $panelOpacity,
+                        bounds: 0.32...0.92,
+                        fillColor: NSColor.secondaryLabelColor.withAlphaComponent(0.72)
+                    )
+                        .frame(width: 92)
+                        .help("Adjust all Studio panel transparency.")
+
+                    if let liveModeSelection {
+                        Divider()
+                            .frame(height: 20)
+
+                        Picker("", selection: liveModeSelection) {
+                            Text("Edit").tag(0)
+                            Text("Live").tag(1)
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 156)
                     }
                 }
 
-                PanelSliderView(value: $panelOpacity, bounds: 0.32...0.92)
-                    .frame(width: 92)
-                    .help("Adjust all Studio panel transparency.")
+                Spacer(minLength: 0)
 
-                if let liveModeSelection {
-                    Divider()
-                        .frame(height: 20)
-
-                    Picker("", selection: liveModeSelection) {
-                        Text("Edit").tag(0)
-                        Text("Live").tag(1)
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 156)
-                }
+                bottomActionSection
             }
-
-            Spacer(minLength: 0)
-
-            Button(action: onToggleShowFullClips) {
-                Image(systemName: "arrow.left.and.right.circle")
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(
-                        isShowingFullClips
-                        ? Color.accentColor
-                        : Color.white.opacity(0.72 + (0.2 * chromeOpacity))
-                    )
-                    .frame(width: 28, height: 28)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(
-                                isShowingFullClips
-                                ? Color.accentColor.opacity(0.16)
-                                : Color.clear
-                            )
-                    )
-            }
-            .buttonStyle(.plain)
-            .help("Show Full Clips (F)")
-
-            Button(action: onToggleGenerateAtEnd) {
-                Image(systemName: "sparkles")
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(
-                        isGenerateAtEndEnabled
-                        ? Color.accentColor
-                        : Color.white.opacity(0.72 + (0.2 * chromeOpacity))
-                    )
-                    .frame(width: 28, height: 28)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(
-                                isGenerateAtEndEnabled
-                                ? Color.accentColor.opacity(0.16)
-                                : Color.clear
-                            )
-                    )
-            }
-            .buttonStyle(.plain)
-            .help("Generate at End")
-
-            Menu {
-                Button {
-                    onAddSourceFromFiles()
-                } label: {
-                    Label("From Files...", systemImage: "doc")
-                }
-
-                Button {
-                    onAddSourceFromPhotos()
-                } label: {
-                    Label("From Photos...", systemImage: "photo")
-                }
-
-                Button {
-                    onAddSourceFromRandom()
-                } label: {
-                    Label("Random Source", systemImage: "dice")
-                }
-            } label: {
-                Image(systemName: "plus")
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(Color.white.opacity(0.72 + (0.2 * chromeOpacity)))
-                    .frame(width: 28, height: 28)
-            }
-            .menuStyle(.borderlessButton)
-            .help("Add Layer")
         }
+        .frame(height: 32)
     }
 
     private var controlsRow: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 12) {
             volumeSection
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -243,33 +174,45 @@ struct PlayerControlsPanel: View {
     }
 
     private var volumeSection: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             Button(action: toggleMute) {
                 Image(systemName: volume <= 0.001 ? "speaker.slash.fill" : "speaker.fill")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color.secondary.opacity(chromeOpacity))
-                    .frame(width: 16, height: 16)
+                    .frame(width: 14, height: 14)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help(volume <= 0.001 ? "Unmute" : "Mute")
 
             PanelSliderView(value: $volume, bounds: 0...1)
-                .frame(width: 120)
+                .frame(width: 96)
                 .help("Volume")
 
             Image(systemName: "speaker.wave.3.fill")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Color.secondary.opacity(chromeOpacity))
-                .frame(width: 16)
+                .frame(width: 14)
         }
     }
 
     private var transportSection: some View {
-        HStack(spacing: 14) {
-            deckButton(id: "prev", systemName: "backward.fill", tooltip: "Previous Composition", action: onPrevious)
+        HStack(spacing: 10) {
+            deckButton(
+                id: "prev",
+                systemName: "backward.fill",
+                tooltip: "Previous Composition",
+                size: .small,
+                action: onPrevious
+            )
             playPauseButton()
-            deckButton(id: "next", systemName: "forward.fill", tooltip: "Next Composition", action: onNext)
+            deckButton(
+                id: "next",
+                systemName: "forward.fill",
+                tooltip: "Next Composition",
+                size: .small,
+                action: onNext
+            )
 
             Divider()
                 .frame(height: 30)
@@ -280,37 +223,29 @@ struct PlayerControlsPanel: View {
                 tooltip: loopTooltip,
                 tint: .white,
                 activeBackground: (isLoopCompositionEnabled || isLoopSequenceEnabled) ? .blue : nil,
+                size: .small,
                 action: onCyclePlaybackLoopMode
             )
         }
     }
 
     private var actionSection: some View {
-        HStack(spacing: 14) {
-            deckButton(
-                id: "snapshot",
-                systemName: "camera.fill",
-                tooltip: "Save Snapshot (S)",
-                action: onSnapshotCurrent
+        HStack(spacing: 10) {
+            topDockIconButton(
+                systemName: "arrow.left.and.right.circle",
+                tooltip: "Show Full Clips (F)",
+                isActive: isShowingFullClips,
+                action: onToggleShowFullClips
             )
-            deckButton(
-                id: "save",
-                systemName: "square.and.arrow.down",
-                tooltip: "Save Current (CMD+S)",
-                action: onSaveCurrent
+
+            topDockIconButton(
+                systemName: "sparkles",
+                tooltip: "Generate at End",
+                isActive: isGenerateAtEndEnabled,
+                action: onToggleGenerateAtEnd
             )
-            deckButton(
-                id: "render",
-                systemName: "film",
-                tooltip: "Save & Render Current (CMD+OPT+S)",
-                action: onRenderCurrent
-            )
-            deckButton(
-                id: "render-sequence",
-                systemName: "film.stack",
-                tooltip: "Save & Render Sequence (CTRL+CMD+SHIFT+S)",
-                action: onRenderSequence
-            )
+
+            addLayerMenuButton(size: .large)
         }
     }
 
@@ -319,25 +254,17 @@ struct PlayerControlsPanel: View {
 
         return Button(action: onPlayPause) {
             Image(systemName: playPauseSystemName)
-                .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.68 + (0.32 * chromeOpacity)))
-                .frame(width: 28, height: 28)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 9)
+                .font(.system(size: 28, weight: .semibold))
+                .frame(width: 32, height: 32)
+                .foregroundStyle(
+                    isPaused
+                    ? Color.white.opacity(0.78 + (0.18 * chromeOpacity))
+                    : Color.blue.opacity(0.92)
+                )
+                .padding(4)
         }
-        .buttonStyle(DeckBarButtonStyle(chromeOpacity: chromeOpacity))
+        .buttonStyle(.plain)
         .help(tooltip)
-        .hudTooltip(tooltip)
-        .onHover { isHovering in
-            handleTooltipHover(isHovering: isHovering, controlID: "play_pause", tooltip: tooltip)
-        }
-        .overlay(alignment: .top) {
-            if visibleTooltipControlID == "play_pause", let visibleTooltipText {
-                tooltipBubble(text: visibleTooltipText)
-                    .offset(y: -44)
-                    .transition(.opacity)
-            }
-        }
     }
 
     private func toggleMute() {
@@ -377,51 +304,54 @@ struct PlayerControlsPanel: View {
     private var loopButtonLabel: some View {
         ZStack(alignment: .topTrailing) {
             Image(systemName: "arrow.counterclockwise")
-                .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 28, height: 28)
+                .font(.system(size: 18, weight: .semibold))
+                .frame(width: 21, height: 21)
+                .foregroundStyle(
+                    (isLoopCompositionEnabled || isLoopSequenceEnabled)
+                    ? Color.blue.opacity(0.92)
+                    : Color.white.opacity(0.78 + (0.18 * chromeOpacity))
+                )
 
             if isLoopCompositionEnabled {
                 Text("1")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(Color.black.opacity(0.65))
-                    )
-                    .offset(x: 6, y: -4)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(Color.blue.opacity(0.92))
+                    .offset(x: 5, y: -3)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
     }
 
     @ViewBuilder
-    private func panelToggleButton(_ item: StudioPanelToolbarItem) -> some View {
+    private func panelToggleButton(_ item: StudioPanelToolbarItem, showLabel: Bool) -> some View {
         let descriptor = item.descriptor
         let isVisible = isPanelVisible(descriptor.panelID)
 
-        if isVisible {
-            Button {
-                onTogglePanel(descriptor.panelID)
-            } label: {
-                Label("\(descriptor.title) (\(descriptor.shortcutLabel))", systemImage: descriptor.systemImage)
+        Button {
+            onTogglePanel(descriptor.panelID)
+        } label: {
+            Group {
+                if showLabel {
+                    Label(descriptor.title, systemImage: descriptor.systemImage)
+                        .font(.caption.weight(.medium))
+                        .lineLimit(1)
+                } else {
+                    Image(systemName: descriptor.systemImage)
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 16, height: 16)
+                }
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-            .help("\(descriptor.title) (\(descriptor.shortcutLabel))")
-        } else {
-            Button {
-                onTogglePanel(descriptor.panelID)
-            } label: {
-                Label("\(descriptor.title) (\(descriptor.shortcutLabel))", systemImage: descriptor.systemImage)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .help("\(descriptor.title) (\(descriptor.shortcutLabel))")
+            .modifier(
+                DockControlChrome(
+                    chromeOpacity: chromeOpacity,
+                    size: .small,
+                    isActive: isVisible,
+                    horizontalPadding: showLabel ? 10 : nil,
+                    verticalPadding: 5
+                )
+            )
         }
+        .buttonStyle(.plain)
+        .help("\(descriptor.title) (\(descriptor.shortcutLabel))")
     }
 
     private func deckButton<Label: View>(
@@ -430,25 +360,20 @@ struct PlayerControlsPanel: View {
         tooltip: String,
         tint: Color = .white,
         activeBackground: Color? = nil,
+        size: DockControlSize = .small,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             label()
-                .foregroundStyle(tint.opacity(0.68 + (0.32 * chromeOpacity)))
+                .foregroundStyle(
+                    activeBackground != nil
+                    ? tint.opacity(0.96)
+                    : Color.white.opacity(0.78 + (0.18 * chromeOpacity))
+                )
+                .padding(size == .large ? 5 : 4)
         }
-        .buttonStyle(DeckBarButtonStyle(activeBackground: activeBackground, chromeOpacity: chromeOpacity))
+        .buttonStyle(.plain)
         .help(tooltip)
-        .hudTooltip(tooltip)
-        .onHover { isHovering in
-            handleTooltipHover(isHovering: isHovering, controlID: id, tooltip: tooltip)
-        }
-        .overlay(alignment: .top) {
-            if visibleTooltipControlID == id, let visibleTooltipText {
-                tooltipBubble(text: visibleTooltipText)
-                    .offset(y: -44)
-                    .transition(.opacity)
-            }
-        }
     }
 
     private func deckButton(
@@ -457,89 +382,253 @@ struct PlayerControlsPanel: View {
         tooltip: String,
         tint: Color = .white,
         activeBackground: Color? = nil,
+        size: DockControlSize = .small,
         action: @escaping () -> Void
     ) -> some View {
         deckButton(
             id: id,
             label: {
                 Image(systemName: systemName)
-                    .font(.system(size: 24, weight: .semibold))
-                    .frame(width: 28, height: 28)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
+                    .font(.system(size: size == .large ? 22 : 18, weight: .semibold))
+                    .frame(width: size == .large ? 26 : 21, height: size == .large ? 26 : 21)
             },
             tooltip: tooltip,
             tint: tint,
             activeBackground: activeBackground,
+            size: size,
             action: action
         )
     }
 
-    private func handleTooltipHover(isHovering: Bool, controlID: String, tooltip: String) {
-        pendingTooltipWorkItem?.cancel()
-        pendingTooltipWorkItem = nil
-
-        if isHovering {
-            if visibleTooltipControlID != controlID {
-                visibleTooltipControlID = nil
-                visibleTooltipText = nil
+    private var bottomActionSection: some View {
+        HStack(spacing: 8) {
+            if renderQueueCount > 0 {
+                Text("Queue: \(renderQueueCount)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.58 + (0.16 * chromeOpacity)))
+                    .padding(.trailing, 2)
             }
-            let workItem = DispatchWorkItem {
-                withAnimation(.easeInOut(duration: 0.12)) {
-                    visibleTooltipControlID = controlID
-                    visibleTooltipText = tooltip
-                }
-            }
-            pendingTooltipWorkItem = workItem
-            DispatchQueue.main.asyncAfter(deadline: .now() + tooltipDelay, execute: workItem)
-            return
-        }
 
-        if visibleTooltipControlID == controlID {
-            withAnimation(.easeInOut(duration: 0.08)) {
-                visibleTooltipControlID = nil
-                visibleTooltipText = nil
+            smallDockIconButton(
+                systemName: "camera.fill",
+                tooltip: "Save Snapshot (S)",
+                action: onSnapshotCurrent
+            )
+            smallDockActionButton(
+                tooltip: "Save & Render Current",
+                action: onRenderCurrent
+            ) {
+                exportButtonLabel(badgedCurrent: true)
+            }
+            smallDockActionButton(
+                tooltip: "Save & Render Sequence",
+                action: onRenderSequence
+            ) {
+                exportButtonLabel(badgedCurrent: false)
             }
         }
     }
 
-    private func tooltipBubble(text: String) -> some View {
-        Text(text)
-            .font(.system(.caption, design: .monospaced))
-            .foregroundStyle(.white)
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .fixedSize(horizontal: true, vertical: true)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(Color.black.opacity(0.76))
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .stroke(Color.white.opacity(0.16), lineWidth: 1)
+    private func topDockIconButton(
+        systemName: String,
+        tooltip: String,
+        isActive: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 18, weight: .semibold))
+                .frame(width: 21, height: 21)
+                .foregroundStyle(
+                    isActive
+                    ? Color.blue.opacity(0.92)
+                    : Color.white.opacity(0.78 + (0.18 * chromeOpacity))
+                )
+                .padding(4)
+        }
+        .buttonStyle(.plain)
+        .help(tooltip)
+    }
+
+    private func smallDockIconButton(
+        systemName: String,
+        tooltip: String,
+        isActive: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 14, weight: .semibold))
+                .frame(width: 16, height: 16)
+                .modifier(
+                    DockControlChrome(
+                        chromeOpacity: chromeOpacity,
+                        size: .small,
+                        isActive: isActive
                     )
-            )
+                )
+        }
+        .buttonStyle(.plain)
+        .help(tooltip)
+    }
+
+    private func smallDockActionButton<Label: View>(
+        tooltip: String,
+        action: @escaping () -> Void,
+        @ViewBuilder label: () -> Label
+    ) -> some View {
+        Button(action: action) {
+            label()
+                .modifier(
+                    DockControlChrome(
+                        chromeOpacity: chromeOpacity,
+                        size: .small,
+                        isActive: false
+                    )
+                )
+        }
+        .buttonStyle(.plain)
+        .help(tooltip)
+    }
+
+    private func addLayerMenuButton(size: DockControlSize) -> some View {
+        Menu {
+            Button {
+                onAddSourceFromFiles()
+            } label: {
+                Label("From Files...", systemImage: "doc")
+            }
+
+            Button {
+                onAddSourceFromPhotos()
+            } label: {
+                Label("From Photos...", systemImage: "photo")
+            }
+
+            Button {
+                onAddSourceFromRandom()
+            } label: {
+                Label("Random Source", systemImage: "dice")
+            }
+        } label: {
+            Group {
+                if size == .large {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .frame(width: 21, height: 21)
+                        .foregroundStyle(Color.white.opacity(0.78 + (0.18 * chromeOpacity)))
+                        .padding(4)
+                } else {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 16, height: 16)
+                        .modifier(
+                            DockControlChrome(
+                                chromeOpacity: chromeOpacity,
+                                size: size,
+                                isActive: false
+                            )
+                        )
+                }
+            }
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .help("Add Layer")
+    }
+
+    private func exportButtonLabel(badgedCurrent: Bool) -> some View {
+        ZStack(alignment: .topTrailing) {
+            Image(systemName: "square.and.arrow.up")
+                .font(.system(size: 14, weight: .semibold))
+                .frame(width: 16, height: 16)
+
+            if badgedCurrent {
+                Text("1")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(.white)
+                    .offset(x: 5, y: -4)
+            }
+        }
+    }
+
+    private func shouldShowPanelLabels(availableWidth: CGFloat) -> Bool {
+        let threshold: CGFloat = liveModeSelection == nil ? 980 : 1140
+        return availableWidth >= threshold
     }
 }
 
-private struct DeckBarButtonStyle: ButtonStyle {
-    var activeBackground: Color?
-    var chromeOpacity: Double = 1.0
+private enum DockControlSize {
+    case small
+    case large
+}
 
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(backgroundColor(isPressed: configuration.isPressed))
-            )
-            .scaleEffect(configuration.isPressed ? 0.94 : 1.0)
-            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
+private struct DockControlChrome: ViewModifier {
+    let chromeOpacity: Double
+    let size: DockControlSize
+    let isActive: Bool
+    var activeTint: Color = .white
+    var activeFill: Color = .accentColor
+    var activeStroke: Color = .accentColor
+    var horizontalPadding: CGFloat? = nil
+    var verticalPadding: CGFloat? = nil
+
+    private var resolvedHorizontalPadding: CGFloat {
+        if let horizontalPadding { return horizontalPadding }
+        switch size {
+        case .small: return 8
+        case .large: return 9
+        }
     }
 
-    private func backgroundColor(isPressed: Bool) -> Color {
-        if let activeBackground {
-            return isPressed ? activeBackground.opacity(0.46 + (0.36 * chromeOpacity)) : activeBackground.opacity(0.62 + (0.38 * chromeOpacity))
+    private var resolvedVerticalPadding: CGFloat {
+        if let verticalPadding { return verticalPadding }
+        switch size {
+        case .small: return 5
+        case .large: return 7
         }
-        return isPressed ? Color.white.opacity(0.10 + (0.14 * chromeOpacity)) : Color.white.opacity(0.04 + (0.06 * chromeOpacity))
+    }
+
+    private var cornerRadius: CGFloat {
+        switch size {
+        case .small: return 8
+        case .large: return 8
+        }
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .foregroundStyle(foregroundColor)
+            .padding(.horizontal, resolvedHorizontalPadding)
+            .padding(.vertical, resolvedVerticalPadding)
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(backgroundColor)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(borderColor, lineWidth: 1)
+            )
+    }
+
+    private var foregroundColor: Color {
+        if isActive {
+            return activeTint
+        }
+        return Color.white.opacity(0.78 + (0.18 * chromeOpacity))
+    }
+
+    private var backgroundColor: Color {
+        if isActive {
+            return activeFill.opacity(0.84 + (0.12 * chromeOpacity))
+        }
+        return Color.white.opacity(0.05 + (0.04 * chromeOpacity))
+    }
+
+    private var borderColor: Color {
+        if isActive {
+            return activeStroke.opacity(0.90 + (0.10 * chromeOpacity))
+        }
+        return Color.white.opacity(0.12 + (0.10 * chromeOpacity))
     }
 }

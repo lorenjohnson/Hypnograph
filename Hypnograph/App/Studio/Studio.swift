@@ -45,6 +45,7 @@ final class Studio: ObservableObject {
     @Published var hypnogram: Hypnogram
     @Published var currentCompositionIndex: Int
     @Published private(set) var hypnogramRevision: Int = 0
+    @Published private(set) var renderQueueActiveJobs: Int = 0
 
     /// In-app deck - a layered clip
     let player: PlayerState
@@ -159,6 +160,7 @@ final class Studio: ObservableObject {
         self.state = state
         self.panels = PanelStateController()
         self.renderQueue = renderQueue
+        self.renderQueueActiveJobs = renderQueue.activeJobs
         self.panelHostService = dependencies.makePanelHostService()
         self.photosIntegrationService = dependencies.photosIntegrationService
 
@@ -199,6 +201,12 @@ final class Studio: ObservableObject {
 
         // Create audio controller (handles device selection, volume, persistence)
         self.audioController = AudioController(settingsStore: state.settingsStore, livePlayer: livePlayer)
+
+        self.renderQueue.onActiveJobsChanged = { [weak self] count in
+            Task { @MainActor in
+                self?.renderQueueActiveJobs = count
+            }
+        }
 
         player.configureDocumentBindings(
             compositionProvider: { [unowned self] in self.currentComposition },

@@ -41,8 +41,14 @@ struct HypnographApp: App {
         )
         let renderQueue = RenderEngine.ExportQueue()
         renderQueue.onStatusMessage = { message in
-            let duration: TimeInterval = (message == "Rendering started") ? 1.0 : 2.0
-            AppNotifications.show(message, flash: true, duration: duration)
+            switch message {
+            case "Rendering started", "Sequence render started":
+                AppNotifications.show(message, flash: true, duration: 1.1)
+            case let failure where failure.hasPrefix("Save failed:"):
+                AppNotifications.show(failure, flash: false)
+            default:
+                break
+            }
         }
         self.renderQueue = renderQueue
 

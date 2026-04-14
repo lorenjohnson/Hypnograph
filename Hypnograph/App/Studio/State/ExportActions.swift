@@ -226,20 +226,47 @@ extension Studio {
 
         switch state.settings.renderVideoSaveDestination {
         case .diskOnly:
+            showRenderedVideoSavedNotification(
+                message: "Render complete: \(outputURL.lastPathComponent)",
+                revealURL: outputURL
+            )
             return
 
         case .diskAndPhotosIfAvailable:
-            guard photosIntegrationService.canWrite else { return }
+            guard photosIntegrationService.canWrite else {
+                showRenderedVideoSavedNotification(
+                    message: "Render complete: \(outputURL.lastPathComponent)",
+                    revealURL: outputURL
+                )
+                return
+            }
             let saved = await photosIntegrationService.saveVideo(at: outputURL)
             if !saved {
-                AppNotifications.show("Saved to disk (Photos save failed)", flash: true, duration: 2.0)
+                showRenderedVideoSavedNotification(
+                    message: "Saved to disk (Photos save failed): \(outputURL.lastPathComponent)",
+                    revealURL: outputURL
+                )
+            } else {
+                showRenderedVideoSavedNotification(
+                    message: "Render complete: \(outputURL.lastPathComponent)",
+                    revealURL: outputURL
+                )
             }
 
         case .photosIfAvailableOtherwiseDisk:
-            guard photosIntegrationService.canWrite else { return }
+            guard photosIntegrationService.canWrite else {
+                showRenderedVideoSavedNotification(
+                    message: "Render complete: \(outputURL.lastPathComponent)",
+                    revealURL: outputURL
+                )
+                return
+            }
             let saved = await photosIntegrationService.saveVideo(at: outputURL)
             guard saved else {
-                AppNotifications.show("Saved to disk (Photos save failed)", flash: true, duration: 2.0)
+                showRenderedVideoSavedNotification(
+                    message: "Saved to disk (Photos save failed): \(outputURL.lastPathComponent)",
+                    revealURL: outputURL
+                )
                 return
             }
 
@@ -248,8 +275,17 @@ extension Studio {
                 AppNotifications.show("Saved to Apple Photos", flash: true, duration: 1.5)
             } catch {
                 print("Studio: failed to remove local render after Photos save: \(error)")
-                AppNotifications.show("Saved to Photos and disk", flash: true, duration: 1.75)
+                showRenderedVideoSavedNotification(
+                    message: "Saved to Photos and disk: \(outputURL.lastPathComponent)",
+                    revealURL: outputURL
+                )
             }
+        }
+    }
+
+    private func showRenderedVideoSavedNotification(message: String, revealURL: URL) {
+        AppNotifications.show(message, flash: false) {
+            NSWorkspace.shared.activateFileViewerSelecting([revealURL])
         }
     }
 
