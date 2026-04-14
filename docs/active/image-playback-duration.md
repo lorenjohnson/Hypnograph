@@ -1,38 +1,65 @@
 ---
-doc-status: draft
+doc-status: in-progress
 ---
 
 # Image Playback Duration
 
 ## Overview
 
-This project is about giving image-only layers a real playback model instead of letting them fall through video-oriented behavior that does not fit. Right now, when a composition or layer is built from still images only, playback duration can become undefined, image rendering can behave inconsistently, and the app may fail to advance because there is no clear concept of how long an image should remain on screen.
+Still images already have an explicit timed-media model in the core recipe and renderer layers, but preview playback remains unreliable enough that this project is not done.
 
-The likely direction is to treat image playback length as its own explicit piece of state, separate from video in/out trimming. That would allow image-only layers to render predictably, participate in timeline UI in a meaningful way, and still respect composition-length constraints and random generation behavior without pretending they are videos.
+The current codebase already treats stills as timed clips:
+- image layers carry duration through `MediaClip.duration`
+- image sources created from files, Photos, and random selection all receive clip lengths
+- composition duration resolves from the longest layer clip
+- renderer and export already accept timed still-image clips as first-class inputs
 
-This project is not just about fixing one hang or one missing thumbnail. It is about making still images first-class timed media inside the playback model.
+The remaining problem is the preview player. We made real progress on still-image-only playback, especially for simple cases, but the special handling in preview is still flaky enough that it cannot merge as-is. In particular, transitions other than `None` and some pause/resume or composition-switching paths can still push preview into an indeterminate state.
 
 ## Rules
 
-- MUST define a clear duration model for image-only layers instead of relying on implicit or effectively infinite playback.
-- MUST make image-only compositions advance correctly once their playback duration is complete.
+- MUST keep still-image timing explicit through `MediaClip.duration` rather than relying on implicit or effectively infinite playback.
+- MUST keep image-only compositions advancing correctly once their timed duration completes.
 - MUST preserve mixed-media support, so images and videos can still coexist in the same composition model.
-- MUST treat image playback length as separate from video in/out points.
-- SHOULD provide timeline behavior for image-only layers that still feels legible, even if it differs from video trimming UI.
-- SHOULD make random image selection respect both image playback duration and the existing new-composition length constraints.
-- MUST NOT solve this by simply degrading image support or treating still images as a second-class source type.
+- MUST continue treating still-image playback length as separate from video in/out points.
+- SHOULD keep still-image special handling as locally contained as possible, preferably inside preview-player behavior rather than spread across unrelated playback code.
+- SHOULD keep random image selection aligned with composition-length constraints and the existing clip-length request path.
+- MUST NOT introduce a second duration model for still images unless a real product need emerges that the current `MediaClip.duration` model cannot satisfy.
 
-## Plan
+## Progress
 
-- Smallest meaningful next slice: trace how image-only layers currently derive duration, rendering, and advancement behavior, and identify where the playback model assumes video semantics.
-- Immediate acceptance check: there is a clear, implementable model for how long an image-only layer plays and when an image-only composition should advance.
-- Follow-on slice: add explicit playback length for image-only layers and make image-only compositions render and advance reliably.
-- Later slice: improve timeline presentation for image-only layers so the UI reflects the new duration model clearly.
+- Confirmed that the core model was already in place:
+  - image clip creation from files and Photos sets explicit duration
+  - image duration editing already flows through `setLayerRange`
+  - composition duration already resolves from layer durations
+  - render and export tests already support still-image clips
+- Improved preview playback behavior enough to make some cases work:
+  - single still-image compositions can now play
+  - multi-still compositions improved
+  - some still-image handoff cases now work where they previously froze immediately
+- Added preview-player-side special handling experiments:
+  - explicit first-frame priming for still-image compositions
+  - preview-owned timing for still-image duration/end behavior
+  - pause/resume refresh sequencing
+
+## Current Problems
+
+- Still-image preview playback is still flaky in some cases.
+- Pause/resume paths can still leave still-image playback in a bad state.
+- Transition styles other than `None` appear especially unstable with still-image compositions.
+- Once preview gets into a bad state, switching back to video compositions can sometimes show black output until enough composition switching “clears” the state.
+- The still-image handling added so far may now be interfering with normal video/transition playback, which suggests the preview-specific special handling needs to be simplified and more tightly contained.
+
+## Next Direction
+
+The most likely next step is not to keep layering fixes onto the current behavior. It is to contain still-image preview handling more deliberately inside the preview player path and reduce how much it leaks into the ordinary video playback/transition path.
+
+That unfinished code is being parked on branch:
+
+- `project/image-playback-duration`
 
 ## Open Questions
 
-- Does this project reopen the question of combining the timeline thumbnail view attached to the play bar with the composition and layer timeline view inside the Composition window?
-- Should image playback length live per layer, per selected source item, or both?
-- What is the simplest useful timeline representation for an image-only layer: one thumbnail with a duration control, or something richer?
-- How should random image selection map onto the configured composition-length range when no video duration exists to trim against?
-- Are there any existing playback or thumbnail assumptions elsewhere in the app that break once still images become explicitly timed media?
+- What is the smallest preview-player architecture that lets still-image compositions behave like timed media without destabilizing video playback or transitions?
+- Should still-image preview timing be owned entirely by `PlayerView`, or should the lower-level display/player pipeline itself become more aware of timed still playback?
+- Do we need a clearer split between “prime a still frame for display” and “advance timed composition playback” so those responsibilities stop overlapping awkwardly?

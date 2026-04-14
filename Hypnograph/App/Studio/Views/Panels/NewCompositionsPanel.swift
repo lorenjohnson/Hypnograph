@@ -4,12 +4,65 @@ import HypnoCore
 struct NewCompositionsPanel: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
+    @ObservedObject private var settingsStore: StudioSettingsStore
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
+    @SwiftUI.Environment(\.panelLayoutInvalidator) private var panelLayoutInvalidator
 
     private var isLiveMode: Bool { main.isLiveMode }
     private var player: PlayerState { main.activePlayer }
 
+    init(state: HypnographState, main: Studio) {
+        self.state = state
+        self.main = main
+        _settingsStore = ObservedObject(initialValue: state.settingsStore)
+    }
+
+    private var tabBinding: Binding<NewCompositionsPanelTab> {
+        Binding(
+            get: { settingsStore.value.newCompositionsPanelTab },
+            set: { newValue in
+                settingsStore.update { settings in
+                    settings.newCompositionsPanelTab = newValue
+                }
+            }
+        )
+    }
+
     var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Picker("", selection: tabBinding) {
+                Text("Sources").tag(NewCompositionsPanelTab.sources)
+                Text("Generation Parameters").tag(NewCompositionsPanelTab.generationParameters)
+            }
+            .pickerStyle(.segmented)
+            .frame(maxWidth: .infinity)
+
+            Group {
+                switch settingsStore.value.newCompositionsPanelTab {
+                case .sources:
+                    SourcesContentView(state: state, main: main)
+                case .generationParameters:
+                    generationParametersContent
+                }
+            }
+            .id(settingsStore.value.newCompositionsPanelTab)
+        }
+        .padding(14)
+        .padding(.bottom, 18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(windowPanelBackground)
+        .onChange(of: settingsStore.value.newCompositionsPanelTab) { _, _ in
+            panelLayoutInvalidator()
+        }
+    }
+
+    @ViewBuilder
+    private func sectionDivider() -> some View {
+        PanelGlassDividerView()
+            .padding(.vertical, 4)
+    }
+
+    private var generationParametersContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             PanelInlineFieldRowView(title: "Max Layers", valueText: "\(player.config.maxLayers)") {
                 Stepper(
@@ -20,9 +73,9 @@ struct NewCompositionsPanel: View {
                     ),
                     in: 1...20
                 )
-                    .labelsHidden()
-                    .disabled(isLiveMode)
-                    .opacity(isLiveMode ? 0.55 : 1.0)
+                .labelsHidden()
+                .disabled(isLiveMode)
+                .opacity(isLiveMode ? 0.55 : 1.0)
             }
 
             compositionLengthRangeRow()
@@ -35,8 +88,7 @@ struct NewCompositionsPanel: View {
                     set: { newValue in
                         state.settingsStore.update { $0.randomGlobalEffect = newValue }
                     }
-                )
-                ,
+                ),
                 frequency: Binding(
                     get: { state.settings.randomGlobalEffectFrequency },
                     set: { newValue in
@@ -81,16 +133,6 @@ struct NewCompositionsPanel: View {
             }
 #endif
         }
-        .padding(14)
-        .padding(.bottom, 18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(windowPanelBackground)
-    }
-
-    @ViewBuilder
-    private func sectionDivider() -> some View {
-        PanelGlassDividerView()
-            .padding(.vertical, 4)
     }
 
     @ViewBuilder

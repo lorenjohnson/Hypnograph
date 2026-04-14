@@ -134,13 +134,15 @@ struct HypnogramRowView: View {
 /// Thumbnail view that displays an NSImage or placeholder
 struct ThumbnailView: View {
     let image: NSImage?
+    var fill: Bool = false
 
     var body: some View {
         ZStack {
             if let image = image {
+                Color.white.opacity(0.05)
                 Image(nsImage: image)
                     .resizable()
-                    .scaledToFill()
+                    .modifier(ThumbnailScalingModifier(fill: fill))
             } else {
                 // Placeholder
                 Color.white.opacity(0.1)
@@ -150,5 +152,17 @@ struct ThumbnailView: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+private struct ThumbnailScalingModifier: ViewModifier {
+    let fill: Bool
+
+    func body(content: Content) -> some View {
+        if fill {
+            content.scaledToFill()
+        } else {
+            content.scaledToFit()
+        }
     }
 }

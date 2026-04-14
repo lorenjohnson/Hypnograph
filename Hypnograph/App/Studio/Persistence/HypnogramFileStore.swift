@@ -50,21 +50,14 @@ enum HypnogramFileStore {
     @discardableResult
     static func save(_ hypnogram: Hypnogram, snapshot: CGImage, to url: URL) -> URL? {
         guard let previewImages = CompositionPreviewImageCodec.makePreviewImages(from: snapshot) else {
-            print("❌ HypnogramFileStore: Failed to encode composition previews")
+            print("❌ HypnogramFileStore: Failed to encode hypnogram poster image")
             return nil
         }
 
         var hypnogramWithPreview = hypnogram
-        if !hypnogramWithPreview.compositions.isEmpty {
-            if hypnogramWithPreview.compositions[0].snapshot == nil {
-                hypnogramWithPreview.compositions[0].snapshot = previewImages.snapshotBase64
-            }
-            if hypnogramWithPreview.compositions[0].thumbnail == nil {
-                hypnogramWithPreview.compositions[0].thumbnail = previewImages.thumbnailBase64
-            }
-        }
 
-        // Preserve the existing document-level poster image for saved files for now.
+        // Preserve an explicit document-level poster image for save/favorite flows.
+        // Composition previews are persisted separately from deterministic thumbnail generation.
         hypnogramWithPreview.snapshot = previewImages.snapshotBase64
 
         // Encode to JSON

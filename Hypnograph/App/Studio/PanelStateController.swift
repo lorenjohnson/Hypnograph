@@ -198,12 +198,9 @@ final class PanelStateController: ObservableObject {
     private func migratedPanelVisibilityState(from loadedState: PanelVisibilityState) -> PanelVisibilityState {
         var migratedState = PanelVisibilityState()
         let knownPanelIDs = [
-            "sequencePanel",
             "hypnogramsPanel",
-            "sourcesPanel",
             "newCompositionsPanel",
-            "outputSettingsPanel",
-            "compositionPanel",
+            "propertiesPanel",
             "effectsPanel",
             "playerControlsPanel",
             "livePreviewPanel",
@@ -217,15 +214,64 @@ final class PanelStateController: ObservableObject {
             }
         }
 
+        migratePanelVisibility(loadedState, into: &migratedState)
+
         migratedState.isCleanScreen = false
         return migratedState
     }
 
     private func migratePanelFrameKeys(_ frames: [String: CGRect]) -> [String: CGRect] {
-        frames
+        var migrated = frames
+        if migrated["propertiesPanel"] == nil {
+            migrated["propertiesPanel"] = migrated["compositionPanel"] ?? migrated["outputSettingsPanel"]
+        }
+        if migrated["newCompositionsPanel"] == nil {
+            migrated["newCompositionsPanel"] = migrated["sourcesPanel"]
+        }
+        migrated.removeValue(forKey: "sourcesPanel")
+        migrated.removeValue(forKey: "sequencePanel")
+        migrated.removeValue(forKey: "compositionPanel")
+        migrated.removeValue(forKey: "outputSettingsPanel")
+        return migrated
     }
 
     private func migratePanelOrderIDs(_ ids: [String]) -> [String] {
-        ids
+        var migrated: [String] = []
+        var insertedProperties = false
+
+        for id in ids {
+            switch id {
+            case "sequencePanel":
+                continue
+            case "sourcesPanel":
+                if !migrated.contains("newCompositionsPanel") {
+                    migrated.append("newCompositionsPanel")
+                }
+            case "compositionPanel", "outputSettingsPanel":
+                if !insertedProperties {
+                    migrated.append("propertiesPanel")
+                    insertedProperties = true
+                }
+            default:
+                migrated.append(id)
+            }
+        }
+
+        return migrated
+    }
+
+    private func migratePanelVisibility(_ loadedState: PanelVisibilityState, into migratedState: inout PanelVisibilityState) {
+        let oldPropertiesVisible =
+            loadedState.isVisible("propertiesPanel") ||
+            loadedState.isVisible("compositionPanel") ||
+            loadedState.isVisible("outputSettingsPanel")
+
+        if oldPropertiesVisible {
+            migratedState.set("propertiesPanel", visible: true)
+        }
+
+        if loadedState.isVisible("sourcesPanel") {
+            migratedState.set("newCompositionsPanel", visible: true)
+        }
     }
 }

@@ -9,6 +9,7 @@ struct PanelSliderView: NSViewRepresentable {
 
     var step: Double = 0
     var snapMarkers: [Double] = []
+    var thumbDiameter: CGFloat = 16
     var onEditingChanged: ((Bool) -> Void)? = nil
 
     @SwiftUI.Environment(\.isEnabled) private var isEnabled
@@ -29,6 +30,7 @@ struct PanelSliderView: NSViewRepresentable {
         nsView.sliderBounds = bounds
         nsView.step = step
         nsView.snapMarkers = snapMarkers
+        nsView.thumbDiameter = thumbDiameter
         nsView.onValueChanged = { newValue in
             value = newValue
         }
@@ -58,7 +60,12 @@ final class PanelSliderControl: NSControl {
     private(set) var currentValue: Double = 0
     private var isTrackingThumb = false
 
-    private let thumbDiameter: CGFloat = 16
+    var thumbDiameter: CGFloat = 16 {
+        didSet {
+            needsDisplay = true
+            invalidateIntrinsicContentSize()
+        }
+    }
     private let trackHeight: CGFloat = 4
     private let markerDiameter: CGFloat = 3
     private let markerSpacing: CGFloat = 6

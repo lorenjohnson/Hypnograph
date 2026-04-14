@@ -20,9 +20,6 @@ struct ContentView: View {
 
     private static let hidePanelsNowNotification = Notification.Name("StudioHidePanelsNow")
     private static let showPanelsNowNotification = Notification.Name("StudioShowPanelsNow")
-    private static let toolbarTopPadding: CGFloat = 12
-    private static let toolbarReserveHeight: CGFloat = 58
-
     init(state: HypnographState, main: Studio) {
         self.state = state
         self.main = main
@@ -36,35 +33,52 @@ struct ContentView: View {
         guard !currentLayers.isEmpty else { return [] }
 
         func makeContext(layer: Layer, index: Int) -> LayerTrimContext? {
-            guard layer.mediaClip.file.mediaKind == .video else { return nil }
-
-            let total = max(0.1, layer.mediaClip.file.duration.seconds)
-            let start = max(0, min(layer.mediaClip.startTime.seconds, total))
-            let maxSelection = total
-            let selectedDuration = min(layer.mediaClip.duration.seconds, maxSelection, total - start)
-            let end = max(start + 0.1, min(start + selectedDuration, total))
+            let isVideo = layer.mediaClip.file.mediaKind == .video
+            let selectedDuration = max(0.1, layer.mediaClip.duration.seconds)
+            let sourceTotal = isVideo
+                ? max(0.1, layer.mediaClip.file.duration.seconds)
+                : max(selectedDuration, max(main.targetDuration.seconds, 20))
+            let start = isVideo
+                ? max(0, min(layer.mediaClip.startTime.seconds, sourceTotal))
+                : 0
+            let maxSelection = sourceTotal
+            let end = isVideo
+                ? max(start + 0.1, min(start + min(selectedDuration, min(maxSelection, sourceTotal - start)), sourceTotal))
+                : max(0.1, min(selectedDuration, sourceTotal))
 
             return LayerTrimContext(
                 layerIndex: index,
                 fileID: layer.mediaClip.file.id,
                 source: layer.mediaClip.file.source,
-                clipLabel: layerTitle(for: layer),
-                totalDurationSeconds: total,
+                mediaKind: layer.mediaClip.file.mediaKind,
+                clipLabel: LayerMetadataFormatter.displayLabel(for: layer),
+                blendMode: index == 0 ? BlendMode.sourceOver : (layer.blendMode ?? BlendMode.defaultMontage),
+                opacity: layer.opacity,
+                canMoveUp: index > 0,
+                canMoveDown: index < currentLayers.count - 1,
+                canDelete: currentLayers.count > 1,
+                isMuted: layer.isMuted,
+                isVisible: layer.opacity > 0.001,
+                isSoloActive: main.activePlayer.effectManager.flashSoloIndex == index,
+                sourceDurationSeconds: sourceTotal,
                 maxSelectionDurationSeconds: maxSelection,
                 selectedRangeSeconds: start...end
             )
         }
 
-        if main.activePlayer.currentLayerIndex == -1 {
-            return currentLayers.enumerated().compactMap { index, layer in
-                makeContext(layer: layer, index: index)
-            }
+        return currentLayers.enumerated().compactMap { index, layer in
+            makeContext(layer: layer, index: index)
         }
+    }
 
-        let index = main.activePlayer.currentLayerIndex
-        guard index >= 0, index < currentLayers.count else { return [] }
-        guard let context = makeContext(layer: currentLayers[index], index: index) else { return [] }
-        return [context]
+    private var currentCompositionEntries: [CompositionEntry] {
+        main.hypnogram.compositions.enumerated().map { index, composition in
+            CompositionEntry(
+                index: index,
+                composition: composition,
+                isCurrent: index == main.currentCompositionIndex
+            )
+        }
     }
 
     private var studioPanelToolbarItems: [StudioPanelToolbarItem] {
@@ -74,7 +88,7 @@ struct ContentView: View {
     }
 
     private var panelOpacity: Double {
-        settingsStore.value.panelOpacity.clamped(to: 0.22...0.92)
+        settingsStore.value.panelOpacity.clamped(to: 0.32...0.92)
     }
 
     private var panelOpacityBinding: Binding<Double> {
@@ -82,7 +96,7 @@ struct ContentView: View {
             get: { panelOpacity },
             set: { newValue in
                 settingsStore.update { settings in
-                    settings.panelOpacity = newValue.clamped(to: 0.22...0.92)
+                    settings.panelOpacity = newValue.clamped(to: 0.32...0.92)
                 }
             }
         )
@@ -104,26 +118,7 @@ struct ContentView: View {
     }
 
     private var topOverlayPadding: CGFloat {
-        shouldShowStudioPanelToolbar ? Self.toolbarReserveHeight : 10
-    }
-
-    private func layerTitle(for layer: Layer) -> String {
-        switch layer.mediaClip.file.source {
-        case .url(let url):
-            return url.lastPathComponent
-        case .external(let identifier):
-            return photosFilename(for: identifier) ?? "Photos Item"
-        }
-    }
-
-    private func photosFilename(for identifier: String) -> String? {
-        guard let asset = ApplePhotos.shared.fetchAsset(localIdentifier: identifier) else { return nil }
-        let resources = PHAssetResource.assetResources(for: asset)
-
-        if let resource = resources.first(where: { $0.type == .pairedVideo || $0.type == .video || $0.type == .photo }) {
-            return resource.originalFilename
-        }
-        return resources.first?.originalFilename
+        10
     }
 
     private var topRightIndicator: (text: String, color: Color)? {
@@ -152,6 +147,10 @@ struct ContentView: View {
         }
 
         return nil
+    }
+
+    private var shouldShowLoopSequenceIndicator: Bool {
+        main.isLoopSequenceEnabled
     }
 
     private var shouldShowPersistentCompositionIndicator: Bool {
@@ -262,32 +261,91 @@ struct ContentView: View {
     }
 
     private var playerControlsContent: some View {
-        PlayerControlsPanel(
-            isPaused: main.activePlayer.isPaused,
-            isLoopCompositionEnabled: main.isLoopCompositionEnabled,
-            isLoopSequenceEnabled: main.isLoopSequenceEnabled,
-            compositionLengthSeconds: main.targetDuration.seconds,
-            layerTrimContexts: layerTrimContexts,
-            volume: Binding(
-                get: { Double(main.volume) },
-                set: { main.volume = Float($0) }
-            ),
-            onPrevious: { main.previousComposition() },
-            onPlayPause: { main.togglePause() },
-            onNext: { main.nextComposition() },
-            onCyclePlaybackLoopMode: { main.cyclePlaybackLoopMode() },
-            onSnapshotCurrent: { main.saveSnapshotImage() },
-            onSaveCurrent: { main.saveComposition() },
-            onRenderCurrent: { main.renderAndSaveVideo() },
-            onCommitLayerTrimRange: { layerIndex, range in
-                main.setLayerRange(
-                    sourceIndex: layerIndex,
-                    startSeconds: range.lowerBound,
-                    endSeconds: range.upperBound
-                )
-            }
-        )
-        .frame(maxWidth: 920)
+        VStack(spacing: 8) {
+            StudioPanelToolbarView(
+                items: studioPanelToolbarItems,
+                isPanelVisible: { panelID in panels.isPanelVisible(panelID) },
+                onTogglePanel: { panelID in
+                    panels.togglePanel(panelID)
+                },
+                panelOpacity: panelOpacityBinding,
+                liveModeSelection: main.isLiveModeAvailable ? liveModeSelectionBinding : nil
+            )
+            .opacity(panelOpacity)
+
+            PlayerControlsPanel(
+                isPaused: main.activePlayer.isPaused,
+                isLoopCompositionEnabled: main.isLoopCompositionEnabled,
+                isLoopSequenceEnabled: main.isLoopSequenceEnabled,
+                selectedLayerIndex: main.activePlayer.currentLayerIndex,
+                compositionLengthSeconds: main.targetDuration.seconds,
+                currentCompositionTimeSeconds: main.activePlayer.currentLayerTimeOffset?.seconds,
+                isShowingFullClips: main.isShowingFullClips,
+                sequenceEntries: currentCompositionEntries,
+                layerTrimContexts: layerTrimContexts,
+                visualOpacity: panelOpacity,
+                volume: Binding(
+                    get: { Double(main.volume) },
+                    set: { main.volume = Float($0) }
+                ),
+                onJumpToComposition: { index in
+                    main.jumpToComposition(at: index)
+                },
+                onDeleteCompositionEntry: { index in
+                    main.deleteComposition(at: index)
+                },
+                onMoveComposition: { sourceID, targetID in
+                    main.moveComposition(sourceID: sourceID, targetID: targetID)
+                },
+                onPrevious: { main.previousComposition() },
+                onPlayPause: { main.togglePause() },
+                onNext: { main.nextComposition() },
+                onSelectLayer: { index in
+                    main.selectSource(index)
+                },
+                onMoveLayerUp: { index in
+                    main.moveLayerUp(at: index)
+                },
+                onMoveLayerDown: { index in
+                    main.moveLayerDown(at: index)
+                },
+                onDeleteLayer: { index in
+                    main.deleteLayer(at: index)
+                },
+                onSetLayerBlendMode: { index, blendMode in
+                    main.setLayerBlendMode(at: index, blendMode: blendMode)
+                },
+                onSetLayerOpacity: { index, opacity in
+                    main.setLayerOpacity(at: index, opacity: opacity)
+                },
+                onToggleLayerMute: { index in
+                    main.toggleLayerMute(at: index)
+                },
+                onToggleLayerSolo: { index in
+                    main.toggleLayerSolo(at: index)
+                },
+                onToggleLayerVisibility: { index in
+                    main.toggleLayerVisibility(at: index)
+                },
+                onAddSourceFromFiles: { main.addSourceFromFilesPanel() },
+                onAddSourceFromPhotos: { main.addSourceFromPhotosPicker() },
+                onAddSourceFromRandom: { main.addSourceFromRandom() },
+                onToggleShowFullClips: { main.toggleShowFullClips() },
+                onCyclePlaybackLoopMode: { main.cyclePlaybackLoopMode() },
+                onSnapshotCurrent: { main.saveSnapshotImage() },
+                onSaveCurrent: { main.saveComposition() },
+                onRenderCurrent: { main.renderAndSaveVideo() },
+                onRenderSequence: { main.renderAndSaveSequenceVideo() },
+                onCommitLayerTrimRange: { layerIndex, range in
+                    main.setLayerRange(
+                        sourceIndex: layerIndex,
+                        startSeconds: range.lowerBound,
+                        endSeconds: range.upperBound
+                    )
+                }
+            )
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var hypnogramsContent: some View {
@@ -307,27 +365,6 @@ struct ContentView: View {
         )
     }
 
-    private var sequenceContent: some View {
-        SequencePanel(
-            compositionEntries: main.hypnogram.compositions.enumerated().map { index, composition in
-                CompositionEntry(
-                    index: index,
-                    composition: composition,
-                    isCurrent: index == main.currentCompositionIndex
-                )
-            },
-            onJumpToComposition: { index in
-                main.jumpToComposition(at: index)
-            },
-            onDeleteCompositionEntry: { index in
-                main.deleteComposition(at: index)
-            },
-            onMoveComposition: { sourceID, targetID in
-                main.moveComposition(sourceID: sourceID, targetID: targetID)
-            }
-        )
-    }
-
     var body: some View {
         ZStack(alignment: .topLeading) {
             // Solid black backing for the entire window
@@ -338,47 +375,38 @@ struct ContentView: View {
             main.makeDisplayView()
                 .ignoresSafeArea()
                 .overlay {
-                    VStack(spacing: 0) {
-                        Color.clear
-                            .frame(height: shouldShowStudioPanelToolbar ? (Self.toolbarTopPadding + Self.toolbarReserveHeight) : 0)
-                            .allowsHitTesting(false)
-
-                        CanvasPanelToggleHitView {
-                            panelHostService.hidePanelsForCanvasInteraction()
-                        }
+                    CanvasPanelToggleHitView {
+                        panelHostService.hidePanelsForCanvasInteraction()
                     }
                 }
 
-            CursorAutoHideView(isEnabled: shouldAutoHideCursor, idleSeconds: 3.0)
-                .allowsHitTesting(false)
-
             if shouldShowStudioPanelToolbar {
                 VStack(spacing: 0) {
-                    StudioPanelToolbarView(
-                        items: studioPanelToolbarItems,
-                        isPanelVisible: { panelID in panels.isPanelVisible(panelID) },
-                        onTogglePanel: { panelID in
-                            panels.togglePanel(panelID)
-                        },
-                        panelOpacity: panelOpacityBinding,
-                        liveModeSelection: main.isLiveModeAvailable ? liveModeSelectionBinding : nil
-                    )
-                    .opacity(panelOpacity)
-                    .padding(.top, Self.toolbarTopPadding)
-                    .padding(.horizontal, 12)
-                    .allowsHitTesting(true)
+                    Spacer()
 
-                    Spacer(minLength: 0)
+                    playerControlsContent
+                        .padding(.horizontal, 10)
+                        .padding(.bottom, 10)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .zIndex(10)
+                .ignoresSafeArea(edges: .bottom)
+                .zIndex(35)
             }
+
+            CursorAutoHideView(isEnabled: shouldAutoHideCursor, idleSeconds: 3.0)
+                .allowsHitTesting(false)
         }
         .overlay(alignment: .topTrailing) {
-            HStack(alignment: .center, spacing: 4) {
+            HStack(alignment: .center, spacing: 6) {
                 if shouldShowCurrentCompositionDownloadHUD {
                     currentCompositionDownloadHUD(progress: currentCompositionDownloadAggregateProgress)
                         .transition(.scale(scale: 0.9).combined(with: .opacity))
+                }
+
+                if shouldShowLoopSequenceIndicator {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.blue)
+                        .frame(width: 22, height: 34, alignment: .center)
                 }
 
                 if let indicator = topRightIndicator {
@@ -413,22 +441,16 @@ struct ContentView: View {
         .background(
             PanelHostBridge(
                 hostService: panelHostService,
-                showSequence: panels.isPanelVisible("sequencePanel"),
                 showHypnograms: panels.isPanelVisible("hypnogramsPanel"),
-                showSources: panels.isPanelVisible("sourcesPanel"),
                 showNewCompositions: panels.isPanelVisible("newCompositionsPanel"),
-                showOutputSettings: panels.isPanelVisible("outputSettingsPanel"),
-                showComposition: panels.isPanelVisible("compositionPanel"),
+                showProperties: panels.isPanelVisible("propertiesPanel"),
                 showEffects: panels.isPanelVisible("effectsPanel"),
-                showPlayerControls: true,
+                showPlayerControls: false,
                 expectedParentFullScreen: panels.mainWindowFullScreen,
                 panelFrames: [
-                    "sequencePanel": panels.panelFrame("sequencePanel"),
                     "hypnogramsPanel": panels.panelFrame("hypnogramsPanel"),
-                    "sourcesPanel": panels.panelFrame("sourcesPanel"),
                     "newCompositionsPanel": panels.panelFrame("newCompositionsPanel"),
-                    "outputSettingsPanel": panels.panelFrame("outputSettingsPanel"),
-                    "compositionPanel": panels.panelFrame("compositionPanel"),
+                    "propertiesPanel": panels.panelFrame("propertiesPanel"),
                     "effectsPanel": panels.panelFrame("effectsPanel"),
                     "playerControlsPanel": panels.panelFrame("playerControlsPanel")
                 ].compactMapValues { $0 },
@@ -451,23 +473,14 @@ struct ContentView: View {
                         panels.setPanelsHidden(isHidden)
                     }
                 },
-                sequenceContent: AnyView(
-                    sequenceContent
-                ),
                 hypnogramsContent: AnyView(
                     hypnogramsContent
-                ),
-                sourcesContent: AnyView(
-                    SourcesPanel(state: state, main: main)
                 ),
                 newCompositionsContent: AnyView(
                     NewCompositionsPanel(state: state, main: main)
                 ),
-                outputSettingsContent: AnyView(
-                    OutputSettingsPanel(state: state, main: main)
-                ),
-                compositionContent: AnyView(
-                    CompositionPanel(state: state, main: main)
+                propertiesContent: AnyView(
+                    PropertiesPanel(state: state, main: main)
                 ),
                 effectsContent: AnyView(
                     EffectsPanel(state: state, main: main)
@@ -487,12 +500,9 @@ struct ContentView: View {
             panelHostService.showPanelsNow()
         }
         .onAppear {
-            panels.registerPanel("sequencePanel", defaultVisible: false)
             panels.registerPanel("hypnogramsPanel", defaultVisible: false)
-            panels.registerPanel("sourcesPanel", defaultVisible: false)
             panels.registerPanel("newCompositionsPanel", defaultVisible: true)
-            panels.registerPanel("outputSettingsPanel", defaultVisible: true)
-            panels.registerPanel("compositionPanel", defaultVisible: true)
+            panels.registerPanel("propertiesPanel", defaultVisible: true)
             panels.registerPanel("effectsPanel", defaultVisible: true)
         }
         .onChange(of: main.activePlayer.isPrimaryCompositionLoadInFlight) { _, isInFlight in

@@ -32,16 +32,16 @@ The dock becomes the place where time is manipulated, while `Properties` becomes
 
 - Smallest meaningful next slice:
   - Mount the current playbar to the bottom of the main window and introduce the `Sequence / Composition` dock mode switch without yet fully redesigning every row.
-  - Introduce the `Properties` panel shell with `Sequence / Composition / Layer` tabs, even if some content initially reuses existing panel sections.
+  - Replace the old `Composition` and `Output Settings` panel split with one `Properties` panel carrying `Sequence / Composition / Layer` tabs.
 - Immediate acceptance check:
   - The dock is attached to the bottom of the Studio window rather than floating separately.
   - The dock can switch between `Sequence` and `Composition` modes.
   - The `Properties` panel exists and switches cleanly between `Sequence`, `Composition`, and `Layer`.
-  - Existing sequence/composition settings remain editable somewhere during the transition.
+  - Existing sequence/composition settings remain editable through `Properties`.
 - Follow-on slices:
   - Reintroduce and refine the sequence timeline in docked form.
   - Move layer timelines and quick controls into the `Composition` dock mode.
-  - Fold remaining Output/Composition panel content into `Properties`.
+  - Finish moving quick layer controls and any remaining layer editing affordances into the new dock + `Properties` model.
 
 # Open Questions
 

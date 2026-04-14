@@ -83,6 +83,45 @@ final class PlayerContentView: NSView {
         setEffectManager(nil, for: slot)
     }
 
+    private func pollForIncomingFrameAndCut(
+        token: UInt64,
+        incomingSlot: PlayerSlot,
+        outgoingSlot: PlayerSlot,
+        incomingSource: AVPlayerFrameSource,
+        onIncomingFramePresented: (() -> Void)?,
+        completion: (() -> Void)?
+    ) {
+        guard transitionToken == token else { return }
+
+        if incomingSource.isReady {
+            playerView.cancelTransition()
+            playerView.onTransitionProgress = nil
+            playerView.onTransitionComplete = nil
+            playerView.onFirstTransitionFramePresented = nil
+            playerView.onNextFramePresented = onIncomingFramePresented
+            playerView.primarySource = incomingSource
+            playerView.secondarySource = nil
+            activeSlot = incomingSlot
+            outgoingSlotDuringTransition = nil
+            clearSlot(outgoingSlot)
+            applyAudioMix(progress: nil)
+            notifyMirrors()
+            completion?()
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + (1.0 / 120.0)) { [weak self] in
+            self?.pollForIncomingFrameAndCut(
+                token: token,
+                incomingSlot: incomingSlot,
+                outgoingSlot: outgoingSlot,
+                incomingSource: incomingSource,
+                onIncomingFramePresented: onIncomingFramePresented,
+                completion: completion
+            )
+        }
+    }
+
     // MARK: - Initialization
 
     override init(frame frameRect: NSRect) {
@@ -168,6 +207,11 @@ final class PlayerContentView: NSView {
         // Start playback if rate is specified
         if let rate = playRate {
             nextSource.player.playImmediately(atRate: rate)
+        } else {
+            // Still-image compositions and paused first loads need an explicit frame refresh
+            // so the incoming slot actually produces a frame for cuts/transitions instead of
+            // leaving the outgoing slot visible until the next sequence advance.
+            nextSource.refresh(at: .zero)
         }
 
         let outgoingSource = source(for: outgoingSlot)
@@ -191,28 +235,25 @@ final class PlayerContentView: NSView {
                 return
             }
 
-            outgoingSlotDuringTransition = outgoingSlot
-            activeSlot = nextSlot
+            // A true "none" transition should not run through transition rendering at all.
+            // We still keep the outgoing composition live while waiting for the incoming
+            // source so navigation does not devolve into a visibly frozen hold if the
+            // incoming build is slow.
+            outgoingSlotDuringTransition = nil
+            playerView.cancelTransition()
+            playerView.onTransitionProgress = nil
+            playerView.onTransitionComplete = nil
+            playerView.onFirstTransitionFramePresented = nil
             playerView.onNextFramePresented = nil
-            playerView.onFirstTransitionFramePresented = onIncomingFramePresented
-            playerView.onTransitionProgress = { [weak self] progress in
-                self?.applyAudioMix(progress: progress)
-            }
-            playerView.onTransitionComplete = { [weak self] in
-                guard let self else { return }
-                self.clearSlot(outgoingSlot)
-                self.outgoingSlotDuringTransition = nil
-                self.playerView.onTransitionProgress = nil
-                self.applyAudioMix(progress: nil)
-                self.notifyMirrors()
-            }
-            // Use an effectively-instant crossfade internally so the renderer keeps the
-            // outgoing source visible until the incoming source has actually produced a frame.
-            playerView.startTransition(to: nextSource, type: .crossfade, duration: 0.0001)
-            applyAudioMix(progress: 0)
-            notifyMirrors()
-            print("🎬 PlayerContentView: Instant cut (no transition)")
-            completion?()
+            applyAudioMix(progress: nil)
+            pollForIncomingFrameAndCut(
+                token: token,
+                incomingSlot: nextSlot,
+                outgoingSlot: outgoingSlot,
+                incomingSource: nextSource,
+                onIncomingFramePresented: onIncomingFramePresented,
+                completion: completion
+            )
             return
         }
 
@@ -245,12 +286,9 @@ final class PlayerContentView: NSView {
             }
         }
 
-        // Ensure both players are actually running during the transition (visual "both clips playing").
-        if let rate = playRate {
-            // Don't force-loop the outgoing clip if it's at end; freezing on the last
-            // frame is preferable to visibly restarting mid-transition.
-            currentSource.player.playImmediately(atRate: rate)
-        }
+        // The outgoing player should already be in the correct playback state. Forcing
+        // it to play again here can restart or visibly bump the last frame right at the
+        // transition boundary, which reads as a flash/hiccup in sequence playback.
 
         playerView.primarySource = currentSource
         playerView.transitionDuration = duration
@@ -295,10 +333,14 @@ final class PlayerContentView: NSView {
 
     /// Stop all playback
     func stop() {
+        transitionToken &+= 1
         playerView.cancelTransition()
         playerView.primarySource = nil
         playerView.secondarySource = nil
         playerView.onTransitionProgress = nil
+        playerView.onTransitionComplete = nil
+        playerView.onNextFramePresented = nil
+        playerView.onFirstTransitionFramePresented = nil
         outgoingSlotDuringTransition = nil
 
         sourceA?.player.pause()

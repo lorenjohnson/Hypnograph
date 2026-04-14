@@ -18,11 +18,6 @@ import HypnoUI
 
 @MainActor
 final class Studio: ObservableObject {
-    // Temporary demo-safety switch: disable automatic composition preview persistence
-    // during playback navigation because it appears to contribute to transition hitching.
-    // Re-enable later by deleting this flag and the single guard that checks it below.
-    private static let isCompositionPreviewPersistenceDisabledForExperiment = true
-
     enum PlaybackEndBehavior {
         case stopAtEnd
         case loopComposition
@@ -37,6 +32,7 @@ final class Studio: ObservableObject {
     let renderQueue: RenderEngine.ExportQueue
     let panelHostService: FilePanelService
     let photosIntegrationService: PhotosIntegrationService
+    let compositionPreviewPersistenceScheduler = CompositionPreviewPersistenceScheduler()
 
     /// Global templates store (shared across preview + live)
     let effectsLibrarySession: EffectsSession
@@ -76,6 +72,7 @@ final class Studio: ObservableObject {
     }
 
     @Published var liveMode: LiveMode = .edit
+    @Published var isShowingFullClips = false
     var isLiveMode: Bool { liveMode == .live }
     var isLiveModeAvailable: Bool { state.settings.liveModeEnabled }
     var isUsingDefaultHypnogram: Bool { activeWorkingHypnogramURL == nil }
@@ -146,6 +143,10 @@ final class Studio: ObservableObject {
         }
         liveMode = (liveMode == .edit) ? .live : .edit
         print("🎬 Live Mode: \(liveMode == .live ? "LIVE" : "Edit")")
+    }
+
+    func toggleShowFullClips() {
+        isShowingFullClips.toggle()
     }
 
     // MARK: - Init
@@ -286,6 +287,7 @@ final class Studio: ObservableObject {
             var normalized = newValue
             normalized.syncTargetDurationToLayers()
             hypnogram.compositions[index] = normalized
+            markCurrentCompositionPreviewNeedsRefresh()
             notifyHypnogramChanged()
         }
     }
@@ -366,9 +368,7 @@ final class Studio: ObservableObject {
             0,
             min(normalizedHypnogram.currentCompositionIndex ?? 0, max(0, normalizedHypnogram.compositions.count - 1))
         )
-        player.currentRenderedCompositionID = nil
-        player.currentCompositionPreviewNeedsRefresh = true
-        player.suppressNextPreviewInvalidation = false
+        syncCurrentCompositionPreviewPersistenceState()
         hypnogramRevision &+= 1
     }
 
@@ -543,25 +543,6 @@ final class Studio: ObservableObject {
                 transitionDuration: currentCompositionTransitionDuration,
                 sequenceTransitionStyle: currentHypnogramTransitionStyle,
                 sequenceTransitionDuration: currentHypnogramTransitionDuration,
-                onCompositionFramePresented: { [weak self, weak player] compositionID in
-                    guard let player else { return }
-
-                    if compositionID == nil {
-                        if player.suppressNextPreviewInvalidation {
-                            player.suppressNextPreviewInvalidation = false
-                            return
-                        }
-
-                        player.currentRenderedCompositionID = nil
-                        player.currentCompositionPreviewNeedsRefresh = true
-                        return
-                    }
-
-                    player.currentRenderedCompositionID = compositionID
-                    guard player.currentCompositionPreviewNeedsRefresh else { return }
-                    guard !Self.isCompositionPreviewPersistenceDisabledForExperiment else { return }
-                    self?.persistCurrentCompositionPreviewIfNeeded()
-                },
                 onPlaybackStoppedAtEnd: { [weak self] in
                     self?.player.isPaused = true
                 }
@@ -689,6 +670,13 @@ final class Studio: ObservableObject {
     func setPendingTransition(for composition: Composition?) {
         player.pendingCompositionTransitionStyle = composition.map { effectiveTransitionStyle(for: $0) }
         player.pendingCompositionTransitionDuration = composition.map { effectiveTransitionDuration(for: $0) }
+    }
+
+    func setPendingImmediateCut() {
+        player.pendingCompositionTransitionStyle = .none
+        // Keep this tiny but nonzero so the no-transition path can still use the
+        // existing instant-cut machinery without falling back to normal defaults.
+        player.pendingCompositionTransitionDuration = 0.0001
     }
 
     func copyDocumentContext(from hypnogram: Hypnogram) {

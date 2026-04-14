@@ -137,6 +137,81 @@ extension Studio {
         activePlayer.currentLayerIndex = insertIndex
     }
 
+    func moveLayer(sourceID: UUID, targetID: UUID) {
+        guard sourceID != targetID else { return }
+
+        var layers = currentLayers
+        guard let fromIndex = layers.firstIndex(where: { $0.mediaClip.file.id == sourceID }) else { return }
+        guard let toIndex = layers.firstIndex(where: { $0.mediaClip.file.id == targetID }) else { return }
+        guard fromIndex != toIndex else { return }
+
+        let selectedID: UUID? = {
+            let selectedIndex = activePlayer.currentLayerIndex
+            guard selectedIndex >= 0, selectedIndex < layers.count else { return nil }
+            return layers[selectedIndex].mediaClip.file.id
+        }()
+
+        let movedLayer = layers.remove(at: fromIndex)
+        var destination = toIndex
+        if fromIndex < toIndex {
+            destination -= 1
+        }
+        layers.insert(movedLayer, at: max(0, min(destination, layers.count)))
+        currentLayers = layers
+
+        if let selectedID, let newIndex = layers.firstIndex(where: { $0.mediaClip.file.id == selectedID }) {
+            selectSource(newIndex)
+        }
+
+        notifyHypnogramChanged()
+    }
+
+    func moveLayerUp(at index: Int) {
+        guard index > 0, index < currentLayers.count else { return }
+        moveLayer(from: index, to: index - 1)
+    }
+
+    func moveLayerDown(at index: Int) {
+        guard index >= 0, index < currentLayers.count - 1 else { return }
+        moveLayer(from: index, to: index + 1)
+    }
+
+    func deleteLayer(at index: Int) {
+        guard index >= 0, index < currentLayers.count else { return }
+        activePlayer.currentLayerIndex = index
+        removeCurrentLayer()
+        notifyHypnogramMutated()
+        objectWillChange.send()
+    }
+
+    func setLayerBlendMode(at index: Int, blendMode: String) {
+        guard index > 0, index < currentLayers.count else { return }
+        currentLayers[index].blendMode = blendMode
+        notifyHypnogramMutated()
+        objectWillChange.send()
+    }
+
+    func setLayerOpacity(at index: Int, opacity: Double) {
+        guard index >= 0, index < currentLayers.count else { return }
+        currentLayers[index].opacity = opacity.clamped(to: 0...1)
+        notifyHypnogramMutated()
+        objectWillChange.send()
+    }
+
+    private func moveLayer(from fromIndex: Int, to toIndex: Int) {
+        guard fromIndex != toIndex else { return }
+
+        var layers = currentLayers
+        guard fromIndex >= 0, fromIndex < layers.count else { return }
+        guard toIndex >= 0, toIndex < layers.count else { return }
+
+        let movedLayer = layers.remove(at: fromIndex)
+        layers.insert(movedLayer, at: toIndex)
+        currentLayers = layers
+        selectSource(toIndex)
+        notifyHypnogramChanged()
+    }
+
     private func duplicatedLayerWithNewFileID(from layer: Layer) -> Layer {
         let sourceFile = layer.mediaClip.file
         let duplicatedFile = MediaFile(
@@ -257,9 +332,14 @@ extension Studio {
 
         var currentLayers = self.currentLayers
         var layer = currentLayers[sourceIndex]
-        guard layer.mediaClip.file.mediaKind == .video else { return }
+        let isVideo = layer.mediaClip.file.mediaKind == .video
 
-        let totalSeconds = max(0.1, layer.mediaClip.file.duration.seconds)
+        let totalSeconds = isVideo
+            ? max(0.1, layer.mediaClip.file.duration.seconds)
+            : max(
+                0.1,
+                maxDurationSeconds ?? max(layer.mediaClip.duration.seconds, max(targetDuration.seconds, 20))
+            )
         let minimumDuration = min(0.1, totalSeconds)
         let maxWindow = max(
             minimumDuration,
@@ -279,11 +359,25 @@ extension Studio {
 
         let newDuration = min(maxWindow, max(minimumDuration, clampedEnd - clampedStart))
 
-        layer.mediaClip = MediaClip(
-            file: layer.mediaClip.file,
-            startTime: CMTime(seconds: clampedStart, preferredTimescale: 600),
-            duration: CMTime(seconds: newDuration, preferredTimescale: 600)
-        )
+        if isVideo {
+            layer.mediaClip = MediaClip(
+                file: layer.mediaClip.file,
+                startTime: CMTime(seconds: clampedStart, preferredTimescale: 600),
+                duration: CMTime(seconds: newDuration, preferredTimescale: 600)
+            )
+        } else {
+            let updatedFile = MediaFile(
+                id: layer.mediaClip.file.id,
+                source: layer.mediaClip.file.source,
+                mediaKind: .image,
+                duration: CMTime(seconds: newDuration, preferredTimescale: 600)
+            )
+            layer.mediaClip = MediaClip(
+                file: updatedFile,
+                startTime: .zero,
+                duration: CMTime(seconds: newDuration, preferredTimescale: 600)
+            )
+        }
 
         currentLayers[sourceIndex] = layer
         self.currentLayers = currentLayers
@@ -404,6 +498,28 @@ extension Studio {
         updateCurrentComposition { $0.transitionDuration = nil }
         livePlayer.crossfadeDuration = currentCompositionTransitionDuration
         objectWillChange.send()
+    }
+
+    func toggleLayerMute(at index: Int) {
+        guard index >= 0, index < currentLayers.count else { return }
+        currentLayers[index].isMuted.toggle()
+        notifyHypnogramMutated()
+    }
+
+    func toggleLayerSolo(at index: Int) {
+        if activePlayer.effectManager.flashSoloIndex == index {
+            activePlayer.effectManager.setFlashSolo(nil)
+        } else {
+            activePlayer.effectManager.setFlashSolo(index)
+        }
+        objectWillChange.send()
+    }
+
+    func toggleLayerVisibility(at index: Int) {
+        guard index >= 0, index < currentLayers.count else { return }
+        let currentOpacity = currentLayers[index].opacity
+        currentLayers[index].opacity = currentOpacity <= 0.001 ? 1.0 : 0
+        notifyHypnogramMutated()
     }
 
     /// Exclude current source from library

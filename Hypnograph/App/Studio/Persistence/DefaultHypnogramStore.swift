@@ -55,6 +55,7 @@ enum DefaultHypnogramStore {
         return Hypnogram(
             compositions: compositions,
             currentCompositionIndex: currentCompositionIndex,
+            effectChain: defaultHypnogram.effectChain,
             aspectRatio: defaultHypnogram.aspectRatio,
             outputResolution: defaultHypnogram.outputResolution,
             sourceFraming: defaultHypnogram.sourceFraming,

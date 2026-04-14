@@ -55,7 +55,7 @@ struct StudioPanelToolbarView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
-                PanelSliderView(value: $panelOpacity, bounds: 0.22...0.92)
+                PanelSliderView(value: $panelOpacity, bounds: 0.32...0.92)
                     .frame(width: mode == .compact ? 88 : 110)
                     .help("Adjust all Studio panel transparency.")
             }
