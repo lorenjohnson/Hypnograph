@@ -150,7 +150,11 @@ struct ContentView: View {
     }
 
     private var shouldShowLoopSequenceIndicator: Bool {
-        main.isLoopSequenceEnabled
+        main.isLoopCompositionEnabled
+    }
+
+    private var shouldShowGenerateAtEndIndicator: Bool {
+        main.isGenerateAtEndEnabled
     }
 
     private var shouldShowPersistentCompositionIndicator: Bool {
@@ -261,90 +265,86 @@ struct ContentView: View {
     }
 
     private var playerControlsContent: some View {
-        VStack(spacing: 8) {
-            StudioPanelToolbarView(
-                items: studioPanelToolbarItems,
-                isPanelVisible: { panelID in panels.isPanelVisible(panelID) },
-                onTogglePanel: { panelID in
-                    panels.togglePanel(panelID)
-                },
-                panelOpacity: panelOpacityBinding,
-                liveModeSelection: main.isLiveModeAvailable ? liveModeSelectionBinding : nil
-            )
-            .opacity(panelOpacity)
-
-            PlayerControlsPanel(
-                isPaused: main.activePlayer.isPaused,
-                isLoopCompositionEnabled: main.isLoopCompositionEnabled,
-                isLoopSequenceEnabled: main.isLoopSequenceEnabled,
-                selectedLayerIndex: main.activePlayer.currentLayerIndex,
-                compositionLengthSeconds: main.targetDuration.seconds,
-                currentCompositionTimeSeconds: main.activePlayer.currentLayerTimeOffset?.seconds,
-                isShowingFullClips: main.isShowingFullClips,
-                sequenceEntries: currentCompositionEntries,
-                layerTrimContexts: layerTrimContexts,
-                visualOpacity: panelOpacity,
-                volume: Binding(
-                    get: { Double(main.volume) },
-                    set: { main.volume = Float($0) }
-                ),
-                onJumpToComposition: { index in
-                    main.jumpToComposition(at: index)
-                },
-                onDeleteCompositionEntry: { index in
-                    main.deleteComposition(at: index)
-                },
-                onMoveComposition: { sourceID, targetID in
-                    main.moveComposition(sourceID: sourceID, targetID: targetID)
-                },
-                onPrevious: { main.previousComposition() },
-                onPlayPause: { main.togglePause() },
-                onNext: { main.nextComposition() },
-                onSelectLayer: { index in
-                    main.selectSource(index)
-                },
-                onMoveLayerUp: { index in
-                    main.moveLayerUp(at: index)
-                },
-                onMoveLayerDown: { index in
-                    main.moveLayerDown(at: index)
-                },
-                onDeleteLayer: { index in
-                    main.deleteLayer(at: index)
-                },
-                onSetLayerBlendMode: { index, blendMode in
-                    main.setLayerBlendMode(at: index, blendMode: blendMode)
-                },
-                onSetLayerOpacity: { index, opacity in
-                    main.setLayerOpacity(at: index, opacity: opacity)
-                },
-                onToggleLayerMute: { index in
-                    main.toggleLayerMute(at: index)
-                },
-                onToggleLayerSolo: { index in
-                    main.toggleLayerSolo(at: index)
-                },
-                onToggleLayerVisibility: { index in
-                    main.toggleLayerVisibility(at: index)
-                },
-                onAddSourceFromFiles: { main.addSourceFromFilesPanel() },
-                onAddSourceFromPhotos: { main.addSourceFromPhotosPicker() },
-                onAddSourceFromRandom: { main.addSourceFromRandom() },
-                onToggleShowFullClips: { main.toggleShowFullClips() },
-                onCyclePlaybackLoopMode: { main.cyclePlaybackLoopMode() },
-                onSnapshotCurrent: { main.saveSnapshotImage() },
-                onSaveCurrent: { main.saveComposition() },
-                onRenderCurrent: { main.renderAndSaveVideo() },
-                onRenderSequence: { main.renderAndSaveSequenceVideo() },
-                onCommitLayerTrimRange: { layerIndex, range in
-                    main.setLayerRange(
-                        sourceIndex: layerIndex,
-                        startSeconds: range.lowerBound,
-                        endSeconds: range.upperBound
-                    )
-                }
-            )
-        }
+        PlayerControlsPanel(
+            isPaused: main.activePlayer.isPaused,
+            isLoopCompositionEnabled: main.isLoopCompositionEnabled,
+            isLoopSequenceEnabled: main.isLoopSequenceEnabled,
+            isGenerateAtEndEnabled: main.isGenerateAtEndEnabled,
+            selectedLayerIndex: main.activePlayer.currentLayerIndex,
+            compositionLengthSeconds: main.targetDuration.seconds,
+            currentCompositionTimeSeconds: main.activePlayer.currentLayerTimeOffset?.seconds,
+            isShowingFullClips: main.isShowingFullClips,
+            panelToolbarItems: studioPanelToolbarItems,
+            isPanelVisible: { panelID in panels.isPanelVisible(panelID) },
+            liveModeSelection: main.isLiveModeAvailable ? liveModeSelectionBinding : nil,
+            sequenceEntries: currentCompositionEntries,
+            layerTrimContexts: layerTrimContexts,
+            visualOpacity: panelOpacity,
+            panelOpacity: panelOpacityBinding,
+            volume: Binding(
+                get: { Double(main.volume) },
+                set: { main.volume = Float($0) }
+            ),
+            onTogglePanel: { panelID in
+                panels.togglePanel(panelID)
+            },
+            onJumpToComposition: { index in
+                main.jumpToComposition(at: index)
+            },
+            onDeleteCompositionEntry: { index in
+                main.deleteComposition(at: index)
+            },
+            onMoveComposition: { sourceID, targetID in
+                main.moveComposition(sourceID: sourceID, targetID: targetID)
+            },
+            onPrevious: { main.previousComposition() },
+            onPlayPause: { main.togglePause() },
+            onNext: { main.nextComposition() },
+            onSelectLayer: { index in
+                main.selectSource(index)
+            },
+            onMoveLayerUp: { index in
+                main.moveLayerUp(at: index)
+            },
+            onMoveLayerDown: { index in
+                main.moveLayerDown(at: index)
+            },
+            onDeleteLayer: { index in
+                main.deleteLayer(at: index)
+            },
+            onSetLayerBlendMode: { index, blendMode in
+                main.setLayerBlendMode(at: index, blendMode: blendMode)
+            },
+            onSetLayerOpacity: { index, opacity in
+                main.setLayerOpacity(at: index, opacity: opacity)
+            },
+            onToggleLayerMute: { index in
+                main.toggleLayerMute(at: index)
+            },
+            onToggleLayerSolo: { index in
+                main.toggleLayerSolo(at: index)
+            },
+            onToggleLayerVisibility: { index in
+                main.toggleLayerVisibility(at: index)
+            },
+            onAddSourceFromFiles: { main.addSourceFromFilesPanel() },
+            onAddSourceFromPhotos: { main.addSourceFromPhotosPicker() },
+            onAddSourceFromRandom: { main.addSourceFromRandom() },
+            onToggleShowFullClips: { main.toggleShowFullClips() },
+            onToggleGenerateAtEnd: { main.toggleGenerateAtEnd() },
+            onCyclePlaybackLoopMode: { main.cyclePlaybackLoopMode() },
+            onSnapshotCurrent: { main.saveSnapshotImage() },
+            onSaveCurrent: { main.saveComposition() },
+            onRenderCurrent: { main.renderAndSaveVideo() },
+            onRenderSequence: { main.renderAndSaveSequenceVideo() },
+            onCommitLayerTrimRange: { layerIndex, range in
+                main.setLayerRange(
+                    sourceIndex: layerIndex,
+                    startSeconds: range.lowerBound,
+                    endSeconds: range.upperBound
+                )
+            }
+        )
         .frame(maxWidth: .infinity)
     }
 
@@ -405,6 +405,13 @@ struct ContentView: View {
                 if shouldShowLoopSequenceIndicator {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.blue)
+                        .frame(width: 22, height: 34, alignment: .center)
+                }
+
+                if shouldShowGenerateAtEndIndicator {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(.blue)
                         .frame(width: 22, height: 34, alignment: .center)
                 }

@@ -464,6 +464,16 @@ struct PlayerView: NSViewRepresentable {
                             player.playImmediately(atRate: rate)
                         }
                     }
+                    let seekToStartAndStop = {
+                        let bindingUpdateToken = c.bindingUpdateToken
+                        player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
+                            guard finished else { return }
+                            player.pause()
+                            deferCurrentSourceTime(.zero, coordinator: c, token: bindingUpdateToken)
+                            self.onPlaybackStoppedAtEnd?()
+                            c.lastPauseState = true
+                        }
+                    }
 
                     // If a transition is in progress, never loop the outgoing player.
                     // Restarting the outgoing composition mid-transition is visually jarring.
@@ -481,9 +491,7 @@ struct PlayerView: NSViewRepresentable {
                                 c.playbackEndBehavior,
                                 isLastCompositionInSequence: self.isLastCompositionInSequence
                             ) else {
-                                player.pause()
-                                self.onPlaybackStoppedAtEnd?()
-                                c.lastPauseState = true
+                                seekToStartAndStop()
                                 return
                             }
                             if c.isAutoAdvanceInFlight {
@@ -499,9 +507,7 @@ struct PlayerView: NSViewRepresentable {
                         // Loop mode: seek to beginning and continue
                         seekToStartAndPlayIfNeeded()
                     case .stopAtEnd:
-                        player.pause()
-                        self.onPlaybackStoppedAtEnd?()
-                        c.lastPauseState = true
+                        seekToStartAndStop()
                     }
                 }
             }

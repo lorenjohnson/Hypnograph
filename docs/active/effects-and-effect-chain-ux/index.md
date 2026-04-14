@@ -22,6 +22,8 @@ The third phase is about imported or unmatched chains from opened hypnograms. Th
 
 This project should stay focused on interaction and model clarity plus the shape of the shipped effect surfaces. Deep engine changes or new effect implementation work belong elsewhere.
 
+This index is the umbrella project document for the whole effects and effect-chain UX area. The additional markdown files in this directory are active working notes within that umbrella, not separate queue entries. They exist to help sort and prioritize related strands of work without losing the fact that this is one substantial active area.
+
 ## Rules
 
 - MUST treat shipped base-effect and effect-chain curation as the first slice of this project.
@@ -36,10 +38,13 @@ This project should stay focused on interaction and model clarity plus the shape
 
 - [current effect-chain curation](./current-effects-chain-curation.md)
 - [current effects curation](./current-effects-curation.md)
+- [effects-chain UX refinements](./effects-chain-ux-refinements.md)
+- [effects engine pass-graph pivot spike](./effects-engine-pass-graph-pivot-spike.md)
+- [temporal ordering stage](./temporal-ordering-stage.md)
 
 ## Plan
 
-The first slice is only phase one: get to a canonical shipped set of base effects and effect chains.
+The first slice is still phase one: get to a canonical shipped set of base effects and effect chains.
 
 That means:
 
@@ -56,6 +61,8 @@ That means:
 The second slice, after the canonical set feels stronger, is to refine the mechanics of applying and editing chains. That includes the confusing combined `Add Effect` menu, which currently mixes "append an effect" and "replace the current chain with a library chain" in one surface.
 
 The third slice is to re-approach imported chains from opened hypnograms: how they are identified, whether they should remain recipe-local until explicitly saved, how `(imported)` should be shown, and how save-to-library should behave without silent overwrites.
+
+The temporal-effects and pass-graph questions remain active, but they are downstream of the current curation and interaction work unless a concrete engine limitation blocks that path.
 
 ## Open Questions
 

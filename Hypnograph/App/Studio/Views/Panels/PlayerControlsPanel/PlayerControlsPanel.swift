@@ -5,14 +5,20 @@ struct PlayerControlsPanel: View {
     let isPaused: Bool
     let isLoopCompositionEnabled: Bool
     let isLoopSequenceEnabled: Bool
+    let isGenerateAtEndEnabled: Bool
     let selectedLayerIndex: Int
     let compositionLengthSeconds: Double
     let currentCompositionTimeSeconds: Double?
     let isShowingFullClips: Bool
+    let panelToolbarItems: [StudioPanelToolbarItem]
+    let isPanelVisible: (String) -> Bool
+    let liveModeSelection: Binding<Int>?
     let sequenceEntries: [CompositionEntry]
     let layerTrimContexts: [LayerTrimContext]
     let visualOpacity: Double
+    @Binding var panelOpacity: Double
     @Binding var volume: Double
+    let onTogglePanel: (String) -> Void
     let onJumpToComposition: (Int) -> Void
     let onDeleteCompositionEntry: (Int) -> Void
     let onMoveComposition: (UUID, UUID) -> Void
@@ -32,6 +38,7 @@ struct PlayerControlsPanel: View {
     let onAddSourceFromPhotos: () -> Void
     let onAddSourceFromRandom: () -> Void
     let onToggleShowFullClips: () -> Void
+    let onToggleGenerateAtEnd: () -> Void
     let onCyclePlaybackLoopMode: () -> Void
     let onSnapshotCurrent: () -> Void
     let onSaveCurrent: () -> Void
@@ -125,6 +132,30 @@ struct PlayerControlsPanel: View {
 
     private var dockHeader: some View {
         HStack(spacing: 8) {
+            HStack(spacing: 10) {
+                PanelSliderView(value: $panelOpacity, bounds: 0.32...0.92)
+                    .frame(width: 92)
+                    .help("Adjust all Studio panel transparency.")
+
+                HStack(spacing: 8) {
+                    ForEach(panelToolbarItems) { item in
+                        panelToggleButton(item)
+                    }
+                }
+
+                if let liveModeSelection {
+                    Divider()
+                        .frame(height: 20)
+
+                    Picker("", selection: liveModeSelection) {
+                        Text("Edit").tag(0)
+                        Text("Live").tag(1)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 156)
+                }
+            }
+
             Spacer(minLength: 0)
 
             Button(action: onToggleShowFullClips) {
@@ -147,6 +178,27 @@ struct PlayerControlsPanel: View {
             }
             .buttonStyle(.plain)
             .help("Show Full Clips (F)")
+
+            Button(action: onToggleGenerateAtEnd) {
+                Image(systemName: "sparkles")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(
+                        isGenerateAtEndEnabled
+                        ? Color.accentColor
+                        : Color.white.opacity(0.72 + (0.2 * chromeOpacity))
+                    )
+                    .frame(width: 28, height: 28)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(
+                                isGenerateAtEndEnabled
+                                ? Color.accentColor.opacity(0.16)
+                                : Color.clear
+                            )
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("Generate at End")
 
             Menu {
                 Button {
@@ -344,6 +396,32 @@ struct PlayerControlsPanel: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
+    }
+
+    @ViewBuilder
+    private func panelToggleButton(_ item: StudioPanelToolbarItem) -> some View {
+        let descriptor = item.descriptor
+        let isVisible = isPanelVisible(descriptor.panelID)
+
+        if isVisible {
+            Button {
+                onTogglePanel(descriptor.panelID)
+            } label: {
+                Label("\(descriptor.title) (\(descriptor.shortcutLabel))", systemImage: descriptor.systemImage)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .help("\(descriptor.title) (\(descriptor.shortcutLabel))")
+        } else {
+            Button {
+                onTogglePanel(descriptor.panelID)
+            } label: {
+                Label("\(descriptor.title) (\(descriptor.shortcutLabel))", systemImage: descriptor.systemImage)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("\(descriptor.title) (\(descriptor.shortcutLabel))")
+        }
     }
 
     private func deckButton<Label: View>(

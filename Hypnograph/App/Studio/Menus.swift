@@ -75,6 +75,7 @@ extension Studio {
                 }
             }
         ))
+        .keyboardShortcut("g", modifiers: [])
         .disabled(disableMainWindowShortcuts)
 
         // Aspect Ratio
