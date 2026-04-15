@@ -10,6 +10,7 @@ struct PropertiesPanel: View {
     @State private var draftPlayRate: Double?
     @State private var draftTransitionDuration: Double?
     @State private var draftLayerOpacity: Double?
+    @State private var selectedSourceFrameRate: Double?
 
     init(state: HypnographState, main: Studio) {
         self.state = state
@@ -228,6 +229,7 @@ struct PropertiesPanel: View {
             let layerBinding = bindingForLayer(at: layerIndex)
             let metadataSummary = LayerMetadataFormatter.summary(for: layerBinding.wrappedValue)
             let sourceRevealURL = revealableSourceURL(for: layerBinding.wrappedValue)
+            let sourceFrameRateText = FrameRateDisplay.text(selectedSourceFrameRate)
 
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
@@ -265,6 +267,13 @@ struct PropertiesPanel: View {
 
                         if let locationText = metadataSummary.locationText {
                             Text(locationText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+
+                        if let sourceFrameRateText {
+                            Text(sourceFrameRateText)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
@@ -332,12 +341,20 @@ struct PropertiesPanel: View {
             }
             .disabled(isLiveMode)
             .opacity(isLiveMode ? 0.55 : 1.0)
+            .task(id: layerBinding.wrappedValue.mediaClip.file.id) {
+                selectedSourceFrameRate = await MediaFrameRateProbe.shared.frameRate(
+                    for: layerBinding.wrappedValue.mediaClip.file
+                )
+            }
         } else {
             VStack(alignment: .leading, spacing: 10) {
                 PanelSectionHeaderView(title: "Layer")
                 Text("No layer selected.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
+            }
+            .onAppear {
+                selectedSourceFrameRate = nil
             }
         }
     }
