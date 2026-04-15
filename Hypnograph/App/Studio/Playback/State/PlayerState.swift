@@ -24,6 +24,12 @@ final class PlayerState: ObservableObject {
     /// Optional playhead offset for scrubbing
     @Published var currentLayerTimeOffset: CMTime?
 
+    /// One-shot seek request for timeline scrubbing and click-to-seek interactions.
+    @Published var requestedLayerTimeOffset: CMTime?
+
+    /// True while the timeline playhead is being scrubbed manually.
+    @Published var isTimelineScrubbing: Bool = false
+
     /// Pause/play state
     @Published var isPaused: Bool = false
 

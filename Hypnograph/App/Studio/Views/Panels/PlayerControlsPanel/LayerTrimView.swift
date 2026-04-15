@@ -3,6 +3,22 @@ import AVFoundation
 import AppKit
 import HypnoCore
 
+private struct PlayheadMarkerShape: Shape {
+    let shoulderHeight: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let shoulderY = min(max(0, shoulderHeight), rect.height)
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: shoulderY))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: shoulderY))
+        path.closeSubpath()
+        return path
+    }
+}
+
 struct LayerTrimContext: Equatable {
     let layerIndex: Int
     let fileID: UUID
@@ -44,7 +60,17 @@ struct LayerTrimView: View {
     let onToggleSolo: (Int) -> Void
     let onToggleVisibility: (Int) -> Void
     let onToggleShowFullClips: () -> Void
+    let onBeginTimelineScrub: () -> Void
+    let onScrubTimelineToSeconds: (Double) -> Void
+    let onEndTimelineScrub: () -> Void
     let onCommit: (Int, ClosedRange<Double>) -> Void
+
+    private let sharedPlayheadHeadWidth: CGFloat = 14
+    private let sharedPlayheadHeadHeight: CGFloat = 14
+    private let sharedPlayheadShoulderHeight: CGFloat = 3
+    private let sharedPlayheadHandleTopInset: CGFloat = 11
+    private let sharedPlayheadHandleHitWidth: CGFloat = 28
+    @State private var sharedPlayheadDragStartX: CGFloat?
 
     private func snapTargetDurations(for context: LayerTrimContext) -> [Double] {
         let otherLayerDurations = contexts
@@ -67,9 +93,48 @@ struct LayerTrimView: View {
     var body: some View {
         if !contexts.isEmpty {
             VStack(spacing: 0) {
+                GeometryReader { geometry in
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .highPriorityGesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    guard !isShowingFullClips else { return }
+
+                                    if sharedPlayheadDragStartX == nil {
+                                        sharedPlayheadDragStartX = max(0, min(value.startLocation.x, geometry.size.width))
+                                        onBeginTimelineScrub()
+                                    }
+
+                                    let clampedDraggedX = max(0, min(value.location.x, geometry.size.width))
+                                    let fraction = geometry.size.width > 0 ? Double(clampedDraggedX / geometry.size.width) : 0
+                                    onScrubTimelineToSeconds(fraction * max(0.1, compositionTimelineDurationSeconds))
+                                }
+                                .onEnded { value in
+                                    guard !isShowingFullClips else {
+                                        sharedPlayheadDragStartX = nil
+                                        return
+                                    }
+
+                                    let clampedDraggedX = max(0, min(value.location.x, geometry.size.width))
+                                    let fraction = geometry.size.width > 0 ? Double(clampedDraggedX / geometry.size.width) : 0
+                                    onScrubTimelineToSeconds(fraction * max(0.1, compositionTimelineDurationSeconds))
+                                    sharedPlayheadDragStartX = nil
+                                    onEndTimelineScrub()
+                                }
+                        )
+                        .overlay(alignment: .topLeading) {
+                            if let handleX = sharedPlayheadX(trackWidth: geometry.size.width) {
+                                sharedPlayheadHandle(trackWidth: geometry.size.width, x: handleX)
+                            }
+                        }
+                }
+                .frame(height: sharedPlayheadHandleTopInset)
+
                 ForEach(contexts, id: \.stableID) { context in
                     LayerTrimRangeStrip(
                         context: context,
+                        showsPlayheadHandle: false,
                         isSelected: context.layerIndex == selectedLayerIndex,
                         compositionTimelineDurationSeconds: compositionTimelineDurationSeconds,
                         currentPlayheadSeconds: currentPlayheadSeconds,
@@ -104,6 +169,9 @@ struct LayerTrimView: View {
                             onToggleVisibility(context.layerIndex)
                         },
                         onToggleShowFullClips: onToggleShowFullClips,
+                        onBeginTimelineScrub: onBeginTimelineScrub,
+                        onScrubTimelineToSeconds: onScrubTimelineToSeconds,
+                        onEndTimelineScrub: onEndTimelineScrub,
                         onCommit: { range in
                             onCommit(context.layerIndex, range)
                         }
@@ -112,10 +180,36 @@ struct LayerTrimView: View {
             }
         }
     }
+
+    private func sharedPlayheadX(trackWidth: CGFloat) -> CGFloat? {
+        guard !isShowingFullClips, let currentPlayheadSeconds else { return nil }
+        let clampedTime = max(0, min(currentPlayheadSeconds, max(0.1, compositionTimelineDurationSeconds)))
+        let fraction = compositionTimelineDurationSeconds > 0 ? clampedTime / compositionTimelineDurationSeconds : 0
+        return trackWidth * CGFloat(fraction)
+    }
+
+    @ViewBuilder
+    private func sharedPlayheadHandle(trackWidth: CGFloat, x: CGFloat) -> some View {
+        let playheadColor = Color(red: 1.0, green: 0.24, blue: 0.20)
+        let clampedX = min(max(0, x), trackWidth)
+
+        ZStack(alignment: .top) {
+            Color.clear
+                .frame(width: sharedPlayheadHandleHitWidth, height: sharedPlayheadHandleTopInset)
+
+            PlayheadMarkerShape(shoulderHeight: sharedPlayheadShoulderHeight)
+                .fill(playheadColor)
+                .frame(width: sharedPlayheadHeadWidth, height: sharedPlayheadHeadHeight)
+        }
+        .frame(width: sharedPlayheadHandleHitWidth, height: sharedPlayheadHandleTopInset, alignment: .top)
+        .offset(x: clampedX - (sharedPlayheadHandleHitWidth / 2), y: 0)
+        .allowsHitTesting(false)
+    }
 }
 
 private struct LayerTrimRangeStrip: View {
     let context: LayerTrimContext
+    let showsPlayheadHandle: Bool
     let isSelected: Bool
     let compositionTimelineDurationSeconds: Double
     let currentPlayheadSeconds: Double?
@@ -132,6 +226,9 @@ private struct LayerTrimRangeStrip: View {
     let onToggleSolo: () -> Void
     let onToggleVisibility: () -> Void
     let onToggleShowFullClips: () -> Void
+    let onBeginTimelineScrub: () -> Void
+    let onScrubTimelineToSeconds: (Double) -> Void
+    let onEndTimelineScrub: () -> Void
     let onCommit: (ClosedRange<Double>) -> Void
 
     @StateObject private var thumbnailStore = LayerTrimThumbnailStripStore()
@@ -143,9 +240,19 @@ private struct LayerTrimRangeStrip: View {
     private let trimInteractionBottomInset: CGFloat = 28
     private let minimumDurationSeconds: Double = 0.1
     private let selectionLengthHorizontalPadding: CGFloat = 6
+    private let playheadHeadWidth: CGFloat = 12
+    private let playheadCapWidth: CGFloat = 8
+    private let playheadCapHeight: CGFloat = 3
+    private let playheadTriangleHeight: CGFloat = 4
+    private let playheadHandleOverflowAboveTrack: CGFloat = 10
+
+    private var playheadHeadHeight: CGFloat {
+        playheadCapHeight + playheadTriangleHeight
+    }
 
     init(
         context: LayerTrimContext,
+        showsPlayheadHandle: Bool,
         isSelected: Bool,
         compositionTimelineDurationSeconds: Double,
         currentPlayheadSeconds: Double?,
@@ -162,9 +269,13 @@ private struct LayerTrimRangeStrip: View {
         onToggleSolo: @escaping () -> Void,
         onToggleVisibility: @escaping () -> Void,
         onToggleShowFullClips: @escaping () -> Void,
+        onBeginTimelineScrub: @escaping () -> Void,
+        onScrubTimelineToSeconds: @escaping (Double) -> Void,
+        onEndTimelineScrub: @escaping () -> Void,
         onCommit: @escaping (ClosedRange<Double>) -> Void
     ) {
         self.context = context
+        self.showsPlayheadHandle = showsPlayheadHandle
         self.isSelected = isSelected
         self.compositionTimelineDurationSeconds = compositionTimelineDurationSeconds
         self.currentPlayheadSeconds = currentPlayheadSeconds
@@ -181,6 +292,9 @@ private struct LayerTrimRangeStrip: View {
         self.onToggleSolo = onToggleSolo
         self.onToggleVisibility = onToggleVisibility
         self.onToggleShowFullClips = onToggleShowFullClips
+        self.onBeginTimelineScrub = onBeginTimelineScrub
+        self.onScrubTimelineToSeconds = onScrubTimelineToSeconds
+        self.onEndTimelineScrub = onEndTimelineScrub
         self.onCommit = onCommit
         _draftRange = State(initialValue: context.selectedRangeSeconds)
     }
@@ -189,6 +303,7 @@ private struct LayerTrimRangeStrip: View {
         GeometryReader { geometry in
             let trackWidth = max(1, geometry.size.width)
             let trimHeight = max(18, trackHeight - trimInteractionBottomInset)
+            let interactionTopInset = showsPlayheadHandle ? playheadHandleOverflowAboveTrack : 0
 
             ZStack(alignment: .topLeading) {
                 Rectangle()
@@ -201,21 +316,27 @@ private struct LayerTrimRangeStrip: View {
 
                 LayerTrimInteractionOverlay(
                     range: $draftRange,
+                    playheadSeconds: currentPlayheadSeconds,
+                    showsPlayheadHandle: showsPlayheadHandle,
                     totalDurationSeconds: sourceTotalSeconds,
                     timelineDurationSeconds: isShowingFullClips ? sourceTotalSeconds : timelineDurationSeconds,
                     snapTargetDurationsSeconds: snapTargetDurationsSeconds,
                     maxSelectionDurationSeconds: maxWindowSeconds,
                     minimumDurationSeconds: minimumWindowSeconds,
+                    scrubEnabled: !isShowingFullClips,
                     usesSourceSelectionMode: isShowingFullClips,
                     onSelect: onSelect,
+                    onScrubBegan: onBeginTimelineScrub,
+                    onScrubChanged: onScrubTimelineToSeconds,
+                    onScrubEnded: onEndTimelineScrub,
                     onCommit: { committed in
                         let normalizedRange = normalized(committed)
                         draftRange = normalizedRange
                         onCommit(normalizedRange)
                     }
                 )
-                .frame(width: trackWidth, height: trimHeight, alignment: .leading)
-                .frame(height: trimHeight)
+                .frame(width: trackWidth, height: trimHeight + interactionTopInset, alignment: .topLeading)
+                .offset(y: -interactionTopInset)
             }
             .overlay(alignment: .leading) {
                 if isSelected {
@@ -299,7 +420,6 @@ private struct LayerTrimRangeStrip: View {
                     leadingOffset: 0,
                     selectedWindowWidth: selectedWindowWidth
                 )
-                compositionPlayheadOverlay(trackWidth: trackWidth)
 
                 VStack(spacing: 0) {
                     Spacer(minLength: 0)
@@ -322,6 +442,8 @@ private struct LayerTrimRangeStrip: View {
                 }
                 .frame(width: trackWidth, height: trackHeight)
                 .clipShape(Rectangle())
+
+                compositionPlayheadOverlay(trackWidth: trackWidth)
             }
             .clipShape(Rectangle())
         }
@@ -373,7 +495,6 @@ private struct LayerTrimRangeStrip: View {
                 leadingOffset: leadingShadeWidth,
                 selectedWindowWidth: selectedWidth
             )
-            sourcePlayheadOverlay(trackWidth: trackWidth)
 
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
@@ -396,6 +517,8 @@ private struct LayerTrimRangeStrip: View {
             }
             .frame(width: trackWidth, height: trackHeight)
             .clipShape(Rectangle())
+
+            sourcePlayheadOverlay(trackWidth: trackWidth)
         }
         .clipShape(Rectangle())
     }
@@ -440,11 +563,7 @@ private struct LayerTrimRangeStrip: View {
             let fraction = timelineDurationSeconds > 0 ? clampedTime / timelineDurationSeconds : 0
             let x = trackWidth * fraction
 
-            Rectangle()
-                .fill(Color.accentColor.opacity(0.95))
-                .frame(width: 1.5, height: trackHeight)
-                .offset(x: x)
-                .allowsHitTesting(false)
+            playheadLineIndicator(trackWidth: trackWidth, x: x)
         }
     }
 
@@ -457,12 +576,21 @@ private struct LayerTrimRangeStrip: View {
             let fraction = sourceTotalSeconds > 0 ? sourceSeconds / sourceTotalSeconds : 0
             let x = trackWidth * fraction
 
-            Rectangle()
-                .fill(Color.accentColor.opacity(0.95))
-                .frame(width: 1.5, height: trackHeight)
-                .offset(x: x)
-                .allowsHitTesting(false)
+            playheadLineIndicator(trackWidth: trackWidth, x: x)
         }
+    }
+
+    private func playheadLineIndicator(trackWidth: CGFloat, x: CGFloat) -> some View {
+        let playheadColor = Color(red: 1.0, green: 0.24, blue: 0.20)
+        let lineWidth: CGFloat = 1.5
+        let clampedX = min(max(lineWidth / 2, x), max(lineWidth / 2, trackWidth - lineWidth / 2))
+
+        return Rectangle()
+            .fill(playheadColor)
+            .frame(width: lineWidth, height: trackHeight)
+            .offset(x: clampedX - (lineWidth / 2))
+            .frame(width: trackWidth, height: trackHeight, alignment: .topLeading)
+            .allowsHitTesting(false)
     }
 
     private var headerOverlay: some View {
@@ -968,18 +1096,27 @@ private struct LayerTrimRangeStrip: View {
 
 private struct LayerTrimInteractionOverlay: NSViewRepresentable {
     @Binding var range: ClosedRange<Double>
+    let playheadSeconds: Double?
+    let showsPlayheadHandle: Bool
     let totalDurationSeconds: Double
     let timelineDurationSeconds: Double
     let snapTargetDurationsSeconds: [Double]
     let maxSelectionDurationSeconds: Double
     let minimumDurationSeconds: Double
+    let scrubEnabled: Bool
     let usesSourceSelectionMode: Bool
     let onSelect: () -> Void
+    let onScrubBegan: () -> Void
+    let onScrubChanged: (Double) -> Void
+    let onScrubEnded: () -> Void
     let onCommit: (ClosedRange<Double>) -> Void
 
     func makeNSView(context: Context) -> LayerTrimInteractionView {
         let view = LayerTrimInteractionView()
         view.onSelect = onSelect
+        view.onScrubBegan = onScrubBegan
+        view.onScrubChanged = onScrubChanged
+        view.onScrubEnded = onScrubEnded
         view.onRangeChanged = { newRange in
             range = newRange
         }
@@ -990,14 +1127,20 @@ private struct LayerTrimInteractionOverlay: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: LayerTrimInteractionView, context: Context) {
+        nsView.playheadSeconds = playheadSeconds
+        nsView.showsPlayheadHandle = showsPlayheadHandle
         nsView.totalDurationSeconds = totalDurationSeconds
         nsView.timelineDurationSeconds = timelineDurationSeconds
         nsView.snapTargetDurationsSeconds = snapTargetDurationsSeconds
         nsView.maxSelectionDurationSeconds = maxSelectionDurationSeconds
         nsView.minimumDurationSeconds = minimumDurationSeconds
+        nsView.scrubEnabled = scrubEnabled
         nsView.usesSourceSelectionMode = usesSourceSelectionMode
         nsView.currentRange = range
         nsView.onSelect = onSelect
+        nsView.onScrubBegan = onScrubBegan
+        nsView.onScrubChanged = onScrubChanged
+        nsView.onScrubEnded = onScrubEnded
         nsView.onRangeChanged = { newRange in
             range = newRange
         }
@@ -1012,16 +1155,23 @@ private final class LayerTrimInteractionView: NSView {
         case leadingHandle
         case trailingHandle
         case window
+        case playhead
     }
 
+    var playheadSeconds: Double?
+    var showsPlayheadHandle: Bool = false
     var totalDurationSeconds: Double = 0.1
     var timelineDurationSeconds: Double = 0.1
     var snapTargetDurationsSeconds: [Double] = []
     var maxSelectionDurationSeconds: Double = 0.1
     var minimumDurationSeconds: Double = 0.1
+    var scrubEnabled: Bool = false
     var usesSourceSelectionMode: Bool = false
     var currentRange: ClosedRange<Double> = 0...0.1
     var onSelect: (() -> Void)?
+    var onScrubBegan: (() -> Void)?
+    var onScrubChanged: ((Double) -> Void)?
+    var onScrubEnded: (() -> Void)?
     var onRangeChanged: ((ClosedRange<Double>) -> Void)?
     var onRangeCommitted: ((ClosedRange<Double>) -> Void)?
 
@@ -1030,17 +1180,23 @@ private final class LayerTrimInteractionView: NSView {
     private var dragMode: DragMode?
 
     private let handleHitWidth: CGFloat = 36
+    private let playheadHitWidth: CGFloat = 22
 
     override var mouseDownCanMoveWindow: Bool { false }
     override var acceptsFirstResponder: Bool { true }
     override var isOpaque: Bool { false }
 
     override func mouseDown(with event: NSEvent) {
-        onSelect?()
         let point = convert(event.locationInWindow, from: nil)
         dragStartPoint = point
         dragStartRange = normalized(currentRange)
         dragMode = dragModeForStartEvent(event, at: point)
+        if dragMode == .playhead {
+            onScrubBegan?()
+            scrub(to: point)
+        } else {
+            onSelect?()
+        }
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -1056,6 +1212,9 @@ private final class LayerTrimInteractionView: NSView {
 
         let updatedRange: ClosedRange<Double>
         switch dragMode {
+        case .playhead:
+            scrub(to: point)
+            return
         case .leadingHandle:
             let minLower = dragStartRange.upperBound - maxWindow
             let maxLower = dragStartRange.upperBound - minWindow
@@ -1089,6 +1248,13 @@ private final class LayerTrimInteractionView: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
+        if dragMode == .playhead {
+            onScrubEnded?()
+            dragStartPoint = nil
+            dragStartRange = nil
+            dragMode = nil
+            return
+        }
         let committedRange = normalized(currentRange)
         currentRange = committedRange
         onRangeCommitted?(committedRange)
@@ -1171,6 +1337,9 @@ private final class LayerTrimInteractionView: NSView {
 
         case .window:
             return proposed
+
+        case .playhead:
+            return proposed
         }
     }
 
@@ -1197,6 +1366,10 @@ private final class LayerTrimInteractionView: NSView {
     }
 
     private func dragModeForStartEvent(_ event: NSEvent, at point: CGPoint) -> DragMode {
+        if scrubEnabled, !usesSourceSelectionMode, let playheadX = currentPlayheadX, abs(point.x - playheadX) <= playheadHitWidth {
+            return .playhead
+        }
+
         if usesSourceSelectionMode {
             let leftEdge = bounds.width * CGFloat(max(0, min(currentRange.lowerBound / safeTotalSeconds, 1)))
             let rightEdge = bounds.width * CGFloat(max(0, min(currentRange.upperBound / safeTotalSeconds, 1)))
@@ -1224,6 +1397,20 @@ private final class LayerTrimInteractionView: NSView {
 
     private var currentWindowSeconds: Double {
         max(0.1, currentRange.upperBound - currentRange.lowerBound)
+    }
+
+    private var currentPlayheadX: CGFloat? {
+        guard let playheadSeconds else { return nil }
+        let clampedTime = max(0, min(playheadSeconds, safeTimelineDurationSeconds))
+        let fraction = safeTimelineDurationSeconds > 0 ? clampedTime / safeTimelineDurationSeconds : 0
+        return bounds.width * CGFloat(fraction)
+    }
+
+    private func scrub(to point: CGPoint) {
+        let clampedX = max(0, min(point.x, bounds.width))
+        let fraction = bounds.width > 0 ? Double(clampedX / bounds.width) : 0
+        let seconds = fraction * safeTimelineDurationSeconds
+        onScrubChanged?(seconds)
     }
 }
 

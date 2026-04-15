@@ -495,7 +495,7 @@ private struct ApplePhotosSourcePickerSheet: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
-                        .frame(maxWidth: .infinity, minHeight: 170, alignment: .topLeading)
+                        .frame(maxWidth: .infinity, minHeight: detailPaneMinHeight, alignment: .topLeading)
                         .padding(12)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
@@ -566,8 +566,9 @@ private struct ApplePhotosSourcePickerSheet: View {
             idealWidth: canChooseSources ? 620 : 460,
             maxWidth: canChooseSources ? 760 : 500,
             minHeight: canChooseSources ? 250 : 156,
-            idealHeight: canChooseSources ? 320 : 166,
-            maxHeight: canChooseSources ? 520 : 190
+            idealHeight: canChooseSources ? sheetIdealHeight : 166,
+            maxHeight: canChooseSources ? sheetMaxHeight : 190,
+            alignment: .topLeading
         )
         .background(
             InitialWindowFocusClearer(enabled: suppressInitialKeyboardFocus)
@@ -576,6 +577,33 @@ private struct ApplePhotosSourcePickerSheet: View {
 
     private var canChooseSources: Bool {
         authorizationStatus.canRead
+    }
+
+    private var detailPaneMinHeight: CGFloat {
+        switch mode {
+        case .albums:
+            return 170
+        case .allItems, .custom:
+            return 96
+        }
+    }
+
+    private var sheetIdealHeight: CGFloat {
+        switch mode {
+        case .albums:
+            return 320
+        case .allItems, .custom:
+            return 250
+        }
+    }
+
+    private var sheetMaxHeight: CGFloat {
+        switch mode {
+        case .albums:
+            return 380
+        case .allItems, .custom:
+            return 290
+        }
     }
 
     private var canPerformPrimaryAction: Bool {

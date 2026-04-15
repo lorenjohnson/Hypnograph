@@ -508,6 +508,14 @@ final class Studio: ObservableObject {
             get: { player.currentLayerTimeOffset },
             set: { player.currentLayerTimeOffset = $0 }
         )
+        let requestedSourceTimeBinding = Binding(
+            get: { player.requestedLayerTimeOffset },
+            set: { player.requestedLayerTimeOffset = $0 }
+        )
+        let isTimelineScrubbingBinding = Binding(
+            get: { player.isTimelineScrubbing },
+            set: { player.isTimelineScrubbing = $0 }
+        )
         let compositionLoadInFlightBinding = Binding(
             get: { player.isPrimaryCompositionLoadInFlight },
             set: { player.isPrimaryCompositionLoadInFlight = $0 }
@@ -527,6 +535,8 @@ final class Studio: ObservableObject {
                 onCompositionEnded: onCompositionEnded,
                 currentLayerIndex: currentLayerIndexBinding,
                 currentSourceTime: currentSourceTimeBinding,
+                requestedSourceTime: requestedSourceTimeBinding,
+                isTimelineScrubbing: isTimelineScrubbingBinding,
                 isPrimaryCompositionLoadInFlight: compositionLoadInFlightBinding,
                 hasPendingGeneratedNextComposition: pendingGeneratedNextCompositionBinding,
                 currentCompositionLoadFailure: Binding(

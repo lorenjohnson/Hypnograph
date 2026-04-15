@@ -44,6 +44,9 @@ struct PlayerControlsPanel: View {
     let onSnapshotCurrent: () -> Void
     let onRenderCurrent: () -> Void
     let onRenderSequence: () -> Void
+    let onBeginTimelineScrub: () -> Void
+    let onScrubTimelineToSeconds: (Double) -> Void
+    let onEndTimelineScrub: () -> Void
     let onCommitLayerTrimRange: (Int, ClosedRange<Double>) -> Void
 
     @State private var previousVolumeBeforeMute: Double = 0.8
@@ -81,11 +84,14 @@ struct PlayerControlsPanel: View {
                     onToggleSolo: onToggleLayerSolo,
                     onToggleVisibility: onToggleLayerVisibility,
                     onToggleShowFullClips: onToggleShowFullClips,
+                    onBeginTimelineScrub: onBeginTimelineScrub,
+                    onScrubTimelineToSeconds: onScrubTimelineToSeconds,
+                    onEndTimelineScrub: onEndTimelineScrub,
                     onCommit: onCommitLayerTrimRange
                 )
             }
 
-            if !sequenceEntries.isEmpty {
+            if sequenceEntries.count > 1 {
                 SequenceLaneView(
                     compositionEntries: sequenceEntries,
                     summaryText: "\(formatTime(totalSequenceDurationSeconds)) / \(formatTime(compositionLengthSeconds))",

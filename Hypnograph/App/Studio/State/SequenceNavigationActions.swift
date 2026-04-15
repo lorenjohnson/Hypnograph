@@ -10,6 +10,12 @@ import HypnoUI
 
 @MainActor
 extension Studio {
+    private func resetPlayheadForCompositionChange() {
+        player.isTimelineScrubbing = false
+        player.currentLayerTimeOffset = .zero
+        player.requestedLayerTimeOffset = nil
+    }
+
     var currentCompositionIndicatorText: String {
         let compositions = hypnogram.compositions
         guard !compositions.isEmpty else { return "Composition --" }
@@ -36,6 +42,8 @@ extension Studio {
         let token = compositionSelectionUpdateToken
         compositionSelectionWorkItem?.cancel()
 
+        resetPlayheadForCompositionChange()
+
         let workItem = DispatchWorkItem { [weak self] in
             guard let self else { return }
             guard self.compositionSelectionUpdateToken == token else { return }
@@ -43,7 +51,6 @@ extension Studio {
 
             self.player.currentCompositionLoadFailure = nil
             self.clampCurrentSourceIndex()
-            self.player.currentLayerTimeOffset = nil
             self.player.effectManager.clearFrameBuffer()
             self.player.effectManager.invalidateBlendAnalysis()
             self.notifyHypnogramChanged()

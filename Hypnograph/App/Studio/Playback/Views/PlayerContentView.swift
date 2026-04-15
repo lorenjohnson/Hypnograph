@@ -423,6 +423,16 @@ final class PlayerContentView: NSView {
         }
     }
 
+    /// Lightweight seek for interactive timeline scrubbing.
+    /// Avoids the heavier reattach path used by generic paused refreshes.
+    func scrubActiveFrame(at time: CMTime) {
+        if let activeFrameSource {
+            activeFrameSource.scrub(to: time)
+        } else {
+            activeAVPlayer?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+        }
+    }
+
     /// Set a content-aware focus point (e.g. human head) used to offset aspect-fill framing.
     /// Pass `nil` to clear and return to centered framing.
     func setContentFocus(_ focus: HypnoCore.RendererView.ContentFocus?) {

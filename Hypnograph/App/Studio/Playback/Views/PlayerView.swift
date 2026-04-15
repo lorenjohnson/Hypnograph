@@ -24,6 +24,8 @@ struct PlayerView: NSViewRepresentable {
     let onCompositionEnded: (() -> Bool)?
     @Binding var currentLayerIndex: Int
     @Binding var currentSourceTime: CMTime?
+    @Binding var requestedSourceTime: CMTime?
+    @Binding var isTimelineScrubbing: Bool
     @Binding var isPrimaryCompositionLoadInFlight: Bool
     @Binding var hasPendingGeneratedNextComposition: Bool
     @Binding var currentCompositionLoadFailure: PlayerState.CompositionLoadFailure?
@@ -96,6 +98,7 @@ struct PlayerView: NSViewRepresentable {
         c.playbackEndBehavior = playbackEndBehavior
         c.onCompositionEnded = onCompositionEnded
         c.isAllStillImages = composition.layers.allSatisfy { $0.mediaClip.file.mediaKind == .image }
+        c.isTimelineScrubbing = isTimelineScrubbing
         if isPaused || !canAdvanceCurrentComposition(playbackEndBehavior, isLastCompositionInSequence: isLastCompositionInSequence) {
             c.isAutoAdvanceInFlight = false
             c.didRequestPreEndAdvance = false
@@ -135,6 +138,7 @@ struct PlayerView: NSViewRepresentable {
             c.currentTask?.cancel()
             c.compositionID = newID
             c.didRequestPreEndAdvance = false
+            c.suppressCurrentTimeReporting = true
             deferCompositionLoadInFlight(true, coordinator: c, token: bindingUpdateToken)
             deferCompositionLoadFailure(nil, coordinator: c, token: bindingUpdateToken)
 
@@ -207,7 +211,9 @@ struct PlayerView: NSViewRepresentable {
                     // - Subsequent loads: use configured transition
                     let effectiveTransition: TransitionRenderer.TransitionType
                     let effectiveTransitionDuration: Double
-                    if c.isFirstLoad || previousID == nil {
+                    let isSameCompositionReload = previousID != nil && c.lastRenderedComposition?.id == composition.id
+                    c.pendingPostLoadSourceTime = isSameCompositionReload ? currentSourceTime : nil
+                    if c.isFirstLoad || previousID == nil || isSameCompositionReload {
                         effectiveTransition = .none
                         effectiveTransitionDuration = transitionDuration
                         c.isFirstLoad = false
@@ -232,6 +238,11 @@ struct PlayerView: NSViewRepresentable {
                         incomingEffectManager: self.effectManager
                     ) {
                         Task { @MainActor in
+                            if let pendingPostLoadSourceTime = c.pendingPostLoadSourceTime {
+                                content.scrubActiveFrame(at: pendingPostLoadSourceTime)
+                                c.pendingPostLoadSourceTime = nil
+                            }
+                            c.suppressCurrentTimeReporting = false
                             c.isAutoAdvanceInFlight = false
                         }
                     }
@@ -260,6 +271,7 @@ struct PlayerView: NSViewRepresentable {
                     } else {
                         deferCompositionLoadFailure(nil, coordinator: c, token: bindingUpdateToken)
                     }
+                    c.suppressCurrentTimeReporting = false
                     error.log(context: "PlayerView")
                     c.compositionID = nil
                     c.isAutoAdvanceInFlight = false
@@ -318,6 +330,29 @@ struct PlayerView: NSViewRepresentable {
                             content.refreshActiveFrame(at: currentTime)
                         }
                     }
+                }
+            }
+
+            if let requestedSourceTime = requestedSourceTime,
+               let content = c.contentView {
+                let activeTime = content.activeAVPlayer?.currentTime() ?? .invalid
+                let activeSeconds = activeTime.seconds
+                let requestedSeconds = requestedSourceTime.seconds
+                let needsSeek =
+                    !activeTime.isValid ||
+                    !activeSeconds.isFinite ||
+                    abs(activeSeconds - requestedSeconds) > 0.02
+
+                if needsSeek {
+                    if isTimelineScrubbing {
+                        content.scrubActiveFrame(at: requestedSourceTime)
+                    } else {
+                        content.refreshActiveFrame(at: requestedSourceTime)
+                    }
+                }
+
+                DispatchQueue.main.async {
+                    self.requestedSourceTime = nil
                 }
             }
 
@@ -457,7 +492,9 @@ struct PlayerView: NSViewRepresentable {
                     guard player === contentView.activeAVPlayer else { return }
 
                     let bindingUpdateToken = c.bindingUpdateToken
-                    deferCurrentSourceTime(player.currentTime(), coordinator: c, token: bindingUpdateToken)
+                    if !c.isTimelineScrubbing && !c.suppressCurrentTimeReporting {
+                        deferCurrentSourceTime(player.currentTime(), coordinator: c, token: bindingUpdateToken)
+                    }
 
                     guard canAdvanceCurrentComposition(
                         c.playbackEndBehavior,

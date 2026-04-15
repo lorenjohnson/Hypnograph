@@ -17,6 +17,7 @@ struct ContentView: View {
     @State private var panelsCurrentlyAutoHidden = false
     @State private var completedDownloadIdentifiersThisLoad: Set<String> = []
     @State private var previouslyVisibleDownloadIdentifiers: Set<String> = []
+    @State private var shouldResumePlaybackAfterTimelineScrub = false
 
     private static let hidePanelsNowNotification = Notification.Name("StudioHidePanelsNow")
     private static let showPanelsNowNotification = Notification.Name("StudioShowPanelsNow")
@@ -291,7 +292,7 @@ struct ContentView: View {
             isGenerateAtEndEnabled: main.isGenerateAtEndEnabled,
             selectedLayerIndex: main.activePlayer.currentLayerIndex,
             compositionLengthSeconds: main.targetDuration.seconds,
-            currentCompositionTimeSeconds: main.activePlayer.currentLayerTimeOffset?.seconds,
+            currentCompositionTimeSeconds: main.activePlayer.currentLayerTimeOffset?.seconds ?? 0,
             isShowingFullClips: main.isShowingFullClips,
             panelToolbarItems: studioPanelToolbarItems,
             isPanelVisible: { panelID in panels.isPanelVisible(panelID) },
@@ -356,6 +357,29 @@ struct ContentView: View {
             onSnapshotCurrent: { main.saveSnapshotImage() },
             onRenderCurrent: { main.renderAndSaveVideo() },
             onRenderSequence: { main.renderAndSaveSequenceVideo() },
+            onBeginTimelineScrub: {
+                main.activePlayer.isTimelineScrubbing = true
+                shouldResumePlaybackAfterTimelineScrub = !main.activePlayer.isPaused
+                if shouldResumePlaybackAfterTimelineScrub {
+                    main.togglePause()
+                }
+            },
+            onScrubTimelineToSeconds: { seconds in
+                let scrubTime = CMTime(
+                    seconds: max(0, seconds),
+                    preferredTimescale: 600
+                )
+                main.activePlayer.currentLayerTimeOffset = scrubTime
+                main.activePlayer.requestedLayerTimeOffset = scrubTime
+            },
+            onEndTimelineScrub: {
+                main.activePlayer.isTimelineScrubbing = false
+                main.activePlayer.requestedLayerTimeOffset = nil
+                if shouldResumePlaybackAfterTimelineScrub {
+                    main.togglePause()
+                }
+                shouldResumePlaybackAfterTimelineScrub = false
+            },
             onCommitLayerTrimRange: { layerIndex, range in
                 main.setLayerRange(
                     sourceIndex: layerIndex,

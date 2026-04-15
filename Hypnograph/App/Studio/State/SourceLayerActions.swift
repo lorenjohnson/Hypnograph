@@ -21,7 +21,26 @@ extension Studio {
     }
 
     func addSourceFromPhotosPicker() {
-        state.showPhotosPickerForAddLayer = true
+        let status = refreshPhotosStatus()
+        if status.canRead {
+            state.showPhotosPickerForAddLayer = true
+            return
+        }
+
+        if status == .notDetermined {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let requestedStatus = await self.requestPhotosAccess()
+                if requestedStatus.canRead {
+                    self.state.showPhotosPickerForAddLayer = true
+                } else {
+                    AppNotifications.show("Photos permission required", flash: true, duration: 1.5)
+                }
+            }
+            return
+        }
+
+        AppNotifications.show("Photos permission required", flash: true, duration: 1.5)
     }
 
     /// Create a new composition and add each incoming file as a layer.
@@ -330,6 +349,8 @@ extension Studio {
     ) {
         guard sourceIndex >= 0, sourceIndex < currentLayers.count else { return }
 
+        let preservedPlayheadTime = activePlayer.currentLayerTimeOffset
+
         var currentLayers = self.currentLayers
         var layer = currentLayers[sourceIndex]
         let isVideo = layer.mediaClip.file.mediaKind == .video
@@ -381,7 +402,10 @@ extension Studio {
 
         currentLayers[sourceIndex] = layer
         self.currentLayers = currentLayers
-        activePlayer.currentLayerTimeOffset = nil
+        if let preservedPlayheadTime {
+            activePlayer.currentLayerTimeOffset = preservedPlayheadTime
+            activePlayer.requestedLayerTimeOffset = preservedPlayheadTime
+        }
     }
 
     func setCurrentLayerRange(

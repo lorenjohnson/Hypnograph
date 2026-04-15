@@ -37,6 +37,12 @@ final class PlayerPlaybackCoordinator {
     /// If the current composition ends again before the next composition is ready, we loop the current composition
     /// instead of requesting another advance. Cleared when transition completes.
     var isAutoAdvanceInFlight: Bool = false
+    /// True while the user is manually scrubbing the timeline playhead.
+    var isTimelineScrubbing: Bool = false
+    /// Seek to apply once a rebuilt composition has fully become the active slot.
+    var pendingPostLoadSourceTime: CMTime?
+    /// Suppress outgoing/current player time reports while a composition handoff is in flight.
+    var suppressCurrentTimeReporting: Bool = false
 
     func audioDeviceChanged(to newUID: String?) -> Bool {
         if lastAudioDeviceUID == Self.notSetSentinel { return true }
