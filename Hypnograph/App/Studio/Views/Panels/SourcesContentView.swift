@@ -50,6 +50,7 @@ private struct SourceRow: Identifiable {
 struct SourcesContentView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
+    @SwiftUI.Environment(\.panelLayoutInvalidator) private var panelLayoutInvalidator
 
     @State private var isRequestingPhotos = false
     @State private var showPhotosAlbumsPicker = false
@@ -180,6 +181,9 @@ struct SourcesContentView: View {
                     await state.refreshPhotosLibrariesAfterAuthorization()
                 } else {
                     await state.refreshAvailableLibraries()
+                }
+                DispatchQueue.main.async {
+                    panelLayoutInvalidator(resetScrollToTop: true)
                 }
             }
         }

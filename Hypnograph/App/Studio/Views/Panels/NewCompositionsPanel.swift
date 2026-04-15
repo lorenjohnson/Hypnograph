@@ -21,8 +21,10 @@ struct NewCompositionsPanel: View {
         Binding(
             get: { settingsStore.value.newCompositionsPanelTab },
             set: { newValue in
-                settingsStore.update { settings in
-                    settings.newCompositionsPanelTab = newValue
+                DispatchQueue.main.async {
+                    settingsStore.update { settings in
+                        settings.newCompositionsPanelTab = newValue
+                    }
                 }
             }
         )
@@ -53,7 +55,7 @@ struct NewCompositionsPanel: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(windowPanelBackground)
         .onChange(of: settingsStore.value.newCompositionsPanelTab) { _, _ in
-            panelLayoutInvalidator()
+            panelLayoutInvalidator(resetScrollToTop: true)
         }
     }
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import HypnoCore
 
 struct PropertiesPanel: View {
@@ -226,32 +227,52 @@ struct PropertiesPanel: View {
         if let layerIndex = selectedLayerIndex {
             let layerBinding = bindingForLayer(at: layerIndex)
             let metadataSummary = LayerMetadataFormatter.summary(for: layerBinding.wrappedValue)
+            let sourceRevealURL = revealableSourceURL(for: layerBinding.wrappedValue)
 
             VStack(alignment: .leading, spacing: 16) {
-                PanelSectionHeaderView(title: "Layer")
+                VStack(alignment: .leading, spacing: 6) {
+                    PanelSectionHeaderView(title: "Source")
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(metadataSummary.fileName)
-                        .font(.callout.weight(.medium))
-                        .lineLimit(1)
-                    if let locationText = metadataSummary.locationText {
-                        Text(locationText)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            if let sourceRevealURL {
+                                Button {
+                                    NSWorkspace.shared.activateFileViewerSelecting([sourceRevealURL])
+                                } label: {
+                                    Text(metadataSummary.fileName)
+                                        .font(.callout.weight(.medium))
+                                        .lineLimit(1)
+                                        .foregroundStyle(.primary)
+                                }
+                                .buttonStyle(.plain)
+                                .help("Show in Finder")
+                            } else {
+                                Text(metadataSummary.fileName)
+                                    .font(.callout.weight(.medium))
+                                    .lineLimit(1)
+                            }
+
+                            Spacer(minLength: 8)
+
+                            if let dateText = metadataSummary.dateText {
+                                Text(dateText)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .multilineTextAlignment(.trailing)
+                            }
+                        }
+
+                        if let locationText = metadataSummary.locationText {
+                            Text(locationText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                     }
-                    if let dateText = metadataSummary.dateText {
-                        Text(dateText)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    Text("Layer \(layerIndex + 1)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
 
-                PanelInlineFieldRowView(title: "Blend") {
+                PanelInlineFieldRowView(title: "Blend Mode") {
                     Picker("", selection: Binding(
                         get: {
                             if layerIndex == 0 {
@@ -336,6 +357,18 @@ struct PropertiesPanel: View {
                 main.notifyHypnogramMutated()
             }
         )
+    }
+
+    private func revealableSourceURL(for layer: Layer) -> URL? {
+        switch layer.mediaClip.file.source {
+        case .url(let url):
+            guard url.isFileURL else { return nil }
+            let standardizedURL = url.standardizedFileURL
+            guard FileManager.default.fileExists(atPath: standardizedURL.path) else { return nil }
+            return standardizedURL
+        case .external:
+            return nil
+        }
     }
 
     @ViewBuilder

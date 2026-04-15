@@ -6,7 +6,7 @@
 import SwiftUI
 
 struct PanelHostBridge: NSViewRepresentable {
-    @ObservedObject var hostService: PanelHostService
+    @ObservedObject var hostCoordinator: PanelHostCoordinator
     let showHypnograms: Bool
     let showNewCompositions: Bool
     let showProperties: Bool
@@ -29,15 +29,15 @@ struct PanelHostBridge: NSViewRepresentable {
     let playerControlsContent: AnyView
 
     final class Coordinator {
-        var hostService: PanelHostService
+        var hostCoordinator: PanelHostCoordinator
 
-        init(hostService: PanelHostService) {
-            self.hostService = hostService
+        init(hostCoordinator: PanelHostCoordinator) {
+            self.hostCoordinator = hostCoordinator
         }
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(hostService: hostService)
+        Coordinator(hostCoordinator: hostCoordinator)
     }
 
     func makeNSView(context: Context) -> NSView {
@@ -45,8 +45,8 @@ struct PanelHostBridge: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        context.coordinator.hostService = hostService
-        context.coordinator.hostService.sync(
+        context.coordinator.hostCoordinator = hostCoordinator
+        context.coordinator.hostCoordinator.sync(
             parentWindow: nsView.window,
             showHypnograms: showHypnograms,
             showNewCompositions: showNewCompositions,
@@ -72,6 +72,6 @@ struct PanelHostBridge: NSViewRepresentable {
     }
 
     static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
-        coordinator.hostService.teardown()
+        coordinator.hostCoordinator.teardown()
     }
 }

@@ -9,11 +9,11 @@ import HypnoUI
 struct ContentView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
-    @ObservedObject private var panels: PanelStateController
+    @ObservedObject private var panels: PanelStateCoordinator
     @ObservedObject private var settingsStore: StudioSettingsStore
     @ObservedObject private var hypnogramStore: HypnogramStore
     @ObservedObject private var externalLoadHarness = ExternalMediaLoadHarness.shared
-    @StateObject private var panelHostService = PanelHostService()
+    @StateObject private var panelHostCoordinator = PanelHostCoordinator()
     @State private var panelsCurrentlyAutoHidden = false
     @State private var completedDownloadIdentifiersThisLoad: Set<String> = []
     @State private var previouslyVisibleDownloadIdentifiers: Set<String> = []
@@ -395,7 +395,7 @@ struct ContentView: View {
                 .ignoresSafeArea()
                 .overlay {
                     CanvasPanelToggleHitView {
-                        panelHostService.hidePanelsForCanvasInteraction()
+                        panelHostCoordinator.hidePanelsForCanvasInteraction()
                     }
                 }
 
@@ -463,7 +463,7 @@ struct ContentView: View {
         }
         .background(
             PanelHostBridge(
-                hostService: panelHostService,
+                hostCoordinator: panelHostCoordinator,
                 showHypnograms: panels.isPanelVisible("hypnogramsPanel"),
                 showNewCompositions: panels.isPanelVisible("newCompositionsPanel"),
                 showProperties: panels.isPanelVisible("propertiesPanel"),
@@ -517,10 +517,10 @@ struct ContentView: View {
         .appNotifications(bottomPadding: notificationBottomPadding)
         .background(Color.black)
         .onReceive(NotificationCenter.default.publisher(for: Self.hidePanelsNowNotification)) { _ in
-            panelHostService.hidePanelsNow()
+            panelHostCoordinator.hidePanelsNow()
         }
         .onReceive(NotificationCenter.default.publisher(for: Self.showPanelsNowNotification)) { _ in
-            panelHostService.showPanelsNow()
+            panelHostCoordinator.showPanelsNow()
         }
         .onAppear {
             panels.registerPanel("hypnogramsPanel", defaultVisible: false)

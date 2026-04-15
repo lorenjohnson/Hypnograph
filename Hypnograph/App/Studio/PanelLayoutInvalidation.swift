@@ -1,10 +1,10 @@
 import SwiftUI
 
 struct PanelLayoutInvalidator {
-    var invalidate: () -> Void = {}
+    var invalidate: (Bool) -> Void = { _ in }
 
-    func callAsFunction() {
-        invalidate()
+    func callAsFunction(resetScrollToTop: Bool = false) {
+        invalidate(resetScrollToTop)
     }
 }
 

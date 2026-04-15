@@ -1,5 +1,5 @@
 //
-//  PanelStateController.swift
+//  PanelStateCoordinator.swift
 //  Hypnograph
 //
 
@@ -9,7 +9,7 @@ import HypnoUI
 typealias PanelVisibilityState = WindowState
 
 @MainActor
-final class PanelStateController: ObservableObject {
+final class PanelStateCoordinator: ObservableObject {
     @Published private(set) var panelVisibilityState = PanelVisibilityState()
     @Published private(set) var mainWindowFullScreen: Bool = true
     @Published private(set) var panelsHidden: Bool = false
@@ -156,9 +156,9 @@ final class PanelStateController: ObservableObject {
             )
             let data = try encoder.encode(persisted)
             try data.write(to: stateFileURL)
-            print("PanelStateController: Saved panel state to disk")
+            print("PanelStateCoordinator: Saved panel state to disk")
         } catch {
-            print("PanelStateController: Failed to save panel state: \(error)")
+            print("PanelStateCoordinator: Failed to save panel state: \(error)")
         }
     }
 
@@ -179,7 +179,7 @@ final class PanelStateController: ObservableObject {
                 mainWindowFullScreen = persisted.mainWindowFullScreen
                 panelFrames = migratePanelFrameKeys(persisted.panelFrames?.mapValues(\.rect) ?? [:])
                 panelOrder = migratePanelOrderIDs(persisted.panelOrder ?? persisted.activePanelWindowID.map { [$0] } ?? [])
-                print("PanelStateController: Loaded panel state from disk")
+                print("PanelStateCoordinator: Loaded panel state from disk")
                 return
             }
 
@@ -189,9 +189,9 @@ final class PanelStateController: ObservableObject {
             mainWindowFullScreen = true
             panelFrames = [:]
             panelOrder = []
-            print("PanelStateController: Loaded legacy panel state from disk")
+            print("PanelStateCoordinator: Loaded legacy panel state from disk")
         } catch {
-            print("PanelStateController: Failed to load panel state: \(error)")
+            print("PanelStateCoordinator: Failed to load panel state: \(error)")
         }
     }
 

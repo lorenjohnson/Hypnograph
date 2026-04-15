@@ -28,7 +28,7 @@ final class Studio: ObservableObject {
     static let defaultPlayerResolution: OutputResolution = .p1080
 
     let state: HypnographState
-    let panels: PanelStateController
+    let panels: PanelStateCoordinator
     let renderQueue: RenderEngine.ExportQueue
     let panelHostService: FilePanelService
     let photosIntegrationService: PhotosIntegrationService
@@ -158,7 +158,7 @@ final class Studio: ObservableObject {
         dependencies: StudioDependencies = .live
     ) {
         self.state = state
-        self.panels = PanelStateController()
+        self.panels = PanelStateCoordinator()
         self.renderQueue = renderQueue
         self.renderQueueActiveJobs = renderQueue.activeJobs
         self.panelHostService = dependencies.makePanelHostService()

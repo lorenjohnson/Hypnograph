@@ -12,7 +12,7 @@ import SwiftUI
 struct PanelRegistrationModifier: ViewModifier {
     let panelID: String
     let defaultVisible: Bool
-    @ObservedObject var controller: PanelStateController
+    @ObservedObject var controller: PanelStateCoordinator
 
     @State private var hasRegistered = false
 
@@ -34,7 +34,7 @@ extension View {
     /// - Parameters:
     ///   - panelID: Unique string identifier for this panel (e.g., "hudPanel", "livePreviewPanel")
     ///   - defaultVisible: Whether the panel should be visible by default on first registration
-    ///   - controller: The PanelStateController instance to register with
+    ///   - controller: The PanelStateCoordinator instance to register with
     ///
     /// - Returns: A view that automatically registers itself as a panel
     ///
@@ -43,7 +43,7 @@ extension View {
     /// HUDView(...)
     ///     .registerPanel("hudPanel", defaultVisible: false, controller: studio.panels)
     /// ```
-    func registerPanel(_ panelID: String, defaultVisible: Bool = false, controller: PanelStateController) -> some View {
+    func registerPanel(_ panelID: String, defaultVisible: Bool = false, controller: PanelStateCoordinator) -> some View {
         modifier(PanelRegistrationModifier(panelID: panelID, defaultVisible: defaultVisible, controller: controller))
     }
 }
