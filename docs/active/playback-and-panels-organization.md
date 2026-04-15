@@ -43,6 +43,12 @@ Current implementation direction in this branch:
 - `PanelHostService` becomes `PanelHostCoordinator`
 - panel-only bridge and helper views move with the panel subsystem where that improves clarity
 
+Current playback/rendering note:
+- `RenderEngine.Config` now has a `useSourceFrameRate` option.
+- Playback currently opts into this so preview can use source-derived cadence when the composition's video layers agree on one frame rate.
+- Export does not currently opt into it, so sequence/current render still use the configured output frame rate.
+- This is intentional for now: the shared render engine exposes the capability, while playback is the only caller using it until render semantics are designed more explicitly.
+
 ## Open Questions
 
 - Does playback become clearer with one top-level coordinator, or with one primary coordinator plus a very small number of helpers?

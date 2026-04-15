@@ -144,7 +144,8 @@ struct PlayerView: NSViewRepresentable {
                     outputSize: outputSize,
                     frameRate: 30,
                     enableEffects: true,
-                    sourceFraming: sourceFraming
+                    sourceFraming: sourceFraming,
+                    useSourceFrameRate: true
                 )
 
                 let result = await engine.makePlayerItem(
