@@ -4,6 +4,7 @@ import Photos
 import HypnoCore
 import AppKit
 
+// Currently not used, but kept for possible future reference or reuse.
 struct LayerRowView: View {
     @ObservedObject var state: HypnographState
     @ObservedObject var main: Studio
