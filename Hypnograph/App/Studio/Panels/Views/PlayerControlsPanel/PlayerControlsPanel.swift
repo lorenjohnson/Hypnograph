@@ -40,7 +40,7 @@ struct PlayerControlsPanel: View {
     let onAddSourceFromRandom: () -> Void
     let onToggleShowFullClips: () -> Void
     let onToggleGenerateAtEnd: () -> Void
-    let onCyclePlaybackLoopMode: () -> Void
+    let onCycleLoopMode: () -> Void
     let onSnapshotCurrent: () -> Void
     let onRenderCurrent: () -> Void
     let onRenderSequence: () -> Void
@@ -230,7 +230,7 @@ struct PlayerControlsPanel: View {
                 tint: .white,
                 activeBackground: (isLoopCompositionEnabled || isLoopSequenceEnabled) ? .blue : nil,
                 size: .small,
-                action: onCyclePlaybackLoopMode
+                action: onCycleLoopMode
             )
         }
     }

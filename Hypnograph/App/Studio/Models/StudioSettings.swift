@@ -11,7 +11,7 @@ import CoreMedia
 
 // SourceLibraryInfo and MediaSourcesParam are now provided by HypnoCore
 
-enum PlaybackLoopMode: String, Codable, CaseIterable {
+enum PlayerLoopMode: String, Codable, CaseIterable {
     case off
     case composition
     case sequence
@@ -19,11 +19,11 @@ enum PlaybackLoopMode: String, Codable, CaseIterable {
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let rawValue = (try? container.decode(String.self)) ?? ""
-        self = PlaybackLoopMode(rawValue: rawValue) ?? .off
+        self = PlayerLoopMode(rawValue: rawValue) ?? .off
     }
 }
 
-enum PlaybackDockMode: String, Codable, CaseIterable {
+enum PlayerDockMode: String, Codable, CaseIterable {
     case sequence
     case composition
 }
@@ -53,14 +53,14 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     var sources: MediaSourcesParam
 
     // Optional in JSON (but non-optional in code)
-    var playbackLoopMode: PlaybackLoopMode
+    var loopMode: PlayerLoopMode
     var generateAtEnd: Bool
     var snapshotsFolder: String
     var keyboardAccessibilityOverridesEnabled: Bool
     var effectsComposerEnabled: Bool
     var autoHidePanelsEnabled: Bool
     var panelOpacity: Double
-    var playbackDockMode: PlaybackDockMode
+    var dockMode: PlayerDockMode
     var propertiesPanelScope: PropertiesPanelScope
     var newCompositionsPanelTab: NewCompositionsPanelTab
 
@@ -120,7 +120,7 @@ struct StudioSettings: Codable, MediaLibrarySettings {
 
     // Single source of truth for defaults
     private enum Defaults {
-        static let playbackLoopMode: PlaybackLoopMode = .off
+        static let loopMode: PlayerLoopMode = .off
         static let generateAtEnd: Bool = true
         static let outputFolder = "~/Movies/Hypnograph/renders"
         static let snapshotsFolder = "~/Movies/Hypnograph/snapshots"
@@ -128,7 +128,7 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         static let effectsComposerEnabled: Bool = true
         static let autoHidePanelsEnabled: Bool = false
         static let panelOpacity: Double = 0.72
-        static let playbackDockMode: PlaybackDockMode = .composition
+        static let dockMode: PlayerDockMode = .composition
         static let propertiesPanelScope: PropertiesPanelScope = .composition
         static let newCompositionsPanelTab: NewCompositionsPanelTab = .sources
         static let compositionLengthMinSeconds: Double = 5.0
@@ -162,14 +162,14 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         StudioSettings(
             outputFolder: Defaults.outputFolder,
             sources: Defaults.sources,
-            playbackLoopMode: Defaults.playbackLoopMode,
+            loopMode: Defaults.loopMode,
             generateAtEnd: Defaults.generateAtEnd,
             snapshotsFolder: Defaults.snapshotsFolder,
             keyboardAccessibilityOverridesEnabled: Defaults.keyboardAccessibilityOverridesEnabled,
             effectsComposerEnabled: Defaults.effectsComposerEnabled,
             autoHidePanelsEnabled: Defaults.autoHidePanelsEnabled,
             panelOpacity: Defaults.panelOpacity,
-            playbackDockMode: Defaults.playbackDockMode,
+            dockMode: Defaults.dockMode,
             propertiesPanelScope: Defaults.propertiesPanelScope,
             newCompositionsPanelTab: Defaults.newCompositionsPanelTab,
             compositionLengthMinSeconds: Defaults.compositionLengthMinSeconds,
@@ -195,8 +195,13 @@ struct StudioSettings: Codable, MediaLibrarySettings {
 
     private enum CodingKeys: String, CodingKey {
         case outputFolder, sources
-        case playbackLoopMode, generateAtEnd, snapshotsFolder
-        case keyboardAccessibilityOverridesEnabled, effectsComposerEnabled, autoHidePanelsEnabled, panelOpacity, playbackDockMode, propertiesPanelScope, newCompositionsPanelTab
+        case playbackLoopMode
+        case loopMode
+        case generateAtEnd, snapshotsFolder
+        case keyboardAccessibilityOverridesEnabled, effectsComposerEnabled, autoHidePanelsEnabled, panelOpacity
+        case playbackDockMode
+        case dockMode
+        case propertiesPanelScope, newCompositionsPanelTab
         case compositionLengthMinSeconds, compositionLengthMaxSeconds
         case compositionPlayRateMin, compositionPlayRateMax
         case historyLimit
@@ -216,14 +221,14 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     init(
         outputFolder: String,
         sources: MediaSourcesParam,
-        playbackLoopMode: PlaybackLoopMode = Defaults.playbackLoopMode,
+        loopMode: PlayerLoopMode = Defaults.loopMode,
         generateAtEnd: Bool = Defaults.generateAtEnd,
         snapshotsFolder: String = Defaults.snapshotsFolder,
         keyboardAccessibilityOverridesEnabled: Bool = Defaults.keyboardAccessibilityOverridesEnabled,
         effectsComposerEnabled: Bool = Defaults.effectsComposerEnabled,
         autoHidePanelsEnabled: Bool = Defaults.autoHidePanelsEnabled,
         panelOpacity: Double = Defaults.panelOpacity,
-        playbackDockMode: PlaybackDockMode = Defaults.playbackDockMode,
+        dockMode: PlayerDockMode = Defaults.dockMode,
         propertiesPanelScope: PropertiesPanelScope = Defaults.propertiesPanelScope,
         newCompositionsPanelTab: NewCompositionsPanelTab = Defaults.newCompositionsPanelTab,
         compositionLengthMinSeconds: Double = Defaults.compositionLengthMinSeconds,
@@ -247,14 +252,14 @@ struct StudioSettings: Codable, MediaLibrarySettings {
     ) {
         self.outputFolder = outputFolder
         self.sources = sources
-        self.playbackLoopMode = playbackLoopMode
+        self.loopMode = loopMode
         self.generateAtEnd = generateAtEnd
         self.snapshotsFolder = snapshotsFolder
         self.keyboardAccessibilityOverridesEnabled = keyboardAccessibilityOverridesEnabled
         self.effectsComposerEnabled = effectsComposerEnabled
         self.autoHidePanelsEnabled = autoHidePanelsEnabled
         self.panelOpacity = panelOpacity
-        self.playbackDockMode = playbackDockMode
+        self.dockMode = dockMode
         self.propertiesPanelScope = propertiesPanelScope
         self.newCompositionsPanelTab = newCompositionsPanelTab
         self.compositionLengthMinSeconds = compositionLengthMinSeconds
@@ -284,8 +289,9 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             ?? Defaults.outputFolder
         sources = try c.decodeIfPresent(MediaSourcesParam.self, forKey: .sources)
             ?? Defaults.sources
-        playbackLoopMode = try c.decodeIfPresent(PlaybackLoopMode.self, forKey: .playbackLoopMode)
-            ?? Defaults.playbackLoopMode
+        loopMode = try c.decodeIfPresent(PlayerLoopMode.self, forKey: .loopMode)
+            ?? c.decodeIfPresent(PlayerLoopMode.self, forKey: .playbackLoopMode)
+            ?? Defaults.loopMode
         generateAtEnd = try c.decodeIfPresent(Bool.self, forKey: .generateAtEnd)
             ?? Defaults.generateAtEnd
         snapshotsFolder = try c.decodeIfPresent(String.self, forKey: .snapshotsFolder)
@@ -298,8 +304,9 @@ struct StudioSettings: Codable, MediaLibrarySettings {
             ?? Defaults.autoHidePanelsEnabled
         panelOpacity = (try c.decodeIfPresent(Double.self, forKey: .panelOpacity)
             ?? Defaults.panelOpacity).clamped(to: 0.32...0.92)
-        playbackDockMode = try c.decodeIfPresent(PlaybackDockMode.self, forKey: .playbackDockMode)
-            ?? Defaults.playbackDockMode
+        dockMode = try c.decodeIfPresent(PlayerDockMode.self, forKey: .dockMode)
+            ?? c.decodeIfPresent(PlayerDockMode.self, forKey: .playbackDockMode)
+            ?? Defaults.dockMode
         propertiesPanelScope = try c.decodeIfPresent(PropertiesPanelScope.self, forKey: .propertiesPanelScope)
             ?? Defaults.propertiesPanelScope
         newCompositionsPanelTab = try c.decodeIfPresent(NewCompositionsPanelTab.self, forKey: .newCompositionsPanelTab)
@@ -356,14 +363,14 @@ struct StudioSettings: Codable, MediaLibrarySettings {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(outputFolder, forKey: .outputFolder)
         try c.encode(sources, forKey: .sources)
-        try c.encode(playbackLoopMode, forKey: .playbackLoopMode)
+        try c.encode(loopMode, forKey: .loopMode)
         try c.encode(generateAtEnd, forKey: .generateAtEnd)
         try c.encode(snapshotsFolder, forKey: .snapshotsFolder)
         try c.encode(keyboardAccessibilityOverridesEnabled, forKey: .keyboardAccessibilityOverridesEnabled)
         try c.encode(effectsComposerEnabled, forKey: .effectsComposerEnabled)
         try c.encode(autoHidePanelsEnabled, forKey: .autoHidePanelsEnabled)
         try c.encode(panelOpacity.clamped(to: 0.32...0.92), forKey: .panelOpacity)
-        try c.encode(playbackDockMode, forKey: .playbackDockMode)
+        try c.encode(dockMode, forKey: .dockMode)
         try c.encode(propertiesPanelScope, forKey: .propertiesPanelScope)
         try c.encode(newCompositionsPanelTab, forKey: .newCompositionsPanelTab)
         try c.encode(compositionLengthMinSeconds, forKey: .compositionLengthMinSeconds)

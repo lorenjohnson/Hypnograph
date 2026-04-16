@@ -9,7 +9,6 @@ import Foundation
 import CoreGraphics
 import CoreMedia
 import Combine
-import SwiftUI
 import AVFoundation
 import AppKit
 import Photos
@@ -18,7 +17,13 @@ import HypnoUI
 
 @MainActor
 final class Studio: ObservableObject {
-    enum PlaybackEndBehavior {
+    private static let placeholderComposition = Composition(
+        layers: [],
+        targetDuration: CMTime(seconds: 15, preferredTimescale: 600),
+        playRate: 1.0
+    )
+
+    enum PlayerEndBehavior {
         case stopAtEnd
         case loopComposition
         case advanceAcrossCompositions(loopAtSequenceEnd: Bool, generateAtSequenceEnd: Bool)
@@ -241,7 +246,7 @@ final class Studio: ObservableObject {
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &playerSubscriptions)
 
-        // Forward settings changes (e.g., playback end behavior toggle) for SwiftUI reactivity
+        // Forward settings changes (e.g., loop mode) for SwiftUI reactivity
         state.settingsStore.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &playerSubscriptions)
@@ -284,6 +289,9 @@ final class Studio: ObservableObject {
 
     var currentComposition: Composition {
         get {
+            guard !hypnogram.compositions.isEmpty else {
+                return Self.placeholderComposition
+            }
             let index = max(0, min(currentCompositionIndex, max(0, hypnogram.compositions.count - 1)))
             var composition = hypnogram.compositions[index]
             composition.syncTargetDurationToLayers()
@@ -432,143 +440,55 @@ final class Studio: ObservableObject {
         }
     }
 
-    // MARK: - Display
+    // MARK: - Player Surface
 
-    func makeDisplayView() -> AnyView {
-        if isLiveMode {
-            return AnyView(
-                LivePlayerScreen(livePlayer: livePlayer)
-            )
-        }
+    var needsPlayerPreparation: Bool {
+        hypnogram.compositions.isEmpty || currentLayers.isEmpty
+    }
 
-        if hypnogram.compositions.isEmpty || currentLayers.isEmpty {
-            // Avoid an infinite "generate new clip" loop when the media library is empty.
-            if state.library.assetCount == 0 {
-                return AnyView(NoSourcesView(state: state, main: self))
-            }
+    var isLastCompositionInSequence: Bool {
+        currentCompositionIndex >= max(0, hypnogram.compositions.count - 1)
+    }
 
-            if hypnogram.compositions.isEmpty {
-                replaceDefaultHypnogramWithNewComposition()
-            } else if currentLayers.isEmpty {
-                // Defensive: keep the current sequence shape, just replace the current composition if it is empty.
-                replaceCurrentCompositionWithNewComposition()
-            }
-        }
-
-        let player = activePlayer
-        let composition = currentComposition
-
-        if currentCompositionRequiresPhotosAccess(composition) && !state.photosAuthorizationStatus.canRead {
-            return AnyView(PhotosAccessRequiredView(state: state, main: self))
-        }
-
-        if currentCompositionHasNoReachableSources(composition) {
-            return AnyView(CompositionSourcesUnavailableView(main: self))
-        }
-
-        if player.currentCompositionLoadFailure?.compositionID == composition.id {
-            return AnyView(CompositionSourcesUnavailableView(main: self))
-        }
-
-        // Common view parameters
-        let aspectRatio = currentHypnogramAspectRatio
-        let displayResolution = currentHypnogramOutputResolution
-        let sourceFraming = currentHypnogramSourceFraming
-        let playbackEndBehavior: PlaybackEndBehavior
-        let isLastCompositionInSequence =
-            currentCompositionIndex >= max(0, hypnogram.compositions.count - 1)
-        switch state.settings.playbackLoopMode {
+    var playerEndBehavior: PlayerEndBehavior {
+        switch state.settings.loopMode {
         case .composition:
-            playbackEndBehavior = .loopComposition
+            return .loopComposition
         case .sequence:
-            playbackEndBehavior = .advanceAcrossCompositions(loopAtSequenceEnd: true, generateAtSequenceEnd: false)
+            return .advanceAcrossCompositions(loopAtSequenceEnd: true, generateAtSequenceEnd: false)
         case .off:
-            playbackEndBehavior = .advanceAcrossCompositions(
+            return .advanceAcrossCompositions(
                 loopAtSequenceEnd: false,
                 generateAtSequenceEnd: state.settings.generateAtEnd
             )
         }
-        let onCompositionEnded: (() -> Bool)? = { [weak self] in
-            guard let self else { return false }
-            switch playbackEndBehavior {
-            case .stopAtEnd, .loopComposition:
-                return false
-            case .advanceAcrossCompositions(let loopAtSequenceEnd, let generateAtSequenceEnd):
-                return self.advanceOrGenerateOnCompositionEnded(
-                    loopSequenceAtEnd: loopAtSequenceEnd,
-                    generateAtEnd: generateAtSequenceEnd
-                )
-            }
-        }
-        let currentLayerIndexBinding = Binding(
-            get: { player.currentLayerIndex },
-            set: { player.currentLayerIndex = $0 }
-        )
-        let currentSourceTimeBinding = Binding(
-            get: { player.currentLayerTimeOffset },
-            set: { player.currentLayerTimeOffset = $0 }
-        )
-        let requestedSourceTimeBinding = Binding(
-            get: { player.requestedLayerTimeOffset },
-            set: { player.requestedLayerTimeOffset = $0 }
-        )
-        let isTimelineScrubbingBinding = Binding(
-            get: { player.isTimelineScrubbing },
-            set: { player.isTimelineScrubbing = $0 }
-        )
-        let compositionLoadInFlightBinding = Binding(
-            get: { player.isPrimaryCompositionLoadInFlight },
-            set: { player.isPrimaryCompositionLoadInFlight = $0 }
-        )
-        let pendingGeneratedNextCompositionBinding = Binding(
-            get: { player.hasPendingGeneratedNextComposition },
-            set: { player.hasPendingGeneratedNextComposition = $0 }
-        )
-        return AnyView(
-            PlayerView(
-                playbackEndBehavior: playbackEndBehavior,
-                isLastCompositionInSequence: isLastCompositionInSequence,
-                composition: composition,
-                aspectRatio: aspectRatio,
-                displayResolution: displayResolution,
-                sourceFraming: sourceFraming,
-                onCompositionEnded: onCompositionEnded,
-                currentLayerIndex: currentLayerIndexBinding,
-                currentSourceTime: currentSourceTimeBinding,
-                requestedSourceTime: requestedSourceTimeBinding,
-                isTimelineScrubbing: isTimelineScrubbingBinding,
-                isPrimaryCompositionLoadInFlight: compositionLoadInFlightBinding,
-                hasPendingGeneratedNextComposition: pendingGeneratedNextCompositionBinding,
-                currentCompositionLoadFailure: Binding(
-                    get: { player.currentCompositionLoadFailure },
-                    set: { player.currentCompositionLoadFailure = $0 }
-                ),
-                pendingCompositionTransitionStyle: Binding(
-                    get: { player.pendingCompositionTransitionStyle },
-                    set: { player.pendingCompositionTransitionStyle = $0 }
-                ),
-                pendingCompositionTransitionDuration: Binding(
-                    get: { player.pendingCompositionTransitionDuration },
-                    set: { player.pendingCompositionTransitionDuration = $0 }
-                ),
-                isPaused: player.isPaused,
-                effectsChangeCounter: player.effectsChangeCounter,
-                hypnogramRevision: hypnogramRevision,
-                effectManager: player.effectManager,
-                volume: volume,
-                audioDeviceUID: audioDeviceUID,
-                transitionStyle: currentCompositionTransitionStyle,
-                transitionDuration: currentCompositionTransitionDuration,
-                sequenceTransitionStyle: currentHypnogramTransitionStyle,
-                sequenceTransitionDuration: currentHypnogramTransitionDuration,
-                onPlaybackStoppedAtEnd: { [weak self] in
-                    self?.player.isPaused = true
-                }
-            )
-        )
     }
 
-    private func currentCompositionRequiresPhotosAccess(_ composition: Composition) -> Bool {
+    func preparePlayerIfNeeded() {
+        guard needsPlayerPreparation else { return }
+        guard state.library.assetCount > 0 else { return }
+
+        if hypnogram.compositions.isEmpty {
+            replaceDefaultHypnogramWithNewComposition()
+        } else if currentLayers.isEmpty {
+            // Defensive: keep the current sequence shape, just replace the current composition if it is empty.
+            replaceCurrentCompositionWithNewComposition()
+        }
+    }
+
+    func handlePlayerCompositionEnd() -> Bool {
+        switch playerEndBehavior {
+        case .stopAtEnd, .loopComposition:
+            return false
+        case .advanceAcrossCompositions(let loopAtSequenceEnd, let generateAtEnd):
+            return advanceOrGenerateOnCompositionEnded(
+                loopSequenceAtEnd: loopAtSequenceEnd,
+                generateAtEnd: generateAtEnd
+            )
+        }
+    }
+
+    func compositionRequiresPhotosAccess(_ composition: Composition) -> Bool {
         composition.layers.contains { layer in
             if case .external = layer.mediaClip.file.source {
                 return true
@@ -577,10 +497,10 @@ final class Studio: ObservableObject {
         }
     }
 
-    private func currentCompositionHasNoReachableSources(_ composition: Composition) -> Bool {
+    func compositionHasReachableSources(_ composition: Composition) -> Bool {
         guard !composition.layers.isEmpty else { return false }
 
-        return !composition.layers.contains { layer in
+        return composition.layers.contains { layer in
             switch layer.mediaClip.file.source {
             case .url(let url):
                 return FileManager.default.fileExists(atPath: url.path)

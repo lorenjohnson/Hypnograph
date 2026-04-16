@@ -1,8 +1,8 @@
 //
-//  PlayerView.swift
+//  PlayerRendererView.swift
 //  Hypnograph
 //
-//  Studio player view using the Metal playback pipeline.
+//  Studio player renderer view using the Metal player pipeline.
 //  Uses PlayerContentView for A/B player transitions with shader effects.
 //
 
@@ -12,45 +12,12 @@ import CoreMedia
 import QuartzCore
 import HypnoCore
 
-/// Studio player view for layered playback.
+/// Studio player renderer view for layered player state.
 /// Uses PlayerContentView for GPU-accelerated frame display with shader transitions.
-struct PlayerView: NSViewRepresentable {
-    let playbackEndBehavior: Studio.PlaybackEndBehavior
-    let isLastCompositionInSequence: Bool
-    let composition: Composition
-    let aspectRatio: AspectRatio
-    let displayResolution: OutputResolution
-    let sourceFraming: SourceFraming
-    let onCompositionEnded: (() -> Bool)?
-    @Binding var currentLayerIndex: Int
-    @Binding var currentSourceTime: CMTime?
-    @Binding var requestedSourceTime: CMTime?
-    @Binding var isTimelineScrubbing: Bool
-    @Binding var isPrimaryCompositionLoadInFlight: Bool
-    @Binding var hasPendingGeneratedNextComposition: Bool
-    @Binding var currentCompositionLoadFailure: PlayerState.CompositionLoadFailure?
-    @Binding var pendingCompositionTransitionStyle: TransitionRenderer.TransitionType?
-    @Binding var pendingCompositionTransitionDuration: Double?
-    let isPaused: Bool
-    let effectsChangeCounter: Int
-    let hypnogramRevision: Int
-    let effectManager: EffectManager
-    /// Volume level (0.0 to 1.0) - use 0 for muted
-    let volume: Float
-    /// Audio output device UID (nil = system default)
-    var audioDeviceUID: String? = nil
-    /// Transition style for composition changes
-    var transitionStyle: TransitionRenderer.TransitionType = .crossfade
-    /// Transition duration in seconds
-    var transitionDuration: Double = 1.5
-    /// Sequence-level default transition style used when the outgoing composition has no override.
-    var sequenceTransitionStyle: TransitionRenderer.TransitionType = .crossfade
-    /// Sequence-level default transition duration used when the outgoing composition has no override.
-    var sequenceTransitionDuration: Double = 1.5
-    /// Called when playback reaches the end and should be reflected as paused in UI state.
-    var onPlaybackStoppedAtEnd: (() -> Void)? = nil
+struct PlayerRendererView: NSViewRepresentable {
+    @ObservedObject var main: Studio
 
-    // MARK: - Playback Coordinator
+    // MARK: - Player Coordinator
     //
     // Auto-advance state machine:
     // ─────────────────────────
@@ -78,8 +45,8 @@ struct PlayerView: NSViewRepresentable {
     //   → we loop the outgoing composition to maintain smooth visuals
     // - Pausing or disabling auto-advance resets both flags
 
-    func makeCoordinator() -> PlayerPlaybackCoordinator {
-        PlayerPlaybackCoordinator()
+    func makeCoordinator() -> PlayerCoordinator {
+        PlayerCoordinator()
     }
 
     func makeNSView(context: Context) -> NSView {
@@ -92,14 +59,25 @@ struct PlayerView: NSViewRepresentable {
     @MainActor
     func updateNSView(_ nsView: NSView, context: Context) {
         let c = context.coordinator
+        let player = main.activePlayer
+        let composition = main.currentComposition
+        let endBehavior = main.playerEndBehavior
+        let aspectRatio = main.currentHypnogramAspectRatio
+        let displayResolution = main.currentHypnogramOutputResolution
+        let sourceFraming = main.currentHypnogramSourceFraming
+        let transitionStyle = main.currentCompositionTransitionStyle
+        let transitionDuration = main.currentCompositionTransitionDuration
+        let studio = main
 
         // Always update playRate so closures use current value
         c.playRate = composition.playRate
-        c.playbackEndBehavior = playbackEndBehavior
-        c.onCompositionEnded = onCompositionEnded
+        c.endBehavior = endBehavior
+        c.onCompositionEnded = { [weak studio] in
+            studio?.handlePlayerCompositionEnd() ?? false
+        }
         c.isAllStillImages = composition.layers.allSatisfy { $0.mediaClip.file.mediaKind == .image }
-        c.isTimelineScrubbing = isTimelineScrubbing
-        if isPaused || !canAdvanceCurrentComposition(playbackEndBehavior, isLastCompositionInSequence: isLastCompositionInSequence) {
+        c.isTimelineScrubbing = player.isTimelineScrubbing
+        if player.isPaused || !canAdvanceCurrentComposition(endBehavior, isLastCompositionInSequence: main.isLastCompositionInSequence) {
             c.isAutoAdvanceInFlight = false
             c.didRequestPreEndAdvance = false
         }
@@ -112,8 +90,8 @@ struct PlayerView: NSViewRepresentable {
             c.currentTask = nil
             c.compositionID = nil
             deferCompositionLoadInFlight(false, coordinator: c, token: bindingUpdateToken)
-            hasPendingGeneratedNextComposition = false
-            if currentSourceTime != nil {
+            player.hasPendingGeneratedNextComposition = false
+            if player.currentLayerTimeOffset != nil {
                 deferCurrentSourceTime(nil, coordinator: c, token: bindingUpdateToken)
             }
             c.stillClipTimer?.invalidate()
@@ -124,7 +102,7 @@ struct PlayerView: NSViewRepresentable {
             return
         }
 
-        // Use display resolution for in-app playback
+        // Use display resolution for the in-app player surface
         let outputSize = renderSize(aspectRatio: aspectRatio, maxDimension: displayResolution.maxDimension)
 
         let newID = compositionIdentity(for: composition)
@@ -156,12 +134,12 @@ struct PlayerView: NSViewRepresentable {
                 let result = await engine.makePlayerItem(
                     composition: composition,
                     config: config,
-                    effectManager: effectManager
+                    effectManager: player.effectManager
                 )
 
                 guard !Task.isCancelled else {
                     deferCompositionLoadInFlight(false, coordinator: c, token: bindingUpdateToken)
-                    hasPendingGeneratedNextComposition = false
+                    player.hasPendingGeneratedNextComposition = false
                     if c.compositionID == newID { c.compositionID = nil }
                     return
                 }
@@ -202,10 +180,10 @@ struct PlayerView: NSViewRepresentable {
                     playerItem.audioTimePitchAlgorithm = .timeDomain
 
                     // Apply volume and audio device
-                    content.setVolume(self.volume)
-                    content.setAudioOutputDevice(self.audioDeviceUID)
-                    c.lastVolume = self.volume
-                    c.lastAudioDeviceUID = self.audioDeviceUID
+                    content.setVolume(main.volume)
+                    content.setAudioOutputDevice(main.audioDeviceUID)
+                    c.lastVolume = main.volume
+                    c.lastAudioDeviceUID = main.audioDeviceUID
 
                     // Determine transition type:
                     // - First load: no transition (instant)
@@ -214,7 +192,7 @@ struct PlayerView: NSViewRepresentable {
                     let effectiveTransitionDuration: Double
                     let hasExistingRenderedComposition = c.contentView != nil && outgoingRenderedComposition != nil
                     let isSameCompositionReload = outgoingRenderedComposition?.id == composition.id
-                    c.pendingPostLoadSourceTime = isSameCompositionReload ? currentSourceTime : nil
+                    c.pendingPostLoadSourceTime = isSameCompositionReload ? player.currentLayerTimeOffset : nil
                     if c.isFirstLoad || !hasExistingRenderedComposition {
                         effectiveTransition = .none
                         effectiveTransitionDuration = transitionDuration
@@ -223,24 +201,24 @@ struct PlayerView: NSViewRepresentable {
                         effectiveTransition = .none
                         effectiveTransitionDuration = transitionDuration
                     } else {
-                        effectiveTransition = pendingCompositionTransitionStyle ?? self.transitionStyle
-                        effectiveTransitionDuration = pendingCompositionTransitionDuration ?? self.transitionDuration
+                        effectiveTransition = player.pendingCompositionTransitionStyle ?? transitionStyle
+                        effectiveTransitionDuration = player.pendingCompositionTransitionDuration ?? transitionDuration
                     }
                     c.transitionDuration = effectiveTransitionDuration
-                    pendingCompositionTransitionStyle = nil
-                    pendingCompositionTransitionDuration = nil
+                    player.pendingCompositionTransitionStyle = nil
+                    player.pendingCompositionTransitionDuration = nil
 
                     // Determine play rate (nil if paused or all still images)
-                    let effectiveRate = effectiveVideoPlaybackRate(for: c)
-                    let playRate: Float? = (self.isPaused || c.isAllStillImages) ? nil : effectiveRate
+                    let effectiveRate = effectiveVideoRate(for: c)
+                    let playRate: Float? = (player.isPaused || c.isAllStillImages) ? nil : effectiveRate
 
-                    // Load with transition - this starts playback on the incoming player
+                    // Load with transition - this starts the incoming player when a rate is provided.
                     content.loadAndTransition(
                         playerItem: playerItem,
                         transitionType: effectiveTransition,
                         duration: effectiveTransitionDuration,
                         playRate: playRate,
-                        incomingEffectManager: self.effectManager
+                        incomingEffectManager: player.effectManager
                     ) {
                         Task { @MainActor in
                             if let pendingPostLoadSourceTime = c.pendingPostLoadSourceTime {
@@ -252,76 +230,76 @@ struct PlayerView: NSViewRepresentable {
                         }
                     }
                     deferCompositionLoadInFlight(false, coordinator: c, token: bindingUpdateToken)
-                    hasPendingGeneratedNextComposition = false
+                    player.hasPendingGeneratedNextComposition = false
 
-                    c.lastPauseState = self.isPaused
-                    c.lastEffectsCounter = effectsChangeCounter
-                    c.lastSessionRevision = hypnogramRevision
+                    c.lastPauseState = player.isPaused
+                    c.lastEffectsCounter = player.effectsChangeCounter
+                    c.lastSessionRevision = main.hypnogramRevision
                     c.lastAppliedPlayRate = playRate
                     c.lastRenderedComposition = composition
 
                     // For still images, schedule the timer for auto-advance
-                    if c.isAllStillImages && !self.isPaused {
+                    if c.isAllStillImages && !player.isPaused {
                         self.scheduleStillClipTimer(coordinator: c)
                     }
 
                     // Setup looping or composition-ended callback
-                    self.setupPlaybackEndHandling(content: content, coordinator: c)
+                    self.setupEndHandling(content: content, coordinator: c)
 
                 case .failure(let error):
                     deferCompositionLoadInFlight(false, coordinator: c, token: bindingUpdateToken)
-                    hasPendingGeneratedNextComposition = false
+                    player.hasPendingGeneratedNextComposition = false
                     if case .allSourcesFailedToLoad = error {
                         deferCompositionLoadFailure(.init(compositionID: composition.id), coordinator: c, token: bindingUpdateToken)
                     } else {
                         deferCompositionLoadFailure(nil, coordinator: c, token: bindingUpdateToken)
                     }
                     c.suppressCurrentTimeReporting = false
-                    error.log(context: "PlayerView")
+                    error.log(context: "PlayerRendererView")
                     c.compositionID = nil
                     c.isAutoAdvanceInFlight = false
-                    if currentSourceTime != nil {
+                    if player.currentLayerTimeOffset != nil {
                         deferCurrentSourceTime(nil, coordinator: c, token: bindingUpdateToken)
                     }
                 }
             }
         } else {
-            if c.lastPauseState != isPaused {
+            if c.lastPauseState != player.isPaused {
                 if c.isAllStillImages {
-                    if isPaused {
+                    if player.isPaused {
                         c.stillClipTimer?.invalidate()
                         c.stillClipTimer = nil
                     } else {
                         scheduleStillClipTimer(coordinator: c)
                     }
-                } else if isPaused {
+                } else if player.isPaused {
                     c.contentView?.activeAVPlayer?.pause()
                     c.lastAppliedPlayRate = nil
                 } else {
-                    let effectiveRate = effectiveVideoPlaybackRate(for: c)
+                    let effectiveRate = effectiveVideoRate(for: c)
                     c.contentView?.activeAVPlayer?.playImmediately(atRate: effectiveRate)
                     c.lastAppliedPlayRate = effectiveRate
                 }
-                c.lastPauseState = isPaused
+                c.lastPauseState = player.isPaused
             }
 
             // If play rate changes while playing, apply it immediately without rebuilding the composition.
-            if !c.isAllStillImages, !isPaused {
-                let effectiveRate = effectiveVideoPlaybackRate(for: c)
+            if !c.isAllStillImages, !player.isPaused {
+                let effectiveRate = effectiveVideoRate(for: c)
                 if c.lastAppliedPlayRate != effectiveRate {
                     c.contentView?.activeAVPlayer?.rate = effectiveRate
                     c.lastAppliedPlayRate = effectiveRate
                 }
             }
 
-            let didEffectsChange = c.lastEffectsCounter != effectsChangeCounter
+            let didEffectsChange = c.lastEffectsCounter != player.effectsChangeCounter
             if didEffectsChange {
-                c.lastEffectsCounter = effectsChangeCounter
+                c.lastEffectsCounter = player.effectsChangeCounter
             }
 
-            let didSessionMutate = c.lastSessionRevision != hypnogramRevision
+            let didSessionMutate = c.lastSessionRevision != main.hypnogramRevision
             if didSessionMutate {
-                c.lastSessionRevision = hypnogramRevision
+                c.lastSessionRevision = main.hypnogramRevision
             }
 
             if didEffectsChange || didSessionMutate {
@@ -329,7 +307,7 @@ struct PlayerView: NSViewRepresentable {
                     if c.isAllStillImages {
                         // Force redraw of still frame at t=0
                         content.refreshActiveFrame(at: .zero)
-                    } else if isPaused {
+                    } else if player.isPaused {
                         // Only force redraw when paused
                         if let currentTime = content.activeAVPlayer?.currentTime() {
                             content.refreshActiveFrame(at: currentTime)
@@ -338,7 +316,7 @@ struct PlayerView: NSViewRepresentable {
                 }
             }
 
-            if let requestedSourceTime = requestedSourceTime,
+            if let requestedSourceTime = player.requestedLayerTimeOffset,
                let content = c.contentView {
                 let activeTime = content.activeAVPlayer?.currentTime() ?? .invalid
                 let activeSeconds = activeTime.seconds
@@ -349,7 +327,7 @@ struct PlayerView: NSViewRepresentable {
                     abs(activeSeconds - requestedSeconds) > 0.02
 
                 if needsSeek {
-                    if isTimelineScrubbing {
+                    if player.isTimelineScrubbing {
                         content.scrubActiveFrame(at: requestedSourceTime)
                     } else {
                         content.refreshActiveFrame(at: requestedSourceTime)
@@ -357,7 +335,7 @@ struct PlayerView: NSViewRepresentable {
                 }
 
                 DispatchQueue.main.async {
-                    self.requestedSourceTime = nil
+                    player.requestedLayerTimeOffset = nil
                 }
             }
 
@@ -367,52 +345,53 @@ struct PlayerView: NSViewRepresentable {
         }
 
         // Apply volume
-        if c.lastVolume != volume {
-            c.contentView?.setVolume(volume)
-            c.lastVolume = volume
+        if c.lastVolume != main.volume {
+            c.contentView?.setVolume(main.volume)
+            c.lastVolume = main.volume
         }
 
         // Apply audio output device routing
-        if c.audioDeviceChanged(to: audioDeviceUID) {
-            c.contentView?.setAudioOutputDevice(audioDeviceUID)
-            c.lastAudioDeviceUID = audioDeviceUID
+        if c.audioDeviceChanged(to: main.audioDeviceUID) {
+            c.contentView?.setAudioOutputDevice(main.audioDeviceUID)
+            c.lastAudioDeviceUID = main.audioDeviceUID
         }
     }
 
-    private func deferCompositionLoadInFlight(_ value: Bool, coordinator: PlayerPlaybackCoordinator, token: UInt64) {
-        guard isPrimaryCompositionLoadInFlight != value else { return }
+    private func deferCompositionLoadInFlight(_ value: Bool, coordinator: PlayerCoordinator, token: UInt64) {
+        guard main.activePlayer.isPrimaryCompositionLoadInFlight != value else { return }
         DispatchQueue.main.async {
             guard coordinator.bindingUpdateToken == token else { return }
-            self.isPrimaryCompositionLoadInFlight = value
+            self.main.activePlayer.isPrimaryCompositionLoadInFlight = value
         }
     }
 
     private func deferCompositionLoadFailure(
         _ value: PlayerState.CompositionLoadFailure?,
-        coordinator: PlayerPlaybackCoordinator,
+        coordinator: PlayerCoordinator,
         token: UInt64
     ) {
-        guard currentCompositionLoadFailure != value else { return }
+        guard main.activePlayer.currentCompositionLoadFailure != value else { return }
         DispatchQueue.main.async {
             guard coordinator.bindingUpdateToken == token else { return }
-            self.currentCompositionLoadFailure = value
+            self.main.activePlayer.currentCompositionLoadFailure = value
         }
     }
 
-    private func deferCurrentSourceTime(_ value: CMTime?, coordinator: PlayerPlaybackCoordinator, token: UInt64) {
-        let currentSeconds = currentSourceTime?.seconds
+    private func deferCurrentSourceTime(_ value: CMTime?, coordinator: PlayerCoordinator, token: UInt64) {
+        let currentSeconds = main.activePlayer.currentLayerTimeOffset?.seconds
         let newSeconds = value?.seconds
-        guard currentSeconds != newSeconds || (currentSourceTime == nil) != (value == nil) else { return }
+        let currentTime = main.activePlayer.currentLayerTimeOffset
+        guard currentSeconds != newSeconds || (currentTime == nil) != (value == nil) else { return }
         guard coordinator.bindingUpdateToken == token else { return }
-        self.currentSourceTime = value
+        self.main.activePlayer.currentLayerTimeOffset = value
     }
 
-    /// Setup looping or composition-ended notification handling for all players
+    /// Setup looping or composition-ended notification handling for all players.
     @MainActor
-    private func setupPlaybackEndHandling(content: PlayerContentView, coordinator c: PlayerPlaybackCoordinator) {
+    private func setupEndHandling(content: PlayerContentView, coordinator c: PlayerCoordinator) {
         // Remove any existing observers
-        c.removePlaybackEndObservers()
-        c.removePlaybackTimeObservers()
+        c.removeEndObservers()
+        c.removeTimeObservers()
 
         // Register observer for each player's current item
         for player in content.allPlayers {
@@ -427,7 +406,7 @@ struct PlayerView: NSViewRepresentable {
                     guard let c = c, let player = player else { return }
 
                     let shouldPlay = (c.lastPauseState != true)
-                    let rate = effectiveVideoPlaybackRate(for: c)
+                    let rate = effectiveVideoRate(for: c)
                     let seekToStartAndPlayIfNeeded = {
                         player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
                             guard finished else { return }
@@ -441,7 +420,7 @@ struct PlayerView: NSViewRepresentable {
                             guard finished else { return }
                             player.pause()
                             deferCurrentSourceTime(.zero, coordinator: c, token: bindingUpdateToken)
-                            self.onPlaybackStoppedAtEnd?()
+                            self.main.activePlayer.isPaused = true
                             c.lastPauseState = true
                         }
                     }
@@ -453,14 +432,14 @@ struct PlayerView: NSViewRepresentable {
                         return
                     }
 
-                    switch c.playbackEndBehavior {
+                    switch c.endBehavior {
                     case .advanceAcrossCompositions:
                         // Auto-advance: only advance when the ACTIVE player ends
                         // (not when the outgoing transition player loops)
                         if player === c.contentView?.activeAVPlayer {
                             guard canAdvanceCurrentComposition(
-                                c.playbackEndBehavior,
-                                isLastCompositionInSequence: self.isLastCompositionInSequence
+                                c.endBehavior,
+                                isLastCompositionInSequence: self.main.isLastCompositionInSequence
                             ) else {
                                 seekToStartAndStop()
                                 return
@@ -482,11 +461,11 @@ struct PlayerView: NSViewRepresentable {
                     }
                 }
             }
-            c.playbackEndObservers.append(observer)
+            c.endObservers.append(observer)
         }
 
         // In auto-advance mode, request the next composition before the current one ends so the transition
-        // can complete before playback reaches the end of the outgoing composition (avoids a pause).
+        // can complete before the outgoing composition finishes (avoids a pause).
         //
         // We base this on *real time* remaining (video seconds / playRate).
         for player in content.allPlayers {
@@ -502,8 +481,8 @@ struct PlayerView: NSViewRepresentable {
                     }
 
                     guard canAdvanceCurrentComposition(
-                        c.playbackEndBehavior,
-                        isLastCompositionInSequence: self.isLastCompositionInSequence
+                        c.endBehavior,
+                        isLastCompositionInSequence: self.main.isLastCompositionInSequence
                     ) else { return }
                     guard c.lastPauseState != true else { return }
                     guard !c.didRequestPreEndAdvance else { return }
@@ -522,7 +501,7 @@ struct PlayerView: NSViewRepresentable {
                     guard dur.isFinite, now.isFinite, dur > 0 else { return }
 
                     let remainingVideoSeconds = max(0.0, dur - now)
-                    let rate = max(0.0001, Double(effectiveVideoPlaybackRate(for: c)))
+                    let rate = max(0.0001, Double(effectiveVideoRate(for: c)))
                     let remainingRealSeconds = remainingVideoSeconds / rate
 
                     // Trigger next composition build/transition slightly before the desired transition window.
@@ -536,11 +515,11 @@ struct PlayerView: NSViewRepresentable {
                     }
                 }
             }
-            c.playbackTimeObservers.append(token)
+            c.timeObservers.append(token)
         }
     }
 
-    static func dismantleNSView(_ nsView: NSView, coordinator: PlayerPlaybackCoordinator) {
+    static func dismantleNSView(_ nsView: NSView, coordinator: PlayerCoordinator) {
         Task { @MainActor in
             tearDown(coordinator: coordinator)
         }
@@ -560,9 +539,9 @@ struct PlayerView: NSViewRepresentable {
             return "\(name)|\(start)|\(dur)|\(muted)|\(transformsStr)"
         }
         let durationPart = "dur=\(composition.effectiveDuration.seconds)"
-        let aspectRatioPart = "aspect=\(aspectRatio.displayString)"
-        let resolutionPart = "resolution=\(displayResolution.rawValue)"
-        let framingPart = "framing=\(sourceFraming.rawValue)"
+        let aspectRatioPart = "aspect=\(main.currentHypnogramAspectRatio.displayString)"
+        let resolutionPart = "resolution=\(main.currentHypnogramOutputResolution.rawValue)"
+        let framingPart = "framing=\(main.currentHypnogramSourceFraming.rawValue)"
         return pairs.joined(separator: ";;")
             + "||" + durationPart
             + "||" + aspectRatioPart
@@ -571,7 +550,7 @@ struct PlayerView: NSViewRepresentable {
     }
 
     @MainActor
-    private func freezeOutgoingEffectsIfNeeded(coordinator c: PlayerPlaybackCoordinator, previousID: String?) {
+    private func freezeOutgoingEffectsIfNeeded(coordinator c: PlayerCoordinator, previousID: String?) {
         guard previousID != nil,
               let content = c.contentView,
               !c.isFirstLoad,
@@ -579,7 +558,7 @@ struct PlayerView: NSViewRepresentable {
 
         // Freeze the currently visible composition's effect context before switching composition identity.
         // This prevents outgoing frames from adopting incoming composition effects during transition/build delay.
-        let frozenManager = effectManager.makeTransitionSnapshotManager(
+        let frozenManager = main.activePlayer.effectManager.makeTransitionSnapshotManager(
             frozenComposition: outgoingComposition,
             preserveTemporalState: true
         )
@@ -587,17 +566,17 @@ struct PlayerView: NSViewRepresentable {
     }
 
     @MainActor
-    private func scheduleStillClipTimer(coordinator c: PlayerPlaybackCoordinator) {
+    private func scheduleStillClipTimer(coordinator c: PlayerCoordinator) {
         c.stillClipTimer?.invalidate()
         c.stillClipTimer = nil
 
         guard c.lastPauseState != true else { return }
         guard canAdvanceCurrentComposition(
-            c.playbackEndBehavior,
-            isLastCompositionInSequence: isLastCompositionInSequence
+            c.endBehavior,
+            isLastCompositionInSequence: main.isLastCompositionInSequence
         ) else { return }
 
-        let seconds = max(0.05, composition.effectiveDuration.seconds)
+        let seconds = max(0.05, main.currentComposition.effectiveDuration.seconds)
         c.stillClipTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { _ in
             Task { @MainActor in
                 triggerAutoAdvance(c)
@@ -606,7 +585,7 @@ struct PlayerView: NSViewRepresentable {
     }
 
     @MainActor
-    private func triggerAutoAdvance(_ coordinator: PlayerPlaybackCoordinator) {
+    private func triggerAutoAdvance(_ coordinator: PlayerCoordinator) {
         coordinator.didRequestPreEndAdvance = true
         coordinator.isAutoAdvanceInFlight = true
 
@@ -617,19 +596,12 @@ struct PlayerView: NSViewRepresentable {
         }
     }
 
-    private func effectiveVideoPlaybackRate(for coordinator: PlayerPlaybackCoordinator) -> Float {
+    private func effectiveVideoRate(for coordinator: PlayerCoordinator) -> Float {
         coordinator.playRate
     }
 
-    private func isAdvanceAcrossCompositions(_ behavior: Studio.PlaybackEndBehavior) -> Bool {
-        if case .advanceAcrossCompositions = behavior {
-            return true
-        }
-        return false
-    }
-
     private func canAdvanceCurrentComposition(
-        _ behavior: Studio.PlaybackEndBehavior,
+        _ behavior: Studio.PlayerEndBehavior,
         isLastCompositionInSequence: Bool
     ) -> Bool {
         switch behavior {
@@ -646,12 +618,12 @@ struct PlayerView: NSViewRepresentable {
     // MARK: - Teardown
 
     @MainActor
-    private static func tearDown(coordinator c: PlayerPlaybackCoordinator) {
+    private static func tearDown(coordinator c: PlayerCoordinator) {
         c.stillClipTimer?.invalidate()
         c.stillClipTimer = nil
 
-        c.removePlaybackEndObservers()
-        c.removePlaybackTimeObservers()
+        c.removeEndObservers()
+        c.removeTimeObservers()
         c.isAutoAdvanceInFlight = false
 
         c.contentView?.stop()

@@ -1,5 +1,5 @@
 //
-//  PlaybackActions.swift
+//  PlayerActions.swift
 //  Hypnograph
 //
 
@@ -8,16 +8,16 @@ import HypnoCore
 
 @MainActor
 extension Studio {
-    var playbackLoopMode: PlaybackLoopMode {
-        state.settings.playbackLoopMode
+    var loopMode: PlayerLoopMode {
+        state.settings.loopMode
     }
 
     var isLoopCompositionEnabled: Bool {
-        playbackLoopMode == .composition
+        loopMode == .composition
     }
 
     var isLoopSequenceEnabled: Bool {
-        playbackLoopMode == .sequence
+        loopMode == .sequence
     }
 
     var isGenerateAtEndEnabled: Bool {
@@ -69,13 +69,13 @@ extension Studio {
         activePlayer.togglePause()
     }
 
-    func setPlaybackLoopMode(_ mode: PlaybackLoopMode) {
-        state.setPlaybackLoopMode(mode)
+    func setLoopMode(_ mode: PlayerLoopMode) {
+        state.setLoopMode(mode)
     }
 
-    func cyclePlaybackLoopMode() {
-        let nextMode: PlaybackLoopMode
-        switch playbackLoopMode {
+    func cycleLoopMode() {
+        let nextMode: PlayerLoopMode
+        switch loopMode {
         case .off:
             nextMode = .composition
         case .composition:
@@ -83,20 +83,20 @@ extension Studio {
         case .sequence:
             nextMode = .off
         }
-        setPlaybackLoopMode(nextMode)
+        setLoopMode(nextMode)
     }
 
-    func toggleLoopCompositionMode() {
-        switch playbackLoopMode {
+    func toggleCompositionLoopMode() {
+        switch loopMode {
         case .off:
-            setPlaybackLoopMode(.composition)
+            setLoopMode(.composition)
         case .composition, .sequence:
-            setPlaybackLoopMode(.off)
+            setLoopMode(.off)
         }
     }
 
-    func toggleLoopSequenceMode() {
-        setPlaybackLoopMode(isLoopSequenceEnabled ? .off : .sequence)
+    func toggleSequenceLoopMode() {
+        setLoopMode(isLoopSequenceEnabled ? .off : .sequence)
     }
 
     func toggleGenerateAtEnd() {

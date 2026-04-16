@@ -30,7 +30,7 @@ extension Studio {
     }
 
     @ViewBuilder
-    func playbackMenu() -> some View {
+    func playerMenu() -> some View {
         Button("Next") { [self] in
             nextComposition()
         }
@@ -47,9 +47,9 @@ extension Studio {
             get: { [self] in isLoopCompositionEnabled },
             set: { [self] in
                 if $0 {
-                    toggleLoopCompositionMode()
+                    toggleCompositionLoopMode()
                 } else if isLoopCompositionEnabled {
-                    setPlaybackLoopMode(.off)
+                    setLoopMode(.off)
                 }
             }
         ))
@@ -59,7 +59,7 @@ extension Studio {
         Toggle("Loop Sequence", isOn: Binding(
             get: { [self] in isLoopSequenceEnabled },
             set: { [self] in
-                setPlaybackLoopMode($0 ? .sequence : .off)
+                setLoopMode($0 ? .sequence : .off)
             }
         ))
         .keyboardShortcut("l", modifiers: [.shift])

@@ -1,12 +1,10 @@
----
-last_reviewed: 2026-04-04
+last_reviewed: 2026-04-16
 ---
 
 # Queue
 
 ## Active Projects
 
-- [studio-player-organization](active/studio-player-organization.md)
 - [effects-and-effect-chain-ux](active/effects-and-effect-chain-ux/index.md)
 - [image-playback-duration](active/image-playback-duration.md)
 - [new-compositions](active/new-compositions.md)

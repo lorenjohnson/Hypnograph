@@ -167,14 +167,14 @@ final class PlayerContentView: NSView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    // MARK: - Playback Control
+    // MARK: - Player Control
 
     /// Load a player item into the inactive slot and start transition
     /// - Parameters:
     ///   - playerItem: The player item to load
     ///   - transitionType: Type of transition to use
     ///   - duration: Duration of the transition
-    ///   - playRate: Playback rate for the new clip (nil = don't auto-start)
+    ///   - playRate: Player rate for the new clip (nil = don't auto-start)
     ///   - completion: Called when transition completes
     func loadAndTransition(
         playerItem: AVPlayerItem,
@@ -331,7 +331,7 @@ final class PlayerContentView: NSView {
         _ = RenderEngine.rebindEffectManager(manager, on: playerItem)
     }
 
-    /// Stop all playback
+    /// Stop all player activity
     func stop() {
         transitionToken &+= 1
         playerView.cancelTransition()

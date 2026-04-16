@@ -4,7 +4,7 @@ import Foundation
 import HypnoCore
 
 @MainActor
-final class PlayerPlaybackCoordinator {
+final class PlayerCoordinator {
     var contentView: PlayerContentView?
     var stillClipTimer: Timer?
     var compositionID: String?
@@ -17,7 +17,7 @@ final class PlayerPlaybackCoordinator {
     var lastAppliedPlayRate: Float?
     var transitionDuration: Double = 1.5
     var lastVolume: Float?
-    var playbackEndBehavior: Studio.PlaybackEndBehavior = .advanceAcrossCompositions(loopAtSequenceEnd: false, generateAtSequenceEnd: true)
+    var endBehavior: Studio.PlayerEndBehavior = .advanceAcrossCompositions(loopAtSequenceEnd: false, generateAtSequenceEnd: true)
     var onCompositionEnded: (() -> Bool)?
     var isAllStillImages: Bool = false
     var lastRenderedComposition: Composition?
@@ -27,9 +27,9 @@ final class PlayerPlaybackCoordinator {
     private static let notSetSentinel = "___NOT_SET___"
     var lastAudioDeviceUID: String? = notSetSentinel
     /// Observers for player item end notifications
-    var playbackEndObservers: [Any] = []
+    var endObservers: [Any] = []
     /// Observers for per-player time updates (used for pre-end advancing)
-    var playbackTimeObservers: [Any] = []
+    var timeObservers: [Any] = []
     /// Guard so we request auto-advance at most once per active composition.
     /// Reset when compositionID changes (new composition loaded).
     var didRequestPreEndAdvance: Bool = false
@@ -49,16 +49,16 @@ final class PlayerPlaybackCoordinator {
         return lastAudioDeviceUID != newUID
     }
 
-    func removePlaybackEndObservers() {
-        for observer in playbackEndObservers {
+    func removeEndObservers() {
+        for observer in endObservers {
             NotificationCenter.default.removeObserver(observer)
         }
-        playbackEndObservers.removeAll()
+        endObservers.removeAll()
     }
 
-    func removePlaybackTimeObservers() {
+    func removeTimeObservers() {
         guard let contentView else { return }
-        for (idx, observer) in playbackTimeObservers.enumerated() {
+        for (idx, observer) in timeObservers.enumerated() {
             if idx < contentView.allPlayers.count {
                 contentView.allPlayers[idx].removeTimeObserver(observer)
             } else {
@@ -67,7 +67,7 @@ final class PlayerPlaybackCoordinator {
                 }
             }
         }
-        playbackTimeObservers.removeAll()
+        timeObservers.removeAll()
     }
 
     func beginBindingUpdateCycle() -> UInt64 {

@@ -1,5 +1,5 @@
 {
-  "playbackLoopMode": "off",
+  "loopMode": "off",
   "generateAtEnd": true,
   "sources": {
     "default": ["~/Movies/Hypnograph/sources"],

@@ -32,7 +32,7 @@ struct NoSourcesView: View {
     private var messageText: String {
         return """
         Hypnograph couldn’t find any usable media in your configured sources.
-        Configure one or more folder or Apple Photos sources to begin playback.
+        Configure one or more folder or Apple Photos sources to begin previewing compositions.
         """
     }
 }

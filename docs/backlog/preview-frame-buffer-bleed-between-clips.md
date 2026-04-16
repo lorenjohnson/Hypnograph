@@ -18,8 +18,8 @@ Current suspicion is that preview temporal state is not being cleanly owned or i
 
 1. Reproduce the bug reliably in preview with temporal effects active, especially around previous/next navigation and trim/start changes.
 2. Instrument and inspect preview state ownership during clip switches, focusing on:
-   - `Hypnograph/App/Studio/Playback/Views/PlayerView.swift`
-   - `Hypnograph/App/Studio/Playback/Views/PlayerContentView.swift`
+   - `Hypnograph/App/Studio/Player/Views/PlayerRendererView.swift`
+   - `Hypnograph/App/Studio/Player/Views/PlayerContentView.swift`
    - `HypnoPackages/HypnoCore/Renderer/Core/FrameCompositor.swift`
    - `HypnoPackages/HypnoCore/Renderer/Display/RendererView.swift`
    - `HypnoPackages/HypnoCore/Renderer/Effects/Core/EffectManager.swift`

@@ -3,7 +3,7 @@
 //  Hypnograph
 //
 //  Preview panel for live display shown in sidebar.
-//  Shows current hypnogram playback with button to toggle external window.
+//  Shows current live player output with button to toggle external window.
 //
 
 import SwiftUI

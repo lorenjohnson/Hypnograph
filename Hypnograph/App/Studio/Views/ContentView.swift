@@ -17,7 +17,7 @@ struct ContentView: View {
     @State private var panelsCurrentlyAutoHidden = false
     @State private var completedDownloadIdentifiersThisLoad: Set<String> = []
     @State private var previouslyVisibleDownloadIdentifiers: Set<String> = []
-    @State private var shouldResumePlaybackAfterTimelineScrub = false
+    @State private var shouldResumeAfterTimelineScrub = false
 
     private static let hidePanelsNowNotification = Notification.Name("StudioHidePanelsNow")
     private static let showPanelsNowNotification = Notification.Name("StudioShowPanelsNow")
@@ -353,14 +353,14 @@ struct ContentView: View {
             onAddSourceFromRandom: { main.addSourceFromRandom() },
             onToggleShowFullClips: { main.toggleShowFullClips() },
             onToggleGenerateAtEnd: { main.toggleGenerateAtEnd() },
-            onCyclePlaybackLoopMode: { main.cyclePlaybackLoopMode() },
+            onCycleLoopMode: { main.cycleLoopMode() },
             onSnapshotCurrent: { main.saveSnapshotImage() },
             onRenderCurrent: { main.renderAndSaveVideo() },
             onRenderSequence: { main.renderAndSaveSequenceVideo() },
             onBeginTimelineScrub: {
                 main.activePlayer.isTimelineScrubbing = true
-                shouldResumePlaybackAfterTimelineScrub = !main.activePlayer.isPaused
-                if shouldResumePlaybackAfterTimelineScrub {
+                shouldResumeAfterTimelineScrub = !main.activePlayer.isPaused
+                if shouldResumeAfterTimelineScrub {
                     main.togglePause()
                 }
             },
@@ -375,10 +375,10 @@ struct ContentView: View {
             onEndTimelineScrub: {
                 main.activePlayer.isTimelineScrubbing = false
                 main.activePlayer.requestedLayerTimeOffset = nil
-                if shouldResumePlaybackAfterTimelineScrub {
+                if shouldResumeAfterTimelineScrub {
                     main.togglePause()
                 }
-                shouldResumePlaybackAfterTimelineScrub = false
+                shouldResumeAfterTimelineScrub = false
             },
             onCommitLayerTrimRange: { layerIndex, range in
                 main.setLayerRange(
@@ -415,7 +415,7 @@ struct ContentView: View {
                 .ignoresSafeArea()
 
             // Studio display
-            main.makeDisplayView()
+            PlayerView(main: main)
                 .ignoresSafeArea()
                 .overlay {
                     CanvasPanelToggleHitView {

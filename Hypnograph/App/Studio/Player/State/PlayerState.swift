@@ -2,7 +2,7 @@
 //  PlayerState.swift
 //  Hypnograph
 //
-//  Playback-local state for the Studio preview deck.
+//  Player-local state for the Studio preview deck.
 //
 
 import Foundation
@@ -15,7 +15,7 @@ final class PlayerState: ObservableObject {
         let compositionID: UUID
     }
 
-    // MARK: - Playback State
+    // MARK: - Player State
 
     /// Current layer index for navigation and layer-targeted actions.
     /// Defaults to the first layer when available.
@@ -47,7 +47,7 @@ final class PlayerState: ObservableObject {
     var hasPendingGeneratedNextComposition: Bool = false
 
     /// Exact transition to use for the next composition handoff.
-    /// Sequence/navigation logic sets this explicitly so playback does not have to infer ownership.
+    /// Sequence/navigation logic sets this explicitly so the player does not have to infer ownership.
     var pendingCompositionTransitionStyle: TransitionRenderer.TransitionType?
     var pendingCompositionTransitionDuration: Double?
 

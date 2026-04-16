@@ -214,8 +214,8 @@ struct AppCommands: Commands {
 
         }
 
-        CommandMenu("Playback") {
-            studio.playbackMenu()
+        CommandMenu("Player") {
+            studio.playerMenu()
         }
 
         CommandMenu("Composition") {

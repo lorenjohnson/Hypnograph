@@ -19,7 +19,7 @@ private enum PanelKind {
         case .newCompositions: return "New Compositions"
         case .properties: return "Properties"
         case .effects: return "Effect Chains"
-        case .playerControls: return "Playback Controls"
+        case .playerControls: return "Player Controls"
         }
     }
 

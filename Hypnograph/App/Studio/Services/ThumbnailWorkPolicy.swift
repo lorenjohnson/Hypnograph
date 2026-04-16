@@ -15,8 +15,8 @@ enum ThumbnailWorkPolicy {
 
     static let layerStripThumbnailSize = CGSize(width: 192, height: 108)
 
-    static func compositionPreviewPersistenceDelay(isPlaybackActive: Bool) -> TimeInterval {
-        isPlaybackActive ? compositionPreviewDelayWhilePlaying : compositionPreviewDelayWhilePaused
+    static func compositionPreviewPersistenceDelay(isPlayerActive: Bool) -> TimeInterval {
+        isPlayerActive ? compositionPreviewDelayWhilePlaying : compositionPreviewDelayWhilePaused
     }
 
     static func layerStripFrameCount(for sourceDurationSeconds: Double) -> Int {

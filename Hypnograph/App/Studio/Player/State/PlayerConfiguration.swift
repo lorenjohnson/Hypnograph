@@ -4,7 +4,7 @@
 //
 //  Per-player generation configuration.
 //
-//  Note: display and document-level playback settings now live on the working Hypnogram.
+//  Note: display and document-level player settings now live on the working Hypnogram.
 //
 
 import Foundation

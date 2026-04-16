@@ -41,7 +41,7 @@ extension Studio {
         guard player.currentCompositionPreviewNeedsRefresh else { return }
 
         let delay = ThumbnailWorkPolicy.compositionPreviewPersistenceDelay(
-            isPlaybackActive: !player.isPaused
+            isPlayerActive: !player.isPaused
         )
 
         compositionPreviewPersistenceScheduler.schedule(after: delay) { [weak self] in

@@ -90,9 +90,9 @@ final class HypnographState: ObservableObject {
 
     // MARK: - UI Toggles
 
-    func setPlaybackLoopMode(_ mode: PlaybackLoopMode) {
+    func setLoopMode(_ mode: PlayerLoopMode) {
         settingsStore.update { settings in
-            settings.playbackLoopMode = mode
+            settings.loopMode = mode
         }
     }
 

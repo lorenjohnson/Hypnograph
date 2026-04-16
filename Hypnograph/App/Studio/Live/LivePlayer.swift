@@ -109,7 +109,7 @@ final class LivePlayer: ObservableObject {
     /// End observer for notification-based looping
     private var endObserver: Any?
 
-    /// This display's own EffectManager - independent of in-app playback
+    /// This display's own EffectManager - independent of the in-app player
     let effectManager = EffectManager()
 
     /// This display's own effects session - for live mode effects
@@ -208,7 +208,7 @@ final class LivePlayer: ObservableObject {
 
     // MARK: - Public API
 
-    /// Ensure content view exists for playback (without showing window)
+    /// Ensure the live player content view exists without showing the external window.
     private func ensureContentView() {
         guard contentView == nil else { return }
 
@@ -335,10 +335,10 @@ final class LivePlayer: ObservableObject {
         window = nil
         isVisible = false
 
-        print("🎬 LivePlayer: Window hidden (playback continues)")
+        print("🎬 LivePlayer: Window hidden (player continues)")
     }
 
-    /// Stop playback and reset all state (also hides window)
+    /// Stop the live player and reset all state (also hides the window)
     func stop() {
         print("🎬 LivePlayer: Stopping...")
 
@@ -413,7 +413,7 @@ final class LivePlayer: ObservableObject {
         transitionStyle: TransitionRenderer.TransitionType,
         transitionDuration: Double
     ) {
-        // Ensure we have a content view for playback
+        // Ensure we have a content view ready for the live player
         ensureContentView()
 
         guard contentView != nil else {
@@ -504,7 +504,7 @@ final class LivePlayer: ObservableObject {
             // Determine play rate (nil for still images = don't auto-start)
             let playRate: Float? = isAllStillImages ? nil : composition.playRate
 
-            // Start shader transition with playback
+            // Start the shader transition while the incoming player runs
             metalContent.loadAndTransition(
                 playerItem: playerItem,
                 transitionType: transitionType,
