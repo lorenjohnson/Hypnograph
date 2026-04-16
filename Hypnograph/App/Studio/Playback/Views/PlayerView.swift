@@ -132,6 +132,7 @@ struct PlayerView: NSViewRepresentable {
         if newID != c.compositionID {
             let previousID = c.compositionID
             let bindingUpdateToken = c.beginBindingUpdateCycle()
+            let outgoingRenderedComposition = c.lastRenderedComposition
 
             freezeOutgoingEffectsIfNeeded(coordinator: c, previousID: previousID)
 
@@ -211,12 +212,16 @@ struct PlayerView: NSViewRepresentable {
                     // - Subsequent loads: use configured transition
                     let effectiveTransition: TransitionRenderer.TransitionType
                     let effectiveTransitionDuration: Double
-                    let isSameCompositionReload = previousID != nil && c.lastRenderedComposition?.id == composition.id
+                    let hasExistingRenderedComposition = c.contentView != nil && outgoingRenderedComposition != nil
+                    let isSameCompositionReload = outgoingRenderedComposition?.id == composition.id
                     c.pendingPostLoadSourceTime = isSameCompositionReload ? currentSourceTime : nil
-                    if c.isFirstLoad || previousID == nil || isSameCompositionReload {
+                    if c.isFirstLoad || !hasExistingRenderedComposition {
                         effectiveTransition = .none
                         effectiveTransitionDuration = transitionDuration
                         c.isFirstLoad = false
+                    } else if isSameCompositionReload {
+                        effectiveTransition = .none
+                        effectiveTransitionDuration = transitionDuration
                     } else {
                         effectiveTransition = pendingCompositionTransitionStyle ?? self.transitionStyle
                         effectiveTransitionDuration = pendingCompositionTransitionDuration ?? self.transitionDuration

@@ -10,9 +10,9 @@ import HypnoUI
 
 @MainActor
 extension Studio {
-    private func resetPlayheadForCompositionChange() {
+    private func resetPlayheadForCompositionChange(manual _: Bool) {
         player.isTimelineScrubbing = false
-        player.currentLayerTimeOffset = .zero
+        player.currentLayerTimeOffset = nil
         player.requestedLayerTimeOffset = nil
     }
 
@@ -42,7 +42,7 @@ extension Studio {
         let token = compositionSelectionUpdateToken
         compositionSelectionWorkItem?.cancel()
 
-        resetPlayheadForCompositionChange()
+        resetPlayheadForCompositionChange(manual: manual)
 
         let workItem = DispatchWorkItem { [weak self] in
             guard let self else { return }
