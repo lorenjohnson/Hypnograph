@@ -14,7 +14,7 @@ updated: 2026-04-04
 <aside class="beta-inset beta-download download-cta">
   <p><a class="download-button" href="https://github.com/lorenjohnson/Hypnograph/releases/download/v0.2.0-beta.12/Hypnograph-0.2.0-12-macOS-unsigned.dmg">Download Beta</a></p>
   <p class="download-subtext"><span class="download-chip">Beta</span> <span class="download-chip">v0.2.0 (build 12)</span> <span class="download-chip">Apple Silicon</span></p>
-  <p class="download-subtext">Released April 8, 2026</p>
+  <p class="download-subtext">Released April 17, 2026</p>
   <p class="download-subtext">There are a couple of extra steps to running the beta app at this time. See <a href="/reference/installing-the-beta">beta install steps</a>.</p>
 </aside>
 
