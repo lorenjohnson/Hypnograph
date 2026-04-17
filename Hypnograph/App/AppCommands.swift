@@ -112,6 +112,12 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("s", modifiers: [.control, .command, .shift])
 
+            Divider()
+
+            Button("Export Sequence to FCPXML…") {
+                studio.exportSequenceToFCPXML()
+            }
+
         }
 
         CommandGroup(replacing: .sidebar) {

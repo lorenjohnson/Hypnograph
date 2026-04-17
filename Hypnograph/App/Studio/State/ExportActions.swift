@@ -7,6 +7,7 @@ import Foundation
 import CoreGraphics
 import CoreImage
 import AppKit
+import UniformTypeIdentifiers
 import HypnoCore
 import HypnoUI
 
@@ -221,6 +222,56 @@ extension Studio {
         )
     }
 
+    func exportSequenceToFCPXML() {
+        let exportHypnogram = makeWorkingHypnogram().copyForExport()
+        guard !exportHypnogram.compositions.isEmpty else {
+            print("Studio: no compositions to export.")
+            AppNotifications.show("No sequence to export", flash: true)
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [UTType(filenameExtension: "fcpxml") ?? .xml]
+        panel.canCreateDirectories = true
+        panel.directoryURL = state.settings.outputURL
+        panel.nameFieldStringValue = suggestedFCPXMLFilename()
+        panel.isExtensionHidden = false
+
+        panel.begin { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            guard let self else { return }
+
+            AppNotifications.show("Exporting sequence to FCPXML…", flash: true, duration: 1.2)
+            let exportSize = self.exportSettings()
+            let timelineName = self.suggestedFCPXMLTimelineName()
+            let sourceFraming = self.currentHypnogramSourceFraming
+
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+
+                do {
+                    let package = try await SequenceFCPXMLExporter.exportCurrentSequence(
+                        hypnogram: exportHypnogram,
+                        to: url,
+                        timelineName: timelineName,
+                        outputSize: exportSize,
+                        sourceFraming: sourceFraming
+                    )
+
+                    AppNotifications.show("Sequence FCPXML export complete", flash: false) {
+                        NSWorkspace.shared.activateFileViewerSelecting([package.exportFolderURL])
+                    }
+                } catch {
+                    print("Studio: failed to export FCPXML sequence: \(error)")
+                    AppNotifications.show(
+                        error.localizedDescription.isEmpty ? "Failed to export FCPXML sequence" : error.localizedDescription,
+                        flash: false
+                    )
+                }
+            }
+        }
+    }
+
     private func handleRenderedVideoDestination(result: Result<URL, RenderError>) async {
         guard case .success(let outputURL) = result else { return }
 
@@ -287,6 +338,15 @@ extension Studio {
         AppNotifications.show(message, flash: false) {
             NSWorkspace.shared.activateFileViewerSelecting([revealURL])
         }
+    }
+
+    private func suggestedFCPXMLFilename() -> String {
+        let baseName = activeWorkingHypnogramURL?.deletingPathExtension().lastPathComponent ?? "Hypnograph Sequence"
+        return "\(baseName).fcpxml"
+    }
+
+    private func suggestedFCPXMLTimelineName() -> String {
+        activeWorkingHypnogramURL?.deletingPathExtension().lastPathComponent ?? "Hypnograph Sequence"
     }
 
     func saveCompositionAs() {
