@@ -1,10 +1,12 @@
-last_reviewed: 2026-04-16
+---
+last_reviewed: 2026-04-17
 ---
 
 # Queue
 
 ## Active Projects
 
+- [sequence-fcpxml-export](active/sequence-fcpxml-export.md)
 - [effects-and-effect-chain-ux](active/effects-and-effect-chain-ux/index.md)
 - [image-playback-duration](active/image-playback-duration.md)
 - [new-compositions](active/new-compositions.md)
@@ -21,7 +23,6 @@ last_reviewed: 2026-04-16
 - [in-app-feedback](backlog/in-app-feedback.md)
 - [location-overlay-effect](backlog/location-overlay-effect.md)
 - [preview-frame-buffer-bleed-between-clips](backlog/preview-frame-buffer-bleed-between-clips.md)
-- [sequence-fcpxml-export](backlog/sequence-fcpxml-export.md)
 - [volume-leveling](backlog/volume-leveling.md)
 
 ## Incubating
