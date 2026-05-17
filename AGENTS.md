@@ -11,6 +11,7 @@
 3. `docs/rules.md`
 4. shared product-context-manager workflow: `../product-context-manager/workflow.md`
 5. `docs/product.md`
+6. `docs/current.md` if present
 
 ## Rules
 

@@ -57,13 +57,13 @@ final class ExternalMediaLoadHarness: ObservableObject {
         let id: String
         let localIdentifier: String
         let mediaLabel: String
-        let progress: Double
+        let progress: Double?
     }
 
     private struct PendingDownloadPromotion {
         let localIdentifier: String
         let mediaLabel: String
-        var latestProgress: Double
+        var latestProgress: Double?
         let task: Task<Void, Never>
     }
 
@@ -79,6 +79,7 @@ final class ExternalMediaLoadHarness: ObservableObject {
     private var isInstalled = false
     private var pendingDownloadPromotions: [String: PendingDownloadPromotion] = [:]
 
+    private static let waitingVisibilityDelayNanoseconds: UInt64 = 2_000_000_000
     private static let downloadVisibilityDelayNanoseconds: UInt64 = 700_000_000
     private static let slowLoadProgressSteps: [Double] = [0.0, 0.1, 0.2, 0.35, 0.5, 0.65, 0.78, 0.9]
     private static let slowLoadStepDelayNanoseconds: UInt64 = 500_000_000
@@ -257,8 +258,45 @@ final class ExternalMediaLoadHarness: ObservableObject {
     }
 
     @MainActor
+    private func makePromotionTask(requestID: String, delayNanoseconds: UInt64) -> Task<Void, Never> {
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: delayNanoseconds)
+            await MainActor.run {
+                guard let self,
+                      let pending = self.pendingDownloadPromotions.removeValue(forKey: requestID) else {
+                    return
+                }
+
+                self.activeDownloads.append(
+                    AssetDownloadStatus(
+                        id: requestID,
+                        localIdentifier: pending.localIdentifier,
+                        mediaLabel: pending.mediaLabel,
+                        progress: pending.latestProgress
+                    )
+                )
+            }
+        }
+    }
+
+    @MainActor
     private func handleTransferEvent(_ event: ApplePhotos.TransferEvent) {
         switch event.phase {
+        case .loading:
+            if activeDownloads.contains(where: { $0.id == event.requestID }) {
+                return
+            } else if pendingDownloadPromotions[event.requestID] == nil {
+                pendingDownloadPromotions[event.requestID] = PendingDownloadPromotion(
+                    localIdentifier: event.localIdentifier,
+                    mediaLabel: event.mediaLabel,
+                    latestProgress: nil,
+                    task: makePromotionTask(
+                        requestID: event.requestID,
+                        delayNanoseconds: Self.waitingVisibilityDelayNanoseconds
+                    )
+                )
+            }
+
         case .downloading(let progress):
             let clamped = min(max(progress, 0), 1)
             if let index = activeDownloads.firstIndex(where: { $0.id == event.requestID }) {
@@ -269,34 +307,33 @@ final class ExternalMediaLoadHarness: ObservableObject {
                     progress: clamped
                 )
             } else if var pending = pendingDownloadPromotions[event.requestID] {
+                let wasWaitingOnly = pending.latestProgress == nil
                 pending.latestProgress = clamped
-                pendingDownloadPromotions[event.requestID] = pending
+
+                if wasWaitingOnly {
+                    pending.task.cancel()
+                    activeDownloads.append(
+                        AssetDownloadStatus(
+                            id: event.requestID,
+                            localIdentifier: event.localIdentifier,
+                            mediaLabel: event.mediaLabel,
+                            progress: clamped
+                        )
+                    )
+                    pendingDownloadPromotions.removeValue(forKey: event.requestID)
+                } else {
+                    pendingDownloadPromotions[event.requestID] = pending
+                }
             } else {
                 let requestID = event.requestID
-                let promotionTask = Task { [weak self] in
-                    try? await Task.sleep(nanoseconds: Self.downloadVisibilityDelayNanoseconds)
-                    await MainActor.run {
-                        guard let self,
-                              let pending = self.pendingDownloadPromotions.removeValue(forKey: requestID) else {
-                            return
-                        }
-
-                        self.activeDownloads.append(
-                            AssetDownloadStatus(
-                                id: requestID,
-                                localIdentifier: pending.localIdentifier,
-                                mediaLabel: pending.mediaLabel,
-                                progress: pending.latestProgress
-                            )
-                        )
-                    }
-                }
-
                 pendingDownloadPromotions[requestID] = PendingDownloadPromotion(
                     localIdentifier: event.localIdentifier,
                     mediaLabel: event.mediaLabel,
                     latestProgress: clamped,
-                    task: promotionTask
+                    task: makePromotionTask(
+                        requestID: requestID,
+                        delayNanoseconds: Self.downloadVisibilityDelayNanoseconds
+                    )
                 )
             }
 

@@ -15,6 +15,20 @@ Because Hypnograph is currently distributed as a direct beta download during ear
 
 You should only need to do this the first time you open a new beta release.
 
+## If Apple Photos Gets Stuck After Upgrading From An Older Beta
+
+If you are coming from a much older Hypnograph beta and Apple Photos access seems stuck, loops strangely, or never settles after you click allow, use this recovery path:
+
+1. Quit Hypnograph.
+2. Open `System Settings` > `Privacy & Security` > `Photos`.
+3. Find `Hypnograph` in that list and remove or disable its Photos access if macOS currently shows it there.
+4. Open `Terminal` and run `tccutil reset Photos lorenjohnson.Hypnograph`.
+5. Open the latest Hypnograph beta again from `Applications`.
+6. When Hypnograph asks for Apple Photos access again, allow it.
+7. If Hypnograph still looks like access is missing after that, quit it once more and relaunch it.
+
+This should not normally be necessary on current betas. It is mainly a recovery step for earlier testers whose existing Apple Photos permission state may have been left in a bad place by older builds.
+
 If you want Apple's own instructions as well, see [Open an app by overriding security settings](https://support.apple.com/en-afri/guide/mac-help/mh40617).
 
 This extra setup is temporary. Hypnograph is expected to move to Apple's beta distribution platform soon, which should remove these extra steps. Thanks for your patience as an early tester. The upside, for now, is getting access to the app sooner.

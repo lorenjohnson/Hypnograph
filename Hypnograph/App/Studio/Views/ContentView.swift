@@ -183,7 +183,12 @@ struct ContentView: View {
         let identifier: String
         let title: String
         let subtitle: String
-        let progress: Double
+        let progress: Double?
+    }
+
+    private enum CurrentCompositionDownloadHUDState: Equatable {
+        case waiting
+        case downloading(Double)
     }
 
     private var currentCompositionDownloadRows: [CurrentCompositionDownloadRow] {
@@ -230,16 +235,20 @@ struct ContentView: View {
         main.activePlayer.isPrimaryCompositionLoadInFlight && hasTrackedDownloadsThisLoad
     }
 
-    private var currentCompositionDownloadAggregateProgress: Double {
+    private var currentCompositionDownloadHUDState: CurrentCompositionDownloadHUDState? {
         if !visibleCurrentCompositionDownloadRows.isEmpty {
-            return visibleCurrentCompositionDownloadRows.map(\.progress).min() ?? 0
+            let progresses = visibleCurrentCompositionDownloadRows.compactMap(\.progress)
+            if progresses.count != visibleCurrentCompositionDownloadRows.count {
+                return .waiting
+            }
+            return .downloading(progresses.min() ?? 0)
         }
 
         if shouldShowCurrentCompositionDownloadHUD {
-            return 1
+            return .downloading(1)
         }
 
-        return 0
+        return nil
     }
 
     @ViewBuilder
@@ -254,19 +263,46 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private func currentCompositionDownloadHUD(progress: Double) -> some View {
-        ProgressView(value: min(max(progress, 0), 1), total: 1)
-            .progressViewStyle(.circular)
-            .controlSize(.regular)
-            .frame(width: 20, height: 20)
-            .padding(3)
-            .background(
-                Circle()
-                    .fill(Color.black.opacity(0.22))
-            )
-        .frame(width: 30, height: 30, alignment: .center)
-        .accessibilityLabel("Apple Photos download progress")
-        .accessibilityValue("\(Int((progress * 100).rounded())) percent")
+    private func currentCompositionDownloadHUD(state: CurrentCompositionDownloadHUDState) -> some View {
+        Group {
+            switch state {
+            case .waiting:
+                HStack(spacing: 5) {
+                    Image(systemName: "icloud")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("WAIT")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(0.4)
+                }
+                .foregroundStyle(.blue)
+                .padding(.horizontal, 8)
+                .frame(height: 30)
+                .background(
+                    Capsule()
+                        .fill(Color.black.opacity(0.22))
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
+                )
+                .accessibilityLabel("Apple Photos asset loading")
+                .accessibilityValue("Waiting for asset to load")
+
+            case .downloading(let progress):
+                ProgressView(value: min(max(progress, 0), 1), total: 1)
+                    .progressViewStyle(.circular)
+                    .controlSize(.regular)
+                    .frame(width: 20, height: 20)
+                    .padding(3)
+                    .background(
+                        Circle()
+                            .fill(Color.black.opacity(0.22))
+                    )
+                    .frame(width: 30, height: 30, alignment: .center)
+                    .accessibilityLabel("Apple Photos download progress")
+                    .accessibilityValue("\(Int((progress * 100).rounded())) percent")
+            }
+        }
     }
 
     private var loopCompositionHUDIcon: some View {
@@ -441,8 +477,10 @@ struct ContentView: View {
         .overlay(alignment: .topTrailing) {
             HStack(alignment: .center, spacing: 6) {
                 if shouldShowCurrentCompositionDownloadHUD {
-                    currentCompositionDownloadHUD(progress: currentCompositionDownloadAggregateProgress)
-                        .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    if let currentCompositionDownloadHUDState {
+                        currentCompositionDownloadHUD(state: currentCompositionDownloadHUDState)
+                            .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    }
                 }
 
                 if shouldShowLoopCompositionIndicator {

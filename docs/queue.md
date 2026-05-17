@@ -1,18 +1,17 @@
 ---
 last_reviewed: 2026-04-17
 ---
-
 # Queue
 
 ## Active Projects
 
+- See ./current.md for live triage notes that have not yet become active or backlog projects.
 - [sequence-fcpxml-export](active/sequence-fcpxml-export.md)
 - [effects-and-effect-chain-ux](active/effects-and-effect-chain-ux/index.md)
 - [image-playback-duration](active/image-playback-duration.md)
 - [new-compositions](active/new-compositions.md)
 - [layout-transforms-vs-viewer-pan-zoom](active/layout-transforms-vs-viewer-pan-zoom.md)
 - [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
-- Finder action "Add to Hypnograph Source" is not installing - Automator action fails. Also, try adding a sourceFolder without any files in it--it may cause a crash?
 
 ## Backlog Projects
 
@@ -23,6 +22,7 @@ last_reviewed: 2026-04-17
 - [in-app-feedback](backlog/in-app-feedback.md)
 - [location-overlay-effect](backlog/location-overlay-effect.md)
 - [preview-frame-buffer-bleed-between-clips](backlog/preview-frame-buffer-bleed-between-clips.md)
+- [smoother-playback](backlog/smoother-playback.md)
 - [volume-leveling](backlog/volume-leveling.md)
 
 ## Incubating
