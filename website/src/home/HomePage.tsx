@@ -110,6 +110,24 @@ export function HomePage() {
         </p>
       </section>
 
+      <section className="home-content" aria-labelledby="development-title">
+        <h2 id="development-title">Development</h2>
+        <p>
+          Hypnograph is being built in public, and you can follow the active
+          product development of Hypnograph in the{" "}
+          <a href="/docs/queue">Open Product Development Documents</a>.
+        </p>
+        <p>
+          I welcome product-level feedback and discussion, and code-level
+          contributions from anyone interested enough to bring either. I do
+          anticipate eventually open sourcing Hypnograph, but I have not yet
+          settled on a particular license, so for now the project should be
+          considered source-available rather than open source. The source code
+          for Hypnograph is publicly available on{" "}
+          <a href="https://github.com/lorenjohnson/Hypnograph">GitHub</a>.
+        </p>
+      </section>
+
       <footer className="home-footer">
         <p>
           Loren Johnson /{" "}
