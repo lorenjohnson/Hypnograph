@@ -18,7 +18,7 @@ Hypnograph should let a single operator move quickly from source material into a
 - Saved states (hypnograms) supporting return, refinement, and sharing.
 - Effect-first creative workflow with reusable chains and presets.
 - Hypnogram recipe format for resumable visual states.
-- Live-oriented operation with quick keyboard and controller control paths.
+- Live-oriented operation with quick keyboard control paths.
 - Apple-native implementation focused on real-time rendering quality.
 
 ## Boundaries And Non-Goals

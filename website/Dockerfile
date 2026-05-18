@@ -1,11 +1,19 @@
-FROM nginx:1.27-alpine
+FROM node:22-alpine
 
-COPY website/nginx.conf /etc/nginx/conf.d/default.conf
-COPY website/index.html /usr/share/nginx/html/index.html
-COPY website/index.md /usr/share/nginx/html/index.md
-COPY website/app.js /usr/share/nginx/html/app.js
-COPY website/styles.css /usr/share/nginx/html/styles.css
-COPY website/assets /usr/share/nginx/html/assets
-COPY docs /docs
+WORKDIR /app
 
-EXPOSE 80
+COPY website/package*.json ./website/
+RUN cd website && npm ci
+
+COPY docs ./docs
+COPY website ./website
+
+WORKDIR /app/website
+RUN npm run build
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+EXPOSE 3000
+
+CMD ["npm", "run", "start"]

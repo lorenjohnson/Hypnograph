@@ -1,0 +1,22 @@
+{
+  "name": "hypnograph-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare:holocron": "node scripts/generate-holocron-config.mjs",
+    "dev": "npm run prepare:holocron && vite dev --host 0.0.0.0",
+    "build": "npm run prepare:holocron && vite build",
+    "start": "node dist/rsc/index.js"
+  },
+  "dependencies": {
+    "@holocron.so/vite": "^0.8.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "vite": "^8.0.10"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
+  }
+}

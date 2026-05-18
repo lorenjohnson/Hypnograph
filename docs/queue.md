@@ -12,6 +12,7 @@ last_reviewed: 2026-04-17
 - [new-compositions](active/new-compositions.md)
 - [layout-transforms-vs-viewer-pan-zoom](active/layout-transforms-vs-viewer-pan-zoom.md)
 - [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
+- [holocron-docs-publishing](active/holocron-docs-publishing.md)
 
 ## Backlog Projects
 

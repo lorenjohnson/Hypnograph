@@ -1,5 +1,5 @@
 <h1>
-  <img src="website/assets/hypnograph-icon.png" alt="Hypnograph icon" width="88" align="left" />
+  <img src="website/public/assets/hypnograph-icon.png" alt="Hypnograph icon" width="88" align="left" />
   Hypnograph
 </h1>
 

@@ -1,10 +1,12 @@
 services:
   hypnograph-site:
-    image: nginx:1.27-alpine
+    image: node:22-alpine
+    working_dir: /app/website
+    command: sh -c "npm install && npm run dev"
     ports:
-      - "8080:80"
+      - "8080:5173"
     volumes:
-      - ./:/usr/share/nginx/html:ro
-      - ../docs:/docs:ro
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./:/app/website
+      - ../docs:/app/docs:ro
+      - /app/website/node_modules
     restart: unless-stopped

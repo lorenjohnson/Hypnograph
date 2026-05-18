@@ -1,0 +1,4 @@
+node_modules/
+dist/
+.holocron-pages/
+docs.json
