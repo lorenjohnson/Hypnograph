@@ -11,7 +11,7 @@ The immediate motivation is the panel model that is emerging around the new bott
 - as a floating AppKit panel window, or
 - as an embedded in-window docked panel.
 
-This is separate from the current [bottom-dock-and-properties](../active/bottom-dock-and-properties.md) project. That active project is about making time-based interaction and settings clearer now. This backlog project is about the later host/presentation model for making panels dockable.
+This is separate from the current [bottom-dock-and-properties](../archive/20260414-bottom-dock-and-properties.md) project. That active project is about making time-based interaction and settings clearer now. This backlog project is about the later host/presentation model for making panels dockable.
 
 The likely first practical use is:
 

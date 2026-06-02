@@ -24,7 +24,7 @@ Also: ensure window state (open/closed) is saved and restored between sessions.
 
 ### Window Design
 - [ ] Which windows exist and what goes in them?
-- [ ] Should some windows be consolidated? (see [combine-hud-into-player-settings](combine-hud-into-player-settings.md))
+- [ ] Should some windows be consolidated? (see [combine-hud-into-player-settings](20260217-combine-hud-into-player-settings.md))
 - [ ] What's the visual language — floating panels? Sidebars? Modal sheets?
 - [ ] How do windows behave with fullscreen?
 
@@ -85,7 +85,7 @@ Built a quick prototype comparing native SwiftUI sidebars vs current floating pa
 
 ## Related Projects
 
-- [combine-hud-into-player-settings](combine-hud-into-player-settings.md) — May eliminate HUD as a separate window
+- [combine-hud-into-player-settings](20260217-combine-hud-into-player-settings.md) — May eliminate HUD as a separate window
 
 ## Notes
 

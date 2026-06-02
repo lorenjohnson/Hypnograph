@@ -22,7 +22,7 @@ This project is now complete enough to archive. The panel model is on a much fir
 - MUST add a user-facing way to restore panels to the current default layout.
 - SHOULD also make room for a later user-saved default layout, separate from last-opened panel state.
 - SHOULD treat any global loading veil during panel restoration as a later refinement, not as the first fix.
-- MUST coordinate with [studio-panels-cleanup.md](/Users/lorenjohnson/dev/Hypnograph/docs/archive/20260330-studio-panels-cleanup.md) without letting that cleanup pass absorb this whole layout-model project.
+- MUST coordinate with [studio-panels-cleanup.md](20260330-studio-panels-cleanup.md) without letting that cleanup pass absorb this whole layout-model project.
 - MUST NOT assume the Photoshop or Affinity reference pattern should be copied literally.
 
 ## Plan

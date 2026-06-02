@@ -37,7 +37,7 @@ The current implementation target for v1 is:
 
 ## Rules
 
-- MUST treat this project as downstream of both [Sequences](/Users/lorenjohnson/dev/Hypnograph/docs/archive/20260414-sequences.md) and [sequence-render-and-export.md](/Users/lorenjohnson/dev/Hypnograph/docs/archive/20260414-sequence-render-and-export.md).
+- MUST treat this project as downstream of both [Sequences](../archive/20260414-sequences.md) and [sequence-render-and-export.md](../archive/20260414-sequence-render-and-export.md).
 - MUST preserve current sequence order in the emitted timeline.
 - MUST export the whole current working sequence for v1.
 - MUST package all referenced source media into the export directory for the current version.

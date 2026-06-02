@@ -15,11 +15,11 @@ That means the website can route and render the current project/reference docs w
 ## Completion Notes
 
 What is true now:
-- [Dockerfile](/Users/lorenjohnson/dev/Hypnograph/website/Dockerfile) is built from repo root via [docker-compose.dokploy.yml](/Users/lorenjohnson/dev/Hypnograph/website/docker-compose.dokploy.yml).
+- `website/Dockerfile` is built from repo root via `website/docker-compose.dokploy.yml`.
 - That Dockerfile does `COPY docs /docs`, so production docs are captured at image-build time.
-- [docker-compose.dev.yml](/Users/lorenjohnson/dev/Hypnograph/website/docker-compose.dev.yml) mounts `../docs:/docs:ro`, so local development sees the current docs tree directly.
-- [nginx.conf](/Users/lorenjohnson/dev/Hypnograph/website/nginx.conf) serves `/docs/*` from `/docs/`.
-- [app.js](/Users/lorenjohnson/dev/Hypnograph/website/app.js) routes doc paths and homepage behavior as expected.
+- `website/docker-compose.dev.yml` mounts `../docs:/docs:ro`, so local development sees the current docs tree directly.
+- `website/nginx.conf` serves `/docs/*` from `/docs/`.
+- `website/app.js` routes doc paths and homepage behavior as expected.
 
 So the original one-shot `docs-sync` service described in the active draft is no longer needed to satisfy the real goal of the project.
 

@@ -53,5 +53,6 @@ Immediate acceptance check:
 
 - `website/scripts/generate-holocron-config.mjs` generates `website/docs.json` and `.holocron-pages/` from the repo docs at dev/build time.
 - Source docs are not rewritten for Holocron. The generated copy normalizes MDX-sensitive Markdown autolinks before Holocron reads them.
+- `@holocron.so/vite` 0.17.0 handles repo-internal `.md` / `.mdx` page links through its own MDX normalization, preserving raw `.md` endpoints while rendering internal docs navigation correctly.
 - `website/Dockerfile` now builds and serves the Holocron site with Node rather than nginx and the removed custom renderer.
 - `website/docker-compose.dokploy.yml` uses the repo root as Docker context so both `website/` and `docs/` are available during build.

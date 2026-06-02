@@ -11,6 +11,7 @@ last_reviewed: 2026-04-17
 - [image-playback-duration](active/image-playback-duration.md)
 - [new-compositions](active/new-compositions.md)
 - [layout-transforms-vs-viewer-pan-zoom](active/layout-transforms-vs-viewer-pan-zoom.md)
+- [nonlinear-timeline-editor](active/nonlinear-timeline-editor.md)
 - [apple-developer-release-readiness](active/apple-developer-release-readiness.md)
 - [holocron-docs-publishing](active/holocron-docs-publishing.md)
 
@@ -23,7 +24,6 @@ last_reviewed: 2026-04-17
 - [in-app-feedback](backlog/in-app-feedback.md)
 - [location-overlay-effect](backlog/location-overlay-effect.md)
 - [preview-frame-buffer-bleed-between-clips](backlog/preview-frame-buffer-bleed-between-clips.md)
-- [smoother-playback](backlog/smoother-playback.md)
 - [volume-leveling](backlog/volume-leveling.md)
 
 ## Incubating

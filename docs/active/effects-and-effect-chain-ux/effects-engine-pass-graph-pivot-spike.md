@@ -14,7 +14,7 @@ So this spike should decide whether pass-graph is the real destination or just a
 
 This is not an implementation project. It is a decision-and-direction spike. The value of the document is to leave behind a clear architecture stance, a short list of minimum graph capabilities, and a follow-on implementation brief that could actually be picked up later without reopening the whole question. It should also make clear whether the current effects runtime is something to keep extending for a while or more of a stepping stone to replace once the new path is viable.
 
-Useful reference context includes the current effects architecture in [effects.md](../reference/effects.md), the earlier effects-system refactor notes in [20260111-effects-system-refactor.md](../archive/20260111-effects-system-refactor.md), and external reference work such as RetroArch `slang-shaders`, `RetroTVFX`, and related analog-style shader pipelines that are hard to express cleanly in a strictly linear chain.
+Useful reference context includes the current effects architecture in [effects.md](../../reference/effects.md), the earlier effects-system refactor notes in [20260111-effects-system-refactor.md](../../archive/20260111-effects-system-refactor.md), and external reference work such as RetroArch `slang-shaders`, `RetroTVFX`, and related analog-style shader pipelines that are hard to express cleanly in a strictly linear chain.
 
 ## Rules
 

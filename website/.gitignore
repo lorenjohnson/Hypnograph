@@ -1,4 +1,5 @@
 node_modules/
 dist/
 .holocron-pages/
+.wrangler/
 docs.json

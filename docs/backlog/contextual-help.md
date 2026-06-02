@@ -20,7 +20,7 @@ The likely value is twofold: faster learning of controls and a clearer place for
 - SHOULD account for both control-description help and possible keystroke or hotkey guidance where useful.
 - MUST preserve live usability and avoid turning the app into a constantly chatty instructional interface.
 - MAY support conditional or temporary visibility if that produces a better balance than always-on help.
-- MUST coordinate with [studio-panels-cleanup.md](/Users/lorenjohnson/dev/Hypnograph/docs/active/studio-panels-cleanup.md) only where the old HUD surface overlaps visually.
+- MUST coordinate with [studio-panels-cleanup.md](../archive/20260330-studio-panels-cleanup.md) only where the old HUD surface overlaps visually.
 
 ## Plan
 
