@@ -54,5 +54,9 @@ Immediate acceptance check:
 - `website/scripts/generate-holocron-config.mjs` generates `website/docs.json` and `.holocron-pages/` from the repo docs at dev/build time.
 - Source docs are not rewritten for Holocron. The generated copy normalizes MDX-sensitive Markdown autolinks before Holocron reads them.
 - `@holocron.so/vite` 0.17.0 handles repo-internal `.md` / `.mdx` page links through its own MDX normalization, preserving raw `.md` endpoints while rendering internal docs navigation correctly.
+- Holocron 0.17.0 does not expose a config flag to hide inline section headings in the left navigation; `website/global.css` hides only that generated inline TOC while preserving the document tree.
+- `logo.text` now renders the Hypnograph wordmark through Holocron config instead of a local `.slot-logo::after` CSS workaround.
+- The Documentation and Development tabs use Holocron's native tab `pages` shorthand; generated child groups still preserve the repo docs tree under Development.
+- Redirects are limited to current convenience entrypoints (`/docs`, `/docs/user-manual`); old pre-Holocron URL preservation redirects were removed.
 - `website/Dockerfile` now builds and serves the Holocron site with Node rather than nginx and the removed custom renderer.
 - `website/docker-compose.dokploy.yml` uses the repo root as Docker context so both `website/` and `docs/` are available during build.

@@ -98,11 +98,10 @@ copyForHolocron(docsDir, generatedDocsDir);
 
 const docsGroup = buildDocsGroup(docsDir);
 const userManualGroup = buildDocsGroup(path.join(docsDir, "user-manual"));
-userManualGroup.group = "Documentation";
 const installationSlug = "docs/user-manual/installation";
 const controlsSlug = "docs/user-manual/controls";
 const glossarySlug = "docs/user-manual/glossary";
-userManualGroup.pages = [
+const userManualPages = [
   installationSlug,
   controlsSlug,
   ...userManualGroup.pages.filter(
@@ -128,6 +127,7 @@ const config = {
   logo: {
     light: "/assets/hypnograph-icon.png",
     href: "/",
+    text: "Hypnograph",
   },
   favicon: "/assets/hypnograph-icon.png",
   colors: {
@@ -155,17 +155,11 @@ const config = {
     tabs: [
       {
         tab: "Documentation",
-        groups: [userManualGroup],
+        pages: userManualPages,
       },
       {
         tab: "Development",
-        groups: [
-          {
-            group: "Development",
-            expanded: true,
-            pages: ["docs/queue", ...developmentPages],
-          },
-        ],
+        pages: ["docs/queue", ...developmentPages],
       },
     ],
   },
@@ -175,32 +169,8 @@ const config = {
       destination: "/docs/queue",
     },
     {
-      source: "/docs/reference",
-      destination: "/docs/user-manual/installation",
-    },
-    {
       source: "/docs/user-manual",
       destination: "/docs/user-manual/installation",
-    },
-    {
-      source: "/docs/reference/download",
-      destination: "/docs/user-manual/installation",
-    },
-    {
-      source: "/docs/reference/installing-the-beta",
-      destination: "/docs/user-manual/installation",
-    },
-    {
-      source: "/docs/reference/controls",
-      destination: "/docs/user-manual/controls",
-    },
-    {
-      source: "/docs/reference/glossary",
-      destination: "/docs/user-manual/glossary",
-    },
-    {
-      source: "/collaborators",
-      destination: "/",
     },
   ],
 };

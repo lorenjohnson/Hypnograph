@@ -2,27 +2,13 @@
   display: none;
 }
 
+.slot-sidebar-nav div:has(> div > ul a[data-heading-id]) {
+  display: none;
+}
+
 img[src="/assets/hypnograph-icon.png"],
 img[src^="/assets/hypnograph-icon.png?"] {
   border-radius: 18%;
   filter: none !important;
   object-fit: cover;
-}
-
-.slot-logo {
-  color: hsl(var(--foreground)) !important;
-  gap: 0.6rem;
-}
-
-.slot-logo:visited,
-.slot-logo:hover {
-  color: hsl(var(--foreground)) !important;
-}
-
-.slot-logo::after {
-  content: "Hypnograph";
-  color: inherit !important;
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0;
 }
